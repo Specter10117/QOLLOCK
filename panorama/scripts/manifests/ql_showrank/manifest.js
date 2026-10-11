@@ -246,6 +246,39 @@
                 var labels = entry.FindChildrenWithClassTraverse ? entry.FindChildrenWithClassTraverse("PlayerAccountHidden") : [];
                 return (labels && labels.length > 0) ? labels[0] : null;
             }
+            var ROW_NAME_ATTR = "_qol_sr_player_name";
+            var ROW_HERO_ATTR = "_qol_sr_player_hero";
+            function _markResolvedRow(entry, name, heroName) {
+                var label = _getAccountIdLabel(entry);
+                if (!_valid(label)) return;
+                try {
+                    label.SetAttributeString(ROW_NAME_ATTR, name || "");
+                    label.SetAttributeString(ROW_HERO_ATTR, heroName || "");
+                } catch(e) {}
+            }
+            function _reconcilePlayerListRows(root) {
+                var entries = _findAllEntries(root);
+                var changed = false;
+                for (var i = 0; i < entries.length; i++) {
+                    var entry = entries[i];
+                    var label = _getAccountIdLabel(entry);
+                    if (!_valid(label)) continue;
+                    var hasResolution = false;
+                    try { hasResolution = String(label.text || "").trim().length > 0; } catch(e) {}
+                    if (!hasResolution) continue;
+                    var resolvedName = "", resolvedHero = "";
+                    try {
+                        resolvedName = label.GetAttributeString(ROW_NAME_ATTR, "");
+                        resolvedHero = label.GetAttributeString(ROW_HERO_ATTR, "");
+                    } catch(e) {}
+                    if (resolvedName === _readClass(entry, "PlayerName") && resolvedHero === _readClass(entry, "PlayerHeroHidden")) continue;
+                    try { label.text = ""; } catch(e) {}
+                    var overlay = entry.FindChildTraverse ? entry.FindChildTraverse("RankPredictionBadgeOverlay") : null;
+                    if (_valid(overlay)) { try { overlay.SetImage(""); } catch(e) {} _badgeVisible(overlay, false); }
+                    changed = true;
+                }
+                if (changed) _stateSet("showRankEscapeDone", "");
+            }
             function _hasAccountId(entry) {
                 var label = _getAccountIdLabel(entry);
                 if (!_valid(label)) return true;
@@ -302,6 +335,7 @@
                 try { $.DispatchEvent("Activated", target, "mouse"); } catch(e) {
                     var activateFailLabel = _getAccountIdLabel(entry);
                     if (_valid(activateFailLabel)) { try { activateFailLabel.text = "-"; } catch(eLabel) {} }
+                    _markResolvedRow(entry, name, heroName);
                     _setAttr(docRoot, "qol_sr_probe_name", ""); _setAttr(docRoot, "qol_sr_probe_hero", ""); _setAttr(docRoot, "qol_sr_probe_account", "");
                     _dismissProfileCard();
                     onDone(); return;
@@ -319,6 +353,7 @@
                     if (elapsed > 2000 || attempt > 20) {
                         var timeoutLabel = _getAccountIdLabel(entry);
                         if (_valid(timeoutLabel)) { try { timeoutLabel.text = "-"; } catch(eLabel) {} }
+                        _markResolvedRow(entry, name, heroName);
                         _setAttr(docRoot, "qol_sr_probe_name", ""); _setAttr(docRoot, "qol_sr_probe_hero", ""); _setAttr(docRoot, "qol_sr_probe_account", "");
                         _dismissProfileCard(); onDone(); return;
                     }
@@ -349,6 +384,7 @@
                         }
                         var label = _getAccountIdLabel(entry);
                         if (_valid(label)) { try { label.text = result; } catch(e) {} }
+                        _markResolvedRow(entry, name, heroName);
                         if (heroName) {
                             var key = "qol_sr_rank_" + heroName.toLowerCase();
                             _setAttr(docRoot, key, result);
@@ -723,6 +759,7 @@
                     var scoreboardOpen = _isEscapeMenuOpen(root);
                     if (scoreboardOpen) {
                         if (!_scoreboardWasOpen) _applyPlayerListVisibility(root, true);
+                        _reconcilePlayerListRows(root);
                         _ensureFillLoopRunning(root);
                     }
                     _scoreboardWasOpen = scoreboardOpen;
