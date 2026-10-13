@@ -81,9 +81,11 @@ For relevant changes, the workflow validates the sources and creates or updates
 the bot-owned `codex/native-resource-update` branch and one review PR. It never
 merges the PR. XML overrides use a three-way text merge followed by structural
 checks that preserve native/mod edits and reject removed, moved, ambiguous or
-changed insertion anchors. Successful merges are source proposals requiring
-compile/repack and client checks. Conflicts remain listed in the review report;
-upstream removals do not delete local files. No resource ZIP is generated.
+changed insertion anchors. XML merging preserves resource reference suffixes;
+it does not convert native references to compiled-resource names. Successful
+merges are source proposals requiring compile/repack and client checks. Conflicts
+remain listed in the review report; upstream removals do not delete local files.
+No resource ZIP is generated.
 Duplicate watched-file fingerprints are suppressed, even
 when unrelated upstream commits arrive while a review is open.
 
