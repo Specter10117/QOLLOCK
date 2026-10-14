@@ -1,6 +1,6 @@
 {
   "repository": "SteamTracking/GameTracking-Deadlock",
-  "commit": "2d87734ca5663301b9cc293131f64d80cee73d38",
+  "commit": "0c38f9d31c4905e0fe1a292afe91aa3d01044baf",
   "files": {
     "styles/ability_hud_element_unit_target.css": {
       "blob": "744fc8cd69fc00090e65af4d09f80cbfd43e9fd0",
@@ -316,12 +316,12 @@
       "local_sha256": "e8b1d4ea71b4821329cd7d7e8e72afc854eb0eb1b1ecfbc30b85042e38339acd"
     },
     "styles/hud.css": {
-      "blob": "743f8b43966331446a2040980a3c34d17cb630f5",
+      "blob": "55e3cfa96e85fd64fffd4542c3162043b6581e75",
       "destination": "panorama/styles/base/hud.css",
       "kind": "css",
       "auto_sync": true,
-      "local_sha256": "805212bd54c026aa6ba724831ec066b929ee79655070d41e66a1934d86e58ef9",
-      "base_commit": "2d87734ca5663301b9cc293131f64d80cee73d38"
+      "local_sha256": "b7a2ff92994cfba8acf7a433dd86d07751aa102ad48069e5d4e00cb859376d16",
+      "base_commit": "0c38f9d31c4905e0fe1a292afe91aa3d01044baf"
     },
     "styles/hud_abilities.css": {
       "blob": "a0a5551225eb0cbd204a0bddee008e942af4b5d3",
@@ -587,11 +587,12 @@
       "local_sha256": "40b3812628bc821d3bcc89c6768def06501c7d22e30c1a55dcbc43a480c6e24d"
     },
     "layout/hud.xml": {
-      "blob": "6d71bb5251d79308dac1e0b471e67b8e1c6b1669",
+      "blob": "e84bfc26a394e48c82d2daa10926dfda5bb62e2e",
       "destination": "panorama/layout/hud.xml",
       "kind": "xml",
       "auto_sync": false,
-      "local_sha256": "a5e15bc14640bf482539be7b44ffd7070b903ca2b71c33d4ba7e39cc06060e9d"
+      "local_sha256": "0139cb395e07b4958efbc20c1c4dc4cec8fa3e58572ad4286368911896fd8dda",
+      "base_commit": "0c38f9d31c4905e0fe1a292afe91aa3d01044baf"
     },
     "layout/hud_escape_menu.xml": {
       "blob": "504b76d61d2ea5329be2b1c6d0b1c74fc59fad9d",
@@ -663,5 +664,6 @@
       "auto_sync": false,
       "local_sha256": "f8a39ef0384a451e92c9489c1eabdd3f0af69200128c6471424fa6d3463d6238"
     }
-  }
+  },
+  "fingerprint": "76d2658ec7d7f659f81ead54cd1cf352e33069fcc94c9364b4c04d32b9a87780"
 }
