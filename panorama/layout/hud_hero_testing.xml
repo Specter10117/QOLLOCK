@@ -211,6 +211,9 @@
 						<Button class="nav_menu_item small_text full_width" onactivate="HeroTestingSpawnBotHero(&apos;friend&apos;)" onmouseover="CitadelUIShowTextTooltip( &apos;#HeroTesting_SpawnFriendly_Desc&apos; )" onmouseout="CitadelUIHideTextTooltip()">
 							<Label text="#HeroTesting_SpawnFriendly" />
 						</Button>
+						<Button class="nav_menu_item small_text full_width" onactivate="HeroTestingSpawnBotHero(&apos;neutral&apos;)" >
+							<Label text="+As Neutral" />
+						</Button>
 					</Panel>
 					<CitadelHeroCard id="SpawnBotCard" onactivate="HeroTestingChangeSelectedBot()" onmouseover="CitadelUIShowTextTooltip( &apos;#HeroTesting_SpawnBotCard_Desc&apos; )" onmouseout="CitadelUIHideTextTooltip()" />
 				</Panel>
@@ -223,8 +226,11 @@
 					</Button>
 				</Panel>
 				<Panel class="nav_menu_item_container hide_in_coop">
-					<Button class="nav_menu_item small_text full_width" onactivate="CitadelConCommand( &apos;bot_mimic 0&apos; ); CitadelConCommand( &apos; bot_puppet 0&apos; );" onmouseover="CitadelUIShowTextTooltip( &apos;#HeroTesting_ClearFollow_Desc&apos; )" onmouseout="CitadelUIHideTextTooltip()">
+					<Button class="nav_menu_item small_text half_width" onactivate="CitadelConCommand( &apos;bot_mimic 0&apos; ); CitadelConCommand( &apos; bot_puppet 0&apos; );" onmouseover="CitadelUIShowTextTooltip( &apos;#HeroTesting_ClearFollow_Desc&apos; )" onmouseout="CitadelUIHideTextTooltip()">
 						<Label text="#HeroTesting_ClearFollow" />
+					</Button>
+					<Button class="nav_menu_item small_text half_width" onactivate="CitadelConCommand( &apos;citadel_create_unit hero_targetdummy enemy&apos; );" >
+						<Label text="Spawn Dummy" />
 					</Button>
 				</Panel>
 			</Panel>
@@ -251,6 +257,9 @@
 						<Button class="nav_menu_item small_text full_width" onactivate="HeroTestingSpawnBotHero(&apos;friend&apos;)" onmouseover="CitadelUIShowTextTooltip( &apos;#HeroTesting_SpawnFriendly_Desc&apos; )" onmouseout="CitadelUIHideTextTooltip()">
 							<Label text="#HeroTesting_SpawnFriendly" />
 						</Button>
+						<Button class="nav_menu_item small_text full_width" onactivate="HeroTestingSpawnBotHero(&apos;neutral&apos;)" >
+							<Label text="+As Neutral" />
+						</Button>
 					</Panel>
 					<CitadelHeroCard id="BotsSpawnBotCard" onactivate="HeroTestingChangeSelectedBot()" onmouseover="CitadelUIShowTextTooltip( &apos;#HeroTesting_SpawnBotCard_Desc&apos; )" onmouseout="CitadelUIHideTextTooltip()" />
 				</Panel>
@@ -263,8 +272,11 @@
 					</Button>
 				</Panel>
 				<Panel class="nav_menu_item_container hide_in_coop">
-					<Button class="nav_menu_item small_text full_width" onactivate="CitadelConCommand( &apos;bot_mimic 0&apos; ); CitadelConCommand( &apos; bot_puppet 0&apos; );" onmouseover="CitadelUIShowTextTooltip( &apos;#HeroTesting_ClearFollow_Desc&apos; )" onmouseout="CitadelUIHideTextTooltip()">
+					<Button class="nav_menu_item small_text half_width" onactivate="CitadelConCommand( &apos;bot_mimic 0&apos; ); CitadelConCommand( &apos; bot_puppet 0&apos; );" onmouseover="CitadelUIShowTextTooltip( &apos;#HeroTesting_ClearFollow_Desc&apos; )" onmouseout="CitadelUIHideTextTooltip()">
 						<Label text="#HeroTesting_ClearFollow" />
+					</Button>
+					<Button class="nav_menu_item small_text half_width" onactivate="CitadelConCommand( &apos;citadel_create_unit hero_targetdummy enemy&apos; );" >
+						<Label text="Spawn Dummy" />
 					</Button>
 				</Panel>
 				<Panel class="nav_menu_item_container row_gap hide_in_coop">
@@ -593,6 +605,10 @@
 				<Panel class="nav_menu_item_container hideout_btns">
 					<CitadelSettingsCheckbox convar="citadel_hud_hide_own_health" text="#HeroTesting_HideOwnHealth" class="nav_menu_item small_text half_width" onmouseover="CitadelUIShowTextTooltip( &apos;#HeroTesting_HideOwnHealth_Desc&apos; )" onmouseout="CitadelUIHideTextTooltip()" />
 					<CitadelSettingsCheckbox convar="citadel_unit_status_enabled" invert="true" text="#HeroTesting_HideHealthBars" class="nav_menu_item small_text half_width" onmouseover="CitadelUIShowTextTooltip( &apos;#HeroTesting_HideHealthBars_Desc&apos; )" onmouseout="CitadelUIHideTextTooltip()" />
+				</Panel>
+				<Panel class="nav_menu_item_container">
+					<CitadelSettingsCheckbox convar="ai_setenabled" text="Troopers AI" class="nav_menu_item small_text half_width" />
+					<CitadelSettingsCheckbox convar="citadel_solo_bot_match" text="Bots AI" class="nav_menu_item small_text half_width" />
 				</Panel>
 				<Panel class="nav_menu_item_container">
 					<Panel class="input_control">
