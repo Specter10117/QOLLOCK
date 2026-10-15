@@ -178,6 +178,10 @@
 					<ToggleButton class="nav_menu_item CitadelSettingsCheckbox half_width" id="AvoidTargetingCheckbox" text="#HeroTesting_NoTarget" onactivate="CitadelConCommand( &apos;notarget&apos; );" onmouseover="CitadelUIShowTextTooltip( &apos;#HeroTesting_NoTarget_Desc&apos; )" onmouseout="CitadelUIHideTextTooltip()" />
 					<ToggleButton class="nav_menu_item CitadelSettingsCheckbox half_width" id="FastMovespeedCheckbox" text="#HeroTesting_FastMovespeed" onactivate="CitadelConCommand( &apos;fastmovespeed&apos; );" onmouseover="CitadelUIShowTextTooltip( &apos;#HeroTesting_FastMovespeed_Desc&apos; )" onmouseout="CitadelUIHideTextTooltip()" />
 				</Panel>
+				<Panel class="nav_menu_item_container">
+					<CitadelSettingsCheckbox convar="citadel_hero_testing_infinite_money" text="Infinity Souls" class="nav_menu_item small_text half_width" />
+					<CitadelSettingsCheckbox convar="citadel_allow_purchasing_anywhere" text="Buy Anywhere" class="nav_menu_item small_text half_width" />
+				</Panel>
 				<Panel class="nav_menu_item_container row_gap hide_in_coop">
 					<Button class="small_text nav_menu_item third_width" onactivate="CitadelConCommand( &apos;host_timescale_dec&apos; ); PlaySoundEffect( Stinger.LevelUp )" onmouseover="CitadelUIShowTextTooltip( &apos;#HeroTesting_SpeedDown_Desc&apos; )" onmouseout="CitadelUIHideTextTooltip()">
 						<Label text="#HeroTesting_SpeedDown" />
