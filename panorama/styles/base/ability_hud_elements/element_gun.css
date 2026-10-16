@@ -913,6 +913,52 @@
 	opacity: 0.5;
 }
 
+#healing_mode_indicator
+{
+	y: 120px;
+	vertical-align: center;
+	horizontal-align: center;
+	font-size: 12px;
+	font-weight: bold;
+	text-transform: uppercase;
+	letter-spacing: 1px;
+	padding: 8px 16px;
+	color: armorColor;
+	text-shadow: 0px 0px 4px 1.0 armorColor;
+	visibility: collapse;
+	animation-name: healing_mode_pulse;
+	animation-duration: 1.2s;
+	animation-timing-function: ease-in-out;
+	animation-iteration-count: infinite;
+}
+
+@keyframes 'healing_mode_pulse'
+{
+	0%
+	{
+		opacity: 1;
+		text-shadow: 0px 0px 4px 1.0 armorColor;
+	}
+
+	50%
+	{
+		opacity: 0.45;
+		text-shadow: 0px 0px 2px 0.5 armorColor;
+	}
+
+	100%
+	{
+		opacity: 1;
+		text-shadow: 0px 0px 4px 1.0 armorColor;
+	}
+
+}
+
+.nurse_needles #healing_mode_indicator
+{
+	visibility: visible;
+}
+
 .hide_clip_ammo #auto_fire_indicator,.hide_clip_ammo #ammo_panel,.hide_clip_status_and_ammo #ammo_panel,.hide_clip_status_and_ammo #attack_delayed_progress_bar
 {
 	visibility: collapse;
