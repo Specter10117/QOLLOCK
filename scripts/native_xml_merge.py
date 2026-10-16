@@ -10,8 +10,9 @@ import xml.etree.ElementTree as ET
 
 def normalize_xml(text):
     text = text.replace("\r\n", "\n")
-    text = re.sub(r"^<!-- xml reconstructed by Source 2 Viewer[^\n]*-->\n", "", text)
-    return re.sub(r"\.(vcss|vjs|vts|vxml)(?=[\"'])", r".\1_c", text)
+    # Resource suffixes are source edits, not Viewer formatting. Keep native
+    # references and explicit compiled mod includes unchanged during merging.
+    return re.sub(r"^<!-- xml reconstructed by Source 2 Viewer[^\n]*-->\n", "", text)
 
 
 def nodes(text):
