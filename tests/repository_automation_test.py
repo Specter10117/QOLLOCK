@@ -179,6 +179,26 @@ class UpstreamReviewTests(unittest.TestCase):
 
 
 class XmlMergeTests(unittest.TestCase):
+    def test_native_update_preserves_resource_suffixes_and_shop_listener(self):
+        header = '<!-- xml reconstructed by Source 2 Viewer - https://valveresourceformat.github.io -->\n'
+        includes = ''.join(f'<include src="s2r://panorama/native.{suffix}" />\n'
+                           for suffix in ('vcss', 'vjs', 'vts', 'vxml'))
+        base = '<root>\n<styles>\n' + includes + '</styles>\n<CitadelHud>\n' \
+               + ''.join(f'<Panel id="s{i}" />\n' for i in range(10)) + '</CitadelHud>\n</root>\n'
+        mod_scripts = '<scripts><include src="s2r://panorama/scripts/core/ql_app.vjs_c" /></scripts>\n'
+        def customize(text):
+            return text.replace('<CitadelHud>\n', mod_scripts + '<CitadelHud>\n<GlobalClassListener classes="gShopOpen" />\n')
+        local = (header + customize(base)).replace('\n', '\r\n')
+        native = base.replace('id="s9"', 'id="s9" class="updated"')
+        self.assertEqual(sync.merge_xml(local, header + base, native), header + customize(native))
+
+    def test_explicit_mod_resource_suffix_edit_survives_native_update(self):
+        base = '<root>\n<include src="s2r://panorama/styles/native.vcss" />\n' \
+               + ''.join(f'<Panel id="s{i}" />\n' for i in range(10)) + '</root>\n'
+        local = base.replace('.vcss"', '.vcss_c"')
+        native = base.replace('id="s9"', 'id="s9" class="updated"')
+        self.assertEqual(sync.merge_xml(local, base, native), native.replace('.vcss"', '.vcss_c"'))
+
     def test_disjoint_native_and_mod_children_survive(self):
         middle = '<Panel id="spacer" />\n' + ''.join(f'<Panel id="s{i}" />\n' for i in range(10))
         base = '<root>\n<Panel id="native" />\n' + middle + '</root>\n'
