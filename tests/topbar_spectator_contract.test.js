@@ -35,6 +35,29 @@ test("top-bar player override preserves current spectator hit routing", () => {
     const spectateTarget = openingTag(layout, "Panel", "SpectatePlayerButtonPanel");
     assert.doesNotMatch(spectateTarget, /\bhittest="false"/);
 
+    // QOLLOCK decorates each native player tile. These overlays must not sit
+    // between the pointer and Valve's spectator target panel, even when their
+    // feature makes them visible.
+    for (const [type, id] of [
+        ["Image", "RankPredictionBadgeTopBar"],
+        ["Image", "RankPredictionBadgeTopBarOverlay"],
+        ["Label", "UltimateCooldownTextHidden"],
+        ["Label", "UltimateCooldownTextShown"]
+    ]) {
+        assert.match(openingTag(layout, type, id), /\bhittest="false"/);
+    }
+
+    const nickname = layout.match(/<Label\b(?=[^>]*\bclass="AlwaysPlayerName")[^>]*>/);
+    assert.ok(nickname, "missing AlwaysPlayerName label");
+    assert.match(nickname[0], /\bhittest="false"/);
+
+    for (const className of ["UnSoulsValueContainer", "SPMContainer"]) {
+        const panel = layout.match(new RegExp(`<Panel\\b(?=[^>]*\\bclass="[^"]*\\b${className}\\b[^"]*")[^>]*>`));
+        assert.ok(panel, `missing ${className} panel`);
+        assert.match(panel[0], /\bhittest="false"/);
+        assert.match(panel[0], /\bhittestchildren="false"/);
+    }
+
     for (let slot = 1; slot <= 4; slot += 1) {
         const ability = openingTag(layout, "CitadelAbilityIcon", `AbilityButton${slot}`);
         assert.match(ability, new RegExp(`\\bability_slot="${slot}"`));
