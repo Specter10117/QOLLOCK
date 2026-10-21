@@ -136,6 +136,75 @@ test("crosshair suspends stat work in the first hideout room and refreshes in th
     assert.strictEqual(overlay.style.visibility, "visible");
 });
 
+test("only selected Active Stats Customize preview bypasses Escape/scoreboard and releases on withdrawal", () => {
+    const hud = createCrosshairHud();
+    const { $, QOL: Q } = hud.sandbox.global;
+    const source = $.CreatePanel("Panel", hud.root, "hudActivePlayerStats");
+    const owners = nativeOwners($, source);
+    addModifier($, owners.weapon, "fireRateContainer", {
+        number: "+10", postfix: "%", classes: ["shouldShow", "isPositive"]
+    });
+    enableActiveStats(Q); hud.clock.advance(300);
+    const overlay = hud.root.FindChildTraverse("QOLCrosshairStatsOverlay");
+    const canonical = Q.core.ConfigAdapter.exportToFlat(), original = JSON.stringify(canonical);
+    const preview = Q.presentation.preview;
+    const stamp = Q.core.persistence.getConfigChangeStamp(Q.core.persistence.getUIRoot());
+    hud.root.AddClass("ShowEscapeMenu"); hud.root.AddClass("gScoreboardOpen"); hud.root.AddClass("QOLCustomizeActive");
+    const select = id => {
+        preview.write(hud.root, {}, "crosshair-sample", stamp, id);
+        preview.commit(preview.consume(hud.root, canonical));
+        hud.clock.advance(200);
+    };
+    select("ammo"); assert.strictEqual(overlay.style.visibility, "collapse", "another selected surface cannot bypass the gate");
+    select("activeStats");
+    assert.strictEqual(Q.core.hud.isGameplayHudShown(hud.root), false, "shared gameplay semantics stay unchanged");
+    assert.strictEqual(overlay.style.visibility, "visible");
+    assert.strictEqual(value(hud.root, "fireRate").text, "+10%", "preview uses the actual modifier mirror");
+    assert.strictEqual(JSON.stringify(Q.core.ConfigAdapter.exportToFlat()), original, "sample metadata changes no setting");
+    preview.clear(hud.root, "crosshair-sample"); hud.clock.advance(200);
+    assert.strictEqual(overlay.style.visibility, "collapse", "withdrawal immediately restores normal suppression");
+    select("activeStats");
+    hud.root.RemoveClass("QOLCustomizeActive"); hud.clock.advance(200);
+    assert.strictEqual(overlay.style.visibility, "collapse", "leaving Customize removes the scoped exception");
+    Q.core.FeatureRegistry.disable("ql_crosshair_stats"); hud.clock.advance(20);
+    assert.strictEqual(hud.root.FindChildTraverse("QOLCrosshairStatsOverlay"), null);
+    assert.deepStrictEqual(hud.clock.errors, []);
+});
+
+test("selected Active Stats keeps its owned rows editable without native modifiers and retires the neutral sample", () => {
+    const hud = createCrosshairHud();
+    const { $, QOL: Q } = hud.sandbox.global;
+    enableActiveStats(Q); hud.clock.advance(300);
+    const preview = Q.presentation.preview;
+    const canonical = Q.core.ConfigAdapter.exportToFlat(), before = JSON.stringify(canonical);
+    hud.root.AddClass("ShowEscapeMenu"); hud.root.AddClass("gScoreboardOpen"); hud.root.AddClass("QOLCustomizeActive");
+    preview.write(hud.root, {}, "empty-stats", Q.core.persistence.getConfigChangeStamp(Q.core.persistence.getUIRoot()), "activeStats");
+    preview.commit(preview.consume(hud.root, canonical)); hud.clock.advance(200);
+    const overlay = hud.root.FindChildTraverse("QOLCrosshairStatsOverlay");
+    const samples = overlay.FindChildrenWithClassTraverse("QOLCrosshairStatRow").filter(panel => !panel.BHasClass("qol-hidden"));
+    assert.strictEqual(overlay.style.visibility, "visible"); assert.strictEqual(samples.length, 1);
+    assert.strictEqual(samples[0].BHasClass("isBuff"), false); assert.strictEqual(samples[0].BHasClass("isDebuff"), false);
+    assert.strictEqual(samples[0].FindChildTraverse(samples[0].id + "_value").text, "--");
+    assert.strictEqual(hud.root.FindChildTraverse("hudActivePlayerStats"), null, "sample creates no fake native source");
+    assert.strictEqual(JSON.stringify(Q.core.ConfigAdapter.exportToFlat()), before);
+    const source = $.CreatePanel("Panel", hud.root, "hudActivePlayerStats"), owners = nativeOwners($, source);
+    const fire = addModifier($, owners.weapon, "fireRateContainer", {
+        number: "+10", postfix: "%", classes: ["shouldShow", "isPositive"]
+    });
+    hud.clock.advance(900);
+    assert.strictEqual(value(hud.root, "fireRate").text, "+10%", "actual modifiers replace the neutral sample");
+    fire.RemoveClass("shouldShow"); hud.clock.advance(200);
+    assert.strictEqual(overlay.style.visibility, "visible", "empty content remains editable only while selected");
+    hud.clock.advance(1600);
+    assert.strictEqual(overlay.style.visibility, "collapse", "expired selection retires the neutral sample");
+    hud.root.RemoveClass("ShowEscapeMenu"); hud.root.RemoveClass("gScoreboardOpen"); hud.root.RemoveClass("QOLCustomizeActive");
+    hud.clock.advance(200);
+    assert.strictEqual(overlay.style.visibility, "collapse", "ordinary gameplay preserves the empty-content policy");
+    Q.core.FeatureRegistry.disable("ql_crosshair_stats"); hud.clock.advance(20);
+    assert.strictEqual(hud.root.FindChildTraverse("QOLCrosshairStatsOverlay"), null);
+    assert.deepStrictEqual(hud.clock.errors, []);
+});
+
 test("crosshair missing-row discovery waits while cached values keep updating", () => {
     const hud = createCrosshairHud();
     const { $, QOL: Q } = hud.sandbox.global;
@@ -250,8 +319,7 @@ test("crosshair compatibility search finds late rows outside verified paths and 
     Q.core.ConfigAdapter.loadFromFlat({ ENABLE_CROSSHAIR_STATS: 0 });
     hud.clock.advance(200);
     assert.strictEqual(hud.root.FindChildTraverse("QOLCrosshairStatsOverlay"), null);
-    assert.strictEqual(Q.state.crosshairStats.sourcePanel, null);
-    assert.deepStrictEqual(Object.keys(Q.state.crosshairStats.sourceContainers), []);
+    assert.strictEqual(Q.getCachedPanel("crosshairStatsOverlay"), null);
     Q.core.ConfigAdapter.loadFromFlat({ ENABLE_CROSSHAIR_STATS: 1 });
     hud.clock.advance(100);
     assert.strictEqual(value(hud.root, "bulletEvasion").text, "+5");

@@ -371,95 +371,89 @@
     let benchmarkProgressTimer = null;
     let lookupObservation = null;
 
-    // A native FindChildTraverse does its walk inside the engine. Count calls,
-    // never claim that these are the engine's internal node visits.
+    // Native searches execute inside the engine. Observe calls only. The native
+    // client probe established own function properties on individual panels;
+    // a shared prototype patch does not intercept those bindings.
     const startLookupObservation = panelRoot => {
         const result = { status: "unavailable", panelsScanned: 0, panelsCovered: 0, scanErrors: 0,
-            prototypesHooked: 0, totalCalls: 0, pollCalls: 0, outsidePollCalls: 0,
-            byFeature: {} };
+            prototypesHooked: 0, bindingsHooked: 0, restoreErrors: 0, displacedBindings: 0,
+            totalCalls: 0, pollCalls: 0, outsidePollCalls: 0, byFeature: {},
+            scope: "starting-tree-instance-bindings", fullModCoverage: false,
+            cachedReferencesObserved: false, newPanelsObserved: false, initialTreeComplete: false };
         const restorers = [];
-        let currentFeature = "";
+        const featureStack = [];
         let stopped = false;
         const stop = () => {
             if (stopped) return result;
             stopped = true;
             for (let i = restorers.length - 1; i >= 0; i--) restorers[i]();
+            restorers.length = 0;
             if (lookupObservation === session) lookupObservation = null;
             return result;
         };
-        const session = {
-            result,
-            enter: id => { currentFeature = id || "<anonymous>"; },
-            leave: () => { currentFeature = ""; },
-            stop
-        };
-
+        const session = { result,
+            enter: id => { featureStack.push(id || "<anonymous>"); },
+            leave: () => { featureStack.pop(); }, stop };
         let root = null;
         try { root = panelRoot || $.GetContextPanel(); } catch (_) {}
         if (!root || typeof root.GetChildCount !== "function") return session;
 
-        // Discover the panel prototypes present at the start of the sample.
-        // The census is outside the timed window and capped to avoid an unbounded walk.
-        const seen = [];
+        // Install outside the timed window. Bound the census; never call a
+        // discovery traversal through a search wrapper to estimate native work.
+        const seen = new Set();
         const stack = [root];
         const maxPanels = 50000;
         while (stack.length && result.panelsScanned < maxPanels) {
             const panel = stack.pop();
+            if (!panel || seen.has(panel)) continue;
+            seen.add(panel);
             try { if (panel.IsValid && !panel.IsValid()) continue; } catch (_) { result.scanErrors++; continue; }
             result.panelsScanned++;
             try {
-                let proto = Object.getPrototypeOf(panel);
-                while (proto) {
-                    if (seen.indexOf(proto) >= 0) break;
-                    seen.push(proto);
-                    const descriptor = Object.getOwnPropertyDescriptor(proto, "FindChildTraverse");
-                    if (descriptor && typeof descriptor.value === "function") {
-                        const targetProto = proto;
-                        const original = descriptor.value;
-                        const wrapped = function(...args) {
+                const descriptor = Object.getOwnPropertyDescriptor(panel, "FindChildTraverse");
+                // Accessor bindings are not replaced with a different descriptor kind.
+                const original = descriptor && !("value" in descriptor) ? null : panel.FindChildTraverse;
+                if (typeof original === "function") {
+                    const wrapped = function(...args) {
+                        if (!stopped) {
                             result.totalCalls++;
+                            const currentFeature = featureStack[featureStack.length - 1];
                             if (currentFeature) {
                                 result.pollCalls++;
-                                result.byFeature[currentFeature] = (result.byFeature[currentFeature] || 0) + 1;
+                                const key = Object.prototype.hasOwnProperty.call(result.byFeature, currentFeature) || Object.keys(result.byFeature).length < 127 ? currentFeature : "<other>";
+                                result.byFeature[key] = (result.byFeature[key] || 0) + 1;
                             } else result.outsidePollCalls++;
-                            return original.apply(this, args);
-                        };
-                        wrapped.__qolLookupProbe = true;
-                        try {
-                            Object.defineProperty(targetProto, "FindChildTraverse", { ...descriptor, value: wrapped });
-                            if (targetProto.FindChildTraverse === wrapped) {
-                                restorers.push(() => {
-                                    try {
-                                        if (targetProto.FindChildTraverse === wrapped) Object.defineProperty(targetProto, "FindChildTraverse", descriptor);
-                                    } catch (_) {}
-                                });
-                                result.prototypesHooked++;
-                            }
-                        } catch (_) { /* native prototype may be read-only */ }
-                    }
-                    proto = Object.getPrototypeOf(proto);
-                }
-                if (panel.FindChildTraverse && result.prototypesHooked > 0) {
-                    let covered = false;
-                    let p = Object.getPrototypeOf(panel);
-                    while (p) {
-                        if (restorers.length && seen.indexOf(p) >= 0 &&
-                            Object.prototype.hasOwnProperty.call(p, "FindChildTraverse")) {
-                            // A hooked method is identifiable by its replacement marker below.
-                            covered = !!p.FindChildTraverse.__qolLookupProbe;
-                            break;
                         }
-                        p = Object.getPrototypeOf(p);
-                    }
-                    if (covered) result.panelsCovered++;
+                        return original.apply(this, args);
+                    };
+                    try {
+                        Object.defineProperty(panel, "FindChildTraverse", descriptor ? { ...descriptor, value: wrapped } :
+                            { value: wrapped, writable: true, configurable: true, enumerable: true });
+                        if (panel.FindChildTraverse === wrapped) {
+                            result.bindingsHooked++;
+                            result.panelsCovered++;
+                            restorers.push(() => {
+                                try {
+                                    if (panel.IsValid && !panel.IsValid()) return;
+                                    if (panel.FindChildTraverse !== wrapped) { result.displacedBindings++; return; }
+                                    if (descriptor) Object.defineProperty(panel, "FindChildTraverse", descriptor);
+                                    else delete panel.FindChildTraverse;
+                                    const restored = Object.getOwnPropertyDescriptor(panel, "FindChildTraverse");
+                                    if (descriptor ? !restored || restored.value !== descriptor.value || restored.writable !== descriptor.writable ||
+                                        restored.configurable !== descriptor.configurable || restored.enumerable !== descriptor.enumerable : restored !== undefined) result.restoreErrors++;
+                                } catch (_) { result.restoreErrors++; }
+                            });
+                        }
+                    } catch (_) { /* read-only instance binding remains unobserved */ }
                 }
                 const count = panel.GetChildCount();
                 for (let i = count - 1; i >= 0; i--) stack.push(panel.GetChild(i));
-            } catch (_) { result.scanErrors++; /* destroyed panel or unsupported native object */ }
+            } catch (_) { result.scanErrors++; }
         }
-        result.status = result.prototypesHooked > 0 ?
-            ((stack.length || result.scanErrors || result.panelsCovered < result.panelsScanned) ?
-                "partial-tree" : "active") : "unavailable";
+        result.initialTreeComplete = !stack.length && result.scanErrors === 0 && result.panelsCovered === result.panelsScanned;
+        // Even a complete starting census misses earlier aliases, later native
+        // panels and other JS realms. It cannot claim full-mod call coverage.
+        result.status = result.bindingsHooked > 0 ? "partial-tree" : "unavailable";
         lookupObservation = session;
         return session;
     };

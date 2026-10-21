@@ -84,6 +84,21 @@ test("safe style and position helpers contain native getter races",()=>{
  assert.equal(U.GetPanelPositionRelativeToAncestor(panel,{}),null);
 });
 
+test("rejected opacity writes preserve visibility and report failure until a successful retry", () => {
+ const {doc,U}=setup(), panel=doc.create("Panel",{id:"RejectedOpacity"});
+ panel.style.opacity="0.00"; let reject=true; const attempts=[];
+ panel.style=new Proxy(panel.style,{set(target,key,value){
+  if(key==="opacity"){attempts.push(value); if(reject&&value!=="1.00")throw Error("opacity unavailable");}
+  target[key]=value;return true;
+ }});
+ assert.equal(U.SetPanelOpacitySafe(panel,0.4,1),"");
+ assert.equal(panel.style.opacity,"0.00","a failed custom alpha cannot force hidden content visible");
+ assert.deepEqual(attempts,["0.40"]);
+ reject=false;assert.equal(U.SetPanelOpacitySafe(panel,0.4,1),"0.40");
+ assert.equal(panel.style.opacity,"0.40");
+ U.SetPanelOpacitySafe(panel,0.4,1);assert.deepEqual(attempts,["0.40","0.40"]);
+});
+
 test("visibility helper skips redundant native class writes and tolerates stale handles",()=>{
  const {U}=setup();let hidden=false,writes=0;
  const panel={BHasClass:()=>hidden,SetHasClass(name,value){assert.equal(name,'qol-hidden');hidden=value;writes++;}};

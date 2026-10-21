@@ -12,10 +12,9 @@ npm ci
 npm test
 ```
 
-Optionally install the Git hook with `bash setup-hooks.sh`. The current hook
-runs a narrower legacy gate for staged JavaScript changes; always run
-`npm test` yourself before committing. Do not commit local captures, credentials
-or generated build artifacts.
+Optionally install the Git hook with `bash setup-hooks.sh`. It runs the complete
+`npm test` gate before commits. Do not commit local captures, credentials or
+generated build artifacts.
 
 ## Find the Right Owner
 

@@ -40,11 +40,21 @@ not imply sub-millisecond precision. Stats cover synchronous callback/native
 work, not deferred layout, rendering, GPU work or all JS. Benchmark spike counts
 currently use a 4ms threshold; historical 8ms descriptions are obsolete.
 See [PROFILING.md](../PROFILING.md) for valid comparisons and client verification.
-The optional lookup probe temporarily wraps writable panel prototypes found in
-the starting HUD tree, restores them on completion or stop, and reports coverage.
-Unsupported native prototypes yield `unavailable`; changed or newly created
-panel prototypes can leave counts incomplete. The probe is only enabled by the
-current-config Dev benchmark, not by normal polling or the expanded-config run.
+The optional lookup probe temporarily wraps each writable `FindChildTraverse`
+instance binding found in the starting HUD tree. October 17 native client
+capability evidence showed these are own panel properties, so prototype-only
+hooks miss them. The bounded census runs before timing; completion/stop restores
+original own descriptors or removes only the observer's inherited shadow.
+Bindings replaced by someone else are preserved and reported as displaced.
+Readonly bindings remain uncovered; cleanup failures are counted. Retained
+wrapper aliases stop recording after the session stops.
+
+`panelsCovered` describes successfully wrapped bindings at the initial census,
+not all native calls. Earlier aliases, panels created later and other JS realms
+remain unobserved. A successful hook reports `partial-tree`, `fullModCoverage`
+remains false, and no visits/s or FPS estimate is derived from these counts.
+The legacy `prototypesHooked` field stays zero. This diagnostic runs only in the
+current-config Dev benchmark, not normal polling or the expanded-config run.
 
 ## Managed one-shot callbacks
 

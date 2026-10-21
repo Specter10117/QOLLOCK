@@ -64,6 +64,7 @@ class Sandbox {
         // Captured $.Msg output. The old harness pushed into an array nobody
         // ever read; tests here assert against this and dump it on failure.
         this.messages = [];
+        this.unsupportedCalls = [];
         this.eventHandlers = new Map();   // event name -> [handler]
         this.unhandledHandlers = new Map();
         this.loadErrors = [];
@@ -82,7 +83,11 @@ class Sandbox {
 
         const storage = new Map();
 
-        return {
+        const selector = () => {
+            self.unsupportedCalls.push({ operation: "$(...) selector", atMs: clock.now() });
+            throw new Error("Unsupported simulator operation: $(...) selector");
+        };
+        return Object.assign(selector, {
             Msg: (...args) => {
                 self.messages.push(args.map((a) => String(a)).join(" "));
             },
@@ -97,6 +102,7 @@ class Sandbox {
 
             CreatePanel: (type, parent, id, props = {}) => {
                 const panel = doc.create(type, { id: id || "", ...props });
+                if (props.draggable !== undefined) panel.SetDraggable(props.draggable === "true" || props.draggable === true);
                 if (parent && typeof parent.addChild === "function") parent.addChild(panel);
                 return panel;
             },
@@ -105,9 +111,16 @@ class Sandbox {
             DispatchEventAsync: (delaySec, name, ...args) =>
                 clock.schedule(delaySec, () => self.dispatch(name, args)),
 
-            RegisterEventHandler: (name, _panel, handler) => {
+            RegisterEventHandler: (name, panel, handler) => {
                 const list = self.eventHandlers.get(name) || [];
-                list.push(handler);
+                // Model panel-scoped delivery, not a broadcast to every
+                // DragStart/HTMLTitle handler registered on unrelated panels.
+                const scoped = (...args) => {
+                    if (!panel?.IsValid() || (args[0] !== panel && args[0] !== panel.id)) return;
+                    return handler(...args);
+                };
+                scoped.targetPanel = panel;
+                list.push(scoped);
                 self.eventHandlers.set(name, list);
                 return list.length;
             },
@@ -153,7 +166,7 @@ class Sandbox {
             BuildUI: () => {},
             ShowRankCardLoaded: () => {},
             ToggleSettingsWindow: () => {},
-        };
+        });
     }
 
     /**
@@ -166,6 +179,7 @@ class Sandbox {
         const direct = this.eventHandlers.get(name);
         if (direct) {
             for (const h of direct) {
+                if (h.targetPanel && (!h.targetPanel.IsValid() || (args[0] !== h.targetPanel && args[0] !== h.targetPanel.id))) continue;
                 try {
                     h(...args);
                     handled = true;
@@ -310,6 +324,11 @@ class Sandbox {
             return false;
         }
 
+        return this.loadSource(src, absPath, { trailer });
+    }
+
+    /** Run source read from a Git object without changing the checkout. */
+    loadSource(src, absPath, { trailer = "" } = {}) {
         if (trailer) src = injectIntoIife(src, trailer);
 
         try {

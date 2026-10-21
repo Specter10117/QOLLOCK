@@ -91,7 +91,10 @@ test("QOL_DiagRequest with bm_ token triggers benchmark and writes benchmark rep
     assert.ok(diag.benchmark.report.includes("QOLLOCK IN-GAME BENCHMARK REPORT"), "Report must include benchmark header");
     assert.strictEqual(typeof diag.benchmark.stats.totalJsMs, "number", "stats.totalJsMs must be a number");
     const lookups = diag.benchmark.stats.lookupStats;
-    assert.strictEqual(lookups.status, "active");
+    assert.strictEqual(lookups.status, "partial-tree");
+    assert.strictEqual(lookups.fullModCoverage, false);
+    assert.strictEqual(lookups.prototypesHooked, 0);
+    assert.strictEqual(lookups.restoreErrors, 0);
     assert.ok(lookups.panelsScanned > 0);
     assert.strictEqual(lookups.panelsCovered, lookups.panelsScanned);
     assert.ok(lookups.totalCalls >= lookups.pollCalls);

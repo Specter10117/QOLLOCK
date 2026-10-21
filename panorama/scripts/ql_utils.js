@@ -16,10 +16,14 @@
     }
     exports.IsPanelValid = IsPanelValid;
 
-    // Profile labels may contain punctuation, but account IDs have at most ten digits.
+    // Profile labels may carry Steam account notation or punctuation. The
+    // universe/type prefix in [U:1:<account>] is not part of the account ID.
     function ParseAccountId(value) {
         if (value === undefined || value === null) return "";
-        var digits = String(value).replace(/[^0-9]/g, "");
+        const input = String(value);
+        const steam = input.match(/\[U:1:(\d+)\]/i);
+        if (!steam && /\[[a-z]:/i.test(input)) return "";
+        const digits = steam ? steam[1] : input.replace(/[^0-9]/g, "");
         return digits.length >= 1 && digits.length <= 10 ? digits : "";
     }
     exports.ParseAccountId = ParseAccountId;
@@ -315,16 +319,14 @@
 
     /**
      * Safely set panel opacity with bounds clamping and fallback.
-     * Returns the opacity text that was applied.
+     * Returns the opacity text that was applied, or empty text on failure.
      */
     function SetPanelOpacitySafe(panel, value, fallback) {
-        if (!panel) return "";
+        if (!IsPanelValid(panel)) return "";
         var text = NormalizeOpacityNumber(value, fallback).toFixed(2);
         try {
             if (panel.style.opacity !== text) panel.style.opacity = text;
-        } catch (e0) {
-            try { panel.style.opacity = "1.00"; } catch (e1) { /* style.opacity may throw if panel deleted mid-frame */ }
-        }
+        } catch (e0) { return ""; }
         return text;
     }
     exports.SetPanelOpacitySafe = SetPanelOpacitySafe;
@@ -792,17 +794,30 @@
     ];
     exports.QOL_WASH_COLOR_PALETTE = QOL_WASH_COLOR_PALETTE;
 
+    // Keep legacy palette indices intact. The reserved band stores an RGB
+    // payload plus a tag, so literal black differs from native/default (0).
+    const CUSTOM_RGB_TAG = 0x1000000;
+    const CUSTOM_RGB_MAX = 0x1ffffff;
+    const customColorKeys = new Set(["ITEMS_WASH_COLOR", "STAMINA_CHARGE_COLOR", "AMMO_TEXT_COLOR",
+        "BOTTOM_BAR_WASH_COLOR", "KEYBOARD_OVERLAY_WASH_COLOR", "PLAYER_HEALTHBAR_ACCENT_COLOR", "MINIMAP_ICON_COLOR"]);
+    exports.SupportsCustomColor = key => customColorKeys.has(key);
+    exports.IsCustomColor = value => Number.isInteger(value) && value >= CUSTOM_RGB_TAG && value <= CUSTOM_RGB_MAX;
+    exports.EncodeHexColor = text => {
+        const hex = String(text ?? "").trim();
+        return /^#?[\da-f]{6}$/i.test(hex) ? CUSTOM_RGB_TAG + parseInt(hex.replace(/^#/, ""), 16) : null;
+    };
+    exports.DecodeHexColor = value => exports.IsCustomColor(value)
+        ? "#" + ("000000" + (value - CUSTOM_RGB_TAG).toString(16)).slice(-6).toUpperCase() : "";
     function NormalizePaletteColorIndex(value) {
-        var numeric = Math.round(Number(value));
-        if (!isFinite(numeric)) numeric = 0;
-        if (numeric < 0) numeric = 0;
-        if (numeric >= QOL_WASH_COLOR_PALETTE.length) numeric = 0;
-        return numeric;
+        const numeric = Math.round(Number(value));
+        if (exports.IsCustomColor(numeric)) return numeric;
+        return Number.isFinite(numeric) && numeric >= 0 && numeric < QOL_WASH_COLOR_PALETTE.length ? numeric : 0;
     }
     exports.NormalizePaletteColorIndex = NormalizePaletteColorIndex;
 
     function ResolveWashColorFromPalette(value) {
         var index = NormalizePaletteColorIndex(value);
+        if (exports.IsCustomColor(index)) return exports.DecodeHexColor(index);
         var color = QOL_WASH_COLOR_PALETTE[index] || "";
         return color ? String(color) : "";
     }

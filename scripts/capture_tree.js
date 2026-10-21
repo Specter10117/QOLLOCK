@@ -109,7 +109,7 @@ function inspectCapture(capture, { requireHud = false, allowSummary = false } = 
 function comparisonIssues(current, previous) {
     const issues = [];
     const a = current.meta || {}, b = previous.meta || {};
-    for (const key of ["treeSource", "treeFingerprint", "configMode", "configFingerprint", "warmupMs"]) {
+    for (const key of ["modelFingerprint", "treeSource", "treeFingerprint", "configMode", "configFingerprint", "warmupMs"]) {
         if (a[key] === undefined || b[key] === undefined || a[key] !== b[key]) issues.push("different or unknown " + key);
     }
     if (a.treeSource === "captured") {
@@ -118,6 +118,7 @@ function comparisonIssues(current, previous) {
         for (const key of ["players", "damageNumbers"]) if (a[key] !== b[key]) issues.push("different " + key);
     }
     for (const run of [current, previous]) {
+        if (run.meta?.unsupportedCalls?.length) issues.push("run contains unsupported simulator calls");
         if (run.callbackErrors?.length || Object.values(run.registryErrorsEnd || {}).some(n => n > 0)) issues.push("run contains callback/registry errors");
     }
     if (JSON.stringify([...(current.enabledEnd || [])].sort()) !== JSON.stringify([...(previous.enabledEnd || [])].sort())) issues.push("different enabled feature coverage");

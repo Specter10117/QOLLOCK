@@ -5,9 +5,10 @@
 // Fidelity notes — where we match the engine and where we deliberately don't:
 //
 //  MATCHED:
-//   * FindChildTraverse is depth-first pre-order. This decides which panel wins
-//     when two share an id, and the mod relies on traversal order in several
-//     places (e.g. manifest.js `_buildList` walks a candidate root list).
+//   * Controlled native search results match direct-children-first recursion
+//     within each parent (October 17 client probe). Duplicate selection and
+//     class-result order are covered by native evidence regressions. This
+//     does not establish native traversal-step counts or all search semantics.
 //   * Attributes and the `text` property are SEPARATE stores. A Label declared
 //     `<Label text="#Foo" />` has `.text === "#Foo"` but
 //     `GetAttributeString("text", "") === ""`. The mod's `_readText()`
@@ -32,6 +33,8 @@
 // =============================================================================
 
 "use strict";
+
+const { descendants } = require("./search.js");
 
 let _panelSeq = 0;
 
@@ -191,23 +194,11 @@ class Panel {
         return this._children.find((c) => c.id === id) || null;
     }
 
-    /**
-     * Depth-first pre-order search of the whole subtree (self excluded, matching
-     * the engine: FindChildTraverse never returns the panel it was called on).
-     */
+    /** Direct children first, then recurse into child branches; self excluded. */
     FindChildTraverse(id) {
         this._assertValid("FindChildTraverse");
         if (!id) return null;
-        const stack = [];
-        // Push in reverse so we pop children in declaration order.
-        for (let i = this._children.length - 1; i >= 0; i--) stack.push(this._children[i]);
-        while (stack.length > 0) {
-            const node = stack.pop();
-            if (node.id === id) {
-                return node;
-            }
-            for (let i = node._children.length - 1; i >= 0; i--) stack.push(node._children[i]);
-        }
+        for (const node of descendants(this)) if (node.id === id) return node;
         return null;
     }
 
@@ -215,22 +206,15 @@ class Panel {
         return this.FindChildTraverse(id);
     }
 
-    /** All descendants carrying `className`, depth-first pre-order. */
+    /** All matching descendants in the same native-observed result order. */
     FindChildrenWithClassTraverse(className) {
         this._assertValid("FindChildrenWithClassTraverse");
         if (!className) return [];
         const out = [];
-        const stack = [];
-        for (let i = this._children.length - 1; i >= 0; i--) stack.push(this._children[i]);
-        while (stack.length > 0) {
-            const node = stack.pop();
-            if (node._classes.has(className)) out.push(node);
-            for (let i = node._children.length - 1; i >= 0; i--) stack.push(node._children[i]);
-        }
+        for (const node of descendants(this)) if (node._classes.has(className)) out.push(node);
         return out;
     }
 
-    // ── Classes ───────────────────────────────────────────────────────────
     BHasClass(className) {
         this._assertValid("BHasClass");
         return this._classes.has(className);
@@ -253,11 +237,6 @@ class Panel {
 
     ToggleClass(className) {
         this.SetHasClass(className, !this.BHasClass(className));
-    }
-
-    GetClasses() {
-        // The engine returns a space-joined string here, not an array.
-        return Array.from(this._classes).join(" ");
     }
 
     // ── Attributes ────────────────────────────────────────────────────────
@@ -353,6 +332,13 @@ class Panel {
     /** Simulates a click/activate, which is what ActivatePanelSafe does. */
     activate() {
         return this._fire("onactivate") || this._fire("onmouseactivate");
+    }
+
+    // Flag only: tests dispatch verified DragStart/DragEnd callbacks and supply
+    // layout measurements. This does not simulate the native drag compositor.
+    SetDraggable(enabled) {
+        this._assertValid("SetDraggable");
+        this.draggable = !!enabled;
     }
 
     SetFocus() {

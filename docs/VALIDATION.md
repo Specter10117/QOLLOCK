@@ -20,6 +20,14 @@ One existing compatibility probe remains explicitly unverified: `$.RegisterForUn
 
 `HTMLTitle` was added with exact-name evidence from `strings_dump/panoramauiclient.dll.strings.txt:1752` on 2026-09-26. The extractor now includes this name when present in that dump; previously it loaded but ignored this DLL's strings. The rest of the registry retains its original extraction metadata. Registry generation via `scripts/extract_game_api.js` is a maintainer task using local game data; CI never runs it.
 
+`CitadelColorPickerColorChanged` was added on 2026-10-13 with exact ASCII-name
+evidence at byte offset 45853624 in the installed `client.dll`. Its RGB callback
+and `HexValue`/`TextEntryChanged` seeding follow HP Bars v2 in
+`Hantu-Raya/Deadlock-mods-collection` at `e3a97015` (`origin/main`). The extracted
+native `citadel_ui_color_picker.xml` supplies the panel and child IDs. This
+source evidence and the offline callback tests do not verify native input or
+rendering in QOLLOCK; the maintainer must check them after compile/repack.
+
 ## Regression tests and CI
 
 `node --test tests/game_api_validator.test.js` checks known/unknown calls, comments, multiline calls, dynamic warnings, the scoped compatibility exception, and real CLI exit statuses. CLI fixtures use an isolated temporary registry/directory and do not require `G:` or `D:` game data.

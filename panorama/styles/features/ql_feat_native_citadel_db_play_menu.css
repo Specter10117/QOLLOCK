@@ -1,0 +1,8 @@
+/* QOLLOCK overrides for citadel_db_play_menu.css; loaded after the native baseline. */
+
+#Option_Versus
+{
+	background-image: url("s2r://panorama/images/main_menu/menu_images/menu_play_privatebots_horizontal_psd.vtex");
+	background-size: cover;
+	background-img-opacity: 0.3;
+}

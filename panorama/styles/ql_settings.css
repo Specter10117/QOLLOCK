@@ -12,6 +12,222 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
     background-color: #0000;
 }
 
+.QOLCustomizeActive .QOLCustomizeHidden,
+.QOLCustomizeActive #SettingsWindow.Visible.QOLCustomizeHidden
+{
+    visibility: collapse;
+}
+CitadelHudEscapeMenu.QOLCustomizeActive { background-color: #0000; }
+.QOLCustomizeOverlay { width: 100%; height: 100%; z-index: 1000; }
+.QOLCustomizeTools
+{
+    width: 380px;
+    height: fit-children;
+    max-height: 88%;
+    overflow: squish squish;
+    horizontal-align: right;
+    vertical-align: top;
+    margin: 15px 20px 15px 0px;
+    flow-children: down;
+    z-index: 10;
+    transition-property: opacity;
+    transition-duration: 0.15s;
+}
+.QOLCustomizeOverlay.Dragging .QOLCustomizeTools,
+.QOLCustomizeOverlay.Dragging .QOLCustomizeCatalog
+{
+    opacity: 0.65;
+}
+.QOLCustomizeTitle { margin-bottom: 6px; }
+.QOLCustomizeSelectionHeader { flow-children: right; width: 100%; margin-bottom: 4px; padding-bottom: 4px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); }
+.QOLCustomizeSelectionHeader > .QOLCustomizeTitle { width: fill-parent-flow(1); vertical-align: center; text-shadow: none; }
+.QOLCustomizeVisibility { vertical-align: center; horizontal-align: right; }
+.QOLCustomizeAvailability { width: 100%; height: fit-children; color: #bac6c0; }
+.QOLCustomizeSection { width: 100%; flow-children: down; margin-top: 8px; border-top: 1px solid #ffffff12; }
+.QOLCustomizeSectionBody { width: 100%; flow-children: down; }
+.QOLCustomizePositionSection { width: 100%; height: fit-children; flow-children: down; margin-top: 2px; margin-bottom: 6px; padding-bottom: 6px; border-bottom: 1px solid rgba(255, 255, 255, 0.06); }
+.QOLCustomizeSectionBody > .ModalInstructions { width: 100%; white-space: normal; height: fit-children; }
+.QOLCustomizeSectionHeading { width: 100%; margin: 2px 0px 4px 0px; padding: 2px 0px; font-size: 11px; font-weight: semi-bold; letter-spacing: 0.5px; text-transform: uppercase; color: #bac6c0; text-shadow: none; }
+.QOLCustomizeSectionHeading > .QOLCustomizeButtonLabel { width: fill-parent-flow(1); text-align: left; font-size: 14px; }
+.QOLCustomizeDisclosure { width: 14px; text-align: center; vertical-align: center; opacity: 0.65; }
+.QOLCustomizeChoices, #QOLCustomizeFields { flow-children: down; width: 100%; }
+.QOLCustomizeCatalog {
+    width: 230px;
+    height: 58%;
+    flow-children: down;
+    margin: 15px 0px 15px 20px;
+    z-index: 10;
+    horizontal-align: left;
+    vertical-align: top;
+    transition-property: opacity;
+    transition-duration: 0.15s;
+}
+.QOLCustomizeOverlay.PanelsHidden .QOLCustomizeTools,
+.QOLCustomizeOverlay.PanelsHidden .QOLCustomizeCatalog { visibility: collapse; }
+.QOLCustomizeView {
+    flow-children: down;
+    align: center top;
+    margin-top: 15px;
+    z-index: 10;
+}
+.QOLCustomizeView > .QOLCustomizeActions { width: fit-children; margin-top: 0px; }
+.QOLCustomizeChromeHandle { width: 100%; height: 28px; margin-bottom: 6px; }
+.QOLCustomizeChromeHandle > .ModalTitle { width: 100%; height: fit-children; text-align: left; margin: 0px; vertical-align: center; }
+.QOLCustomizeChromeHandle:hover { brightness: 1.3; }
+.QOLCustomizeChoices { height: fill-parent-flow(1); overflow: squish scroll; }
+#QOLCustomizeFields { height: fit-children; max-height: 600px; overflow: squish scroll; }
+.QOLCustomizeCatalog .QOLCustomizeSearch.ValueInput { width: 100%; height: 28px; margin-left: 0px; margin-bottom: 6px; }
+.QOLCustomizeField { flow-children: down; width: 100%; height: fit-children; margin: 0px; padding: 5px 0px; background-color: none; border: 0px solid transparent; border-bottom: 1px solid rgba(255, 255, 255, 0.06); }
+.QOLCustomizeField > Label { width: 100%; height: fit-children; white-space: normal; margin-bottom: 4px; font-size: 13px; letter-spacing: 0px; color: #d8e0dc; text-shadow: none; }
+.QOLCustomizeField.QOLCustomizeToggleRow {
+    flow-children: right;
+    width: 100%;
+    min-height: 30px;
+    margin: 0px;
+    padding: 4px 0px;
+    background-color: none;
+    border: 0px solid transparent;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+.QOLCustomizeField.QOLCustomizeToggleRow > Label {
+    width: fill-parent-flow(1);
+    vertical-align: center;
+    margin-bottom: 0px;
+    font-size: 13px;
+    color: #d8e0dc;
+    text-shadow: none;
+}
+.QOLCustomizeValueGroup { width: 100%; height: 28px; flow-children: right; vertical-align: center; }
+.QOLCustomizeFieldColor > .QOLCustomizeValueGroup { height: fit-children; }
+.QOLCustomizeUnit { vertical-align: center; margin: 0px 4px; min-width: 14px; opacity: 0.65; font-size: 13px; }
+.QOLCustomizeField > .QOLCustomizeFieldError { width: 100%; color: #ed9898; margin: 3px 0px 0px 0px; font-size: 12px; }
+.QOLCustomizeFieldColor { flow-children: down; }
+.QOLCustomizeFieldColor > Label { width: 100%; }
+.QOLCustomizeActions { flow-children: right; margin-top: 8px; width: 100%; }
+.QOLCustomizeEnum { flow-children: right-wrap; width: 100%; margin-top: 3px; }
+.QOLCustomizeEnum > .QOLCustomizeButton { min-width: 48px; height: 24px; padding: 2px 8px; margin: 2px; border-radius: 3px; }
+.QOLCustomizeEnum > .QOLCustomizeButton > Label { horizontal-align: center; vertical-align: center; font-size: 11px; letter-spacing: 0.5px; }
+.QOLCustomizeButton { padding: 5px 9px; margin: 2px; }
+.QOLCustomizeButton:disabled { opacity: 0.35; }
+.QOLCustomizeChoices .QOLCustomizeButton.Unavailable { opacity: 0.50; }
+.QOLCustomizeTools .QOLCustomizeInput.ValueInput {
+    width: 58px;
+    height: 24px;
+    margin: 0px 2px;
+    padding: 1px 4px;
+    text-align: center;
+    vertical-align: center;
+}
+.QOLCustomizeTools .QOLCustomizeInput.ValueInput:focus { box-shadow: none; }
+.QOLCustomizeTools .QOLCustomizeFieldColor .QOLCustomizeInput.ValueInput { width: 95px; text-align: left; }
+.QOLCustomizeTools .QOLCustomizeInput.ValueInput.Invalid,
+.QOLCustomizeTools .QOLCustomizeInput.ValueInput.Invalid:focus { border: 1px solid #ed7070; box-shadow: none; }
+.QOLCustomizeSwatch { width: 18px; height: 18px; margin-left: 6px; vertical-align: center; border: 1px solid #fff4; border-radius: 2px; }
+.QOLCustomizeColorEditor { width: 100%; height: fit-children; flow-children: down; }
+.QOLCustomizePaletteDock { width: 100%; height: fit-children; flow-children: down; overflow: squish squish; }
+.QOLCustomizeNativePicker { horizontal-align: center; margin: 6px 0px; }
+.QOLCustomizePalette { width: 100%; flow-children: right-wrap; margin-top: 4px; margin-bottom: 4px; }
+.QOLCustomizeTools .QOLCustomizePaletteToggle { width: fill-parent-flow(1); height: 28px; flow-children: right; padding: 3px 6px; margin: 0px 4px; border-radius: 3px; box-shadow: none; }
+.QOLCustomizeTools .QOLCustomizePaletteToggle > Label { width: fill-parent-flow(1); vertical-align: center; font-size: 12px; letter-spacing: 0px; text-transform: none; }
+.QOLCustomizeColorChoice { width: 22px; height: 22px; margin: 2px; border: 2px solid transparent; border-radius: 2px; }
+.QOLCustomizeColorChoice:hover,
+.QOLCustomizeColorChoice.Active { border: 2px solid white; }
+.QOLCustomizeChoices .QOLCustomizeButton { width: 100%; margin-left: 0px; margin-right: 0px; }
+.QOLCustomizeCatalog .QOLCustomizeChoices .QOLCustomizeButtonLabel { width: 100%; font-size: 14px; letter-spacing: 0px; text-transform: none; white-space: normal; }
+.QOLCustomizeFrame {
+    horizontal-align: left;
+    vertical-align: top;
+    border: 1px solid transparent;
+    background-color: transparent;
+    transition-property: border;
+    transition-duration: 0.1s;
+}
+.QOLCustomizeOutline { align: left top; background-color: transparent; border: 1px solid transparent; }
+.QOLCustomizeCorners { align: left top; z-index: 6; }
+.QOLCustomizeGestureOutline {
+    align: left top;
+    z-index: 7;
+    border: 2px solid #7fe5b8;
+    background-color: transparent;
+    box-shadow: none;
+}
+.QOLCustomizeOverlay .QOLCustomizeFrame:hover .QOLCustomizeOutline {
+    border: 1px solid rgba(102, 204, 153, 0.75);
+    background-color: transparent;
+    box-shadow: none;
+}
+.QOLCustomizeOverlay .QOLCustomizeFrame.Selected .QOLCustomizeOutline {
+    border: 2px solid #66cc99;
+    background-color: transparent;
+    box-shadow: none;
+}
+.QOLCustomizeTools .QOLCustomizeValueGroup {
+    width: 100%;
+    flow-children: right;
+    vertical-align: center;
+}
+.QOLCustomizeTools .SliderContainer {
+    width: fill-parent-flow(1);
+    vertical-align: center;
+    margin-right: 6px;
+    height: 24px;
+}
+.QOLCustomizeTools .HorizontalSlider {
+    width: 100%;
+    vertical-align: center;
+}
+.QOLCustomizeOverlay .HorizontalSlider .SliderThumb,
+.QOLCustomizeOverlay .HorizontalSlider:hover .SliderThumb,
+.QOLCustomizeOverlay .HorizontalSlider:active .SliderThumb { box-shadow: none; }
+.QOLCustomizeTools .QOLCustomizeInput.ValueInput { width: 70px; vertical-align: center; text-align: center; }
+.QOLCustomizeTools .QOLCustomizeUnit { vertical-align: center; margin-left: 2px; }
+.QOLCustomizeResize { align: right bottom; width: 24px; height: 24px; z-index: 4; background-color: transparent; border: 0px; overflow: noclip; }
+.QOLCustomizeFrame, .QOLCustomizeCorners { overflow: noclip; }
+.QOLCustomizeResizeMarker { align: left top; width: 24px; height: 24px; border-right: 2px solid #66cc99; border-bottom: 2px solid #66cc99; background-color: #121816; }
+.QOLCustomizeOverlay .QOLCustomizeFrame.SmallTarget.Selected.Capturing { border: 1px solid transparent; }
+.QOLCustomizeOverlay .QOLCustomizeFrame.SmallTarget.Selected { border: 1px dashed rgba(102, 204, 153, 0.45); }
+.QOLCustomizeTools .QOLCustomizeAlignment { width: 100%; flow-children: right; margin-top: 8px; }
+.QOLCustomizeTools .QOLCustomizeAlignment > .QOLCustomizeButton { width: fill-parent-flow(1); min-width: 0px; height: 36px; margin: 0px 2px; padding: 4px; box-shadow: none; }
+.QOLCustomizeTools .QOLCustomizeAlignment .QOLCustomizeButtonLabel { width: 100%; height: fit-children; align: center center; text-align: center; white-space: normal; font-size: 12px; letter-spacing: 0px; text-transform: none; }
+.QOLCustomizeHistory { width: 100%; height: 32px; flow-children: right; margin-top: 4px; }
+.QOLCustomizeHistorySpace { width: fill-parent-flow(1); }
+.QOLCustomizeTools .QOLCustomizeQuiet { height: 28px; margin: 0px 2px; padding: 4px 8px; background-color: transparent; border: 1px solid transparent; box-shadow: none; }
+.QOLCustomizeTools .QOLCustomizeQuiet > Label { font-size: 12px; letter-spacing: 0px; text-transform: none; color: #bac6c0; }
+.QOLCustomizeTools .QOLCustomizeQuiet:hover { background-color: rgba(210, 224, 216, 0.06); border-color: rgba(210, 224, 216, 0.15); brightness: 1.06; }
+.QOLCustomizeTools .QOLCustomizeQuiet:hover > Label { color: #eef6f0; }
+.QOLCustomizeTools .QOLCustomizeReset { min-width: 76px; height: 28px; margin: 0px 2px; padding: 4px 12px; border: 1px solid rgba(210, 224, 216, 0.3); box-shadow: none; }
+.QOLCustomizeTools .QOLCustomizeReset > Label { align: center center; font-size: 12px; letter-spacing: 0px; text-transform: none; }
+.QOLCustomizeTools .QOLCustomizeButton:focus { border-color: #66cc99; }
+.QOLCustomizeFooter { width: 100%; flow-children: right; margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255, 255, 255, 0.08); }
+.QOLCustomizeTools .QOLCustomizeFooter > .QOLCustomizeButton { width: fill-parent-flow(1); height: 32px; margin: 0px 2px 4px 2px; }
+.QOLCustomizeTools .QOLCustomizeFooter .QOLCustomizeButtonLabel { align: center center; }
+.QOLCustomizeTools .QOLCustomizeButton:hover,
+.QOLCustomizeTools .QOLCustomizeButton:active { transform: none; }
+.QOLCustomizeAvailability { margin-bottom: 0px; }
+.QOLCustomizeResize:hover .QOLCustomizeResizeMarker { background-color: #66cc99; }
+.QOLCustomizeResize.TopLeft { align: left top; }
+.QOLCustomizeResizeMarker.TopLeft { border-right: 0px; border-bottom: 0px; border-left: 2px solid #66cc99; border-top: 2px solid #66cc99; }
+.QOLCustomizeResize.TopRight { align: right top; }
+.QOLCustomizeResizeMarker.TopRight { border-bottom: 0px; border-top: 2px solid #66cc99; }
+.QOLCustomizeResize.BottomLeft { align: left bottom; }
+.QOLCustomizeResizeMarker.BottomLeft { border-right: 0px; border-left: 2px solid #66cc99; }
+.QOLCustomizeTools > .ModalInstructions,
+#QOLCustomizeFields > .ModalInstructions { width: 100%; white-space: normal; height: fit-children; }
+.QOLCustomizeLaunch { flow-children: down; width: 100%; }
+
+.QOLCustomizeGuideLine {
+    background-color: rgba(102, 204, 153, 0.75);
+    z-index: 8;
+}
+.QOLCustomizeGuideLine.Vertical {
+    width: 1px;
+    height: 100%;
+}
+.QOLCustomizeGuideLine.Horizontal {
+    height: 1px;
+    width: 100%;
+}
+
 /* Active Stats showcase (Crosshair tab): reuse the REAL crosshair-overlay styling so the preview
    rows are a 1:1 copy of the in-game overlay — same pill, accent border, property icon + value.
    The HUD layout already includes the property icons; the separate settings context needs them
@@ -2597,6 +2813,12 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 	visibility: collapse;
 }
 
+.QOLCustomizeEntry
+{
+	margin-left: 8px;
+	vertical-align: center;
+}
+
 #SettingsWindow .ConfigSectionIconBtn
 {
 	width: 22px;
@@ -3436,14 +3658,16 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 	background-color: #ffffffff;
 }
 
-#SettingsWindow .HorizontalSlider
+#SettingsWindow .HorizontalSlider,
+.QOLCustomizeOverlay .HorizontalSlider
 {
 	width: 100%;
 	vertical-align: center;
 	overflow: noclip;
 }
 
-#SettingsWindow .HorizontalSlider .SliderThumb
+#SettingsWindow .HorizontalSlider .SliderThumb,
+.QOLCustomizeOverlay .HorizontalSlider .SliderThumb
 {
 	width: 8px;
 	height: 8px;
@@ -3456,19 +3680,22 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 	transition-duration: 0.16s;
 }
 
-#SettingsWindow .HorizontalSlider:hover .SliderThumb
+#SettingsWindow .HorizontalSlider:hover .SliderThumb,
+.QOLCustomizeOverlay .HorizontalSlider:hover .SliderThumb
 {
 	box-shadow: fill rgba(102, 204, 153, 0.65) 0px 0px 8px 0px;
 }
 
-#SettingsWindow .HorizontalSlider:active .SliderThumb
+#SettingsWindow .HorizontalSlider:active .SliderThumb,
+.QOLCustomizeOverlay .HorizontalSlider:active .SliderThumb
 {
 	background-color: #66cc99;
 	box-shadow: fill rgba(102, 204, 153, 0.7) 0px 0px 8px 0px;
 	transform: scale3d(1.12, 1.12, 1.0);
 }
 
-#SettingsWindow .ValueInput
+#SettingsWindow .ValueInput,
+.QOLUnifiedModalSurface .ValueInput
 {
 	width: 46px;
 	height: 26px;
@@ -3486,13 +3713,15 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 	transition-duration: 0.16s;
 }
 
-#SettingsWindow .ValueInput:focus
+#SettingsWindow .ValueInput:focus,
+.QOLUnifiedModalSurface .ValueInput:focus
 {
 	border: 1px solid #66cc99;
 	brightness: 1.06;
 }
 
-#SettingsWindow .ValueInput > Label,#SettingsWindow .ValueInput #TextEntryContents,#SettingsWindow .ValueInput #PlaceholderText
+#SettingsWindow .ValueInput > Label,#SettingsWindow .ValueInput #TextEntryContents,#SettingsWindow .ValueInput #PlaceholderText,
+.QOLUnifiedModalSurface .ValueInput > Label,.QOLUnifiedModalSurface .ValueInput #TextEntryContents,.QOLUnifiedModalSurface .ValueInput #PlaceholderText
 {
 	color: #a39c8e;
 	line-height: 15px;
@@ -3505,20 +3734,23 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 	vertical-align: center;
 }
 
-#SettingsWindow .ValueInput:focus #TextEntryContents,#SettingsWindow .ValueInput:focus > Label,#SettingsWindow .ValueInput:focus #PlaceholderText
+#SettingsWindow .ValueInput:focus #TextEntryContents,#SettingsWindow .ValueInput:focus > Label,#SettingsWindow .ValueInput:focus #PlaceholderText,
+.QOLUnifiedModalSurface .ValueInput:focus #TextEntryContents,.QOLUnifiedModalSurface .ValueInput:focus > Label,.QOLUnifiedModalSurface .ValueInput:focus #PlaceholderText
 {
 	text-align: center;
 	horizontal-align: center;
 }
 
-#SettingsWindow .ValueInput #Contents
+#SettingsWindow .ValueInput #Contents,
+.QOLUnifiedModalSurface .ValueInput #Contents
 {
 	width: 100%;
 	height: 100%;
 	vertical-align: center;
 }
 
-#SettingsWindow .ValueInput #TextEntryCursor
+#SettingsWindow .ValueInput #TextEntryCursor,
+.QOLUnifiedModalSurface .ValueInput #TextEntryCursor
 {
 	vertical-align: center;
 }
@@ -3603,7 +3835,8 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 	animation-timing-function: ease-in-out;
 }
 
-#SettingsWindow .SettingToggleBtn
+#SettingsWindow .SettingToggleBtn,
+.QOLCustomizeOverlay .SettingToggleBtn
 {
 	width: 40px;
 	height: 20px;
@@ -3615,7 +3848,8 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 	border-radius: 0px;
 }
 
-#SettingsWindow .SettingToggleBtn .SwitchButton
+#SettingsWindow .SettingToggleBtn .SwitchButton,
+.QOLCustomizeOverlay .SettingToggleBtn .SwitchButton
 {
 	width: 40px;
 	height: 20px;
@@ -3634,21 +3868,24 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 	transition-timing-function: ease-in-out;
 }
 
-#SettingsWindow .SettingToggleBtn .SwitchButton:active
+#SettingsWindow .SettingToggleBtn .SwitchButton:active,
+.QOLCustomizeOverlay .SettingToggleBtn .SwitchButton:active
 {
 	border: 0px solid transparent;
 	brightness: 1.15;
 	transform: scale3d(0.98, 0.98, 1.0);
 }
 
-#SettingsWindow .SettingToggleBtn #handle
+#SettingsWindow .SettingToggleBtn #handle,
+.QOLCustomizeOverlay .SettingToggleBtn #handle
 {
 	transition-property: transform;
 	transition-duration: 0.1s;
 	transition-timing-function: ease-out;
 }
 
-#SettingsWindow .SettingToggleBtn.ToggleOff #handle
+#SettingsWindow .SettingToggleBtn.ToggleOff #handle,
+.QOLCustomizeOverlay .SettingToggleBtn.ToggleOff #handle
 {
 	width: 20px;
 	height: 20px;
@@ -3662,7 +3899,8 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 	transform: translateX(0px);
 }
 
-#SettingsWindow .SettingToggleBtn.ToggleOn #handle
+#SettingsWindow .SettingToggleBtn.ToggleOn #handle,
+.QOLCustomizeOverlay .SettingToggleBtn.ToggleOn #handle
 {
 	width: 20px;
 	height: 20px;
@@ -3675,7 +3913,8 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 	transform: translateX(20px);
 }
 
-#SettingsWindow .SettingToggleBtn:hover .SwitchButton
+#SettingsWindow .SettingToggleBtn:hover .SwitchButton,
+.QOLCustomizeOverlay .SettingToggleBtn:hover .SwitchButton
 {
 	brightness: 1.08;
 }
@@ -13600,6 +13839,7 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 }
 
 #SettingsWindow .SettingToggleBtn,
+.QOLCustomizeOverlay .SettingToggleBtn,
 .SectionInlineToggleBtn
 {
 	width: 44px;
@@ -13608,6 +13848,7 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 }
 
 #SettingsWindow .SettingToggleBtn .SwitchButton,
+.QOLCustomizeOverlay .SettingToggleBtn .SwitchButton,
 .SectionInlineToggleBtn .SwitchButton
 {
 	width: 44px;
@@ -13782,18 +14023,21 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 }
 
 #SettingsWindow .SettingToggleBtn:hover .SwitchButton,
+.QOLCustomizeOverlay .SettingToggleBtn:hover .SwitchButton,
 .SectionInlineToggleBtn:hover .SwitchButton
 {
 	border: 1px solid rgba(136, 224, 170, 0.18);
 }
 
 #SettingsWindow .SettingToggleBtn.ToggleOn .SwitchButton,
+.QOLCustomizeOverlay .SettingToggleBtn.ToggleOn .SwitchButton,
 .SectionInlineToggleBtn.ToggleOn .SwitchButton
 {
 	border: 1px solid rgba(120, 219, 161, 0.34);
 }
 
 #SettingsWindow .SettingToggleBtn #handle,
+.QOLCustomizeOverlay .SettingToggleBtn #handle,
 .SectionInlineToggleBtn #handle
 {
 	width: 18px;
@@ -13804,12 +14048,14 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 }
 
 #SettingsWindow .SettingToggleBtn.ToggleOff #handle,
+.QOLCustomizeOverlay .SettingToggleBtn.ToggleOff #handle,
 .SectionInlineToggleBtn.ToggleOff #handle
 {
 	transform: translateX(0px);
 }
 
 #SettingsWindow .SettingToggleBtn.ToggleOn #handle,
+.QOLCustomizeOverlay .SettingToggleBtn.ToggleOn #handle,
 .SectionInlineToggleBtn.ToggleOn #handle
 {
 	transform: translateX(21px);
@@ -14002,6 +14248,7 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 }
 
 #SettingsWindow .SettingToggleBtn .SwitchButton,
+.QOLCustomizeOverlay .SettingToggleBtn .SwitchButton,
 .SectionInlineToggleBtn .SwitchButton
 {
 	width: 40px;
@@ -17361,7 +17608,9 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 .QOLUnifiedModalSurface .OptimizeFilterModalLine,
 .QOLUnifiedModalSurface .ConfigDiffSummary,
 .QOLUnifiedModalSurface .ConfigDiffDetails,
-.QOLUnifiedModalSurface .ConfigDiffSummaryFooter
+.QOLUnifiedModalSurface .ConfigDiffSummaryFooter,
+.QOLUnifiedModalSurface .ValueInput,
+.QOLUnifiedModalSurface .ValueInput Label
 {
 	font-family: oracle;
 	text-shadow: none;
@@ -19330,7 +19579,10 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 #SettingsWindow.SettingsThemeCream .ValueInput #PlaceholderText,
 #SettingsWindow.SettingsThemeCream .ConfigTextEntry Label,
 #SettingsWindow.SettingsThemeCream .ConfigTextEntry #PlaceholderText,
-#SettingsWindow.SettingsThemeCream .ConfigTextEntry #TextEntryContents
+#SettingsWindow.SettingsThemeCream .ConfigTextEntry #TextEntryContents,
+.QOLThemeCream .QOLUnifiedModalSurface .ValueInput > Label,
+.QOLThemeCream .QOLUnifiedModalSurface .ValueInput #TextEntryContents,
+.QOLThemeCream .QOLUnifiedModalSurface .ValueInput #PlaceholderText
 {
 	color: #3c2713;
 	text-shadow: none;
@@ -19349,7 +19601,10 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 #SettingsWindow.SettingsThemeKitten .ValueInput #PlaceholderText,
 #SettingsWindow.SettingsThemeKitten .ConfigTextEntry Label,
 #SettingsWindow.SettingsThemeKitten .ConfigTextEntry #PlaceholderText,
-#SettingsWindow.SettingsThemeKitten .ConfigTextEntry #TextEntryContents
+#SettingsWindow.SettingsThemeKitten .ConfigTextEntry #TextEntryContents,
+.QOLThemeKitten .QOLUnifiedModalSurface .ValueInput > Label,
+.QOLThemeKitten .QOLUnifiedModalSurface .ValueInput #TextEntryContents,
+.QOLThemeKitten .QOLUnifiedModalSurface .ValueInput #PlaceholderText
 {
 	color: #3f1636;
 	text-shadow: none;
@@ -19368,7 +19623,10 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 #SettingsWindow.SettingsThemePsycho .ValueInput #PlaceholderText,
 #SettingsWindow.SettingsThemePsycho .ConfigTextEntry Label,
 #SettingsWindow.SettingsThemePsycho .ConfigTextEntry #PlaceholderText,
-#SettingsWindow.SettingsThemePsycho .ConfigTextEntry #TextEntryContents
+#SettingsWindow.SettingsThemePsycho .ConfigTextEntry #TextEntryContents,
+.QOLThemePsycho .QOLUnifiedModalSurface .ValueInput > Label,
+.QOLThemePsycho .QOLUnifiedModalSurface .ValueInput #TextEntryContents,
+.QOLThemePsycho .QOLUnifiedModalSurface .ValueInput #PlaceholderText
 {
 	color: #18241e;
 	text-shadow: none;
@@ -19388,6 +19646,14 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 #SettingsWindow.SettingsThemeEmo .ConfigTextEntry Label,
 #SettingsWindow.SettingsThemeEmo .ConfigTextEntry #PlaceholderText,
 #SettingsWindow.SettingsThemeEmo .ConfigTextEntry #TextEntryContents,
+.QOLThemeEmo .QOLUnifiedModalSurface .ValueInput > Label,
+.QOLThemeEmo .QOLUnifiedModalSurface .ValueInput #TextEntryContents,
+.QOLThemeEmo .QOLUnifiedModalSurface .ValueInput #PlaceholderText
+{
+	color: #f3fbff;
+	text-shadow: none;
+}
+
 #SettingsWindow.SettingsThemeOcean .SettingLabel,
 #SettingsWindow.SettingsThemeOcean .SettingDescription,
 #SettingsWindow.SettingsThemeOcean .SubInfoLabel,
@@ -19401,7 +19667,10 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 #SettingsWindow.SettingsThemeOcean .ValueInput #PlaceholderText,
 #SettingsWindow.SettingsThemeOcean .ConfigTextEntry Label,
 #SettingsWindow.SettingsThemeOcean .ConfigTextEntry #PlaceholderText,
-#SettingsWindow.SettingsThemeOcean .ConfigTextEntry #TextEntryContents
+#SettingsWindow.SettingsThemeOcean .ConfigTextEntry #TextEntryContents,
+.QOLThemeOcean .QOLUnifiedModalSurface .ValueInput > Label,
+.QOLThemeOcean .QOLUnifiedModalSurface .ValueInput #TextEntryContents,
+.QOLThemeOcean .QOLUnifiedModalSurface .ValueInput #PlaceholderText
 {
 	color: #f3fbff;
 	text-shadow: none;
@@ -19411,7 +19680,8 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 #SettingsWindow.SettingsThemeCream .ValueInput,
 #SettingsWindow.SettingsThemeCream .ConfigTextEntry,
 #SettingsWindow.SettingsThemeCream .MultiCheckboxBtn,
-#SettingsWindow.SettingsThemeCream .MultiToggleBtn
+#SettingsWindow.SettingsThemeCream .MultiToggleBtn,
+.QOLThemeCream .QOLUnifiedModalSurface .ValueInput
 {
 	background-color: gradient( linear, 0% 0%, 100% 100%, from( rgba(255, 252, 239, 0.84) ), to( rgba(224, 190, 139, 0.58) ) );
 	border-color: rgba(88, 57, 27, 0.24);
@@ -19422,7 +19692,8 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 #SettingsWindow.SettingsThemeKitten .ValueInput,
 #SettingsWindow.SettingsThemeKitten .ConfigTextEntry,
 #SettingsWindow.SettingsThemeKitten .MultiCheckboxBtn,
-#SettingsWindow.SettingsThemeKitten .MultiToggleBtn
+#SettingsWindow.SettingsThemeKitten .MultiToggleBtn,
+.QOLThemeKitten .QOLUnifiedModalSurface .ValueInput
 {
 	background-color: gradient( linear, 0% 0%, 100% 100%, from( rgba(255, 250, 253, 0.84) ), to( rgba(232, 143, 199, 0.56) ) );
 	border-color: rgba(174, 42, 126, 0.24);
@@ -19433,7 +19704,8 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 #SettingsWindow.SettingsThemePsycho .ValueInput,
 #SettingsWindow.SettingsThemePsycho .ConfigTextEntry,
 #SettingsWindow.SettingsThemePsycho .MultiCheckboxBtn,
-#SettingsWindow.SettingsThemePsycho .MultiToggleBtn
+#SettingsWindow.SettingsThemePsycho .MultiToggleBtn,
+.QOLThemePsycho .QOLUnifiedModalSurface .ValueInput
 {
 	background-color: gradient( linear, 0% 0%, 100% 100%, from( rgba(255, 255, 255, 0.86) ), to( rgba(205, 220, 211, 0.58) ) );
 	border-color: rgba(31, 48, 40, 0.22);
@@ -19541,7 +19813,8 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 #SettingsWindow.SettingsThemeEmo .ValueInput,
 #SettingsWindow.SettingsThemeEmo .ConfigTextEntry,
 #SettingsWindow.SettingsThemeEmo .MultiCheckboxBtn,
-#SettingsWindow.SettingsThemeEmo .MultiToggleBtn
+#SettingsWindow.SettingsThemeEmo .MultiToggleBtn,
+.QOLThemeEmo .QOLUnifiedModalSurface .ValueInput
 {
 	background-color: gradient( linear, 0% 0%, 100% 100%, from( rgba(27, 25, 27, 0.92) ), to( rgba(8, 8, 10, 0.88) ) );
 	border-color: rgba(255, 47, 67, 0.20);
@@ -19552,7 +19825,8 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 #SettingsWindow.SettingsThemeOcean .ValueInput,
 #SettingsWindow.SettingsThemeOcean .ConfigTextEntry,
 #SettingsWindow.SettingsThemeOcean .MultiCheckboxBtn,
-#SettingsWindow.SettingsThemeOcean .MultiToggleBtn
+#SettingsWindow.SettingsThemeOcean .MultiToggleBtn,
+.QOLThemeOcean .QOLUnifiedModalSurface .ValueInput
 {
 	background-color: gradient( linear, 0% 0%, 100% 100%, from( rgba(19, 64, 89, 0.90) ), to( rgba(5, 22, 36, 0.86) ) );
 	border-color: rgba(126, 220, 255, 0.20);
@@ -24251,7 +24525,8 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 #SettingsWindow.SettingsThemeCream .SettingButtonGroup:hover,
 #SettingsWindow.SettingsThemeCream .SettingActionBtn:hover,
 #SettingsWindow.SettingsThemeCream .SectionTitleActionBtn:hover,
-#SettingsWindow.SettingsThemeCream .ConfigSectionIconBtn:hover
+#SettingsWindow.SettingsThemeCream .ConfigSectionIconBtn:hover,
+.QOLThemeCream .QOLUnifiedModalSurface .ValueInput:focus
 {
 	border-color: rgba(157, 100, 44, 0.36);
 	box-shadow: fill rgba(157, 100, 44, 0.10) 0px 0px 10px 0px, inset rgba(157, 100, 44, 0.06) 0px 0px 0px 1px;
@@ -24264,7 +24539,8 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 #SettingsWindow.SettingsThemeKitten .SettingButtonGroup:hover,
 #SettingsWindow.SettingsThemeKitten .SettingActionBtn:hover,
 #SettingsWindow.SettingsThemeKitten .SectionTitleActionBtn:hover,
-#SettingsWindow.SettingsThemeKitten .ConfigSectionIconBtn:hover
+#SettingsWindow.SettingsThemeKitten .ConfigSectionIconBtn:hover,
+.QOLThemeKitten .QOLUnifiedModalSurface .ValueInput:focus
 {
 	border-color: rgba(255, 154, 214, 0.38);
 	box-shadow: fill rgba(255, 116, 199, 0.11) 0px 0px 10px 0px, inset rgba(255, 154, 214, 0.07) 0px 0px 0px 1px;
@@ -24277,7 +24553,8 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 #SettingsWindow.SettingsThemeEmo .SettingButtonGroup:hover,
 #SettingsWindow.SettingsThemeEmo .SettingActionBtn:hover,
 #SettingsWindow.SettingsThemeEmo .SectionTitleActionBtn:hover,
-#SettingsWindow.SettingsThemeEmo .ConfigSectionIconBtn:hover
+#SettingsWindow.SettingsThemeEmo .ConfigSectionIconBtn:hover,
+.QOLThemeEmo .QOLUnifiedModalSurface .ValueInput:focus
 {
 	border-color: rgba(255, 47, 67, 0.40);
 	box-shadow: fill rgba(255, 47, 67, 0.12) 0px 0px 10px 0px, inset rgba(255, 47, 67, 0.07) 0px 0px 0px 1px;
@@ -24290,7 +24567,8 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 #SettingsWindow.SettingsThemeOcean .SettingButtonGroup:hover,
 #SettingsWindow.SettingsThemeOcean .SettingActionBtn:hover,
 #SettingsWindow.SettingsThemeOcean .SectionTitleActionBtn:hover,
-#SettingsWindow.SettingsThemeOcean .ConfigSectionIconBtn:hover
+#SettingsWindow.SettingsThemeOcean .ConfigSectionIconBtn:hover,
+.QOLThemeOcean .QOLUnifiedModalSurface .ValueInput:focus
 {
 	border-color: rgba(114, 215, 255, 0.38);
 	box-shadow: fill rgba(83, 202, 255, 0.11) 0px 0px 10px 0px, inset rgba(114, 215, 255, 0.07) 0px 0px 0px 1px;
@@ -24303,7 +24581,8 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 #SettingsWindow.SettingsThemePsycho .SettingButtonGroup:hover,
 #SettingsWindow.SettingsThemePsycho .SettingActionBtn:hover,
 #SettingsWindow.SettingsThemePsycho .SectionTitleActionBtn:hover,
-#SettingsWindow.SettingsThemePsycho .ConfigSectionIconBtn:hover
+#SettingsWindow.SettingsThemePsycho .ConfigSectionIconBtn:hover,
+.QOLThemePsycho .QOLUnifiedModalSurface .ValueInput:focus
 {
 	border-color: rgba(0, 138, 90, 0.28);
 	box-shadow: fill rgba(0, 138, 90, 0.08) 0px 0px 9px 0px, inset rgba(0, 138, 90, 0.05) 0px 0px 0px 1px;
@@ -25400,7 +25679,10 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 	border-color: rgba(97, 19, 253, 0.18);
 }
 
-#SettingsWindow.SettingsThemeMunfins .SettingLabel,#SettingsWindow.SettingsThemeMunfins .SettingDescription,#SettingsWindow.SettingsThemeMunfins .SubInfoLabel,#SettingsWindow.SettingsThemeMunfins .SectionTitleInlineLabel,#SettingsWindow.SettingsThemeMunfins .InlineSecondaryCheckboxLabel,#SettingsWindow.SettingsThemeMunfins .MultiCheckboxLabel,#SettingsWindow.SettingsThemeMunfins .MultiToggleLabel,#SettingsWindow.SettingsThemeMunfins .SettingsDropDown.QOLSettingsDropDown Label,#SettingsWindow.SettingsThemeMunfins .ValueInput > Label,#SettingsWindow.SettingsThemeMunfins .ValueInput #TextEntryContents,#SettingsWindow.SettingsThemeMunfins .ValueInput #PlaceholderText,#SettingsWindow.SettingsThemeMunfins .ConfigTextEntry,#SettingsWindow.SettingsThemeMunfins .ConfigTextEntry Label,#SettingsWindow.SettingsThemeMunfins .ConfigTextEntry #PlaceholderText,#SettingsWindow.SettingsThemeMunfins .ConfigTextEntry #TextEntryContents,#SettingsWindow.SettingsThemeMunfins .ModalInstructions,#SettingsWindow.SettingsThemeMunfins .ConfigDiffSummary,#SettingsWindow.SettingsThemeMunfins .ConfigDiffDetails,#SettingsWindow.SettingsThemeMunfins TextEntry,.QOLThemeMunfins .QOLUnifiedModalSurface .ModalInstructions,.QOLThemeMunfins .QOLUnifiedModalSurface .ConfigDiffSummary,.QOLThemeMunfins .QOLUnifiedModalSurface .ConfigDiffDetails
+#SettingsWindow.SettingsThemeMunfins .SettingLabel,#SettingsWindow.SettingsThemeMunfins .SettingDescription,#SettingsWindow.SettingsThemeMunfins .SubInfoLabel,#SettingsWindow.SettingsThemeMunfins .SectionTitleInlineLabel,#SettingsWindow.SettingsThemeMunfins .InlineSecondaryCheckboxLabel,#SettingsWindow.SettingsThemeMunfins .MultiCheckboxLabel,#SettingsWindow.SettingsThemeMunfins .MultiToggleLabel,#SettingsWindow.SettingsThemeMunfins .SettingsDropDown.QOLSettingsDropDown Label,#SettingsWindow.SettingsThemeMunfins .ValueInput > Label,#SettingsWindow.SettingsThemeMunfins .ValueInput #TextEntryContents,#SettingsWindow.SettingsThemeMunfins .ValueInput #PlaceholderText,#SettingsWindow.SettingsThemeMunfins .ConfigTextEntry,#SettingsWindow.SettingsThemeMunfins .ConfigTextEntry Label,#SettingsWindow.SettingsThemeMunfins .ConfigTextEntry #PlaceholderText,#SettingsWindow.SettingsThemeMunfins .ConfigTextEntry #TextEntryContents,#SettingsWindow.SettingsThemeMunfins .ModalInstructions,#SettingsWindow.SettingsThemeMunfins .ConfigDiffSummary,#SettingsWindow.SettingsThemeMunfins .ConfigDiffDetails,#SettingsWindow.SettingsThemeMunfins TextEntry,.QOLThemeMunfins .QOLUnifiedModalSurface .ModalInstructions,.QOLThemeMunfins .QOLUnifiedModalSurface .ConfigDiffSummary,.QOLThemeMunfins .QOLUnifiedModalSurface .ConfigDiffDetails,
+.QOLThemeMunfins .QOLUnifiedModalSurface .ValueInput > Label,
+.QOLThemeMunfins .QOLUnifiedModalSurface .ValueInput #TextEntryContents,
+.QOLThemeMunfins .QOLUnifiedModalSurface .ValueInput #PlaceholderText
 {
 	color: #eee9f8;
 }
@@ -25456,14 +25738,16 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 	img-shadow: 0px 0px 8px rgba(97, 19, 253, 0.36);
 }
 
-#SettingsWindow.SettingsThemeMunfins .SettingsDropDown.QOLSettingsDropDown,#SettingsWindow.SettingsThemeMunfins .ValueInput,#SettingsWindow.SettingsThemeMunfins .ConfigTextEntry,#SettingsWindow.SettingsThemeMunfins .SettingButtonGroup,#SettingsWindow.SettingsThemeMunfins .SegmentBtn,#SettingsWindow.SettingsThemeMunfins .MultiCheckboxBtn,#SettingsWindow.SettingsThemeMunfins .MultiToggleBtn
+#SettingsWindow.SettingsThemeMunfins .SettingsDropDown.QOLSettingsDropDown,#SettingsWindow.SettingsThemeMunfins .ValueInput,#SettingsWindow.SettingsThemeMunfins .ConfigTextEntry,#SettingsWindow.SettingsThemeMunfins .SettingButtonGroup,#SettingsWindow.SettingsThemeMunfins .SegmentBtn,#SettingsWindow.SettingsThemeMunfins .MultiCheckboxBtn,#SettingsWindow.SettingsThemeMunfins .MultiToggleBtn,
+.QOLThemeMunfins .QOLUnifiedModalSurface .ValueInput
 {
 	background-color: gradient( linear, 0% 0%, 100% 100%, from( rgba(20, 16, 30, 0.88) ), to( rgba(4, 4, 7, 0.84) ) );
 	border-color: rgba(97, 19, 253, 0.24);
 	box-shadow: inset rgba(190, 157, 255, 0.08) 0px 1px 0px 0px;
 }
 
-#SettingsWindow.SettingsThemeMunfins .SettingsDropDown.QOLSettingsDropDown:hover,#SettingsWindow.SettingsThemeMunfins .ValueInput:focus,#SettingsWindow.SettingsThemeMunfins .ConfigTextEntry:focus,#SettingsWindow.SettingsThemeMunfins .SettingButtonGroup:hover,#SettingsWindow.SettingsThemeMunfins .SettingActionBtn:hover,#SettingsWindow.SettingsThemeMunfins .SectionTitleActionBtn:hover,#SettingsWindow.SettingsThemeMunfins .ConfigSectionIconBtn:hover
+#SettingsWindow.SettingsThemeMunfins .SettingsDropDown.QOLSettingsDropDown:hover,#SettingsWindow.SettingsThemeMunfins .ValueInput:focus,#SettingsWindow.SettingsThemeMunfins .ConfigTextEntry:focus,#SettingsWindow.SettingsThemeMunfins .SettingButtonGroup:hover,#SettingsWindow.SettingsThemeMunfins .SettingActionBtn:hover,#SettingsWindow.SettingsThemeMunfins .SectionTitleActionBtn:hover,#SettingsWindow.SettingsThemeMunfins .ConfigSectionIconBtn:hover,
+.QOLThemeMunfins .QOLUnifiedModalSurface .ValueInput:focus
 {
 	border-color: rgba(142, 93, 255, 0.56);
 	box-shadow: inset rgba(190, 157, 255, 0.14) 0px 1px 0px 0px, fill rgba(97, 19, 253, 0.18) 0px 0px 12px 0px;
@@ -25617,3 +25901,18 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 	opacity: 0.01;
 	visibility: visible;
 }
+
+/* Customize's sibling overlay reuses the SettingsWindow controls and colors. */
+.QOLCustomizeOverlay .ModalTitle,
+.QOLCustomizeLaunch > .ModalTitle { text-shadow: none; }
+.QOLCustomizeOverlay .SettingToggleBtn { width: 40px; height: 20px; overflow: noclip; }
+.QOLCustomizeOverlay .SettingToggleBtn .SwitchButton { width: 40px; height: 20px; background-size: 40px 20px; }
+.QOLCustomizeOverlay .SettingToggleBtn #handle { width: 20px; height: 20px; background-size: 20px 20px; margin: 0px; }
+.QOLCustomizeOverlay .SettingToggleBtn.ToggleOff #handle { transform: translateX(0px); img-shadow: none; }
+.QOLCustomizeOverlay .SettingToggleBtn.ToggleOn #handle { transform: translateX(20px); img-shadow: none; }
+.QOLCustomizeOverlay .HorizontalSlider .SliderThumb { width: 8px; height: 8px; box-shadow: none; }
+.QOLCustomizeOverlay .HorizontalSlider:hover .SliderThumb,
+.QOLCustomizeOverlay .HorizontalSlider:active .SliderThumb { box-shadow: none; }
+
+/* Shared exact-input validation for ordinary and Customize controls. */
+.ValueInput.Invalid, .ValueInput.Invalid:focus { border: 1px solid #ed7070; box-shadow: none; }

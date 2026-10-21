@@ -3,6 +3,13 @@
 The current offline entry point is `npm test` (see `package.json`). It runs HUD
 script loading, stylesheet source checks, the Node regression suite in `tests/`, compact-schema validation,
 API checks and ESLint. It does not run a separate build-storage fuzz command.
+The Node suite limits file concurrency to avoid exhausting memory when multiple
+settings/HUD VM environments run on a machine with many CPU cores.
+
+The optional `scripts/git-hooks/pre-commit` template invokes this same complete
+gate for every commit. It does not maintain another manifest/import validator or
+skip CSS/XML changes. Installing/updating local hooks remains an explicit local
+setup action through `setup-hooks.sh`; source edits do not install them.
 
 Some tests use the panel simulator. They can verify JavaScript behavior under
 that model, but cannot prove real client panel structure, rendering or FPS.
@@ -28,6 +35,252 @@ selector lists. It does not implement native CSS grammar or compile resources;
 the maintainer's compilation and client checks remain required.
 
 ## Focused release regressions
+
+`settings_save_queue.test.js` loads the actual settings/HUD isolates and verifies
+Flush followed by a new edit, one pending callback during repeated changes,
+direct-save supersession, zero schedule handles, failed cancellation and living
+context replacement. Dirty stamps and serialized root publication remain exercised
+through the production save path; these are not durable CEF-storage checks.
+
+`native_style_owner.test.js` covers attempted-property/class ownership, native
+readback normalization and overwrite, rejected writes/neutral resets/clears,
+destroyed sources, cleanup completion after disposal and immediate re-enable
+leases. `inventory_stats_owner_lifetime.test.js` applies that contract to the
+production inventory/stats owners: living HUD replacement, loading roots, late
+and moved leaves, preserved native opacity, idle settings reads and stopped hooks.
+Rejected clears also finish after their presentation loops stop. These checks do
+not establish native rendering or input behavior.
+
+`souls_bars_owner_lifetime.test.js` applies the shared native style contract to
+souls and top/bottom bars: current HUD replacement, failed style/class retirement,
+loading roots, stopped hooks, production-registry rapid re-enable and native
+feedback overwrites without redundant idle writes. Currency tint follows late,
+moved and recycled-role leaves within its verified containers. Hidden signature
+geometry/tint and independently configured active slots remain separate; native
+scale baselines and topbar visibility transitions retain their existing regressions.
+
+`stamina_rotation_owner.test.js` checks native-zero degree presentation through
+the ordinary control and Customize input/slider/wheel/history/reset while
+preserving the published stored field. Native-owner cases cover color-only
+no-op rotation, living ring/HUD replacement, rejected writes/restores, native
+transform overwrite, loading roots and stopped hooks. Existing native feedback
+state tests remain; actual ring orientation/pivot and recharge/drain animations
+require client verification after compilation/repacking.
+
+`ui_friends.test.js` exercises the escape-context search owner against late and
+living replaced lists, late/changed native names, rejected class writes and
+retirement, repeated initialization, retired callbacks, script reload and context
+destruction. It checks the actual clear-button CSS gate and preservation of
+native visible flags. The model does not establish native friends-panel creation,
+input routing or button rendering.
+
+Customize regressions exercise draft publication separately from canonical
+settings, Apply/Cancel, acknowledged saves, cleanup, measured frame geometry,
+native Button capture, live draft delivery and corner resizing.
+`customize_capture.test.js` dispatches Button callbacks with both optional cursor
+coordinates and compositor samples. It includes missing/throwing cursor APIs,
+all four corners without that API, repeated stamina/Current/Max Ammo grabs,
+partitioned padding, invalid coordinates, destroyed visuals and cancellation. These checks
+cannot establish native DragStart/DragEnd routing. Run `node --test tests/ui_customize.test.js
+tests/customize_catalog.test.js` for the editor subset. Modeled dimensions and
+input events do not establish native rendering or interaction.
+
+`tests/customize_rework.test.js` checks canvas-density conversions, padded AP
+targets, magnet candidates and truthful guides, alignment actions, delayed
+layout, all three draggable editor windows, actual view toggles and independent
+AP/stamina persistence. `tests/item_mirror_runtime.test.js` retains main's
+Advanced-mode filter, slot, purchase/sale and shop-transition regression.
+
+`feature_contracts.test.js` and `shared_config_owners.test.js` exercise production
+registration, canonical units/defaults, atomic shared-key updates, unchanged-value
+suppression, and failed/retired lifecycle generations. Native and overlay owner
+regressions verify late sources, still-live replacement, owned-property cleanup,
+native animation/content preservation and independent observers. Scaffold tests
+run generated source against the production registry. `minimap_fixed_icon_geometry.test.js`
+drives Size controls and all corner gestures through Base/Alt/Tab preview and the
+scoped renderer geometry; native map click targets/zoom rendering remain client checks.
+`manifest_settings_catalog.test.js` observes declarations in the actual HUD include
+order and rejects duplicated persistent defaults/bounds, including computed fields
+and multitoggle options. The registered schemas still use the current shared catalog.
+
+`healthbar_module_ownership`, `color_warning_owners`, `map_module_lifecycle`,
+`information_manifest_lifecycle`, `reload_owner_lifecycle` and `ui_runtime_owners` exercise the current
+production owners against living replacement, late discovery, partial native
+writes, shared observer updates and shutdown. Budhud's native color comes from
+one warning owner; objective timers consume a scalar rejuvenator snapshot.
+These checks complement the frozen-main compatibility matrix and do not replace
+client validation of native animation, composition, input or timing.
+
+The map lifecycle suite also exercises partial crate/tunnel construction, moved
+markers, shrinking coordinate data, queued previous trees, stopped hooks and
+still-living HUD replacement. The shared tree suite checks targeted branch
+retirement without touching unrelated created branches or native IDs.
+
+The information-owner tests also retire every moved Rift/Crosshair Stats child,
+exercise rapid re-enable before asynchronous deletion, and replace a still-live
+HUD without inheriting old source/model bindings. Same-HUD topbar replacement
+continues the warning deadline; native sources remain alive and unchanged.
+
+`recent_purchases_owner.test.js` exercises production filters, feed and hero
+popups against recycled rows, late purchaser evidence, living native replacement,
+shared geometry and partial writes. Native history remains engine-owned;
+expired or recycled-row evidence must not replay an earlier purchase.
+
+`profile_rank_owners.test.js` covers HUD rank/Statlocker owners and independent
+profile/card isolates: current account bindings, roster replacement, duplicate
+names, correlated late callbacks, partial native writes and bounded retries.
+Native card context creation/reuse and image loading remain client checks.
+
+`quickbuy_owner_lifecycle.test.js` loads the actual quickbuy XML companion in
+its own isolate. It preserves recipe/sale credits and previews while testing
+late/replaced native queues, controls, chat bindings, partial writes, retired
+handlers and cancelled deferred work. The lifecycle auditor's counterfactual
+still rejects a deliberately lost poll handle with the same leaked task counts.
+Quickbuy source checks also retain required global states and blocked-purchase
+children while allowing additional native listener classes and native card sizes.
+Enhanced cards share left-aligned coordinates with their companion previews.
+After a maintainer repack, verify normal/enhanced quickbuy, full/locked item slots,
+high unspent souls, shop opening and preview placement at supported aspect ratios.
+
+`chat_translation_owner.test.js` checks production account gating and pending
+evidence, independent native message selection, bounded cache and lifecycle
+cleanup. Native text remains readable through modeled failed helper requests;
+localhost image loading and native chat layout require client verification.
+
+`chat_image_geometry_owners.test.js` checks the independent native geometry and
+image owners: both teams, current bottom text bindings, unchanged native text/
+input/animation, bounded image cleanup, URL matching, partial writes and living
+replacement. Customize cancellation observes both released code styles and
+the neutral native offset written before release.
+
+Cursor regressions in `ui_runtime_owners.test.js` use the active lifecycle rather
+than constructing UI through stopped hooks. They cover owned-image retirement,
+foreign/pending tree deletion, image/coordinate failures, rapid re-enable and
+retryable root-class release across living HUD generations. Native pointer
+appearance, coordinates and menu interaction remain client checks.
+
+Audio regressions observe actual caption presentation rather than exported
+private booleans. They cover new HUD announcement history, stale callbacks and
+caption-only disable alongside existing interval/lead-time behavior. Damage
+owner regressions release living moved labels and replaced gameplay scopes
+without waiting for a full discovery scan or publishing duplicate global caches.
+
+`keyboard_owner_lifecycle.test.js` retains both native action layouts and checks
+reactive geometry/palette/custom RGB, Label-type glyph discovery, living owner
+replacement, partial style/construction failures, disable and registry cleanup.
+Native binding/glyph composition and key press visuals remain client checks.
+Keyboard regressions also retire foreign previous roots, exercise re-enable
+before asynchronous deletion, retry moved created-child deletion while preserving
+moved native glyph content, and keep loading-root lookalikes/partial renders hidden.
+The shared tree suite verifies its topology result independently of pending
+deletion retries, allowing complete layouts to use one ownership scan.
+
+Native target tests release living moved shapes and recycled native hint scopes
+on the render cadence, retain unrelated properties and exercise replacement
+through a real `CitadelHud` fixture. They resolve both native duplicate hint IDs,
+reject unrelated same-ID containers, retry late branch children and contain
+stopped hooks/loading roots without added XML classes. Private caches are not
+published to shared State.
+
+`performance_owner_lifecycle.test.js` covers private report/renderer generations,
+reactive collection flags/opacity, preserved Scheduler samples, partial writes/
+construction, native label replacement, registry cleanup and rolling reports.
+They also cover complete moved-child retirement, rapid re-enable without
+reviving the previous tree, and loading-root suppression while console
+collection remains enabled.
+These are callback-data checks, not native frame/rendering performance results.
+
+`urn_tracker_runtime.test.js` drives the private urn-difference lifecycle, including
+native/legacy source priority, late/moved/class-recycled sources, living HUD and
+readout replacements, partial construction/text writes and registry cleanup.
+The same tests exercise prior-instance deletion, complete moved-child retirement
+and loading roots with similar native IDs. Pure parsing/display cases retain
+native number formats and match-time thresholds.
+Native networth binding timing and readout presentation remain client checks.
+
+`map_module_lifecycle.test.js` also exercises the timer owner's complete created
+tree, stopped settings hooks, hidden partial construction, immediate re-enable,
+loading roots and living HUD/native-clock replacement. Existing geometry tests
+retain both minimap scale methods and Base/Alt/Tab bridge placement.
+The compass cases also retire every created tick/readout child, contain inactive
+hooks, wait for both queued previous trees, recover hidden partial construction,
+and reset native rotation/flip/motion bindings across living HUD replacement.
+
+`build_id_owner_lifecycle.test.js` checks existing parsing and native title
+fallback, reactive settings, late/live source and parent replacement, current HUD
+isolation, partial construction/style/text failures, queued previous trees and
+registry cleanup. Preset bridge and hideout regressions retain the current
+readout behavior. Native metadata binding and composition remain client checks.
+
+Reload-owner regressions also check queued previous IDs before deletion runs,
+stopped hooks, moved labels whose text setter rejects cleanup, and fresh
+estimates after living HUD/loading-scope replacement. Existing tests retain
+both radial directions and native clip/class preservation.
+
+`shared_panel_cache.test.js` covers shared typed/compatibility storage, public
+resolution after living moves, root/ID-scoped discovery misses, equal-revision
+configuration across living generations, current UI-root selection and rejected
+publication read-back. These checks model panel attributes, not disk durability.
+Storage-bridge fixtures load the production namespace/panel helpers used by the
+settings context, rather than a partial replacement for their discovery contract.
+
+`game_time_sync.test.js` retains synchronized timer updates and bounded missing
+clock searches. It also covers living verified clock/root replacement, upgrading
+construction fallbacks, equal-second generation notifications, requested-root
+reads and subscription mutation/cancellation.
+
+`core_native_generations.test.js` checks current shop combat evidence, independent
+indicator recovery and retired native targets, living root class release, partial
+ability-class retries, reload exception source replacement and mode observations.
+The status/indicator regression observes visible phases and class state rather
+than modifying private history through shared State. Native visuals/timing remain
+maintainer client checks.
+
+`combat_status_owner.test.js` exercises the text readout through its lifecycle:
+late native gameplay, reactive geometry, living parent/label replacement, retained
+same-HUD phase history, reset on a new HUD, partial construction/styles and stopped
+hooks. The registry failure case verifies both UI and work cleanup; indicator
+independence remains covered by the combined status/indicator regression.
+
+`owned_overlay_trees.test.js` exercises production zip/unsecured/stat owners and
+the shared created-tree helper against late native parents, living HUD/scope
+replacement, every moved child, partial construction/styles, deletion retry,
+stopped hooks and rapid registry re-enable. Existing overlay tests retain timer
+sampling, source selection, native content and component/offset behavior.
+
+`hero_evidence_scope.test.js` checks requested-root isolation, late/live pawn
+sources, conflicting native classes and contained pregame read failures. FG
+portrait regressions retain reveal priority, mapped assets and native healthbar
+behavior; frozen compact/envelope tests retain historical config decoding.
+
+`item_mirror_ownership.test.js` exercises current HUD/inventory generations,
+living source/child replacement, partial writes/construction and pending/active
+feedback cancellation. The existing `item_mirror.test.js` still checks discovery,
+exceptions, source identity and text backoff, and now covers both radial
+directions and native-generation estimator reset. The production runtime test
+retains all four filters and purchase/sale/shop behavior.
+
+`presentation_lifecycle.test.js` exercises explicit disable, partial enable
+failure, Scheduler auto-disable and shutdown/reboot through the production
+registry. It verifies custom-only CSS release, retained config, independent
+observers and restored presentation on enable, including Advanced/Basic mode.
+
+`tests/customize_config_compat.test.js` imports frozen legacy compact codes
+generated with the main codec/schema recorded in the fixture, then checks
+Customize cancellation, Apply and current-format export. It also checks legacy
+flat JSON and storage envelopes. Fixtures are deliberately not regenerated by
+the current writer during a test.
+
+The frozen `main_customize_configs.json` matrix additionally covers all six
+healthbar variants and both minimap scale methods. Changing AP in a scoped
+editor and exporting must preserve their healthbar/map settings. Runtime
+geometry is checked separately by `healthbar_canvas.test.js` and
+`minimap_settings_compat.test.js`.
+
+`tests/customize_scoped.test.js` drives actual gameplay-header entries, verifies
+one-surface frames and edits, rejects out-of-scope patches/resets/unlocks, and
+checks English/Russian/incomplete-locale copy. It also verifies that the full
+Customize tab still permits selecting other elements.
 
 ```text
 node --test tests/storage_bridge.test.js tests/audio_runtime.test.js
@@ -150,6 +403,11 @@ These tools count operations and expose JavaScript exceptions under the supplied
 model. They cannot establish which calls the live engine makes or the cost of a
 rendered frame. An id absent from XML/JavaScript can still be created by C++.
 
+The profiler composition regression uses a temporary native-layout fixture to
+verify current override precedence, fallback after XML retirement and explicit
+missing-source notes. It does not depend on a developer's local game extract;
+actual XML composition still needs that extract for native layouts.
+
 The preferred full hierarchy source is the standalone HUD-Dumper native Debugger
 export. See [capture testing](CAPTURE_TESTING.md) for importing its receiver JSON,
 scope/fidelity checks and the dependency audit. The audit derives active HUD
@@ -240,6 +498,17 @@ isolates are outside this check. `helper_safety.test.js` covers cache ownership,
 partial native failures, listener mutation and Scheduler/lifecycle cleanup;
 `hud_state_observation.test.js` covers state ambiguity, transitions and recorder
 bounds/cancellation. These tests simulate native behavior.
+
+`native_style_owner.test.js` exercises component leases for native position,
+CSS-name aliases, readback and cleanup after controller disposal. Module
+lifecycle regressions cover native overwrite, rejected retirement, HUD/source
+replacement and stopped hooks. `customize_preview_delivery.test.js` injects a
+failed config delivery, benchmark suppression and partial acknowledgement writes;
+an editor acknowledgement follows delivery and does not prove native relayout.
+Editor regressions retain measured geometry across accepted input, resize,
+Undo/Redo and context changes. They do not simulate compositor hit testing or
+clipping. Physical digit Reset, overlapping corners and minimum Stamina scale
+require client checks after repack.
 
 Use [HUD state recording](ui/hud_state_recording.md) after a fresh client repack
 for actual scoreboard/life transitions.

@@ -1,0 +1,12 @@
+/* QOLLOCK overrides for unit_status_icons.css; loaded after the native baseline. */
+
+.minecraft_healthbar_active #gameplay_hud #stacks
+{
+	text-align: right;
+	font-family: "Mojang";
+}
+
+CitadelHud #StatusEffectContainer
+{
+	height: fit-children;
+}

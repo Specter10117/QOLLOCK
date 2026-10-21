@@ -1,0 +1,185 @@
+{
+  "receivedAtUtc": "2026-10-17T02:54:24.817130+00:00",
+  "rawPacketSha256": "81d2636019fa7f31a6f41bf8dc3a9d43f9b0e31db90e9f58d41e865a424a9e7f",
+  "rawPacket": "GRIMOIRE_TRACE_PROBE|{\"session\":\"mvbsz986-1\",\"complete\":true,\"context\":{\"id\":\"CitadelHudRoot\",\"type\":\"Panel\"},\"scope\":\"owned-panels-and-current-dollar-context\",\"nativeTraversalMeasured\":false,\"fullModCoverage\":false,\"methods\":[{\"method\":\"FindChild\",\"ownDescriptor\":{\"kind\":\"function\",\"writable\":true,\"configurable\":true,\"enumerable\":true},\"peerOwnDescriptor\":{\"kind\":\"function\",\"writable\":true,\"configurable\":true,\"enumerable\":true},\"prototypeSame\":true,\"patched\":true,\"restored\":true,\"wrapperCalls\":1,\"baseline\":\"GrimoireTraceProbeTarget\",\"observed\":\"GrimoireTraceProbeTarget\",\"cachedAliasResult\":\"GrimoireTraceProbeTarget\",\"cachedReferenceBypassesWrapper\":true,\"peerIntercepted\":false,\"sameResult\":true},{\"method\":\"FindChildTraverse\",\"ownDescriptor\":{\"kind\":\"function\",\"writable\":true,\"configurable\":true,\"enumerable\":true},\"peerOwnDescriptor\":{\"kind\":\"function\",\"writable\":true,\"configurable\":true,\"enumerable\":true},\"prototypeSame\":true,\"patched\":true,\"restored\":true,\"wrapperCalls\":1,\"baseline\":\"GrimoireTraceProbeTarget\",\"observed\":\"GrimoireTraceProbeTarget\",\"cachedAliasResult\":\"GrimoireTraceProbeTarget\",\"cachedReferenceBypassesWrapper\":true,\"peerIntercepted\":false,\"sameResult\":true},{\"method\":\"FindChildrenWithClassTraverse\",\"ownDescriptor\":{\"kind\":\"function\",\"writable\":true,\"configurable\":true,\"enumerable\":true},\"peerOwnDescriptor\":{\"kind\":\"function\",\"writable\":true,\"configurable\":true,\"enumerable\":true},\"prototypeSame\":true,\"patched\":true,\"restored\":true,\"wrapperCalls\":1,\"baseline\":[\"GrimoireTraceProbeClassTarget\"],\"observed\":[\"GrimoireTraceProbeClassTarget\"],\"cachedAliasResult\":[\"GrimoireTraceProbeClassTarget\"],\"cachedReferenceBypassesWrapper\":true,\"peerIntercepted\":false,\"sameResult\":true}],\"scheduler\":{\"ownDescriptor\":{\"kind\":\"function\",\"writable\":true,\"configurable\":true,\"enumerable\":true},\"restored\":true,\"wrapperCalls\":1,\"handleType\":\"number\",\"cancelledCallbackRan\":false},\"cleanupRequested\":true,\"semantics\":{\"idIncludesSearchRoot\":false,\"classIncludesSearchRoot\":false,\"duplicateFirstParent\":\"GrimoireTraceProbeRoot\",\"directFindSkipsNested\":true,\"missingKind\":\"null\",\"emptyIdKind\":\"null\",\"getClassesType\":\"undefined\",\"dollarType\":\"function\",\"duplicateTopology\":{\"distinct\":true,\"nestedValid\":true,\"directValid\":true,\"nestedId\":\"GrimoireTraceProbeDuplicate\",\"directId\":\"GrimoireTraceProbeDuplicate\",\"nestedParent\":\"GrimoireTraceProbeBranch\",\"directParent\":\"GrimoireTraceProbeRoot\"}},\"searchOrder\":{\"topology\":[{\"id\":\"GrimoireTraceProbeLeft\",\"parent\":\"GrimoireTraceProbeOrderRoot\",\"valid\":true},{\"id\":\"GrimoireTraceProbeRight\",\"parent\":\"GrimoireTraceProbeOrderRoot\",\"valid\":true},{\"id\":\"GrimoireTraceProbeDeepParent\",\"parent\":\"GrimoireTraceProbeLeft\",\"valid\":true},{\"id\":\"GrimoireTraceProbeOrderDuplicate\",\"parent\":\"GrimoireTraceProbeDeepParent\",\"valid\":true},{\"id\":\"GrimoireTraceProbeOrderDuplicate\",\"parent\":\"GrimoireTraceProbeRight\",\"valid\":true}],\"distinctDuplicates\":true,\"selectedParent\":\"GrimoireTraceProbeDeepParent\",\"classResult\":[{\"id\":\"GrimoireTraceProbeLeft\",\"parent\":\"GrimoireTraceProbeOrderRoot\"},{\"id\":\"GrimoireTraceProbeRight\",\"parent\":\"GrimoireTraceProbeOrderRoot\"},{\"id\":\"GrimoireTraceProbeDeepParent\",\"parent\":\"GrimoireTraceProbeLeft\"},{\"id\":\"GrimoireTraceProbeOrderDuplicate\",\"parent\":\"GrimoireTraceProbeDeepParent\"},{\"id\":\"GrimoireTraceProbeOrderDuplicate\",\"parent\":\"GrimoireTraceProbeRight\"}],\"classIncludesRoot\":false}}",
+  "report": {
+    "session": "mvbsz986-1",
+    "complete": true,
+    "context": {
+      "id": "CitadelHudRoot",
+      "type": "Panel"
+    },
+    "scope": "owned-panels-and-current-dollar-context",
+    "nativeTraversalMeasured": false,
+    "fullModCoverage": false,
+    "methods": [
+      {
+        "method": "FindChild",
+        "ownDescriptor": {
+          "kind": "function",
+          "writable": true,
+          "configurable": true,
+          "enumerable": true
+        },
+        "peerOwnDescriptor": {
+          "kind": "function",
+          "writable": true,
+          "configurable": true,
+          "enumerable": true
+        },
+        "prototypeSame": true,
+        "patched": true,
+        "restored": true,
+        "wrapperCalls": 1,
+        "baseline": "GrimoireTraceProbeTarget",
+        "observed": "GrimoireTraceProbeTarget",
+        "cachedAliasResult": "GrimoireTraceProbeTarget",
+        "cachedReferenceBypassesWrapper": true,
+        "peerIntercepted": false,
+        "sameResult": true
+      },
+      {
+        "method": "FindChildTraverse",
+        "ownDescriptor": {
+          "kind": "function",
+          "writable": true,
+          "configurable": true,
+          "enumerable": true
+        },
+        "peerOwnDescriptor": {
+          "kind": "function",
+          "writable": true,
+          "configurable": true,
+          "enumerable": true
+        },
+        "prototypeSame": true,
+        "patched": true,
+        "restored": true,
+        "wrapperCalls": 1,
+        "baseline": "GrimoireTraceProbeTarget",
+        "observed": "GrimoireTraceProbeTarget",
+        "cachedAliasResult": "GrimoireTraceProbeTarget",
+        "cachedReferenceBypassesWrapper": true,
+        "peerIntercepted": false,
+        "sameResult": true
+      },
+      {
+        "method": "FindChildrenWithClassTraverse",
+        "ownDescriptor": {
+          "kind": "function",
+          "writable": true,
+          "configurable": true,
+          "enumerable": true
+        },
+        "peerOwnDescriptor": {
+          "kind": "function",
+          "writable": true,
+          "configurable": true,
+          "enumerable": true
+        },
+        "prototypeSame": true,
+        "patched": true,
+        "restored": true,
+        "wrapperCalls": 1,
+        "baseline": [
+          "GrimoireTraceProbeClassTarget"
+        ],
+        "observed": [
+          "GrimoireTraceProbeClassTarget"
+        ],
+        "cachedAliasResult": [
+          "GrimoireTraceProbeClassTarget"
+        ],
+        "cachedReferenceBypassesWrapper": true,
+        "peerIntercepted": false,
+        "sameResult": true
+      }
+    ],
+    "scheduler": {
+      "ownDescriptor": {
+        "kind": "function",
+        "writable": true,
+        "configurable": true,
+        "enumerable": true
+      },
+      "restored": true,
+      "wrapperCalls": 1,
+      "handleType": "number",
+      "cancelledCallbackRan": false
+    },
+    "cleanupRequested": true,
+    "semantics": {
+      "idIncludesSearchRoot": false,
+      "classIncludesSearchRoot": false,
+      "duplicateFirstParent": "GrimoireTraceProbeRoot",
+      "directFindSkipsNested": true,
+      "missingKind": "null",
+      "emptyIdKind": "null",
+      "getClassesType": "undefined",
+      "dollarType": "function",
+      "duplicateTopology": {
+        "distinct": true,
+        "nestedValid": true,
+        "directValid": true,
+        "nestedId": "GrimoireTraceProbeDuplicate",
+        "directId": "GrimoireTraceProbeDuplicate",
+        "nestedParent": "GrimoireTraceProbeBranch",
+        "directParent": "GrimoireTraceProbeRoot"
+      }
+    },
+    "searchOrder": {
+      "topology": [
+        {
+          "id": "GrimoireTraceProbeLeft",
+          "parent": "GrimoireTraceProbeOrderRoot",
+          "valid": true
+        },
+        {
+          "id": "GrimoireTraceProbeRight",
+          "parent": "GrimoireTraceProbeOrderRoot",
+          "valid": true
+        },
+        {
+          "id": "GrimoireTraceProbeDeepParent",
+          "parent": "GrimoireTraceProbeLeft",
+          "valid": true
+        },
+        {
+          "id": "GrimoireTraceProbeOrderDuplicate",
+          "parent": "GrimoireTraceProbeDeepParent",
+          "valid": true
+        },
+        {
+          "id": "GrimoireTraceProbeOrderDuplicate",
+          "parent": "GrimoireTraceProbeRight",
+          "valid": true
+        }
+      ],
+      "distinctDuplicates": true,
+      "selectedParent": "GrimoireTraceProbeDeepParent",
+      "classResult": [
+        {
+          "id": "GrimoireTraceProbeLeft",
+          "parent": "GrimoireTraceProbeOrderRoot"
+        },
+        {
+          "id": "GrimoireTraceProbeRight",
+          "parent": "GrimoireTraceProbeOrderRoot"
+        },
+        {
+          "id": "GrimoireTraceProbeDeepParent",
+          "parent": "GrimoireTraceProbeLeft"
+        },
+        {
+          "id": "GrimoireTraceProbeOrderDuplicate",
+          "parent": "GrimoireTraceProbeDeepParent"
+        },
+        {
+          "id": "GrimoireTraceProbeOrderDuplicate",
+          "parent": "GrimoireTraceProbeRight"
+        }
+      ],
+      "classIncludesRoot": false
+    }
+  }
+}

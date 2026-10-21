@@ -1,9 +1,8 @@
 "use strict";
+const { readStyleSource } = require("./helpers/style_source");
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const fs = require("node:fs");
-const path = require("node:path");
 const { createHud } = require("../scripts/simulator");
 
 function addClipHalf($, root, id) {
@@ -20,7 +19,8 @@ test("magazine rotation keeps both native half-rings together across hero layout
     const first = addClipHalf($, hud.root, "clip_status");
     Q.core.ConfigStore.set("ql_ammo", "AMMO_CLIP_ANGLE", 45);
     hud.clock.advance(600);
-    assert.equal(first.Children()[0].style.transform, "rotateZ(-45deg)");
+    assert.equal(first.style.transform, "rotateZ(-45deg)");
+    assert.equal(first.Children()[0].style.transform, undefined, "native ring transforms stay engine-owned");
 
     first.DeleteAsync(0);
     hud.clock.advance(1);
@@ -49,13 +49,13 @@ test("magazine rotation keeps both native half-rings together across hero layout
     hud.clock.advance(1);
     const standardAgain = addClipHalf($, hud.root, "clip_status");
     hud.clock.advance(600);
-    assert.equal(standardAgain.style.transform || "", "");
-    assert.equal(standardAgain.Children()[0].style.transform, "rotateZ(-45deg)");
+    assert.equal(standardAgain.style.transform, "rotateZ(-45deg)");
+    assert.equal(standardAgain.Children()[0].style.transform, undefined);
     assert.deepEqual(hud.clock.errors, []);
 });
 
 test("visual ammo state follows dynamically replaced native clip panels", () => {
-    const css = fs.readFileSync(path.join(__dirname, "..", "panorama/styles/ability_hud_elements/element_gun.css"), "utf8");
+    const css = readStyleSource("panorama/styles/ability_hud_elements/element_gun.css");
     assert.match(css, /#clip_status\.qol-ammo-visual-enabled[^}]*visibility:\s*visible\s*!important;/s);
     assert.match(css, /#clip_status\.qol-ammo-visual-enabled #clip_progress_bar[^}]*visibility:\s*visible\s*!important;/s);
     assert.match(css, /\.has_bonus_clip #clip_status\.qol-ammo-visual-enabled #clip_bonus_progress_bar[^}]*visibility:\s*visible\s*!important;/s);

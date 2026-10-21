@@ -142,6 +142,17 @@
         return resolved;
     };
 
+    const preservedUiPreferences = config => {
+        const result = { DRAG_ENABLED: config.DRAG_ENABLED, PREVIEWS_ENABLED: config.PREVIEWS_ENABLED };
+        if (config.ENABLE_UPDATE_CHECKER !== undefined) result.ENABLE_UPDATE_CHECKER = config.ENABLE_UPDATE_CHECKER;
+        return result;
+    };
+
+    const buildPresetCandidateConfigByName = name => {
+        const resolved = resolvePresetConfigByName(name);
+        return resolved ? Object.assign(resolved, preservedUiPreferences(globalThis.MOD_CONFIG || {})) : null;
+    };
+
     const isPresetValueMatch = (currentValue, presetValue) => {
         if (typeof currentValue === "number" && typeof presetValue === "number") {
             return Math.abs(currentValue - presetValue) <= 0.0001;
@@ -171,9 +182,7 @@
         const defConfig = globalThis.DEFAULT_CONFIG || globalThis.QOL_DEFAULT_CONFIG || {};
         if (!modConfig) return false;
 
-        const preservedDrag = modConfig.DRAG_ENABLED;
-        const preservedPreviews = modConfig.PREVIEWS_ENABLED;
-        const preservedUpdateChecker = modConfig.ENABLE_UPDATE_CHECKER;
+        const preserved = preservedUiPreferences(modConfig);
 
         for (const key of Object.keys(defConfig)) {
             modConfig[key] = defConfig[key];
@@ -184,11 +193,7 @@
 
         runNormalizers(modConfig, presetData);
 
-        modConfig.DRAG_ENABLED = preservedDrag;
-        modConfig.PREVIEWS_ENABLED = preservedPreviews;
-        if (preservedUpdateChecker !== undefined) {
-            modConfig.ENABLE_UPDATE_CHECKER = preservedUpdateChecker;
-        }
+        Object.assign(modConfig, preserved);
         return true;
     };
 
@@ -551,7 +556,7 @@
         applyPresetByName,
         buildCommunityPresetEntries,
         resolvePresetConfigByName,
-        buildPresetCandidateConfigByName: resolvePresetConfigByName,
+        buildPresetCandidateConfigByName,
         doesCurrentConfigMatchPreset,
         refreshActivePresetConfigMarkerBeforeSave,
         refreshActivePresetHighlight,
@@ -572,7 +577,7 @@
     globalThis.ApplyPresetByName = applyPresetByName;
     globalThis.BuildCommunityPresetEntries = buildCommunityPresetEntries;
     globalThis.ResolvePresetConfigByName = resolvePresetConfigByName;
-    globalThis.BuildPresetCandidateConfigByName = resolvePresetConfigByName;
+    globalThis.BuildPresetCandidateConfigByName = buildPresetCandidateConfigByName;
     globalThis.DoesCurrentConfigMatchPreset = doesCurrentConfigMatchPreset;
     globalThis.RefreshActivePresetConfigMarkerBeforeSave = refreshActivePresetConfigMarkerBeforeSave;
     globalThis.RefreshActivePresetHighlight = refreshActivePresetHighlight;

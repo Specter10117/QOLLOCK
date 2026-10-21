@@ -1,0 +1,6 @@
+/* QOLLOCK overrides for citadel_client_status.css; loaded after the native baseline. */
+
+CitadelClientStatus #DefaultStatus
+{
+    visibility: collapse;
+}

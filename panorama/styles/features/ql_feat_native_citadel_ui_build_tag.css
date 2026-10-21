@@ -1,0 +1,15 @@
+/* QOLLOCK overrides for citadel_ui_build_tag.css; loaded after the native baseline. */
+
+.support_4_3_active CitadelBuildTag
+{
+	ui-scale: 80%;
+}
+
+.support_4_3_active #AbilityBuildContainer
+{
+	padding: 10px;
+	vertical-align: bottom;
+	horizontal-align: left;
+	height: 160px;
+	width: 350px;
+}

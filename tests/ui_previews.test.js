@@ -9,6 +9,17 @@ const vm = require("node:vm");
 const { Document } = require("../scripts/simulator/panel.js");
 const { Clock } = require("../scripts/simulator/clock.js");
 const loadUiHelpers = require("./load_ui_helpers.js");
+const environments = new Set();
+
+test.afterEach(() => {
+    for (const { ctx, clock } of environments) {
+        ctx.QOL.preview.hideAll();
+        clock.advance(2000);
+        assert.deepStrictEqual(clock.errors, []);
+        assert.strictEqual(clock.pendingCount(), 0, "preview teardown must finish native deletion and cleanup retries");
+    }
+    environments.clear();
+});
 
 function createPreviewTestEnvironment(configOverrides = {}) {
     const clock = new Clock(1000);
@@ -22,8 +33,8 @@ function createPreviewTestEnvironment(configOverrides = {}) {
 
     const mockDollar = {
         Msg: () => {},
-        Schedule: (delaySec, cb) => setTimeout(cb, delaySec * 1000),
-        CancelScheduled: (id) => clearTimeout(id),
+        Schedule: (delaySec, cb) => clock.schedule(delaySec, cb),
+        CancelScheduled: (id) => clock.cancel(id),
         CreatePanel: (type, parent, id) => {
             const p = doc.create(type, { id: id || "" });
             if (parent && typeof parent.addChild === "function") {
@@ -173,12 +184,17 @@ function createPreviewTestEnvironment(configOverrides = {}) {
 
     ctx.globalThis = ctx;
     loadUiHelpers(ctx);
+    for (const name of ["ql_shared_presets.js", "ql_settings_contract.js"]) {
+        const filename = path.resolve(__dirname, "../panorama/scripts", name);
+        vm.runInNewContext(fs.readFileSync(filename, "utf8"), ctx, { filename });
+    }
 
     const previewsSrc = fs.readFileSync(path.resolve(__dirname, "../panorama/scripts/ql_settings_previews.js"), "utf8");
     vm.runInNewContext(previewsSrc, ctx, { filename: "ql_settings_previews.js" });
 
     const controlsSrc = fs.readFileSync(path.resolve(__dirname, "../panorama/scripts/ui/controls.js"), "utf8");
     vm.runInNewContext(controlsSrc, ctx, { filename: "controls.js" });
+    environments.add({ ctx, clock });
 
     return {
         ctx,

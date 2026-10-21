@@ -13,6 +13,13 @@ separate contracts. None automatically creates the others.
    (`QOL_DEFAULT_CONFIG`). Add matching schema entries to every owning
    `panorama/scripts/manifests/<id>/manifest.js`. Settings-only preferences need
    not have a gameplay manifest. Shared keys can have multiple feature owners.
+   Registration resolves existing defaults and numeric metadata from the shared
+   catalog, while ConfigStore maintains one accepted value for every subscriber.
+   Keep each declaration's type/meaning consistent; a local copy is not a second
+   persistent setting.
+   Omit repeated persistent defaults and numeric bounds from manifests; the shared
+   default map and current field catalog own them. Feature-local fields still need
+   explicit defaults and validation metadata.
 3. **Edit the real tab renderer.** Most tabs register a renderer through
    `QOL.ui.window.registerTabRenderer` and build rows with `QOL.ui.controls`.
    Read an adjacent row in `ui/gameplay_tabs.js`, `config_tab.js`, `audio.js` or
@@ -33,11 +40,13 @@ separate contracts. None automatically creates the others.
    current `ctx.config`. Keep enable predicates, disable cleanup and other owners
    consistent. Numeric modes are not necessarily boolean toggles. Do not add a
    second poller just to observe a setting already delivered through the hook.
-7. **Preserve storage compatibility.** For a shareable field, extend the current
-   compact schema with its real range/step using the existing schema utilities.
-   Preserve historical schema field order, bounds, steps and defaults. Update
-   relevant normalization/migration/import/export paths. Package version,
-   schema version and public update marker are separate concepts.
+7. **Preserve storage compatibility.** Add independent current control metadata
+   to `QOL_SETTINGS_FIELDS`: type, role, units, display conversion, precision and
+   runtime owners. `QOL.settings` supplies common validation and conversions. All new exports use the full JSON envelope; adding
+   a setting requires no compact layout change. Frozen historical compact tables
+   and their reader belong to `ql_legacy_compact.js`. Preserve their field order,
+   bounds, steps and migrations. Package/schema versions still require explicit
+   maintainer authorization.
 8. **Check the complete round-trip.** Verify control -> dirty intent -> published
    config -> HUD consumer -> export -> import, plus reset/preset application and
    disable/re-enable. Include range boundaries and malformed typed input.
@@ -57,6 +66,9 @@ This signature illustration is not a feature implementation. Follow the owning
 manifest's existing reaction path. `ctx.config.view()` is live and read-only by
 convention; `all()` allocates a shallow copy. The HUD receives settings through
 cross-context publication and polling, so hooks do not guarantee zero latency.
+Batch payloads contain every changed owner key in `changes`; `key`/`value`
+describe only the first. All shared subscribers already hold the accepted values
+before hooks run.
 
 ## Numeric and enable-state boundaries
 
@@ -64,9 +76,9 @@ cross-context publication and polling, so hooks do not guarantee zero latency.
   booleans. Do not apply generic JavaScript truthiness to flat values.
 - A manifest `enableKey` is not a complete activation rule if it also declares
   `isEnabled`. Inspect the predicate and shared-key routing.
-- Procedural sliders commit on the compact schema step grid where a field exists,
+- Procedural sliders commit on the current settings step grid where a field exists,
   within intersected UI/schema bounds. Invalid typed input preserves the prior
-  value. A finer UI step cannot make the wire format preserve more precision.
+  value. The current catalog owns accepted precision; JSON sharing preserves it.
 - ConfigStore slider rounding is not compact-codec step snapping. Verify the
   renderer and actual consumer rather than assuming every numeric path matches.
 - Performance tiers are UI metadata, not measured frame-time guarantees. Do not

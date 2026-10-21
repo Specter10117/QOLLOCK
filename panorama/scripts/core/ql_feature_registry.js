@@ -32,7 +32,15 @@
 
     const manifests = {};
     const instances = {};
+    const contexts = new Map();
+    const contextCleanups = new WeakMap();
+    const disabling = new Set();
     const enabledMap = {};
+    // Explicitly retired or failed owners cannot leave custom-only CSS active.
+    // Unknown/pre-boot owners remain neutral; this is not persisted enable state.
+    const unavailablePresentation = new Set();
+    const runtimeSuppressed = new Set();
+    let shuttingDown = false;
     const enablingInProgress = {};  // reentry guard: prevents recursion during onEnable/boot
     const errorStreaks = {};
     let configChangedHandler = null;
@@ -49,37 +57,82 @@
         }
     };
 
-    const createContext = (featureId) => ({
-        id: featureId,
-        events: {
-            on: (event, fn) => EventBus.on(event, fn),
-            off: (event, fn) => EventBus.off(event, fn),
-            emit: (event, payload) => {
-                EventBus.emit(`${featureId}:${event}`, payload);
+    const createContext = featureId => {
+        let active = true;
+        const subscriptions = new Map();
+        const off = (event, fn) => {
+            const registered = subscriptions.get(event);
+            if (!registered) return;
+            for (const [original, wrapper] of registered) {
+                if (fn && original !== fn) continue;
+                EventBus.off(event, wrapper);
+                registered.delete(original);
             }
-        },
-        config: {
-            get: (key) => ConfigStore.get(featureId, key),
-            getBool: (key) => Boolean(ConfigStore.get(featureId, key)),
-            set: (key, value) => ConfigStore.set(featureId, key, value),
-            all: () => ConfigStore.all(featureId),
-            view: () => (ConfigStore.view ? ConfigStore.view(featureId) : ConfigStore.all(featureId))
-        }
-    });
+            if (!registered.size) subscriptions.delete(event);
+        };
+        const context = {
+            id: featureId,
+            events: {
+                on: (event, fn) => {
+                    if (!active || typeof event !== "string" || typeof fn !== "function") return;
+                    if (!subscriptions.has(event)) subscriptions.set(event, new Map());
+                    const registered = subscriptions.get(event);
+                    if (registered.has(fn)) return;
+                    const wrapper = payload => { if (active) fn(payload); };
+                    registered.set(fn, wrapper);
+                    EventBus.on(event, wrapper);
+                },
+                off,
+                emit: (event, payload) => {
+                    if (active) EventBus.emit(`${featureId}:${event}`, payload);
+                }
+            },
+            config: {
+                get: key => ConfigStore.get(featureId, key),
+                getBool: key => Boolean(ConfigStore.get(featureId, key)),
+                set: (key, value) => active && ConfigStore.set(featureId, key, value),
+                all: () => ConfigStore.all(featureId),
+                view: () => ConfigStore.view(featureId)
+            }
+        };
+        contextCleanups.set(context, () => {
+            active = false;
+            for (const event of subscriptions.keys()) off(event);
+        });
+        return context;
+    };
+
+    const releaseContext = id => {
+        const context = contexts.get(id);
+        if (context) contextCleanups.get(context)();
+        contexts.delete(id);
+    };
+
+    const setPresentationAvailable = (id, available) => {
+        const changed = !unavailablePresentation.has(id) !== available;
+        if (available) unavailablePresentation.delete(id);
+        else unavailablePresentation.add(id);
+        return changed;
+    };
+    const publishPresentation = (id, available) => {
+        if (!shuttingDown) EventBus.emit("feature:presentation_changed", { featureId: id, available });
+    };
 
     const safeEnableFeature = (id) => {
+        if (runtimeSuppressed.has(id)) return;
         if (Object.prototype.hasOwnProperty.call(instances, id)) return; // already enabled
-        if (enablingInProgress[id]) return;                             // reentry guard
+        if (enablingInProgress[id] || disabling.has(id)) return;          // reentry guard
         const manifest = manifests[id];
         if (!manifest) return;
+        const presentationChanged = setPresentationAvailable(id, true);
         enablingInProgress[id] = true;
         let instance = null;
         try {
             const context = createContext(id);
+            contexts.set(id, context);
             instance = manifest.create(context);
             if (!instance || typeof instance.onEnable !== "function") {
-                delete enablingInProgress[id];
-                return;
+                throw new Error("create must return an instance with onEnable");
             }
             if (!isSettingsIsolate()) {
                 instance.onEnable();                                    // call BEFORE setting instances
@@ -87,20 +140,34 @@
             instances[id] = instance;                                   // only on success
             enabledMap[id] = true;
             errorStreaks[id] = 0;                                       // start tracking errors
+            delete enablingInProgress[id];
+            if (presentationChanged) publishPresentation(id, true);
+            return true;
         } catch (e) {
             // A failed onEnable may already own listeners, panels and schedules.
             // Unwind its partial setup before allowing a later enable retry.
+            runtimeSuppressed.add(id);
+            setPresentationAvailable(id, false);
+            releaseContext(id);
             try { instance?.onDisable?.(); } catch (_) { /* preserve original failure */ }
             try { Q.core.Scheduler?.cancelAllForFeature?.(id); } catch (_) { /* best-effort */ }
             if (Logger) Logger.logError("FeatureRegistry", `enable failed for '${id}': ${e?.message || e}`);
             errorStreaks[id] = (errorStreaks[id] || 0) + 1;
         }
         delete enablingInProgress[id];
+        publishPresentation(id, false);
     };
 
     const safeDisableFeature = (id) => {
         const instance = instances[id];
-        if (!instance) return;
+        if (disabling.has(id)) return;
+        if (!instance) {
+            if (manifests[id] && setPresentationAvailable(id, false)) publishPresentation(id, false);
+            return;
+        }
+        setPresentationAvailable(id, false);
+        disabling.add(id);
+        releaseContext(id);
         try {
             if (typeof instance.onDisable === "function") {
                 instance.onDisable();
@@ -116,6 +183,8 @@
         } catch (_) { /* best-effort */ }
         delete instances[id];
         enabledMap[id] = false;
+        disabling.delete(id);
+        publishPresentation(id, false);
     };
 
     const isFeatureSupposedToBeEnabled = (id, configSlice) => {
@@ -158,10 +227,14 @@
     const onConfigChanged = (payload) => {
         if (!payload || typeof payload.featureId !== "string") return;
         const manifest = manifests[payload.featureId];
-        const hasEnableKey = manifest && manifest.enableKey && payload.key === manifest.enableKey;
-        const hasEnableKeys = manifest && Array.isArray(manifest.enableKeys) && manifest.enableKeys.includes(payload.key);
+        // A deliberate off/on setting transition permits a retry. Appearance
+        // edits and unrelated config loads must not restart a retired owner.
+        if (!isFeatureSupposedToBeEnabled(payload.featureId)) runtimeSuppressed.delete(payload.featureId);
+        const changes = payload.changes || { [payload.key]: payload.value };
+        const hasEnableKey = manifest?.enableKey && Object.prototype.hasOwnProperty.call(changes, manifest.enableKey);
+        const hasEnableKeys = manifest && Array.isArray(manifest.enableKeys) && manifest.enableKeys.some(key => Object.prototype.hasOwnProperty.call(changes, key));
         const hasCustomEnabled = manifest && typeof manifest.isEnabled === "function";
-        const isEnableKey = payload.key === "enabled" || hasEnableKey || hasEnableKeys || hasCustomEnabled;
+        const isEnableKey = Object.prototype.hasOwnProperty.call(changes, "enabled") || hasEnableKey || hasEnableKeys || hasCustomEnabled;
         if (isEnableKey) {
             const shouldEnable = isFeatureSupposedToBeEnabled(payload.featureId);
             const isCurrentlyEnabled = Object.prototype.hasOwnProperty.call(instances, payload.featureId);
@@ -179,7 +252,7 @@
         }
         const instance = instances[payload.featureId];
         if (instance && typeof instance.onSettingsChanged === "function") {
-            payload.changes = { [payload.key]: payload.value };
+            payload.changes = changes;
             try {
                 instance.onSettingsChanged(payload);
                 errorStreaks[payload.featureId] = 0;
@@ -206,14 +279,18 @@
             $.Msg(`[QOLLock][WARN][FeatureRegistry] invalid manifest: ${err}`);
             return false;
         }
-        manifests[manifest.id] = manifest;
+        const settings = (manifest.settings || []).map(ConfigStore.canonicalSetting);
         let schemaSettings = [{
             key: "enabled", type: "toggle", default: manifest.enabledByDefault === true
         }];
-        if (manifest.settings && manifest.settings.length > 0) {
-            schemaSettings = schemaSettings.concat(manifest.settings);
+        if (settings.length > 0) {
+            schemaSettings = schemaSettings.concat(settings);
         }
-        ConfigStore.registerSchema(manifest.id, { settings: schemaSettings });
+        if (!ConfigStore.registerSchema(manifest.id, { settings: schemaSettings })) {
+            $.Msg(`[QOLLock][WARN][FeatureRegistry] invalid schema for '${manifest.id}'`);
+            return false;
+        }
+        manifests[manifest.id] = { ...manifest, settings };
         if (Logger) Logger.logInfo("FeatureRegistry", `registered '${manifest.id}'`);
         return true;
     };
@@ -227,34 +304,12 @@
             const id = ids[i];
             if (Object.prototype.hasOwnProperty.call(instances, id)) continue; // already enabled
             if (enablingInProgress[id]) continue;                              // reentry guard
-            const manifest = manifests[id];
-
             const slice = (config && Object.prototype.hasOwnProperty.call(config, id)) ? config[id] : null;
             const shouldEnable = isFeatureSupposedToBeEnabled(id, slice);
 
             if (!shouldEnable) continue;
 
-            enablingInProgress[id] = true;
-            let instance = null;
-            try {
-                const context = createContext(id);
-                instance = manifest.create(context);
-                if (instance && typeof instance.onEnable === "function") {
-                    if (!isSettingsIsolate()) {
-                        instance.onEnable();
-                    }
-                }
-                instances[id] = instance;
-                enabledMap[id] = true;
-                errorStreaks[id] = 0;
-                enabledCount++;
-            } catch (e) {
-                try { instance?.onDisable?.(); } catch (_) { /* preserve original failure */ }
-                try { Q.core.Scheduler?.cancelAllForFeature?.(id); } catch (_) { /* best-effort */ }
-                if (Logger) Logger.logError("FeatureRegistry", `boot failed for '${id}': ${e?.message || e}`);
-                errorStreaks[id] = (errorStreaks[id] || 0) + 1;
-            }
-            delete enablingInProgress[id];
+            if (safeEnableFeature(id)) enabledCount++;
         }
 
         $.Msg(`[QOLLock] FeatureRegistry: boot complete — ${enabledCount}/${total} features enabled`);
@@ -273,6 +328,7 @@
                 errorStreaks[id] = streak;
                 if (streak >= ERROR_STREAK_MAX) {
                     if (Logger) Logger.logError("FeatureRegistry", `auto-disabled '${id}' after ${streak} consecutive poll errors: ${payload.message || ""}`);
+                    runtimeSuppressed.add(id);
                     safeDisableFeature(id);
                     delete errorStreaks[id];
                 }
@@ -292,6 +348,7 @@
     };
 
     const shutdown = () => {
+        shuttingDown = true;
         try {
             if (Q.core?.ManifestTests?.cancel) {
                 Q.core.ManifestTests.cancel();
@@ -300,17 +357,7 @@
 
         const ids = Object.keys(instances);
         for (let i = 0; i < ids.length; i++) {
-            try {
-                const inst = instances[ids[i]];
-                if (inst && typeof inst.onDisable === "function") inst.onDisable();
-            } catch (e) {
-                if (Logger) Logger.logError("FeatureRegistry", `shutdown failed for '${ids[i]}': ${e?.message || e}`);
-            }
-            try {
-                if (Q.core.Scheduler?.cancelAllForFeature) {
-                    Q.core.Scheduler.cancelAllForFeature(ids[i]);
-                }
-            } catch (_) { /* best-effort */ }
+            safeDisableFeature(ids[i]);
         }
 
         if (configChangedHandler) {
@@ -328,6 +375,12 @@
 
         for (const k of Object.keys(instances)) delete instances[k];
         for (const k of Object.keys(enabledMap)) delete enabledMap[k];
+        // Project the retired session once, then return standalone/pre-boot
+        // consumers to neutral policy without reapplying the stored CSS here.
+        EventBus.emit("feature:presentation_changed", { featureId: null, available: false, shutdown: true });
+        unavailablePresentation.clear();
+        runtimeSuppressed.clear();
+        shuttingDown = false;
     };
 
     const isEnabled = (featureId) => !!enabledMap[featureId];
@@ -340,8 +393,14 @@
         if (!featureId || typeof featureId !== "string") return null;
         return Object.prototype.hasOwnProperty.call(instances, featureId) ? instances[featureId] : null;
     };
-    const enableFeature = (id) => { safeEnableFeature(id); };
-    const disableFeature = (id) => { safeDisableFeature(id); };
+    const enableFeature = (id, options = {}) => {
+        if (!options.automatic) runtimeSuppressed.delete(id);
+        safeEnableFeature(id);
+    };
+    const disableFeature = (id, options = {}) => {
+        if (!options.automatic && manifests[id]) runtimeSuppressed.add(id);
+        safeDisableFeature(id);
+    };
 
     const registryApi = {
         register,
@@ -349,6 +408,7 @@
         shutdown,
         createContext,
         isEnabled,
+        isPresentationAvailable: id => !unavailablePresentation.has(id),
         isRegistered,
         isFeatureSupposedToBeEnabled,
         getRegisteredIds,

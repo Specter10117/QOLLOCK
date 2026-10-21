@@ -4,7 +4,7 @@
     "concommandsCount": 702,
     "convarsCount": 1653,
     "citadelFunctionsCount": 2046,
-    "citadelEventsCount": 1799,
+    "citadelEventsCount": 1800,
     "panelTypesCount": 384
   },
   "concommands": {
@@ -40401,6 +40401,11 @@
     }
   },
   "citadelEvents": {
+    "CitadelColorPickerColorChanged": {
+      "name": "CitadelColorPickerColorChanged",
+      "source": "client.dll",
+      "xmlUsageCount": 0
+    },
     "HTMLTitle": {
       "name": "HTMLTitle",
       "xmlUsageCount": 0,

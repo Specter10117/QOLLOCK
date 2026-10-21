@@ -61,7 +61,7 @@ function createTestEnvironment() {
             ui: {},
             persistence: {
                 fromBase64Url: (str) => Buffer.from(str, "base64").toString("binary"),
-                deserializeCompactV2: () => ({
+                deserializeSettings: () => ({
                     ENABLE_UNSPENT_SOULS: 0,
                     ENABLE_COLOR_WARNINGS: 0,
                     MINIMAP_SCALE: 1.25,
@@ -75,7 +75,7 @@ function createTestEnvironment() {
             DEFAULT_CONFIG: Object.assign({}, defaultConfig),
             QOL_DEFAULT_CONFIG: Object.assign({}, defaultConfig),
             MOD_CONFIG: Object.assign({}, defaultConfig),
-            LATEST_COMPACT_SEMVER: "1.0.0",
+            QOL_SCHEMA_SEMVER: "1.0.0",
             QOL_COMPACT_SCHEMA_REGISTRY: {
                 "1.0.0": { fields: [] },
             },

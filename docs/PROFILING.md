@@ -97,21 +97,44 @@ node scripts/profile_hud.js --defaults --enable ENABLE_CROSSHAIR_STATS=1
 ```
 
 For before/after comparisons, use the same tree, settings and sample window.
-The historical workflow used:
+Compare complete HUD script sets from local Git revisions without changing the
+checkout, stashing changes or building the mod:
 
 ```
-git stash push -- panorama/      # park your changes, keep the harness
-node scripts/profile_hud.js --seconds 20 --save baseline
-git stash pop
-node scripts/profile_hud.js --seconds 20 --compare baseline
+node scripts/compare_hud_refs.js --before main --after working-tree --tree captures/deadlock_hud_dump.json --healthbar 2 --output comparison.json
+node scripts/compare_hud_refs.js --before main --after HEAD --expanded --seconds 20 --json
 ```
+
+`compare_hud_refs.js` reads each revision's active `hud.xml` includes and their
+source objects. `working-tree` uses current files and records both HEAD and a
+source fingerprint. The same simulator and fixed tree are used for both runs;
+the baseline's complete config input is published unchanged to the other runtime.
+The default scenario uses baseline defaults; `--expanded` enables the same
+prefix-selected toggles as `profile_hud.js`, and `--enable KEY[=VALUE],...` selects
+additional values. Git refs are local: this command does not fetch.
+`--warmup-ms` sets the same warm-up in both runs. Compare the usual early window
+with a longer warm-up when a capture cannot supply identity/native bindings:
+late owner-discovery deadlines can still fall inside the usual measured window.
+Do not silently mix warm-up windows or present a static startup replay as FPS.
+
+Reports retain both raw snapshots, source identities, config/tree fingerprints,
+warm-up and sample duration, callback/registry errors and enabled-owner changes.
+Unequal inputs, loading failures, missing attribution and runtime errors fail
+the comparison. Added/removed owners are reported explicitly because a modular
+rewrite can split ownership; matching inputs do **not** prove equivalent behavior
+or gameplay coverage across versions. Static captures do not reproduce CSS,
+computed geometry, native bindings or FPS. Read raw counts alongside coverage
+and the existing `--save`/`--compare` reports, rather than interpreting a changed
+owner list as an optimization by itself.
 
 ## What it measures
 
 Instrumented operations made by the simulated mod are charged to the feature
-on the stack at the time — old-system features via their registry `update`, new
-manifests via `Scheduler.createPollLoop`, and the mod's own scheduled loops by
-callback name. Anything else lands in `<unattributed>`.
+on the stack at the time: manifests via `Scheduler.createPollLoop`, and the
+mod's own scheduled loops by callback name. Anything else lands in
+`<unattributed>`. The former empty dispatch registry is removed. Reports retain
+`meta.wrappedFeatures` as zero for archived report compatibility; active poll
+attribution requires `meta.wrappedScheduler`.
 
 Custom JavaScript walks through `Children()`/`GetChild()` and uninstrumented
 APIs do not contribute native-search visit counts. This is not total JS work.
@@ -255,6 +278,30 @@ then the simulated tree lacks the heart panels, so healthbar work is only
 partially covered — changes there need an in-game check. A run saved at one
 healthbar setting is not a valid baseline for a run at another.
 
+## Native search-result evidence and model compatibility
+
+The October 17 native capability session `mvbsz986-1` is retained under
+`tests/fixtures/native-search`, including the exact raw packet and its hash.
+It verified duplicate node topology, direct-child priority, left-deep selection
+over a right-shallow match, and ordered class results. The plain simulator and
+instrumented profiler now share per-parent direct-children-first recursion.
+Native result fixtures test both implementations. This fixes an earlier preorder
+assumption that could select another panel and change subsequent JS branches.
+It does not independently measure native internal traversal steps.
+
+The native `$` binding is callable and `GetClasses` is absent. The simulator now
+preserves those observed type guards. Direct selector calls remain unsupported;
+their attempts are retained even when caught by mod code and make a profile
+invalid for comparisons. Other stubbed APIs still limit modeled behavior.
+
+Reports retain a SHA256 `modelFingerprint` of simulator/import sources in
+addition to their tree and config fingerprints. Comparing older reports without
+it, or reports made by different models, is refused. This is a source identity,
+not a package/schema version. `trace_feature_hud --events` now retains all class
+result paths and breadcrumbs in order; the previous scalar first-result fields
+remain available. Native instance-hook coverage and restoration are described
+in [scheduler.md](core/scheduler.md).
+
 ## Regression guards
 
 The historical `perf_guards` and `large_tree_profile` ceiling suites were
@@ -274,10 +321,13 @@ without improving the feature. Scheduler error thresholds and cancellation are
 described in [scheduler.md](core/scheduler.md); repeated work is not guaranteed
 to continue forever after an error.
 
-The modifier/buff entry layout (`hud_modifiers_entry_center.xml`) is loaded from
-the vanilla resource directory. QOLLOCK does not ship an override identical to
-the game layout. Keep composition entries pointing to vanilla when removing
-redundant layout copies, so the modeled subtree is still included.
+XML composition selects a layout's current mod override when that source file
+exists, otherwise its extracted vanilla file. There is no second list of
+mod-owned layout flags to update when an override is retired. Missing selected
+sources still produce report notes. The modifier/buff entry layout and retired
+health-bar/unit-target overrides consequently keep their native subtrees in
+the model. This does not change the composition's approximate C++ mounting or
+the captured-hierarchy path.
 
 What is no longer automated is the ceiling itself. Use `--save` / `--compare`
 before and after a perf change instead:

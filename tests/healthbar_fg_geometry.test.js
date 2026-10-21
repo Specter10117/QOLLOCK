@@ -1,4 +1,5 @@
 "use strict";
+const { readStyleSource } = require("./helpers/style_source");
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
@@ -41,7 +42,7 @@ function framePixels() {
 }
 
 test("FG full fill covers the alpha opening; reported partial HP retains an empty tip", () => {
-    const css = fs.readFileSync(path.join(__dirname, "../panorama/styles/hud_health.css"), "utf8").replace(/\r\n/g, "\n");
+    const css = readStyleSource("panorama/styles/hud_health.css");
     function rule(id) {
         const start = css.indexOf(`.fg_healthbar_active:not(.minimalist_healthbar_active) #${id}\n{`);
         assert.ok(start >= 0);

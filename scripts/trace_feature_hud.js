@@ -96,6 +96,8 @@ function collectTrace(hud, { seconds, feature = null, xmlEvidence = [] }) {
             searchRootPath: panelPath(e.rootPanel),
             resultBreadcrumbs: e.found ? e.found.getBreadcrumbs() : null,
             resultPath: e.found ? panelPath(e.found) : null,
+            resultPaths: (e.results || (e.found ? [e.found] : [])).map(panelPath),
+            results: (e.results || (e.found ? [e.found] : [])).map(panel => panel.getBreadcrumbs()),
         });
     };
     for (const key of hooks) counters[key] = observe;
@@ -200,7 +202,7 @@ function main() {
             if (!opts.includeEvents) delete result.events;
             process.stdout.write(JSON.stringify(result, null, 2) + "\n");
         } else process.stdout.write(reportText(result, opts.verbose || !!opts.feature) + "\n");
-        if (result.callbackErrors.length || Object.values(result.registryErrorsEnd).some(n => n > 0)) {
+        if (result.meta.unsupportedCalls.length || result.callbackErrors.length || Object.values(result.registryErrorsEnd).some(n => n > 0)) {
             process.exitCode = 1;
         }
     } catch (e) {

@@ -32,6 +32,7 @@
     let _lastConfigRaw = "";
     let _lastRevision = 0;
     let _configPollTimer = null;
+    let _configPollGeneration = 0;
     let _enableKeyMap = null;
 
     const _CONFIG_ATTRIBUTE = "Deadlock_Mod_Settings_v1";
@@ -135,10 +136,10 @@
                 : !!ConfigStore.get(id, "enabled");
             const wasEnabled = FeatureRegistry.isEnabled(id);
             if (nowEnabled && !wasEnabled) {
-                FeatureRegistry.enable(id);
-                if (Logger) Logger.logInfo("App", `runtime enable: ${id}`);
+                FeatureRegistry.enable(id, { automatic: true });
+                if (FeatureRegistry.isEnabled(id) && Logger) Logger.logInfo("App", `runtime enable: ${id}`);
             } else if (!nowEnabled && wasEnabled) {
-                FeatureRegistry.disable(id);
+                FeatureRegistry.disable(id, { automatic: true });
                 if (Logger) Logger.logInfo("App", `runtime disable: ${id}`);
             }
         }
@@ -217,6 +218,7 @@
             }
         }
         if (!flatConfig) return;
+        if (!_benchmarkStressActive) flatConfig = QOL.presentation?.preview?.effective(flatConfig) || flatConfig;
         if (QOL?.core?.hud && typeof QOL.core.hud.applyRootClasses === "function") {
             try {
                 const nowMs = _nowMs();
@@ -521,13 +523,14 @@
     };
 
     const _startConfigPolling = (hud) => {
-        if (_configPollTimer) return;
-
+        if (_configPollTimer !== null) return;
+        const generation = ++_configPollGeneration;
         let _nextRootClassSyncMs = 0;
 
         const poll = () => {
-            if (!_booted) return;
-            const hudPanel = _hudPanel || _findHud();
+            if (!_booted || generation !== _configPollGeneration) return;
+            _configPollTimer = null;
+            const hudPanel = hud;
             if (hudPanel && typeof hudPanel.IsValid === "function" && !hudPanel.IsValid()) {
                 shutdown();
                 return;
@@ -560,9 +563,32 @@
                 _nextRootClassSyncMs = nowMs + 1000;
             }
 
+            // Drafts only affect registered presentation keys. Keep canonical
+            // state/storage separate, and restore it on expiry/exit/conflict.
+            const preview = QOL.presentation?.preview;
+            if (preview) {
+                const canonical = globalThis.State?.lastConfig || QOL.buildDefaultConfig();
+                const layer = preview.consume(hudPanel, canonical, _benchmarkStressActive);
+                if (layer.changed && !_benchmarkStressActive) {
+                    try {
+                        ConfigAdapter.loadFromFlat(layer.config, _enableKeyMap);
+                        _syncFeatureEnabledState();
+                        _syncRootClasses(hudPanel, layer.config);
+                        if (!preview.commit(layer)) preview.reject(layer);
+                    } catch (e) {
+                        preview.reject(layer);
+                        if (Logger) Logger.logWarn("App", `preview delivery failed: ${e.message || e}`);
+                    }
+                }
+            }
+
             _syncDiagnosticState(hudPanel, nowMs);
 
-            _configPollTimer = $.Schedule(0.25, poll);
+            // A leased editor gesture needs responsive delivery; ordinary HUD
+            // synchronization retains its existing cadence after release/exit.
+            if (_booted && generation === _configPollGeneration) {
+                _configPollTimer = $.Schedule(!_benchmarkStressActive && QOL.presentation?.preview?.interacting(hudPanel) ? 0.05 : 0.25, poll);
+            }
         };
         _configPollTimer = $.Schedule(0.25, poll);
     };
@@ -715,35 +741,44 @@
     };
 
     const _stopConfigPolling = () => {
-        if (_configPollTimer) {
-            $.CancelScheduled(_configPollTimer);
-            _configPollTimer = null;
+        _configPollGeneration++;
+        const timer = _configPollTimer;
+        _configPollTimer = null;
+        if (timer !== null) {
+            try { $.CancelScheduled(timer); } catch (_) { /* generation retires failed cancellation */ }
         }
     };
 
     const shutdown = () => {
         if (!_booted) return;
-        if (_benchmarkStressActive) {
-            _restoreStressBenchmark(_findHud(), "shutdown");
-        }
+        const hud = _hudPanel;
         _stopConfigPolling();
+        _booted = false;
+        if (_benchmarkStressActive) {
+            _restoreStressBenchmark(hud, "shutdown");
+        }
+        if (QOL.presentation?.preview) {
+            QOL.presentation.preview.reset(_hudPanel);
+            ConfigAdapter.loadFromFlat(globalThis.State?.lastConfig || QOL.buildDefaultConfig(), _enableKeyMap);
+        }
         if (FeatureRegistry) FeatureRegistry.shutdown();
-        if (ConfigStore) {
-            const hud = _findHud();
-            if (hud && typeof hud.SetAttributeString === "function") {
-                try {
+        if (ConfigStore && PanelHelpers.isPanelAlive(hud) && typeof hud.SetAttributeString === "function") {
+            try {
+                // Teardown owns only its captured HUD and must preserve settings
+                // published since its last poll, including on the same panel.
+                const best = _readBestConfig(hud);
+                if (best.rev <= _lastRevision && (!best.raw || best.raw === _lastConfigRaw)) {
                     const flatExport = ConfigAdapter ? ConfigAdapter.exportToFlat() : {};
                     const envelope = JSON.stringify({
                         schema: (QOL.schemaSemver || QOL.SCHEMA_SEMVER || "4.0.0"),
                         data: flatExport
                     });
                     hud.SetAttributeString(_CONFIG_ATTRIBUTE, envelope);
-                } catch (e) {
-                    if (Logger) Logger.logWarn("App", `config save failed: ${e.message || e}`);
                 }
+            } catch (e) {
+                if (Logger) Logger.logWarn("App", `config save failed: ${e.message || e}`);
             }
         }
-        _booted = false;
     };
 
     const isBooted = () => _booted;

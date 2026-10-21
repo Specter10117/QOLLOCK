@@ -11,12 +11,9 @@
 // ATTRIBUTION MECHANISM
 //
 // Poll wrapping is installed immediately after ql_scheduler loads, before app
-// boot can allocate default-enabled loops. Legacy updates are wrapped after load.
+// boot can allocate default-enabled loops.
 //
-//   * Old system — every entry in QOL_FEATURE_REGISTRY has its `update` replaced
-//     by a wrapper that pushes "feat:<name>" onto the attribution stack. The
-//     core dispatch loop calls these, so per-feature cost falls out directly.
-//   * New system — QOL.core.Scheduler.createPollLoop is replaced by a version
+//   * QOL.core.Scheduler.createPollLoop is replaced by a version
 //     that wraps the callback with "mf:<featureId>". Every manifest's poll loop
 //     goes through it (raw $.Schedule is banned in feature code), so manifests
 //     are covered too.
@@ -38,6 +35,7 @@
 "use strict";
 
 const path = require("node:path");
+const fs = require("node:fs");
 const crypto = require("node:crypto");
 const { install, counters, silently } = require("./instrument.js");
 const { buildMatchHud, buildCapturedHud } = require("./hud_tree.js");
@@ -52,6 +50,23 @@ const layout = require("../layout.js");
 const { BuildsModel, TITLE_MODE } = require("../game/builds.js");
 
 // Matches QOL_STORAGE_KEY / QOL_USER_EDIT_REV_ATTR in ql_shared_presets.js.
+// Fingerprint the actual simulator sources, without an arbitrary version bump.
+// Saved runs with older or different model semantics are not comparable.
+const modelFingerprint = (() => {
+    const hash = crypto.createHash("sha256");
+    const root = path.resolve(__dirname, "..");
+    function include(folder) {
+        for (const entry of fs.readdirSync(folder, { withFileTypes: true }).sort((a,b) => a.name.localeCompare(b.name))) {
+            const file = path.join(folder, entry.name);
+            if (entry.isDirectory()) include(file);
+            else if (entry.name.endsWith(".js")) hash.update(JSON.stringify([path.relative(root,file).split(path.sep).join("/"),fs.readFileSync(file,"utf8")]));
+        }
+    }
+    include(root);
+    hash.update(fs.readFileSync(path.join(root,"../capture_tree.js"),"utf8"));
+    return hash.digest("hex");
+})();
+
 const STORAGE_KEY = "Deadlock_Mod_Settings_v1";
 const USER_EDIT_REV_ATTR = "QOL_USER_EDIT_REV";
 
@@ -79,36 +94,6 @@ function makeMaximalConfig(sandbox, overrides = {}, enableAll = true) {
     }
     Object.assign(cfg, overrides);
     return cfg;
-}
-
-/**
- * Wrap every registered old-system feature's update() for attribution.
- * Returns the number wrapped, so a zero can be reported as a harness failure
- * rather than silently producing an empty profile.
- */
-function wrapOldFeatures(sandbox) {
-    return sandbox.eval(`
-        (function () {
-            if (typeof QOL_FEATURE_REGISTRY === "undefined" || !QOL_FEATURE_REGISTRY) return 0;
-            var n = 0;
-            for (var name in QOL_FEATURE_REGISTRY) {
-                if (!Object.prototype.hasOwnProperty.call(QOL_FEATURE_REGISTRY, name)) continue;
-                var entry = QOL_FEATURE_REGISTRY[name];
-                if (!entry || typeof entry.update !== "function" || entry.__profWrapped) continue;
-                (function (entry, name) {
-                    var inner = entry.update;
-                    entry.update = function () {
-                        __profEnter("feat:" + name);
-                        try { return inner.apply(this, arguments); }
-                        finally { __profExit(); }
-                    };
-                    entry.__profWrapped = true;
-                })(entry, name);
-                n++;
-            }
-            return n;
-        })()
-    `);
 }
 
 /** Wrap Scheduler.createPollLoop so each manifest poll tick is attributed. */
@@ -199,6 +184,8 @@ function createProfiledHud({
     warmupMs = 8000,
     capturedTree = null,
     beforeLoad = null,
+    runtimeSources = null,
+    configInput = null,
 } = {}) {
     const clock = new Clock(1000);
     const doc = new Document(clock);
@@ -243,14 +230,15 @@ function createProfiledHud({
 
     wrapScheduledLoops(sandbox);
 
-    const scripts = layout.hudScripts();
+    const scripts = runtimeSources || layout.hudScripts();
     if (scripts.missing.length > 0) {
         const list = scripts.missing.map((m) => `${m.src} (hud.xml:${m.line})`).join(", ");
         throw new Error(`[profiler] hud.xml references missing scripts: ${list}`);
     }
     silently(() => {
         for (const s of scripts.scripts) {
-            sandbox.load(s.absPath);
+            if (s.source === undefined) sandbox.load(s.absPath);
+            else sandbox.loadSource(s.source, s.absPath);
             if (s.absPath.includes("ql_scheduler")) {
                 wrapPollLoops(sandbox);
             }
@@ -277,9 +265,9 @@ function createProfiledHud({
     // profile on the same code path a real install takes.
     let configApplied = false;
     let configBytes = 0;
-    const inputConfig = makeMaximalConfig(sandbox, configOverrides, enableAll);
+    const inputConfig = configInput ? { ...configInput } : makeMaximalConfig(sandbox, configOverrides, enableAll);
     silently(() => {
-        if (!enableAll && Object.keys(configOverrides).length === 0) return;
+        if (!configInput && !enableAll && Object.keys(configOverrides).length === 0) return;
         const cfg = inputConfig;
         if (!cfg) return;
         const schema = sandbox.eval(
@@ -297,7 +285,7 @@ function createProfiledHud({
         configApplied = true;
     });
 
-    const wrappedFeatures = wrapOldFeatures(sandbox);
+    const wrappedFeatures = 0; // Archived report field; no legacy dispatcher remains.
     const wrappedScheduler = wrapPollLoops(sandbox);
     const wrappedLoops = wrapScheduledLoops(sandbox);
 
@@ -313,12 +301,14 @@ function createProfiledHud({
         tree,
         counters,
         pollRates,
+        inputConfig,
         meta: {
+            modelFingerprint, unsupportedCalls: sandbox.unsupportedCalls,
             players, damageNumbers, configApplied, configBytes,
             configMode: enableAll ? "expanded" : "defaults",
             configOverrides: { ...configOverrides },
             configFingerprint: crypto.createHash("sha256").update(JSON.stringify(inputConfig)).digest("hex"),
-            healthbarType: Number(configOverrides.HEALTHBAR_TYPE) || 0,
+            healthbarType: Number(inputConfig && inputConfig.HEALTHBAR_TYPE) || 0,
             wrappedFeatures, wrappedScheduler, wrappedLoops, warmupMs,
             // Which tree the numbers describe. A modelled run and a captured run are
             // not comparable, so this has to travel with the results.
@@ -342,7 +332,7 @@ function createProfiledHud({
             const lines = [];
             lines.push(`tree: ${tree.panels} panels`);
             if (tree.notes.length > 0) lines.push(`tree notes:\n  ${tree.notes.join("\n  ")}`);
-            lines.push(`features wrapped: ${wrappedFeatures}, scheduler wrapped: ${wrappedScheduler}`);
+            lines.push(`scheduler wrapped: ${wrappedScheduler}`);
             lines.push(`clock: ${clock.now()}ms, ${clock.pendingCount()} pending`);
             if (clock.errors.length > 0) {
                 lines.push(`scheduled-callback errors (${clock.errors.length}):`);

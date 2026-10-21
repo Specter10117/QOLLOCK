@@ -1,27 +1,7 @@
-// =============================================================================
-// QOLLOCK — core/ql_config_adapter.js
-// =============================================================================
-// OWNS:        Bridging old flat config (334 keys) into new ConfigStore buckets.
-//              Type coercion (old 0/1 → new false/true). Flat ↔ per-feature mapping.
-// DOES NOT OWN: Config validation (ConfigStore), persistence (ql_app.js),
-//               Feature lifecycle (FeatureRegistry)
-// DEPENDS ON:  core/ql_namespace.js, core/ql_config_store.js,
-//              legacy/ql_config_defaults.js (QOL_DEFAULT_CONFIG),
-//              legacy/ql_core.js (QOL_FEATURE_REGISTRY — old feature key map)
-// USED BY:     ql_app.js (boot: load old config → ConfigStore)
-// LOAD ORDER:  After ql_config_store.js and legacy/ql_config_defaults.js
-//
-// The old system stores config as a flat object:
-//   { ENABLE_AMMO_STATUS: 1, AMMO_PANEL_SCALE: 100, ... }
-//
-// The new ConfigStore expects per-feature buckets with typed values:
-//   ConfigStore.get("ql_ammo", "ENABLE_AMMO_STATUS") → true
-//
-// This adapter bridges the two formats. During migration, it reads the old
-// flat config and populates ConfigStore for each registered feature.
-//
-// Boundary validation: Checks QOL.core and QOL.core.ConfigStore exist.
-// =============================================================================
+// OWNS: Accepted flat configuration <-> registered feature buckets and type coercion.
+// DOES NOT OWN: Validation, persistence, feature lifecycle or historical codecs.
+// Ownership comes from active manifest declarations; shared keys update all owners.
+// Depends on core namespace/ConfigStore and the shared defaults/catalog.
 
 (() => {
     "use strict";
@@ -36,55 +16,6 @@
         $.Msg("[QOLLock] core/ql_config_adapter: ConfigStore not found — aborting.");
         return;
     }
-
-    const OLD_TO_NEW = {
-        ammo: "ql_ammo",
-        bottomBarRuntime: "ql_bottom_bar",
-        damageImpactRuntime: "ql_damage_impact",
-        itemsRuntime: "ql_items",
-        soulsRuntime: "ql_souls",
-        staminaChargeColorRuntime: "ql_stamina",
-        topBarRuntime: "ql_topbar",
-        imagesInChat: "ql_chat_images",
-        colorWarning: "ql_color_warnings",
-        enemyColorWarning: "ql_color_warnings",
-        allyColorWarning: "ql_color_warnings",
-        combatStatus: "ql_combat_status",
-        crosshairStats: "ql_crosshair_stats",
-        damageNumbers: "ql_damage_numbers",
-        heroShop: "ql_heroshop",
-        keyboardRuntime: "ql_keyboard",
-        laneWithParty: "ql_lane_with_party",
-        legacyAudioPassive: "ql_legacy_audio_passive",
-        minimapRuntime: "ql_minimap_runtime",
-        gameplayMouseCursor: "ql_mouse_cursor",
-        nicknames: "ql_nicknames",
-        onDeathArcade: "ql_on_death_arcade",
-        recentPurchases: "ql_recent_purchases",
-        rejuvTimers: "ql_rejuv_hud",
-        showRank: "ql_showrank",
-        signatureFlash: "ql_sigflash",
-        spm: "ql_spm",
-        statBonuses: "ql_stat_bonuses",
-        statlocker: "ql_statlocker",
-        statsPosition: "ql_stats_position",
-        targetShapes: "ql_target_shapes",
-        unsecuredSoulsTimer: "ql_unsecured_souls_timer",
-        unspent: "ql_unspent",
-        urnTimer: "ql_urn_timer",
-        zipBoost: "ql_zipboost",
-        betterUnsecuredHud: "ql_better_unsecured_hud",
-        healthbarRuntimeHelpers: "ql_healthbar",
-        perf: "ql_perf",
-        // Permanent exceptions — no new manifest, keep in old system
-        buildBridge: "_legacy",
-        coreRoot: "ql_ui_controls",
-        buildSave: "_legacy",
-        buildLoad: "_legacy",
-        panelCache: "_legacy"
-    };
-
-    const mapToNewId = (oldId) => OLD_TO_NEW[oldId] || oldId;
 
     const appendFeatureOwner = (map, key, featureId) => {
         if (!key || !featureId) return;
@@ -105,18 +36,17 @@
     ]);
 
     const coerceType = (key, value) => {
-        // Toggle keys: numeric 0/1 → boolean
+        // Declared toggles take precedence; numeric fields must not become
+        // booleans merely because their prefix is HUD_ or MINIMAL_.
+        if (KNOWN_TOGGLE_KEYS.has(key) && typeof value === "number" && (value === 0 || value === 1)) return !!value;
+        if (/_SCALE$|_SIZE$|_OFFSET$|_OPACITY$|_ANGLE$|_INTERVAL$|_VOLUME$|_COUNT$|_DISPLAY_SEC$/.test(key)) return Number(value);
         if (typeof value === "number" && (value === 0 || value === 1)) {
             const toggleKeys = /^ENABLE_|^DISABLE_|^HUD_|^SHOW_|^SUPPORT_|^MINIMAL_|^DRAG_|^PREVIEWS_|^BHOP_|^ON_DEATH_GAME_|^ITEM_FILTER_/;
-            if (toggleKeys.test(key) || KNOWN_TOGGLE_KEYS.has(key)) return !!value;
+            if (toggleKeys.test(key)) return !!value;
         }
         // Palette keys: ensure number 0-29
         if (/_COLOR$|_WASH_COLOR$|AMMO_TEXT_COLOR|MINIMAP_ICON_COLOR/.test(key)) {
             return Math.round(Number(value)) || 0;
-        }
-        // Slider keys: ensure number
-        if (/_SCALE$|_SIZE$|_OFFSET$|_OPACITY$|_ANGLE$|_INTERVAL$|_VOLUME$|_COUNT$|_DISPLAY_SEC$/.test(key)) {
-            return Number(value);
         }
         return value;
     };
@@ -170,28 +100,6 @@
 
     const buildKeyToFeatureMap = () => {
         const map = {};
-        const unmapped = [];
-        if (typeof QOL_FEATURE_REGISTRY === "object" && QOL_FEATURE_REGISTRY) {
-            const names = Object.keys(QOL_FEATURE_REGISTRY);
-            for (let i = 0; i < names.length; i++) {
-                const entry = QOL_FEATURE_REGISTRY[names[i]];
-                if (!entry?.configKeys) continue;
-                const newId = mapToNewId(names[i]);
-                if (newId === names[i] && !Object.prototype.hasOwnProperty.call(OLD_TO_NEW, names[i])) {
-                    unmapped.push(names[i]);
-                }
-                for (let j = 0; j < entry.configKeys.length; j++) {
-                    const key = entry.configKeys[j];
-                    appendFeatureOwner(map, key, newId);
-                }
-            }
-            if (unmapped.length > 0) {
-                $.Msg(`[QOLLock][WARN][ConfigAdapter] ${unmapped.length} unmapped old feature IDs: ${unmapped.join(", ")}`);
-            }
-        } else {
-            $.Msg("[QOLLock][WARN][ConfigAdapter] QOL_FEATURE_REGISTRY not found — config keys will route to _legacy bucket. Is ql_shared_presets.js loaded?");
-        }
-
         mergeManifestKeys(map);
         return map;
     };
@@ -208,8 +116,7 @@
     const loadFromFlat = (flatConfig, enableKeyMap) => {
         if (!flatConfig || typeof flatConfig !== "object") return;
 
-        flatConfig.ENABLE_MIN_SOULS = 0;
-        flatConfig.ENABLE_UNSPENT_SOULS = 0;
+        flatConfig = { ...flatConfig, ENABLE_MIN_SOULS: 0, ENABLE_UNSPENT_SOULS: 0 };
         delete flatConfig.DEFAULT_HERO;
 
         const keyMap = buildKeyToFeatureMap();
@@ -271,13 +178,8 @@
             delete processed["_legacy"]["DEFAULT_HERO"];
         }
 
-        let bucketCount = 0;
-        for (const featureId in processed) {
-            if (Object.prototype.hasOwnProperty.call(processed, featureId)) {
-                ConfigStore.load({ [featureId]: processed[featureId] });
-                bucketCount++;
-            }
-        }
+        ConfigStore.load(processed);
+        const bucketCount = Object.keys(processed).length;
 
         $.Msg(`[QOLLock] ConfigAdapter: loaded ${totalKeys} keys into ${bucketCount} feature buckets`);
     };
@@ -302,6 +204,7 @@
                 }
             }
         }
+        delete flat.DEFAULT_HERO;
         return flat;
     };
 

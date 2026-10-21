@@ -1,0 +1,13 @@
+/* QOLLOCK overrides for citadel_hud_hero_builds.css; loaded after the native baseline. */
+
+/* The open shop is raised above the native top bar. Keep the build editor,
+   which is a later HUD sibling, above that shop surface while editing. */
+CitadelHudHeroBuilds.gEditingBuilds
+{
+	z-index: 30;
+}
+
+.support_4_3_active .BuildEditSection
+{
+	width: 220px;
+}

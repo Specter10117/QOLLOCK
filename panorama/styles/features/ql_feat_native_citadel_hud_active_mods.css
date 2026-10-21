@@ -1,0 +1,7 @@
+/* QOLLOCK overrides for citadel_hud_active_mods.css; loaded after the native baseline. */
+
+.minecraft_healthbar_active #abilitiesContainer
+{
+	vertical-align: bottom;
+	margin-bottom: 6px;
+}

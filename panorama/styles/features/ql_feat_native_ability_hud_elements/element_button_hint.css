@@ -1,0 +1,23 @@
+/* QOLLOCK overrides for ability_hud_elements/element_button_hint.css; loaded after the native baseline. */
+
+.zip_boost_active Citadel_AbilityHUDElement_ButtonHint
+{
+	vertical-align: center;
+	horizontal-align: center;
+	height: 20000px;
+	width: 2000px;
+}
+
+.zip_boost_active #RightContainer
+{
+	margin-left: -2%;
+	vertical-align: bottom;
+	visibility: visible;
+	height: 50px;
+	margin-bottom: 19%;
+}
+
+.zip_boost_active #BottomContainer
+{
+	visibility: collapse;
+}

@@ -8,9 +8,8 @@ var MOD_CONFIG = Object.assign({}, QOL_DEFAULT_CONFIG);
 // to ensure they always see the current config. Read-only from their perspective.
 QOL.getSettingsConfig = function() { return MOD_CONFIG; };
 
-// ── QOL.import() for settings context (ql_utils.js now loaded via hud_escape_menu.xml) ──
-var _deps = QOL.import(["utils"]);
-var Utils = _deps.utils;
+// hud_escape_menu.xml loads utilities and their shared namespace before settings.
+var Utils = QOL.utils;
 var SafeLog = QOL_UTILS.SafeLog;
 var SafeGetAttribute = QOL_UTILS.SafeGetAttribute;
 var SafeSetAttribute = QOL_UTILS.SafeSetAttribute;
@@ -19,11 +18,7 @@ var WarnLog = QOL_UTILS.WarnLog;
 // Phase 2: Inject arcade dependencies (ql_arcade_games.js loads before ql_settings.js)
 
 function FindRootPanel() {
-    var root = $.GetContextPanel();
-    while (root && root.GetParent && root.GetParent()) {
-        root = root.GetParent();
-    }
-    return root;
+    return QOL.core.panel.findRoot();
 }
 
 if (QOL.arcade && QOL.arcade.init) QOL.arcade.init({
@@ -36,9 +31,8 @@ if (QOL.arcade && QOL.arcade.init) QOL.arcade.init({
 const RUNTIME_PRESET_ATTR = "QOL_RUNTIME_PRESET";
 var STORAGE_KEY = (typeof STORAGE_KEY !== "undefined") ? STORAGE_KEY : ((typeof QOL_STORAGE_KEY !== "undefined") ? QOL_STORAGE_KEY : "Deadlock_Mod_Settings_v1");
 var USER_EDIT_REV_ATTR = (typeof USER_EDIT_REV_ATTR !== "undefined") ? USER_EDIT_REV_ATTR : ((typeof QOL_USER_EDIT_REV_ATTR !== "undefined") ? QOL_USER_EDIT_REV_ATTR : "QOL_USER_EDIT_REV");
-var LATEST_COMPACT_SEMVER = QOL_LATEST_COMPACT_SEMVER;
 var DEFAULT_CONFIG = QOL_DEFAULT_CONFIG;
-const MOD_DISPLAY_VERSION = QOL_SCHEMA_SEMVER;
+const MOD_DISPLAY_VERSION = QOL.VERSION;
 var currentTab = "Support";
 var gCurrentSettingsSectionTitle = "";
 var currentSearchQuery = "";
@@ -119,19 +113,7 @@ function ReadConfigRawFromStorage() {
 // Called from both SyncConfigFromStorage (on load) and SaveAndSync (on save).
 // Normalize functions are provided by ql_config.js as file-scope globals.
 function NormalizeConfig(config, parsed) {
-    MigrateSplitZoomKeys(config, parsed);
-    NormalizeNeutralCampFlags(config, parsed);
-    NormalizeItemCooldownModeConfig(config, parsed);
-    NormalizeAmmoScaleConfig(config, parsed);
-    NormalizeVoiceTypeConfig(config);
-    NormalizeHealthbarTypeConfig(config, parsed);
-    NormalizeColorWarningConfig(config, parsed);
-    NormalizeEnemyColorWarningConfig(config, parsed);
-    NormalizeAllyColorWarningConfig(config, parsed);
-    NormalizeTopbarEnemyHpWarningConfig(config, parsed);
-    NormalizeTopbarAllyHpWarningConfig(config, parsed);
-    NormalizeShopItemNotificationsConfig(config, parsed);
-    NormalizeQuickbuyDependencyConfig(config);
+    return QOL.normalizeConfigFields(config, parsed);
 }
 
 function SyncConfigFromStorage() {
@@ -141,14 +123,7 @@ function SyncConfigFromStorage() {
     var nextConfig = Object.assign({}, QOL_DEFAULT_CONFIG);
     if (raw && raw.length > 0) {
         try {
-            var unwrapped = UnwrapConfigFromStorage(raw);
-            var parsed = (unwrapped && unwrapped.config) ? unwrapped.config : {};
-            for (var key in parsed) {
-                if (nextConfig.hasOwnProperty(key)) {
-                    nextConfig[key] = parsed[key];
-                }
-            }
-            NormalizeConfig(nextConfig, parsed);
+            nextConfig = QOL.parseStoredConfig(raw);
         } catch (e) { $.Msg("[QOLLock][WARN][config] SyncConfigFromStorage parse/merge failed: " + (e && e.message ? e.message : String(e || ""))); }
     }
     MOD_CONFIG = nextConfig;
@@ -217,7 +192,9 @@ function PublishPaletteColorBridge(configId, value) {
         attrName = MINIMAP_ICON_COLOR_ATTR;
     }
     if (!attrName) return "";
-    var bridgeValue = String(Math.max(0, Math.min(29, Math.round(Number(value) || 0))));
+    const bridgeValue = String(QOL_UTILS.SupportsCustomColor(configId)
+        ? QOL_UTILS.NormalizePaletteColorIndex(value)
+        : Math.max(0, Math.min(29, Math.round(Number(value) || 0))));
     var panel = $.GetContextPanel();
     var root = FindRootPanel();
     var hud = null;
@@ -238,60 +215,60 @@ function PublishPaletteColorBridges() {
     PublishPaletteColorBridge("MINIMAP_ICON_COLOR", MOD_CONFIG.MINIMAP_ICON_COLOR);
 }
 
-// Debounced save: prevents rapid-fire saves during slider drags etc.
-// Uses a token-counter pattern so only the last scheduled flush actually fires.
-var gSaveDebounceToken = 0;
-var SAVE_DEBOUNCE_SEC = 0.3;
+// Settings publication owns one pending debounce, independently of durable CEF
+// saves. Generation and source identity make uncancelled native callbacks inert.
+const settingsSaveQueue = (() => {
+    const delaySec = 0.3;
+    let pending = null, generation = 0;
+    const cancel = () => {
+        generation++;
+        const previous = pending; pending = null;
+        if (previous && previous.handle !== null) {
+            try { $.CancelScheduled(previous.handle); } catch (_) {}
+        }
+    };
+    const isCurrent = record => {
+        try {
+            return QOL.core.panel.isAlive(record.context) && QOL.core.panel.isAlive(record.root) &&
+                $.GetContextPanel() === record.context && FindRootPanel() === record.root;
+        } catch (_) { return false; }
+    };
+    const mark = () => {
+        cancel();
+        const context = $.GetContextPanel(), root = FindRootPanel();
+        if (!QOL.core.panel.isAlive(context) || !QOL.core.panel.isAlive(root)) return;
+        QOL.core.persistence.markConfigEdited(root);
+        const record = { context, root, handle: null, token: generation };
+        pending = record;
+        record.handle = $.Schedule(delaySec, () => {
+            if (record.token !== generation || pending !== record) return;
+            pending = null;
+            if (isCurrent(record)) SaveAndSync();
+        });
+    };
+    const flush = () => {
+        if (!pending) return;
+        const record = pending; cancel();
+        if (isCurrent(record)) SaveAndSync();
+    };
+    return { mark, flush, cancel };
+})();
 
 function MarkConfigDirty() {
-    if (QOL.core && QOL.core.persistence) {
-        QOL.core.persistence.markConfigEdited(FindRootPanel());
-    }
-    var token = ++gSaveDebounceToken;
-    $.Schedule(SAVE_DEBOUNCE_SEC, function() {
-        if (gSaveDebounceToken === token) {
-            gSaveDebounceToken = 0;
-            SaveAndSync();
-        }
-    });
+    settingsSaveQueue.mark();
 }
 
 // Flushes any pending debounced save immediately (e.g. before import/reset).
 function FlushPendingSave() {
-    if (gSaveDebounceToken > 0) {
-        gSaveDebounceToken = 0;
-        SaveAndSync();
-    }
+    settingsSaveQueue.flush();
 }
 
 function SaveAndSync() {
+    settingsSaveQueue.cancel();
     var panel = $.GetContextPanel();
     var root = FindRootPanel();
-    var hud = null;
-    try { hud = (root && root.FindChildTraverse) ? root.FindChildTraverse("Hud") : null; } catch (eHud) { hud = null; }
-    if (!hud && panel && panel.GetParent) {
-        var cur = panel.GetParent();
-        while (cur) {
-            if (cur.id === "Hud" || (cur.paneltype && cur.paneltype === "CitadelHud") || (cur.BHasClass && cur.BHasClass("WindowRoot") && cur !== root)) {
-                hud = cur;
-                break;
-            }
-            cur = (cur.GetParent && typeof cur.GetParent === "function") ? cur.GetParent() : null;
-        }
-    }
-    if (!hud && root && (root.id === "Hud" || (root.paneltype && root.paneltype === "CitadelHud"))) {
-        hud = root;
-    }
-    if (!hud && typeof QOL !== "undefined") {
-        var findHudFn = (QOL.ui && QOL.ui.PanelHelpers && QOL.ui.PanelHelpers.findHud) ||
-                        (QOL.core && QOL.core.PanelHelpers && QOL.core.PanelHelpers.findHud) ||
-                        (QOL.core && QOL.core.panel && QOL.core.panel.findHud) ||
-                        (QOL.core && QOL.core.hud && QOL.core.hud.findHud) ||
-                        QOL.findHud;
-        if (typeof findHudFn === "function") {
-            try { hud = findHudFn(panel) || findHudFn(root) || findHudFn(); } catch(ePh) {}
-        }
-    }
+    var publisher = QOL.core.persistence;
+    var hud = publisher.resolveHudPanel(root);
     NormalizeConfig(MOD_CONFIG, MOD_CONFIG);
     if (typeof globalThis.RefreshActivePresetConfigMarkerBeforeSave === "function") {
         globalThis.RefreshActivePresetConfigMarkerBeforeSave();
@@ -302,7 +279,7 @@ function SaveAndSync() {
         var panels = [panel, root, hud];
         for (var i = 0; i < panels.length; i++) {
             var target = panels[i];
-            if (target && target.GetAttributeString && target.GetAttributeString(STORAGE_KEY, "") !== data) {
+            if (!QOL.core.panel.isAlive(target) || SafeGetAttribute(target, STORAGE_KEY, "") !== data) {
                 alreadyPublished = false;
                 break;
             }
@@ -312,27 +289,12 @@ function SaveAndSync() {
         PublishPaletteColorBridges();
         return;
     }
-    gLastSavedConfigRaw = data;
-    var parseRev = QOL_UTILS.ParseRevisionNumber;
-    var panelRev = (panel && panel.GetAttributeString) ? parseRev(panel.GetAttributeString(USER_EDIT_REV_ATTR, "")) : 0;
-    var rootRev = (root && root.GetAttributeString) ? parseRev(root.GetAttributeString(USER_EDIT_REV_ATTR, "")) : 0;
-    var hudRev = (hud && hud.GetAttributeString) ? parseRev(hud.GetAttributeString(USER_EDIT_REV_ATTR, "")) : 0;
-    var nextRev = Math.max(gUserEditRevision, panelRev, rootRev, hudRev) + 1;
-    gUserEditRevision = nextRev;
-    // Write data + revision as a paired update per panel so an interrupted
-    // save never orphans new data with an old revision number.
-    if (panel && panel.SetAttributeString) {
-        panel.SetAttributeString(STORAGE_KEY, data);
-        panel.SetAttributeString(USER_EDIT_REV_ATTR, String(nextRev));
-    }
-    if (root && root.SetAttributeString) {
-        root.SetAttributeString(STORAGE_KEY, data);
-        root.SetAttributeString(USER_EDIT_REV_ATTR, String(nextRev));
-    }
-    if (hud && hud.SetAttributeString) {
-        try { hud.SetAttributeString(STORAGE_KEY, data); } catch(eHudStorage) { WarnLog("settings", "op failed: " + (eHudStorage && eHudStorage.message ? eHudStorage.message : String(eHudStorage || ""))); }
-        try { hud.SetAttributeString(USER_EDIT_REV_ATTR, String(nextRev)); } catch(eHudRev) { WarnLog("settings", "op failed: " + (eHudRev && eHudRev.message ? eHudRev.message : String(eHudRev || ""))); }
-    }
+    var publication = publisher.writeStorageConfigRawToUi(root, data, {
+        extraPanels: [panel], minimumRevision: gUserEditRevision
+    });
+    gUserEditRevision = publication.revision;
+    if (publication.complete) gLastSavedConfigRaw = data;
+    if (!publication.acceptedCount) return;
     PersistStatlockerProfileState(data, MOD_CONFIG);
     PublishPaletteColorBridges();
     if (QOL.arcade) QOL.arcade.updateBridgePollerState();

@@ -543,6 +543,22 @@ try {
     Ensure-Directory -Path $FinalUnpackedRoot
     $staleCompiledArtifacts = @(
         "panorama\scripts\hero_testing_plus_plus.vjs_c",
+        # Native hero-testing XML is no longer overridden; its inactive JS had no include.
+        "panorama\layout\hud_hero_testing.vxml_c",
+        "panorama\scripts\ql_hero_testing.vjs_c",
+        # Party placement now extends the native stylesheet, without an XML override.
+        "panorama\layout\citadel_party.vxml_c",
+        "panorama\styles\qollock_party.vcss_c",
+        # Target hints now resolve the native snippet instead of added XML classes.
+        "panorama\layout\ability_hud_element_unit_target.vxml_c",
+        # Shop stats use the shop's existing listener and native component layouts.
+        "panorama\layout\citadel_hero_stats_armor_panel.vxml_c",
+        "panorama\layout\citadel_hero_stats_tech_panel.vxml_c",
+        "panorama\layout\citadel_hero_stats_weapon_panel.vxml_c",
+        # Native bars need no XML extension for the removed inactive Fortitude block.
+        "panorama\layout\hud_health.vxml_c",
+        # Performance display is now loaded through its manifest-owned modules.
+        "panorama\scripts\ql_perf_overlay.vjs_c",
         # Disabled after build 10725 changed the native leaderboard snippet contract.
         # Keeping this full-popup override causes a fatal "Unable to load snippet Hero".
         "panorama\layout\popups\citadel_popup_global_leaderboard.vxml_c",

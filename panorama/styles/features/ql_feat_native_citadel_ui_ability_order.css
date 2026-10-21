@@ -1,0 +1,6 @@
+/* QOLLOCK overrides for citadel_ui_ability_order.css; loaded after the native baseline. */
+
+.support_4_3_active .gEditingBuilds #AbilityBuildContainer
+{
+	ui-scale: 88%;
+}

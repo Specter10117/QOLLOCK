@@ -49,18 +49,20 @@ jobs:
         id: sync
         env:
           UPSTREAM_SHA: ${{ github.event.client_payload.sha || inputs.upstream_sha }}
-          DRY_RUN: ${{ inputs.dry_run || false }}
         run: |
-          args=()
-          if [[ "$DRY_RUN" == 'true' ]]; then args+=(--dry-run); fi
-          python scripts/upstream_sync.py --sha "$UPSTREAM_SHA" "${args[@]}"
+          # This checkout is disposable. Preview runs must validate the proposed
+          # sources too; dry_run gates publication and notifications below.
+          python scripts/upstream_sync.py --sha "$UPSTREAM_SHA"
       - name: Check whether this update was already proposed
         if: steps.sync.outputs.changed == 'true'
         id: proposed
         run: |
           previous=$(git show origin/codex/native-resource-update:upstream.json 2>/dev/null | jq -r '.fingerprint' || true)
           url=$(gh pr list --head codex/native-resource-update --base "$BASE_BRANCH" --state open --json url --jq '.[0].url // empty')
-          if [[ "$previous" == "${{ steps.sync.outputs.fingerprint }}" && -n "$url" ]]; then
+          # The same native blobs may need a new proposal after mod/test fixes.
+          # Compare the candidate working tree too, not just the upstream identity.
+          if [[ "$previous" == "${{ steps.sync.outputs.fingerprint }}" && -n "$url" ]] &&
+              git diff --quiet origin/codex/native-resource-update -- panorama scripts tests tools/updater package.json package-lock.json eslint.config.js .github/workflows/native-update.yml; then
             echo 'duplicate=true' >> "$GITHUB_OUTPUT"
           else
             echo 'duplicate=false' >> "$GITHUB_OUTPUT"
@@ -73,14 +75,22 @@ jobs:
             fi
           fi
       - name: Verify changed sources
+        id: verify
         if: steps.sync.outputs.changed == 'true' && steps.proposed.outputs.duplicate != 'true'
         run: |
           npm ci
           npm test
           python -m unittest discover -s tests -p '*_automation_test.py'
           node --test tests/updater_worker.test.mjs
+      - name: Summarize the source review
+        if: always() && steps.sync.outputs.changed == 'true'
+        env:
+          VALIDATION_OUTCOME: ${{ steps.verify.outcome }}
+        run: |
+          printf 'Source validation: **%s**. Pending files still require manual review; passing checks do not establish client compatibility.\n\n' "$VALIDATION_OUTCOME" >> "$GITHUB_STEP_SUMMARY"
+          cat .upstream-review/report.md >> "$GITHUB_STEP_SUMMARY"
       - name: Keep the review report
-        if: steps.sync.outputs.changed == 'true' && (steps.proposed.outputs.duplicate != 'true' || steps.proposed.outputs.notified != 'true')
+        if: always() && steps.sync.outputs.changed == 'true' && (steps.proposed.outputs.duplicate != 'true' || steps.proposed.outputs.notified != 'true')
         uses: actions/upload-artifact@v4
         with:
           name: native-update-report

@@ -21,31 +21,18 @@
 "use strict";
 
 const { Panel, Document } = require("../panel.js");
+const { descendants } = require("../search.js");
 const { Counters } = require("./counters.js");
 
 const counters = new Counters();
 let _installed = false;
 
-/**
- * Count nodes in a depth-first walk, mirroring Panel.FindChildTraverse exactly
- * (self excluded, pre-order, stopping at the first matching descendant).
- * These are model visits, not observed native traversal steps.
- *
- * We deliberately do NOT reuse the original method and infer the count: the
- * whole point is to know how many nodes were touched, and only a
- * reimplementation can report that.
- */
+/** Count model visits using the same search order as the plain simulator. */
 function walkCount(root, id) {
-    const stack = [];
-    for (let i = root._children.length - 1; i >= 0; i--) stack.push(root._children[i]);
     let visited = 0;
-    while (stack.length > 0) {
-        const node = stack.pop();
+    for (const node of descendants(root)) {
         visited++;
-        if (node.id === id) {
-            return { found: node, visited };
-        }
-        for (let i = node._children.length - 1; i >= 0; i--) stack.push(node._children[i]);
+        if (node.id === id) return { found: node, visited };
     }
     return { found: null, visited };
 }
@@ -77,14 +64,10 @@ function install() {
         this._assertValid("FindChildrenWithClassTraverse");
         if (!className) return [];
         const out = [];
-        const stack = [];
         let visited = 0;
-        for (let i = this._children.length - 1; i >= 0; i--) stack.push(this._children[i]);
-        while (stack.length > 0) {
-            const node = stack.pop();
+        for (const node of descendants(this)) {
             visited++;
             if (node._classes.has(className)) out.push(node);
-            for (let i = node._children.length - 1; i >= 0; i--) stack.push(node._children[i]);
         }
         counters.recordClassTraverse(visited);
         if (counters.enabled && typeof counters.onClassTraverse === "function") {
@@ -94,6 +77,7 @@ function install() {
                 label: counters.label,
                 rootPanel: this,
                 matches: out.length,
+                results: out.slice(),
                 found: out[0] || null,
                 visited
             });

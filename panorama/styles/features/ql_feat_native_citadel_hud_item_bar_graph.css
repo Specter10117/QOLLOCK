@@ -1,0 +1,6 @@
+/* QOLLOCK overrides for citadel_hud_item_bar_graph.css; loaded after the native baseline. */
+
+.simplify_items_active #BarsContainer
+{
+	background-color: none;
+}

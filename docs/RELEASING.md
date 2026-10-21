@@ -76,6 +76,10 @@ manifest or source files.
 Manual Actions runs default to `dry_run`: they keep the review artifact but do
 not push a branch, create a PR or notify Discord. Scheduled and Worker-triggered
 runs use the normal review path.
+Both paths apply candidates in the disposable Actions checkout before validation.
+The local CLI's `--dry-run` remains report-only and does not validate an applied
+candidate tree. Actions summaries distinguish validation from pending manual
+reviews, including when validation fails.
 
 For relevant changes, the workflow validates the sources and creates or updates
 the bot-owned `codex/native-resource-update` branch and one review PR. It never
@@ -88,6 +92,9 @@ remain listed in the review report; upstream removals do not delete local files.
 No resource ZIP is generated.
 Duplicate watched-file fingerprints are suppressed, even
 when unrelated upstream commits arrive while a review is open.
+Suppression also requires the proposed sources, tests and validation tools to
+match the existing branch; fixes on the default branch must be revalidated and
+included even if the native blobs did not change.
 
 `blob` is the applied/reviewed native base. Unresolved changes retain that base
 and record `pending_blob` (including removals); they remain pending on subsequent
@@ -119,6 +126,8 @@ Delivery failure does not fail a successfully prepared source review and is not
 marked acknowledged. A later scheduled run retries an unacknowledged notification;
 the current Actions artifact contains only the report and summary. No live
 notification is sent by offline tests.
+The review artifact is also retained when source validation fails, so the
+proposed changes and unresolved conflicts remain available for diagnosis.
 
 To verify the configured secret and live Discord transport, run **Test Discord
 developer webhook**. It uses the notification sender's HTTP helper, checks the
@@ -149,8 +158,16 @@ The Worker reads the watched list from the repository's `upstream.json`, waits f
 the corresponding workflow result before accepting a relevant update, and backs
 off after failed reviews. Its public HTTP endpoint is read-only. Deployment is a
 maintainer action; local source changes do not configure Cloudflare or GitHub secrets.
+Changing the watched path list invalidates the watcher's same-commit shortcut,
+so newly tracked resources are checked without waiting for another game update.
 
 ## Offline Checks
+
+For source-test dependency inventory, historical native merge/rollback checks
+and controlled compatibility violations, see the
+[native update reliability audit](NATIVE_UPDATE_RELIABILITY.md). Its optional
+history runner uses a local GameTracking repository; ordinary checks do not
+require one or access GitHub.
 
 ```sh
 python -m unittest discover -s tests -p '*_automation_test.py'

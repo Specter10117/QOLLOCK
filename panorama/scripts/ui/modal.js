@@ -165,7 +165,7 @@
             diagnostics.appliedKeys++;
         }
 
-        const ver = schemaVersion || globalThis.LATEST_COMPACT_SEMVER;
+        const ver = schemaVersion || globalThis.QOL_SCHEMA_SEMVER;
         runNormalizers(candidateConfig, parsed, ver);
 
         return { candidateConfig, diagnostics };
@@ -484,7 +484,7 @@
     const tryApplyImportStringWithDiagnostics = (raw) => {
         const result = {
             ok: false,
-            source: "compact",
+            source: "settings",
             schemaVersion: "",
             parsedConfig: null,
             candidateConfig: null,
@@ -501,17 +501,17 @@
         if (!tokenMatch) return result;
 
         const schemaSemver = String(tokenMatch[1] || "").replace(/-/g, ".");
-        const registry = Q.compactSchemaRegistry || globalThis.QOL_COMPACT_SCHEMA_REGISTRY || {};
-        if (!schemaSemver || !Object.prototype.hasOwnProperty.call(registry, schemaSemver)) {
+        if (!schemaSemver) {
             return result;
         }
 
-        const compactCandidate = String(tokenMatch[2] || "");
-        if (!compactCandidate) return result;
+        const encodedPayload = String(tokenMatch[2] || "");
+        if (!encodedPayload) return result;
 
         try {
-            const compactBinary = Q.persistence.fromBase64Url(compactCandidate);
-            result.parsedConfig = Q.persistence.deserializeCompactV2(compactBinary, schemaSemver);
+            const payload = Q.persistence.fromBase64Url(encodedPayload);
+            result.parsedConfig = Q.persistence.deserializeSettings(payload, schemaSemver);
+            result.source = payload.charAt(0) === "{" ? "json" : "legacyCompact";
             result.schemaVersion = schemaSemver;
         } catch {
             return result;
@@ -521,7 +521,7 @@
             const defConfig = globalThis.DEFAULT_CONFIG || globalThis.QOL_DEFAULT_CONFIG || {};
             const preview = buildCandidateConfigFromParsed(
                 result.parsedConfig,
-                result.schemaVersion || globalThis.LATEST_COMPACT_SEMVER,
+                result.schemaVersion || globalThis.QOL_SCHEMA_SEMVER,
                 defConfig
             );
             preserveUiOnlySettings(preview.candidateConfig);

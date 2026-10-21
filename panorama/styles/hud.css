@@ -10,6 +10,7 @@
    ═══════════════════════════════════════════════════════════ */
 
 @import url("s2r://panorama/styles/base/hud.vcss_c");
+@import url("s2r://panorama/styles/features/ql_feat_native_hud.vcss_c");
 @import url("s2r://panorama/styles/qollock_global.vcss_c");
 @import url("s2r://panorama/styles/ql_core_styles.vcss_c");
 
@@ -27,7 +28,6 @@
 @import url("s2r://panorama/styles/features/ql_feat_unsecured_souls.vcss_c");
 @import url("s2r://panorama/styles/features/ql_feat_stat_bonuses.vcss_c");
 @import url("s2r://panorama/styles/features/ql_feat_crosshair_stats.vcss_c");
-@import url("s2r://panorama/styles/features/ql_feat_stats_position.vcss_c");
 @import url("s2r://panorama/styles/features/ql_feat_combat_status.vcss_c");
 @import url("s2r://panorama/styles/features/ql_feat_keyboard.vcss_c");
 @import url("s2r://panorama/styles/features/ql_feat_healthbar.vcss_c");

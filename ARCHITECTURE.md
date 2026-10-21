@@ -80,7 +80,7 @@ Node/npm are development tools, not the in-game runtime.
 | Profile page | [citadel_db_page_profile.xml](panorama/layout/citadel_db_page_profile.xml) | Profile-specific callbacks and statlocker behavior |
 | Profile card | [profile_card.xml](panorama/layout/profile_card.xml) | Card-specific rank/statlocker scripts and callbacks |
 | Quickbuy | [hud_quickbuy.xml](panorama/layout/hud_quickbuy.xml) | Quickbuy total-summary script and local panel lifecycle |
-| Hero testing | [hud_hero_testing.xml](panorama/layout/hud_hero_testing.xml) | Sandbox/hero-testing controls and their context-specific APIs |
+| Hero testing | Native game `hud_hero_testing.xml`; [hero_testing_menu.css](panorama/styles/hero_testing_menu.css) | Native sandbox controls; QOLLOCK owns CSS visibility/placement through the HUD settings projector |
 
 The HUD and settings have separate JavaScript contexts. Their `QOL` objects,
 config objects and event buses are not shared memory. Cross-context communication
@@ -104,6 +104,15 @@ read actual includes and ignore XML comments. Do not maintain a second hardcoded
 script/feature list. Likewise, stale comments saying “disabled” do not disable an
 active include.
 
+Do not retain a native XML copy with no QOLLOCK changes. The hero-testing layout
+is supplied by the game; its former override was identical to the current extract
+after line-ending normalization. Its former JavaScript extension had no active
+include or XML callbacks and is removed. CSS extensions still apply to the native
+layout. See [native layout ownership](docs/NATIVE_LAYOUTS.md) before removing a
+layout: many native entry points are created by C++ rather than another mod XML.
+The party layout also remains native: its placement extension uses the game's
+existing `citadel_party.css` include rather than an extra XML stylesheet include.
+
 Panorama provides `$.CreatePanel`, `$.Schedule`, native panel methods and event
 APIs. Do not assume DOM `window`/`document`, `fetch`, `XMLHttpRequest`, WebSockets,
 `setTimeout` or `setInterval`. Defensive `typeof window` checks in shared files
@@ -119,19 +128,25 @@ are compatibility guards, not evidence that browser APIs are available in HUD.
 | `panorama/scripts/core/ql_feature_registry.js` | Manifest registration, scoped feature contexts and lifecycle |
 | `panorama/scripts/core/ql_config_store.js`, `ql_config_adapter.js` | Feature config buckets and flat/bucket conversion |
 | `panorama/scripts/ql_config.js` | Canonical input parsing, normalization and config constants shared with settings |
-| `panorama/scripts/ql_shared_presets.js` | Default values, presets, compact schemas/codecs, shared constants and compatibility exports |
+| `panorama/scripts/ql_shared_presets.js` | Default values, presets, independent current settings catalog, JSON codec and shared constants |
+| `panorama/scripts/ql_settings_contract.js` | Shared setting types, numeric normalization, units and display conversion |
+| `panorama/scripts/ql_legacy_compact.js` | Frozen compact tables and binary import decoder; never a source of current settings metadata |
+| `panorama/scripts/core/ql_codec.js` | Pure JSON settings writer and JSON/legacy import reader adapters; no UI actions, loader queues or runtime State |
 | `panorama/scripts/core/ql_persistence.js` | Live config publication, revisions/edit stamps and root selection |
 | `panorama/scripts/core/ql_storage_bridge.js` | Embedded HTML/localStorage protocol and asynchronous save/load coordination |
 | `panorama/scripts/ql_bridge.js` | Named cross-context channel descriptors and panel-attribute access |
 | `panorama/scripts/ql_utils.js` | Leaf utilities: validity, numbers, time, styles, attributes, palette and traversal |
 | `panorama/scripts/core/ql_panel_helpers.js` | Shared panel creation, lookup, styling and cleanup APIs |
-| `panorama/scripts/core/ql_hud.js`, `ql_hero_probe.js` | HUD/player discovery and current-player/hero evidence |
-| `panorama/scripts/ql_state.js`, `ql_panelcache.js` | Existing shared runtime state and typed caches; not persistent user settings |
+| `panorama/scripts/core/ql_hud.js`, `ql_hud_state.js`, `ql_hero_probe.js` | HUD/player discovery and current-player/hero evidence |
+| `panorama/scripts/core/ql_chat_messages.js`, `manifests/ql_chat_geometry/` | Read-only native chat label selection and independent native chat geometry; image/translation manifests own message children |
+| `panorama/scripts/ql_state.js`, `ql_panelcache.js` | Shared runtime snapshots and one typed panel-cache owner; compatibility names delegate to that cache. Private feature bookkeeping stays in its owner and is not persistent user settings |
 | `panorama/scripts/manifests/<id>/manifest.js` | Gameplay feature config declaration and lifecycle implementation |
 | `panorama/scripts/manifests/ql_healthbar/` | One dispatcher plus shared code and five variant implementations |
 | `panorama/scripts/ql_settings.js` | Mutable settings-side `MOD_CONFIG`, module dependency injection and bootstrap |
 | `panorama/scripts/ql_settings_persistence.js` | Settings-side normalization, publication, import/export and update glue |
 | `panorama/scripts/ui/` | Settings shell, metadata, controls, registered tab renderers, search, drag, modals, themes and storage UI |
+| `panorama/scripts/manifests/ql_presentation_scale/` | Independent ui-scale overrides and additional opacity controls; default releases native overrides, content remains with existing feature owners |
+| `panorama/scripts/ql_customize_data.js`, `customize/`, `core/ql_customize_preview.js`, `ui/customize/` | Shared presentation capabilities, transient HUD preview and settings editor; see [Customize](docs/ui/customize.md) |
 | `panorama/scripts/ql_settings_previews.js` | Preview ownership, positioning and update dispatch |
 | `panorama/scripts/ql_settings_tooltips.js` | Shared tooltip creation, text and scroll/position tracking |
 | `panorama/scripts/ql_settings_loc/` | Shipped runtime locale dictionaries; the UI text source of truth |
@@ -169,8 +184,14 @@ Active gameplay implementations register in
 and [FeatureRegistry](docs/core/feature_registry.md) before adding one. Registration
 metadata and the `create(ctx)` factory are separate from the returned instance's
 `onEnable`, `onDisable`, `onSettingsChanged` and optional read-only `test` hooks.
+Use the current [manifest implementation pattern](docs/MANIFEST_STYLE.md) and
+scaffold; native discovery/model/rendering/release remain feature-owned.
 
 The registry registers settings and a synthetic `enabled` key in ConfigStore.
+Existing persisted defaults and slider metadata are resolved from the shared
+catalog at registration, so overlapping owners agree on units and initial values.
+ConfigStore maintains one logical value per persisted key and atomically updates
+every declaring owner; synthetic `enabled` and local keys remain scoped.
 Enable policy can use `isEnabled(cfg)`, `enableKey`, OR-combined `enableKeys`, or
 default/always-on behavior. Custom predicates take precedence; an `enableKey`
 name alone does not describe a manifest with an additional predicate. Numeric
@@ -190,6 +211,10 @@ not automatically a persisted setting or an exposed control.
 `(key, value, allSettings)`. Read current values through `ctx.config`. React to
 configuration in the hook; poll only observations that require polling. A HUD
 hook is downstream of cross-context publication/polling, not a zero-latency path.
+For batch loads, `changes` includes every changed setting in that owner and all
+owner buckets are committed before hooks run. `key` identifies only the first
+changed setting. Shared HUD classes use `core.hud.refreshRootClasses(root)`;
+never pass a feature bucket to the whole-HUD projector.
 
 Use `QOL.core.Scheduler.createPollLoop(callback, seconds, ctx.id)` for recurring
 feature work. It returns `{stop(), reschedule(seconds)}`. `Scheduler.schedule`
@@ -200,10 +225,16 @@ See [scheduler](docs/core/scheduler.md) for error/timing behavior.
 
 On disable, undo owned classes/styles/panels, unregister your event handlers,
 cancel raw scheduled callbacks and clear owned caches. The registry cancels
-managed loops after cleanup, but does not automatically unsubscribe `ctx.events`
-listeners or cancel unrelated `$.Schedule` handles. Zero can be a valid native
+managed work after cleanup and retires `ctx.events` listeners before cleanup,
+including partial factory/enable failures. It does not cancel unrelated raw
+`$.Schedule` handles or events registered outside the context. Zero can be a valid native
 schedule handle: use explicit null-state tracking where you own cancellation.
 Token-guard delayed callbacks when cancellation alone cannot prevent stale work.
+
+The shared native-style owner has a separate cleanup-only retry for rejected
+retirement. It may finish after feature disable, without reading settings or
+reapplying presentation, and protects fields claimed by a new instance. See
+[panel helpers](docs/core/panel_helpers.md); this is not a second feature poll loop.
 
 Scheduler stops a loop when its captured native context is invalid. Ten
 consecutive observed poll errors cause registry auto-disable; a successful tick
@@ -258,19 +289,19 @@ settings controls or serialized schemas.
 5. Handle changes in every owning runtime and dependent feature. Preserve
    disable/reset behavior and root-class ownership. Do not add a second poller
    for configuration that already arrives through `onSettingsChanged`.
-6. If the value is shareable, extend the current versioned compact schema using
-   existing schema utilities; preserve old field order, bounds, steps and
-   historical defaults. Update relevant normalizers/migrations and export/import
-   paths. Do not edit a historical schema in place or silently lose precision.
+6. Add independent current control metadata to `QOL_SETTINGS_FIELDS`. New
+   exports always use the full JSON envelope. Historical compact layouts are
+   frozen import-only data; preserve their meaning and migrations. No setting
+   addition requires a binary layout change. Version changes still require
+   explicit maintainer authorization.
 7. Check reset, preset application, settings -> HUD propagation and a complete
    export/import round-trip, including boundaries and invalid input. Retain
    existing regression coverage that exercises the affected contract.
 
-Procedural sliders in `ui/controls.js` commit on the existing compact field's
-step grid within the intersection of UI/schema bounds, anchored at schema min.
-Invalid typed text preserves the previous value. New UI precision cannot exceed
-what the wire format preserves. Other renderers/number consumers are not
-necessarily identical; inspect the actual path instead of generalizing this rule.
+Procedural sliders in `ui/controls.js` commit on the current settings catalog
+step grid within the intersection of UI/catalog bounds. JSON exports preserve
+accepted precision. Inspect actual renderers and runtime consumers; their native
+presentation semantics are separate from serialization.
 
 Use `QOL.parseStoredConfig` for side-effect-free asynchronous restore validation.
 It rejects invalid structures and normalizes recognized primitive settings.
@@ -327,6 +358,8 @@ Current runtime codes and exported catalog codes differ in two places:
 Brazilian Portuguese is `pt-br` at runtime, `pt_br` in filenames, `pt-BR` in JSON;
 Belarusian is `by` at runtime and `be` in JSON. Use `scripts/locales_helper.js`
 rather than constructing names. A website-only locale is not a shipped locale.
+Chinese uses runtime `zh` and exchange `zh-CN`; historical `zh` JSON is readable,
+but the reviewed `zh-CN` catalog takes precedence when both are supplied.
 
 ### Translation workflow
 
@@ -343,12 +376,15 @@ npm run translations:export
 npm run translations:json:export
 npm run translations:missing
 npm run translations:labels
-node scripts/import_locales_json.js D:/GitHub2/QOLLOCK-translations/locales
+npm run translations:sync -- ../QOLLOCK-translations/locales --dry-run
+npm run translations:context
 ```
 
 Plain JSON export defaults to `translations/locales`; CSV to `translations`.
-The `.bat` wrappers have additional sibling-directory behavior. The normal JSON
-export merge preserves community translations and orphan entries; `--replace`
+The BAT wrappers default to a sibling public checkout without hidden Git actions.
+Three-way sync preserves local corrections and blocks independent edit conflicts;
+its recorded public ancestor also permits safe export of local corrections.
+Normal JSON export preserves newer community translations and orphan entries; `--replace`
 discards that protection. Export does not import community changes. Reverse sync
 is reviewed/manual, and does not compile/repack the mod. Missing-string tools
 have limited coverage; neither proves that all dynamic copy is localized.
@@ -446,7 +482,8 @@ Previews are settings-owned, not the gameplay overlay. They can remain useful
 where gameplay features are suppressed. Their host scaling/live-anchor fallback
 logic does not prove pixel-perfect alignment at every resolution.
 
-`QOL.tooltip` owns tooltip reuse, deferred hide and row tooltip behavior.
+`QOL.tooltip` owns tooltip reuse, deferred hide and row tooltip behavior; see
+[tooltip ownership](docs/ui/tooltips.md).
 Preserve scroll suppression and coordinate conversion. Closing QOLLOCK settings
 is not the same as resuming Deadlock; the shell's close path preserves the native
 escape menu. The manual visual walkthrough has temporary-setting restoration and
@@ -466,6 +503,16 @@ See [tabs/layout](docs/ui/tabs_and_layout.md), [controls](docs/ui/controls.md),
   `panorama/styles/ql_settings.css` and the escape-menu style chain.
 - `panorama/styles/features/ql_feat_*.css` names remain valid even though runtime
   JS has moved to `manifests/`. Do not infer a matching old JS filename from CSS.
+- Native stylesheet extensions are import manifests: the existing `base/`
+  import is followed by context-specific `features/ql_feat_native_*.css` rules.
+  Keep their native XML includes and cascade order; these extensions also load
+  in independently created native components. `hud_health.css` loads design
+  tokens before its baseline, and `hud.css` retains its placement extension
+  before the shared/global imports. Base-only wrappers need no empty feature.
+  `citadel_db_page_training.css` and `objectives_map.css` remain full legacy
+  replacements: adding current native baselines would restore rules those
+  replacements intentionally omit. Shared/custom sheets, including settings
+  and `hud_timer.css`, have no native baseline to import.
 - `panorama/styles/base/` retains game styles used by overrides. Compare a
   proposed override with the extracted game source before changing broad rules.
   Avoid affecting unrelated HUD or native menu panels with an unscoped selector.
@@ -527,7 +574,7 @@ is navigation, not evidence of tested gameplay behavior.
   dispatcher. `HEALTHBAR_TYPE` is numeric 0–5, not string theme names. Shared
   accent/position cleanup can run even when a specific replacement style is off.
   Never profile only the default style and generalize the result to Minecraft.
-- **Passive cooldowns:** Basic native-panel styling, legacy audio/layout work,
+- **Passive cooldowns:** Basic native-panel styling, reminder audio,
   Advanced item mirrors and signature press flashes share some keys but have
   different responsibilities. Preserve category/exception matching and source
   identity; do not replace them with one generic class search.
@@ -618,8 +665,9 @@ operators at the end of the preceding line: the project enforces this for Valve
 minifier/ASI compatibility. `npm run lint` hides warnings; `lint:all` shows them.
 Do not add a name to the globals list merely to silence a missing dependency.
 
-`scripts/git-hooks/pre-commit` is an additional local check for staged JS, not a
-replacement for the full npm gate. `setup-hooks.sh` installs it; do not silently
+`scripts/git-hooks/pre-commit` is an optional local template that runs the same
+complete `npm test` gate for every commit, including CSS/XML changes. The retired
+grep-based migration checks are removed. `setup-hooks.sh` installs it; do not silently
 install/replace hooks as part of an unrelated code/documentation change.
 
 ### Performance and live-client evidence

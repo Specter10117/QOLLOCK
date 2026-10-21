@@ -15,7 +15,7 @@
 	<!-- QOLLOCK CUSTOM: Quickbuy hit testing on the root and contents -->
 	<!-- ============================================================= -->
 	<Panel class="HudQuickbuy" acceptsfocus="false" hittest="false" hittestchildren="true">
-		<GlobalClassListener classes="gStreetBrawl gQuickbuyShopShowQueue" />
+		<GlobalClassListener classes="gStreetBrawl gQuickbuyShopShowQueue gHighUnspentSouls" />
 		<Panel class="EmptyContents HudQuickbuyElement" hittest="false" hittestchildren="true">
 			<!-- ========================================================= -->
 			<!-- END QOLLOCK CUSTOM                                      -->
@@ -34,6 +34,11 @@
 			<!-- ========================================================= -->
 			<!-- END QOLLOCK CUSTOM                                      -->
 			<!-- ========================================================= -->
+			<Panel id="HudMiniFill" hittest="false" />
+			<Panel class="ItemsBlockedReason" hittest="false">
+				<Label class="SlotsFullLabel" text="#Citadel_Hud_Quickbuy_Exceeds_Slots" />
+				<Label class="SlotsLockedLabel" text="#Citadel_Hud_Quickbuy_ItemSlotsLocked" />
+			</Panel>
 			<Panel id="HudMiniContents">
 			<Panel class="PurchaseDisabledContainer">
 				<Panel class="purchasingDisabledX disabledX1" />

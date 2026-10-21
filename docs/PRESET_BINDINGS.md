@@ -17,7 +17,7 @@ Do not invent automatic account selection from a preset's name or author.
 
 `applyPresetConfig` resets flat default keys, overlays the preset's own keys,
 then runs normalizers. It preserves `DRAG_ENABLED`, `PREVIEWS_ENABLED` and an
-existing `ENABLE_UPDATE_CHECKER` preference. This is not a generic rule that
+existing `ENABLE_UPDATE_CHECKER` preference. The confirmation candidate uses those same preservation rules, while pure preset resolution used for matching remains independent of live preferences. This is not a generic rule that
 all UI preferences survive preset changes: `LANGUAGE` can change.
 
 Preset values are overlaid as supplied; this function is not an unknown-key

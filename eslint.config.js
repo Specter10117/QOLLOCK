@@ -468,6 +468,8 @@ module.exports = [
     {
         ignores: [
             "node_modules/**",
+            ".upstream-review/**",
+            ".tmp_*/**",
             "build_mod/**",
             "scripts/game_update_runs/**",
             "scripts/simulator/perf/runs/**",
@@ -520,6 +522,7 @@ module.exports = [
         files: [
             "tests/**/*.js",
             "scripts/**/*.js",
+            "scripts/**/*.cjs",
             "panorama/scripts/tools/**/*.js",
             "eslint.config.js",
         ],

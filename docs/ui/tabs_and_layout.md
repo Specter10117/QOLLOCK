@@ -62,7 +62,10 @@ Q.ui.layout = [
 If `Q.ui.layout` is not yet loaded (e.g. isolated test harness), it gracefully falls back to canonical defaults.
 
 ### Canonical Tab Hierarchy
-- **General**: Support, Settings (`Config`), Presets, Console, Arcade
+- **General**: Support, Settings (`Config`), Customize, Presets, Console, Arcade
+
+Customize uses the registered renderer in `ui/customize/tab.js`; its overlay,
+session and cross-context preview contract are documented in [customize.md](customize.md).
 - **Gameplay**: Crosshair, Healthbar, HUD, Overlay, Minimap, Shop, Audio
 
 ---
@@ -120,3 +123,29 @@ Because layout is purely declarative:
 `MarkConfigDirty()` in `panorama/scripts/ql_settings.js` records a persistence edit generation immediately, before its 0.3-second debounced `SaveAndSync()`. A pending CEF restore can therefore detect a slider change even while the updated configuration has not been published to panel attributes. Immediate `SaveAndSync()` writes continue to advance the normal configuration revision.
 
 `hud_escape_menu.xml` loads `core/ql_persistence.js` before `core/ql_storage_bridge.js`. The settings realm shares the root/HUD revision protocol without loading the HUD feature registry. See `docs/core/persistence.md` and `docs/core/storage_bridge.md` for the restore guards and disk-save acknowledgment contract.
+
+## 7. Native friends search
+
+`ui/friends.js` owns the search controls added by `friends_list.xml`, in the
+escape-menu JavaScript context. It resolves the input, clear button and categories
+from one native `CitadelFriendsList` branch. Repeated initialization shares one
+managed retry loop; late/replaced controls and newly bound names are reconciled
+until that escape context is destroyed or detached. Reload/disposal retires the
+previous controller and makes its callbacks inert.
+
+Filtering owns only `QOLFriendSearchHidden` classes; it preserves native entry
+visibility and keeps unknown names readable. The clear action uses the existing
+`showSearchClearButton` stylesheet gate. Retired living entries release their
+filter classes, with failed release retried during the active lifetime. The
+native list/categories/name bindings and controls remain engine-owned. Search,
+clear-button appearance and native list replacement require client verification.
+
+## 8. Settings callback ownership
+
+The window manager resolves the current SettingsWindow identity before reusing its shell. Living replacement retires the previous shell's tab transition and content/signature caches. Tab transitions are generation guarded: a newer request, including a return to the current tab, supersedes an older fade callback even when native cancellation fails. Drag handlers are bound once per handle and follow the current header/window owner; retired handlers cannot start a drag on a replacement.
+
+Save feedback and its delayed reset belong to the latest accepted save action and its original settings context/root. An older acknowledgment cannot report success for a newer pending save or publish onto a replacement context. Indefinite feedback invalidates the preceding message's clear callback.
+
+The developer Feature Test snapshots the complete settings configuration. Stop and normal per-feature restoration restore that snapshot through SaveAndSync, including derived flags changed by normalization. Retired test callbacks cannot reapply temporary toggles after Stop. These are live publication checks, not durable CEF-save guarantees.
+
+Run node --test tests/ui_async_owners.test.js for these modeled transitions. Native tab animation, header drag routing and client context replacement still require maintainer verification.

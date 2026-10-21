@@ -194,7 +194,7 @@ test("class trace retains its first matching panel and separates identical IDs u
 });
 
 test("before/after comparisons reject different captures, configuration, warmup, coverage and callback failures", () => {
-    const run = { meta: { treeSource: "captured", treeFingerprint: "tree-state", configMode: "defaults", configFingerprint: "cfg", warmupMs: 8000,
+    const run = { meta: { modelFingerprint: "model", treeSource: "captured", treeFingerprint: "tree-state", configMode: "defaults", configFingerprint: "cfg", warmupMs: 8000,
         captureFidelity: { fingerprint: "tree" } }, enabledEnd: ["ql_a"], callbackErrors: [], registryErrorsEnd: {} };
     assert.deepEqual(comparisonIssues(run, run), []);
     for (const key of ["configFingerprint", "warmupMs", "treeSource", "treeFingerprint"]) {
@@ -204,5 +204,5 @@ test("before/after comparisons reject different captures, configuration, warmup,
     assert.ok(comparisonIssues(run, { ...run, meta: { ...run.meta, captureFidelity: { fingerprint: "other" } } }).length);
     assert.ok(comparisonIssues(run, { ...run, callbackErrors: [{ message: "failed" }] }).length);
     assert.ok(comparisonIssues(run, { ...run, enabledEnd: [] }).length);
-    assert.ok(comparisonIssues(run, { meta: { treeSource: "captured" } }).length);
+    assert.ok(comparisonIssues(run, { meta: { modelFingerprint: "model", treeSource: "captured" } }).length);
 });

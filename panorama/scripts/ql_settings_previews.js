@@ -1,21 +1,16 @@
 // ql_settings_previews.js — Settings preview panels (minimap size, zoom, zipboost,
 // crosshair stats, unsecured souls, compass, speed, keyboard overlay, item cooldown,
 // ammo, reload cooldown, unit target, damage report, shop, unsecured plus)
-// Extracted from ql_settings.js, Phase 3
+// OWNS: Complete settings preview trees and cancelable, context-bound hide deadlines.
+// DOES NOT OWN: Gameplay surfaces, persistent defaults or settings publication.
 (function() {
     'use strict';
 
-    var _deps = QOL.import(["utils"]);
-    var Utils = _deps.utils;
+    const Utils = QOL.utils;
     var WarnLog = QOL_UTILS.WarnLog;
 
     // ── Helper functions for preview panel DOM, context & styles ──
 
-    function SetPanelNonInteractive(panel) {
-        if (!panel || !panel.IsValid || !panel.IsValid()) return;
-        panel.hittest = false;
-        panel.hittestchildren = false;
-    }
 
     function FindRootPanel() {
         var root = $.GetContextPanel ? $.GetContextPanel() : null;
@@ -97,81 +92,66 @@
 var gMinimapSizePreviewPanel = null;
 var gMinimapSizePreviewCircle = null;
 var gMinimapSizePreviewLabel = null;
-var gMinimapSizePreviewHideToken = 0;
 var gMinimapPreviewBaseRight = 30;
 var gMinimapPreviewBaseBottom = 30;
 
 var gZoomMinimapPreviewPanel = null;
 var gZoomMinimapPreviewCircle = null;
 var gZoomMinimapPreviewLabel = null;
-var gZoomMinimapPreviewHideToken = 0;
 var gZoomPreviewBaseX = 0;
 var gZoomPreviewBaseY = 0;
 var gZoomPreviewMode = "ALT";
 var gZipBoostPreviewPanel = null;
 var gZipBoostPreviewBox = null;
 var gZipBoostPreviewLabel = null;
-var gZipBoostPreviewHideToken = 0;
 var gZipBoostPreviewBaseX = -520;
 var gZipBoostPreviewBaseY = 20;
 var gCrosshairStatsPreviewPanel = null;
 var gCrosshairStatsPreviewBox = null;
 var gCrosshairStatsPreviewLabel = null;
-var gCrosshairStatsPreviewHideToken = 0;
 var gCrosshairStatsPreviewBaseX = 130;
 var gCrosshairStatsPreviewBaseY = 0;
 var gUnsecuredSoulsPreviewPanel = null;
 var gUnsecuredSoulsPreviewLabel = null;
-var gUnsecuredSoulsPreviewHideToken = 0;
 var gUnsecuredSoulsPreviewBaseX = -520;
 var gUnsecuredSoulsPreviewBaseY = 110;
 var gCompassPreviewPanel = null;
 var gCompassPreviewBox = null;
 var gCompassPreviewLabel = null;
-var gCompassPreviewHideToken = 0;
 var gCompassPreviewBaseX = 0;
 var gCompassPreviewBaseY = 120;
 // Speed has its own independent preview panel (mirrors the in-game QOLSpeedRoot,
 // a sibling of the compass root — not a child of it).
 var gSpeedPreviewPanel = null;
 var gSpeedPreviewLabel = null;
-var gSpeedPreviewHideToken = 0;
 var gKeyboardOverlayPreviewPanel = null;
 var gKeyboardOverlayPreviewBox = null;
 var gKeyboardOverlayPreviewLabel = null;
-var gKeyboardOverlayPreviewHideToken = 0;
 var gKeyboardOverlayPreviewBaseX = 150;
 var gKeyboardOverlayPreviewBaseY = 300;
 var gItemCooldownPreviewPanel = null;
 var gItemCooldownPreviewRow = null;
 var gItemCooldownPreviewIcon = null;
 var gItemCooldownPreviewLabel = null;
-var gItemCooldownPreviewHideToken = 0;
 var gAmmoPreviewPanel = null;
 var gAmmoPreviewCurrentLabel = null;
 var gAmmoPreviewTotalLabel = null;
-var gAmmoPreviewHideToken = 0;
 var gReloadCooldownPreviewPanel = null;
 var gReloadCooldownPreviewRing = null;
 var gReloadCooldownPreviewLabel = null;
-var gReloadCooldownPreviewHideToken = 0;
 var gUnitTargetPreviewPanel = null;
 var gUnitTargetPreviewImage = null;
 var gUnitTargetPreviewBinding = null;
-var gUnitTargetPreviewHideToken = 0;
 var gDamageReportPreviewPanel = null;
 var gDamageReportPreviewBox = null;
 var gDamageReportPreviewLabel = null;
-var gDamageReportPreviewHideToken = 0;
 var gShopPreviewPanel = null;
 var gShopPreviewBox = null;
 var gShopPreviewLabel = null;
-var gShopPreviewHideToken = 0;
 var gUnsecuredPlusPreviewPanel = null;
 var gUnsecuredPlusPreviewIcon = null;
 var gUnsecuredPlusPreviewText = null;
 var gUnsecuredPlusPreviewValue = null;
-var gUnsecuredPlusPreviewHideToken = 0;
 
     // ── Preview helpers ──
 
@@ -264,582 +244,222 @@ function GetMinimapPreviewRightInsetPx() {
 
     // ── Preview panel constructors + config detection ──
 
-function EnsureMinimapSizePreviewPanel() {
-    if (gMinimapSizePreviewPanel && gMinimapSizePreviewPanel.IsValid && gMinimapSizePreviewPanel.IsValid()) {
-        var anchorParent = GetMinimapPreviewAnchorParent();
-        if (anchorParent && gMinimapSizePreviewPanel.GetParent && gMinimapSizePreviewPanel.GetParent() !== anchorParent) {
-            gMinimapSizePreviewPanel.SetParent(anchorParent);
+
+    const P = QOL.core.panel;
+    const previewTree = P.createOwnedTree();
+    const previewPanels = new Map();
+    const hideDeadlines = new Map();
+    let previewContext = null;
+    const previewParts = {
+        MinimapSize: [["circle","Panel","Circle"],["label","Label","Label"]],
+        ZoomMinimap: [["circle","Panel","Circle"],["label","Label","Label"]],
+        ZipBoost: [["box","Panel","Box"],["label","Label","Label","box"]],
+        CrosshairStats: [["box","Panel","Box"],["label","Label","Label","box"]],
+        UnsecuredSouls: [["label","Label","Label"]],
+        Compass: [["box","Panel","Box"],["label","Label","Label"]],
+        Speed: [["label","Label","Label"]],
+        KeyboardOverlay: [["box","Panel","Box"],["sample","Panel","Sample","box"],["label","Label","Label","box"]],
+        ItemCooldown: [["row","Panel","Row"],["icon","Panel","Icon","row"],["modContainer","Panel","ModContainer","icon"],["bg","Panel","Bg","modContainer"],["image","Panel","Image","modContainer"],["mask","Panel","Mask","modContainer"],["label","Label","Label","icon"]],
+        Ammo: [["currentLabel","Label","Current"],["totalLabel","Label","Total"]],
+        ReloadCooldown: [["ring","Panel","Ring"],["label","Label","Label","ring"]],
+        UnitTarget: [["image","Panel","Image"],["binding","Label","Binding"]],
+        DamageReport: [["box","Panel","Box"],["label","Label","Label","box"]],
+        Shop: [["box","Panel","Box"],["label","Label","Label","box"]],
+        UnsecuredPlus: [["icon","Panel","Icon"],["text","Label","Text"],["value","Label","Value"]],
+    };
+
+    function cancelPreviewHide(kind) {
+        const deadline = hideDeadlines.get(kind);
+        hideDeadlines.delete(kind); // Invalidate before native cancellation, including handle zero.
+        if (deadline && deadline.handle !== null) {
+            try { $.CancelScheduled(deadline.handle); } catch (_) {}
         }
-        SetPanelNonInteractive(gMinimapSizePreviewPanel);
-        SetPanelNonInteractive(gMinimapSizePreviewCircle);
-        SetPanelNonInteractive(gMinimapSizePreviewLabel);
-        return gMinimapSizePreviewPanel;
     }
-    var parent = GetMinimapPreviewAnchorParent();
-    if (!parent) return null;
+    function hidePreviews() {
+        for (const kind of hideDeadlines.keys()) cancelPreviewHide(kind);
+        for (const panel of previewPanels.values()) P.setClass(panel, "Visible", false);
+        previewTree.clear();
+        previewPanels.clear();
+    }
+    function schedulePreviewHide(kind, delaySec) {
+        cancelPreviewHide(kind);
+        const panel = previewPanels.get(kind), context = previewContext;
+        if (!P.isAlive(panel) || !P.isAlive(context)) return;
+        const deadline = { handle: null };
+        hideDeadlines.set(kind, deadline);
+        deadline.handle = $.Schedule(delaySec, () => {
+            if (hideDeadlines.get(kind) !== deadline) return;
+            hideDeadlines.delete(kind);
+            if (!P.isAlive(context) || $.GetContextPanel() !== context) {
+                if (previewContext === context) { hidePreviews(); previewContext = null; }
+                return;
+            }
+            if (previewPanels.get(kind) === panel) {
+                P.setClass(panel, "Visible", false);
+                previewTree.remove(kind + "Preview");
+                previewPanels.delete(kind);
+            }
+        });
+    }
+    function buildPreview(kind) {
+        const context = $.GetContextPanel();
+        if (context !== previewContext) { hidePreviews(); previewContext = context; }
+        if (!P.isAlive(context)) return {};
+        cancelPreviewHide(kind);
+        previewTree.sweep();
+        const id = kind + "Preview", nodes = { ready: true };
+        const add = (name, type, suffix, parent = "panel", classes = [], text) => {
+            const panel = previewTree.child(name === "panel" ? context : nodes[parent], type, id + suffix);
+            nodes[name] = panel;
+            if (!P.isAlive(panel)) { nodes.ready = false; return; }
+            for (const className of classes) {
+                P.setClass(panel, className, true);
+                if (!panel.BHasClass(className)) nodes.ready = false;
+            }
+            if (text !== undefined && panel.text !== text) panel.text = text;
+        };
+        try {
+            add("panel", "Panel", "");
+            if (!P.isAlive(nodes.panel)) return nodes;
+            previewPanels.set(kind, nodes.panel);
+            for (const part of previewParts[kind]) add(...part);
+            if (kind === "CrosshairStats") {
+                for (const [name, icon, text, mood] of [["fireRate", "FireRate", "−15%", "isDebuff"], ["moveSpeed", "MoveSpeed", "−1.8 m/s", "isDebuff"], ["bulletResist", "ResistBullet", "+20%", "isBuff"]]) {
+                    add("statRow", "Panel", "Row_" + name, "box", ["QOLCrosshairStatRow", mood]);
+                    add("statIcon", "Panel", "Icon_" + name, "statRow", ["QOLCrosshairStatIcon", "statIcon", "PropertiesIcon", icon]);
+                    add("statValue", "Label", "Value_" + name, "statRow", ["QOLCrosshairStatValue"], text);
+                }
+            }
+            if (kind === "KeyboardOverlay") {
+                P.setClass(nodes.sample, "KeyboardOverlayPreviewRow", true);
+                if (!nodes.sample?.BHasClass("KeyboardOverlayPreviewRow")) nodes.ready = false;
+                for (let index = 1; index <= 5; index++) add("key", "Panel", "Key" + index, "sample", ["KeyboardOverlayPreviewKey", ...(index === 1 || index === 4 ? ["Wide"] : index === 5 ? ["Spacer"] : [])]);
+            }
+            if (kind === "UnitTarget" && nodes.binding) nodes.binding.text = "Q";
+            if (kind === "UnsecuredPlus" && nodes.text) nodes.text.text = LocalizeSettingsText("UNSECURED", true);
+        } catch (_) { nodes.ready = false; }
+        if (!nodes.ready) P.setClass(nodes.panel, "Visible", false);
+        return nodes;
+    }
 
-    var panel = parent.FindChildTraverse("MinimapSizePreview");
-    if (!panel) {
-        panel = $.CreatePanel("Panel", parent, "MinimapSizePreview");
-    }
-    if (!panel) return null;
-
-    var circle = panel.FindChildTraverse("MinimapSizePreviewCircle");
-    if (!circle) {
-        circle = $.CreatePanel("Panel", panel, "MinimapSizePreviewCircle");
-    }
-    var label = panel.FindChildTraverse("MinimapSizePreviewLabel");
-    if (!label) {
-        label = $.CreatePanel("Label", panel, "MinimapSizePreviewLabel");
-    }
-    SetPanelNonInteractive(panel);
-    SetPanelNonInteractive(circle);
-    SetPanelNonInteractive(label);
-
-    gMinimapSizePreviewPanel = panel;
-    gMinimapSizePreviewCircle = circle;
-    gMinimapSizePreviewLabel = label;
-    return panel;
+function EnsureMinimapSizePreviewPanel() {
+    const nodes = buildPreview("MinimapSize");
+    gMinimapSizePreviewPanel = nodes.panel || null;
+    gMinimapSizePreviewCircle = nodes.circle || null;
+    gMinimapSizePreviewLabel = nodes.label || null;
+    return nodes.ready ? nodes.panel : null;
 }
 
 function EnsureZoomMinimapPreviewPanel() {
-    if (gZoomMinimapPreviewPanel && gZoomMinimapPreviewPanel.IsValid && gZoomMinimapPreviewPanel.IsValid()) {
-        SetPanelNonInteractive(gZoomMinimapPreviewPanel);
-        SetPanelNonInteractive(gZoomMinimapPreviewCircle);
-        SetPanelNonInteractive(gZoomMinimapPreviewLabel);
-        return gZoomMinimapPreviewPanel;
-    }
-    var root = $.GetContextPanel();
-    if (!root) return null;
-
-    var panel = root.FindChildTraverse("ZoomMinimapPreview");
-    if (!panel) {
-        panel = $.CreatePanel("Panel", root, "ZoomMinimapPreview");
-    }
-    if (!panel) return null;
-
-    var circle = panel.FindChildTraverse("ZoomMinimapPreviewCircle");
-    if (!circle) {
-        circle = $.CreatePanel("Panel", panel, "ZoomMinimapPreviewCircle");
-    }
-    var label = panel.FindChildTraverse("ZoomMinimapPreviewLabel");
-    if (!label) {
-        label = $.CreatePanel("Label", panel, "ZoomMinimapPreviewLabel");
-    }
-    SetPanelNonInteractive(panel);
-    SetPanelNonInteractive(circle);
-    SetPanelNonInteractive(label);
-
-    gZoomMinimapPreviewPanel = panel;
-    gZoomMinimapPreviewCircle = circle;
-    gZoomMinimapPreviewLabel = label;
-    return panel;
+    const nodes = buildPreview("ZoomMinimap");
+    gZoomMinimapPreviewPanel = nodes.panel || null;
+    gZoomMinimapPreviewCircle = nodes.circle || null;
+    gZoomMinimapPreviewLabel = nodes.label || null;
+    return nodes.ready ? nodes.panel : null;
 }
 
 function EnsureZipBoostPreviewPanel() {
-    if (gZipBoostPreviewPanel && gZipBoostPreviewPanel.IsValid && gZipBoostPreviewPanel.IsValid()) {
-        SetPanelNonInteractive(gZipBoostPreviewPanel);
-        SetPanelNonInteractive(gZipBoostPreviewBox);
-        SetPanelNonInteractive(gZipBoostPreviewLabel);
-        return gZipBoostPreviewPanel;
-    }
-    var root = $.GetContextPanel();
-    if (!root) return null;
-
-    var panel = root.FindChildTraverse("ZipBoostPreview");
-    if (!panel) {
-        panel = $.CreatePanel("Panel", root, "ZipBoostPreview");
-    }
-    if (!panel) return null;
-
-    var box = panel.FindChildTraverse("ZipBoostPreviewBox");
-    if (!box) {
-        box = $.CreatePanel("Panel", panel, "ZipBoostPreviewBox");
-    }
-    var label = panel.FindChildTraverse("ZipBoostPreviewLabel");
-    if (!label) {
-        label = $.CreatePanel("Label", box, "ZipBoostPreviewLabel");
-        label.text = LocalizeSettingsText("ZIP BOOST", true);
-    }
-    SetPanelNonInteractive(panel);
-    SetPanelNonInteractive(box);
-    SetPanelNonInteractive(label);
-
-    gZipBoostPreviewPanel = panel;
-    gZipBoostPreviewBox = box;
-    gZipBoostPreviewLabel = label;
-    return panel;
-}
-
-// Build one preview row that is a structural clone of an in-game crosshair-overlay row, using the
-// overlay's own classes (styled via the ql_feat_crosshair_stats import in ql_settings.css) so it
-// matches pixel-for-pixel: a dark pill with a colored left accent, a property icon, and a value.
-function CreateCrosshairStatsPreviewStatRow(box, idSuffix, iconClass, valueText, isDebuff) {
-    var row = box.FindChildTraverse("CrosshairStatsPreviewRow_" + idSuffix);
-    if (!row) {
-        row = $.CreatePanel("Panel", box, "CrosshairStatsPreviewRow_" + idSuffix);
-        row.AddClass("QOLCrosshairStatRow");
-        row.AddClass(isDebuff ? "isDebuff" : "isBuff");
-        var icon = $.CreatePanel("Panel", row, "CrosshairStatsPreviewIcon_" + idSuffix);
-        icon.AddClass("QOLCrosshairStatIcon");
-        icon.AddClass("statIcon");
-        icon.AddClass("PropertiesIcon");
-        icon.AddClass(iconClass);
-        var value = $.CreatePanel("Label", row, "CrosshairStatsPreviewValue_" + idSuffix);
-        value.AddClass("QOLCrosshairStatValue");
-        value.text = valueText;
-    }
-    SetPanelNonInteractive(row);
-    return row;
+    const nodes = buildPreview("ZipBoost");
+    gZipBoostPreviewPanel = nodes.panel || null;
+    gZipBoostPreviewBox = nodes.box || null;
+    gZipBoostPreviewLabel = nodes.label || null;
+    return nodes.ready ? nodes.panel : null;
 }
 
 function EnsureCrosshairStatsPreviewPanel() {
-    if (gCrosshairStatsPreviewPanel && gCrosshairStatsPreviewPanel.IsValid && gCrosshairStatsPreviewPanel.IsValid()) {
-        SetPanelNonInteractive(gCrosshairStatsPreviewPanel);
-        SetPanelNonInteractive(gCrosshairStatsPreviewBox);
-        SetPanelNonInteractive(gCrosshairStatsPreviewLabel);
-        return gCrosshairStatsPreviewPanel;
-    }
-    var root = $.GetContextPanel();
-    if (!root) return null;
-
-    var panel = root.FindChildTraverse("CrosshairStatsPreview");
-    if (!panel) {
-        panel = $.CreatePanel("Panel", root, "CrosshairStatsPreview");
-    }
-    if (!panel) return null;
-
-    var box = panel.FindChildTraverse("CrosshairStatsPreviewBox");
-    if (!box) {
-        box = $.CreatePanel("Panel", panel, "CrosshairStatsPreviewBox");
-    }
-    var label = panel.FindChildTraverse("CrosshairStatsPreviewLabel");
-    if (!label) {
-        label = $.CreatePanel("Label", box, "CrosshairStatsPreviewLabel");
-        label.text = LocalizeSettingsText("ACTIVE STATS", true);
-    }
-    // Real copy of the in-game overlay rows (ql_feat_crosshairstats.js builds the same structure):
-    //   .QOLCrosshairStatRow[.isDebuff|.isBuff] > .QOLCrosshairStatIcon.statIcon.PropertiesIcon.<Stat> + .QOLCrosshairStatValue
-    CreateCrosshairStatsPreviewStatRow(box, "fireRate",     "FireRate",     "−15%", true);
-    CreateCrosshairStatsPreviewStatRow(box, "moveSpeed",    "MoveSpeed",    "−1.8 m/s", true);
-    CreateCrosshairStatsPreviewStatRow(box, "bulletResist", "ResistBullet", "+20%", false);
-    SetPanelNonInteractive(panel);
-    SetPanelNonInteractive(box);
-    SetPanelNonInteractive(label);
-
-    gCrosshairStatsPreviewPanel = panel;
-    gCrosshairStatsPreviewBox = box;
-    gCrosshairStatsPreviewLabel = label;
-    return panel;
+    const nodes = buildPreview("CrosshairStats");
+    gCrosshairStatsPreviewPanel = nodes.panel || null;
+    gCrosshairStatsPreviewBox = nodes.box || null;
+    gCrosshairStatsPreviewLabel = nodes.label || null;
+    return nodes.ready ? nodes.panel : null;
 }
 
 function EnsureUnsecuredSoulsPreviewPanel() {
-    if (gUnsecuredSoulsPreviewPanel && gUnsecuredSoulsPreviewPanel.IsValid && gUnsecuredSoulsPreviewPanel.IsValid()) {
-        SetPanelNonInteractive(gUnsecuredSoulsPreviewPanel);
-        SetPanelNonInteractive(gUnsecuredSoulsPreviewLabel);
-        return gUnsecuredSoulsPreviewPanel;
-    }
-    var root = $.GetContextPanel();
-    if (!root) return null;
-
-    var panel = root.FindChildTraverse("UnsecuredSoulsPreview");
-    if (!panel) {
-        panel = $.CreatePanel("Panel", root, "UnsecuredSoulsPreview");
-    }
-    if (!panel) return null;
-
-    var label = panel.FindChildTraverse("UnsecuredSoulsPreviewLabel");
-    if (!label) {
-        label = $.CreatePanel("Label", panel, "UnsecuredSoulsPreviewLabel");
-        label.text = "23s";
-    }
-    SetPanelNonInteractive(panel);
-    SetPanelNonInteractive(label);
-
-    gUnsecuredSoulsPreviewPanel = panel;
-    gUnsecuredSoulsPreviewLabel = label;
-    return panel;
+    const nodes = buildPreview("UnsecuredSouls");
+    gUnsecuredSoulsPreviewPanel = nodes.panel || null;
+    gUnsecuredSoulsPreviewLabel = nodes.label || null;
+    return nodes.ready ? nodes.panel : null;
 }
 
 function EnsureCompassPreviewPanel() {
-    if (gCompassPreviewPanel && gCompassPreviewPanel.IsValid && gCompassPreviewPanel.IsValid()) {
-        SetPanelNonInteractive(gCompassPreviewPanel);
-        SetPanelNonInteractive(gCompassPreviewBox);
-        SetPanelNonInteractive(gCompassPreviewLabel);
-        return gCompassPreviewPanel;
-    }
-    var root = $.GetContextPanel();
-    if (!root) return null;
-
-    var panel = root.FindChildTraverse("CompassPreview");
-    if (!panel) {
-        panel = $.CreatePanel("Panel", root, "CompassPreview");
-    }
-    if (!panel) return null;
-
-    var box = panel.FindChildTraverse("CompassPreviewBox");
-    if (!box) {
-        box = $.CreatePanel("Panel", panel, "CompassPreviewBox");
-    }
-
-    var label = panel.FindChildTraverse("CompassPreviewLabel");
-    if (!label) {
-        label = $.CreatePanel("Label", panel, "CompassPreviewLabel");
-    }
-
-    SetPanelNonInteractive(panel);
-    SetPanelNonInteractive(box);
-    SetPanelNonInteractive(label);
-
-    gCompassPreviewPanel = panel;
-    gCompassPreviewBox = box;
-    gCompassPreviewLabel = label;
-    return panel;
+    const nodes = buildPreview("Compass");
+    gCompassPreviewPanel = nodes.panel || null;
+    gCompassPreviewBox = nodes.box || null;
+    gCompassPreviewLabel = nodes.label || null;
+    return nodes.ready ? nodes.panel : null;
 }
 
-// Speed preview — an independent panel (sibling of the compass preview),
-// mirroring the in-game QOLSpeedRoot which is its own root panel under the
-// gameplay HUD, NOT a child of the compass. Keeping the two previews separate
-// is what makes the speed offset behave consistently with the compass offset.
 function EnsureSpeedPreviewPanel() {
-    if (gSpeedPreviewPanel && gSpeedPreviewPanel.IsValid && gSpeedPreviewPanel.IsValid()) {
-        SetPanelNonInteractive(gSpeedPreviewPanel);
-        SetPanelNonInteractive(gSpeedPreviewLabel);
-        return gSpeedPreviewPanel;
-    }
-    var root = $.GetContextPanel();
-    if (!root) return null;
-
-    var panel = root.FindChildTraverse("SpeedPreview");
-    if (!panel) {
-        panel = $.CreatePanel("Panel", root, "SpeedPreview");
-    }
-    if (!panel) return null;
-
-    var label = panel.FindChildTraverse("SpeedPreviewLabel");
-    if (!label) {
-        label = $.CreatePanel("Label", panel, "SpeedPreviewLabel");
-    }
-
-    SetPanelNonInteractive(panel);
-    SetPanelNonInteractive(label);
-
-    gSpeedPreviewPanel = panel;
-    gSpeedPreviewLabel = label;
-    return panel;
+    const nodes = buildPreview("Speed");
+    gSpeedPreviewPanel = nodes.panel || null;
+    gSpeedPreviewLabel = nodes.label || null;
+    return nodes.ready ? nodes.panel : null;
 }
 
 function EnsureKeyboardOverlayPreviewPanel() {
-    if (gKeyboardOverlayPreviewPanel && gKeyboardOverlayPreviewPanel.IsValid && gKeyboardOverlayPreviewPanel.IsValid()) {
-        SetPanelNonInteractive(gKeyboardOverlayPreviewPanel);
-        SetPanelNonInteractive(gKeyboardOverlayPreviewBox);
-        SetPanelNonInteractive(gKeyboardOverlayPreviewLabel);
-        return gKeyboardOverlayPreviewPanel;
-    }
-    var root = $.GetContextPanel();
-    if (!root) return null;
-
-    var panel = root.FindChildTraverse("KeyboardOverlayPreview");
-    if (!panel) {
-        panel = $.CreatePanel("Panel", root, "KeyboardOverlayPreview");
-    }
-    if (!panel) return null;
-
-    var box = panel.FindChildTraverse("KeyboardOverlayPreviewBox");
-    if (!box) {
-        box = $.CreatePanel("Panel", panel, "KeyboardOverlayPreviewBox");
-    }
-
-    var sample = panel.FindChildTraverse("KeyboardOverlayPreviewSample");
-    if (!sample) {
-        sample = $.CreatePanel("Panel", box, "KeyboardOverlayPreviewSample");
-        sample.AddClass("KeyboardOverlayPreviewRow");
-
-        var k1 = $.CreatePanel("Panel", sample, "");
-        k1.AddClass("KeyboardOverlayPreviewKey");
-        k1.AddClass("Wide");
-
-        var k2 = $.CreatePanel("Panel", sample, "");
-        k2.AddClass("KeyboardOverlayPreviewKey");
-
-        var k3 = $.CreatePanel("Panel", sample, "");
-        k3.AddClass("KeyboardOverlayPreviewKey");
-
-        var k4 = $.CreatePanel("Panel", sample, "");
-        k4.AddClass("KeyboardOverlayPreviewKey");
-        k4.AddClass("Wide");
-
-        var k5 = $.CreatePanel("Panel", sample, "");
-        k5.AddClass("KeyboardOverlayPreviewKey");
-        k5.AddClass("Spacer");
-    }
-
-    var label = panel.FindChildTraverse("KeyboardOverlayPreviewLabel");
-    if (!label) {
-        label = $.CreatePanel("Label", box, "KeyboardOverlayPreviewLabel");
-    }
-    SetPanelNonInteractive(panel);
-    SetPanelNonInteractive(box);
-    SetPanelNonInteractive(sample);
-    SetPanelNonInteractive(label);
-
-    gKeyboardOverlayPreviewPanel = panel;
-    gKeyboardOverlayPreviewBox = box;
-    gKeyboardOverlayPreviewLabel = label;
-    return panel;
+    const nodes = buildPreview("KeyboardOverlay");
+    gKeyboardOverlayPreviewPanel = nodes.panel || null;
+    gKeyboardOverlayPreviewBox = nodes.box || null;
+    gKeyboardOverlayPreviewLabel = nodes.label || null;
+    return nodes.ready ? nodes.panel : null;
 }
 
 function EnsureItemCooldownPreviewPanel() {
-    if (gItemCooldownPreviewPanel && gItemCooldownPreviewPanel.IsValid && gItemCooldownPreviewPanel.IsValid()) {
-        SetPanelNonInteractive(gItemCooldownPreviewPanel);
-        SetPanelNonInteractive(gItemCooldownPreviewRow);
-        SetPanelNonInteractive(gItemCooldownPreviewIcon);
-        SetPanelNonInteractive(gItemCooldownPreviewLabel);
-        return gItemCooldownPreviewPanel;
-    }
-    var root = $.GetContextPanel();
-    if (!root) return null;
-
-    var panel = root.FindChildTraverse("ItemCooldownPreview");
-    if (!panel) {
-        panel = $.CreatePanel("Panel", root, "ItemCooldownPreview");
-    }
-    if (!panel) return null;
-
-    var row = panel.FindChildTraverse("ItemCooldownPreviewRow");
-    if (!row) {
-        row = $.CreatePanel("Panel", panel, "ItemCooldownPreviewRow");
-    }
-
-    var icon = panel.FindChildTraverse("ItemCooldownPreviewIcon");
-    if (!icon) {
-        icon = $.CreatePanel("Panel", row, "ItemCooldownPreviewIcon");
-    }
-
-    var modContainer = panel.FindChildTraverse("ItemCooldownPreviewModContainer");
-    if (!modContainer) {
-        modContainer = $.CreatePanel("Panel", icon, "ItemCooldownPreviewModContainer");
-    }
-
-    var bg = panel.FindChildTraverse("ItemCooldownPreviewBg");
-    if (!bg) {
-        bg = $.CreatePanel("Panel", modContainer, "ItemCooldownPreviewBg");
-    }
-
-    var image = panel.FindChildTraverse("ItemCooldownPreviewImage");
-    if (!image) {
-        image = $.CreatePanel("Panel", modContainer, "ItemCooldownPreviewImage");
-    }
-
-    var mask = panel.FindChildTraverse("ItemCooldownPreviewMask");
-    if (!mask) {
-        mask = $.CreatePanel("Panel", modContainer, "ItemCooldownPreviewMask");
-    }
-
-    var label = panel.FindChildTraverse("ItemCooldownPreviewLabel");
-    if (!label) {
-        label = $.CreatePanel("Label", icon, "ItemCooldownPreviewLabel");
-        label.text = "7";
-    }
-    SetPanelNonInteractive(panel);
-    SetPanelNonInteractive(row);
-    SetPanelNonInteractive(icon);
-    SetPanelNonInteractive(modContainer);
-    SetPanelNonInteractive(bg);
-    SetPanelNonInteractive(image);
-    SetPanelNonInteractive(mask);
-    SetPanelNonInteractive(label);
-
-    gItemCooldownPreviewPanel = panel;
-    gItemCooldownPreviewRow = row;
-    gItemCooldownPreviewIcon = icon;
-    gItemCooldownPreviewLabel = label;
-    return panel;
+    const nodes = buildPreview("ItemCooldown");
+    gItemCooldownPreviewPanel = nodes.panel || null;
+    gItemCooldownPreviewRow = nodes.row || null;
+    gItemCooldownPreviewIcon = nodes.icon || null;
+    gItemCooldownPreviewLabel = nodes.label || null;
+    return nodes.ready ? nodes.panel : null;
 }
 
 function EnsureAmmoPreviewPanel() {
-    if (gAmmoPreviewPanel && gAmmoPreviewPanel.IsValid && gAmmoPreviewPanel.IsValid()) {
-        SetPanelNonInteractive(gAmmoPreviewPanel);
-        SetPanelNonInteractive(gAmmoPreviewCurrentLabel);
-        SetPanelNonInteractive(gAmmoPreviewTotalLabel);
-        return gAmmoPreviewPanel;
-    }
-    var root = $.GetContextPanel();
-    if (!root) return null;
-
-    var panel = root.FindChildTraverse("AmmoPreview");
-    if (!panel) panel = $.CreatePanel("Panel", root, "AmmoPreview");
-    if (!panel) return null;
-
-    var currentLabel = panel.FindChildTraverse("AmmoPreviewCurrent");
-    if (!currentLabel) currentLabel = $.CreatePanel("Label", panel, "AmmoPreviewCurrent");
-    var totalLabel = panel.FindChildTraverse("AmmoPreviewTotal");
-    if (!totalLabel) totalLabel = $.CreatePanel("Label", panel, "AmmoPreviewTotal");
-
-    SetPanelNonInteractive(panel);
-    SetPanelNonInteractive(currentLabel);
-    SetPanelNonInteractive(totalLabel);
-
-    gAmmoPreviewPanel = panel;
-    gAmmoPreviewCurrentLabel = currentLabel;
-    gAmmoPreviewTotalLabel = totalLabel;
-    return panel;
+    const nodes = buildPreview("Ammo");
+    gAmmoPreviewPanel = nodes.panel || null;
+    gAmmoPreviewCurrentLabel = nodes.currentLabel || null;
+    gAmmoPreviewTotalLabel = nodes.totalLabel || null;
+    return nodes.ready ? nodes.panel : null;
 }
 
 function EnsureReloadCooldownPreviewPanel() {
-    if (gReloadCooldownPreviewPanel && gReloadCooldownPreviewPanel.IsValid && gReloadCooldownPreviewPanel.IsValid()) {
-        SetPanelNonInteractive(gReloadCooldownPreviewPanel);
-        SetPanelNonInteractive(gReloadCooldownPreviewRing);
-        SetPanelNonInteractive(gReloadCooldownPreviewLabel);
-        return gReloadCooldownPreviewPanel;
-    }
-    var root = $.GetContextPanel();
-    if (!root) return null;
-
-    var panel = root.FindChildTraverse("ReloadCooldownPreview");
-    if (!panel) panel = $.CreatePanel("Panel", root, "ReloadCooldownPreview");
-    if (!panel) return null;
-
-    var ring = panel.FindChildTraverse("ReloadCooldownPreviewRing");
-    if (!ring) ring = $.CreatePanel("Panel", panel, "ReloadCooldownPreviewRing");
-    var label = panel.FindChildTraverse("ReloadCooldownPreviewLabel");
-    if (!label) label = $.CreatePanel("Label", ring, "ReloadCooldownPreviewLabel");
-    if (label && !label.text) label.text = "1.3";
-
-    SetPanelNonInteractive(panel);
-    SetPanelNonInteractive(ring);
-    SetPanelNonInteractive(label);
-
-    gReloadCooldownPreviewPanel = panel;
-    gReloadCooldownPreviewRing = ring;
-    gReloadCooldownPreviewLabel = label;
-    return panel;
+    const nodes = buildPreview("ReloadCooldown");
+    gReloadCooldownPreviewPanel = nodes.panel || null;
+    gReloadCooldownPreviewRing = nodes.ring || null;
+    gReloadCooldownPreviewLabel = nodes.label || null;
+    return nodes.ready ? nodes.panel : null;
 }
 
 function EnsureUnitTargetPreviewPanel() {
-    if (gUnitTargetPreviewPanel && gUnitTargetPreviewPanel.IsValid && gUnitTargetPreviewPanel.IsValid()) {
-        SetPanelNonInteractive(gUnitTargetPreviewPanel);
-        SetPanelNonInteractive(gUnitTargetPreviewImage);
-        SetPanelNonInteractive(gUnitTargetPreviewBinding);
-        return gUnitTargetPreviewPanel;
-    }
-    var root = $.GetContextPanel();
-    if (!root) return null;
-
-    var panel = root.FindChildTraverse("UnitTargetPreview");
-    if (!panel) panel = $.CreatePanel("Panel", root, "UnitTargetPreview");
-    if (!panel) return null;
-
-    var image = panel.FindChildTraverse("UnitTargetPreviewImage");
-    if (!image) image = $.CreatePanel("Panel", panel, "UnitTargetPreviewImage");
-    var binding = panel.FindChildTraverse("UnitTargetPreviewBinding");
-    if (!binding) binding = $.CreatePanel("Label", panel, "UnitTargetPreviewBinding");
-    if (binding) binding.text = "Q";
-
-    SetPanelNonInteractive(panel);
-    SetPanelNonInteractive(image);
-    SetPanelNonInteractive(binding);
-
-    gUnitTargetPreviewPanel = panel;
-    gUnitTargetPreviewImage = image;
-    gUnitTargetPreviewBinding = binding;
-    return panel;
+    const nodes = buildPreview("UnitTarget");
+    gUnitTargetPreviewPanel = nodes.panel || null;
+    gUnitTargetPreviewImage = nodes.image || null;
+    gUnitTargetPreviewBinding = nodes.binding || null;
+    return nodes.ready ? nodes.panel : null;
 }
 
 function EnsureDamageReportPreviewPanel() {
-    if (gDamageReportPreviewPanel && gDamageReportPreviewPanel.IsValid && gDamageReportPreviewPanel.IsValid()) {
-        SetPanelNonInteractive(gDamageReportPreviewPanel);
-        SetPanelNonInteractive(gDamageReportPreviewBox);
-        SetPanelNonInteractive(gDamageReportPreviewLabel);
-        return gDamageReportPreviewPanel;
-    }
-    var root = $.GetContextPanel();
-    if (!root) return null;
-
-    var panel = root.FindChildTraverse("DamageReportPreview");
-    if (!panel) panel = $.CreatePanel("Panel", root, "DamageReportPreview");
-    if (!panel) return null;
-
-    var box = panel.FindChildTraverse("DamageReportPreviewBox");
-    if (!box) box = $.CreatePanel("Panel", panel, "DamageReportPreviewBox");
-    var label = panel.FindChildTraverse("DamageReportPreviewLabel");
-    if (!label) label = $.CreatePanel("Label", box, "DamageReportPreviewLabel");
-    if (label && !label.text) label.text = "DAMAGE REPORT";
-
-    SetPanelNonInteractive(panel);
-    SetPanelNonInteractive(box);
-    SetPanelNonInteractive(label);
-
-    gDamageReportPreviewPanel = panel;
-    gDamageReportPreviewBox = box;
-    gDamageReportPreviewLabel = label;
-    return panel;
+    const nodes = buildPreview("DamageReport");
+    gDamageReportPreviewPanel = nodes.panel || null;
+    gDamageReportPreviewBox = nodes.box || null;
+    gDamageReportPreviewLabel = nodes.label || null;
+    return nodes.ready ? nodes.panel : null;
 }
 
 function EnsureShopPreviewPanel() {
-    if (gShopPreviewPanel && gShopPreviewPanel.IsValid && gShopPreviewPanel.IsValid()) {
-        SetPanelNonInteractive(gShopPreviewPanel);
-        SetPanelNonInteractive(gShopPreviewBox);
-        SetPanelNonInteractive(gShopPreviewLabel);
-        return gShopPreviewPanel;
-    }
-    var root = $.GetContextPanel();
-    if (!root) return null;
-
-    var panel = root.FindChildTraverse("ShopPreview");
-    if (!panel) panel = $.CreatePanel("Panel", root, "ShopPreview");
-    if (!panel) return null;
-
-    var box = panel.FindChildTraverse("ShopPreviewBox");
-    if (!box) box = $.CreatePanel("Panel", panel, "ShopPreviewBox");
-    var label = panel.FindChildTraverse("ShopPreviewLabel");
-    if (!label) label = $.CreatePanel("Label", box, "ShopPreviewLabel");
-    if (label && !label.text) label.text = "SHOP";
-
-    SetPanelNonInteractive(panel);
-    SetPanelNonInteractive(box);
-    SetPanelNonInteractive(label);
-
-    gShopPreviewPanel = panel;
-    gShopPreviewBox = box;
-    gShopPreviewLabel = label;
-    return panel;
+    const nodes = buildPreview("Shop");
+    gShopPreviewPanel = nodes.panel || null;
+    gShopPreviewBox = nodes.box || null;
+    gShopPreviewLabel = nodes.label || null;
+    return nodes.ready ? nodes.panel : null;
 }
 
 function EnsureUnsecuredPlusPreviewPanel() {
-    if (gUnsecuredPlusPreviewPanel && gUnsecuredPlusPreviewPanel.IsValid && gUnsecuredPlusPreviewPanel.IsValid()) {
-        SetPanelNonInteractive(gUnsecuredPlusPreviewPanel);
-        SetPanelNonInteractive(gUnsecuredPlusPreviewIcon);
-        SetPanelNonInteractive(gUnsecuredPlusPreviewText);
-        SetPanelNonInteractive(gUnsecuredPlusPreviewValue);
-        return gUnsecuredPlusPreviewPanel;
-    }
-    var root = $.GetContextPanel();
-    if (!root) return null;
-
-    var panel = root.FindChildTraverse("UnsecuredPlusPreview");
-    if (!panel) panel = $.CreatePanel("Panel", root, "UnsecuredPlusPreview");
-    if (!panel) return null;
-
-    var icon = panel.FindChildTraverse("UnsecuredPlusPreviewIcon");
-    if (!icon) icon = $.CreatePanel("Panel", panel, "UnsecuredPlusPreviewIcon");
-    var text = panel.FindChildTraverse("UnsecuredPlusPreviewText");
-    if (!text) text = $.CreatePanel("Label", panel, "UnsecuredPlusPreviewText");
-    var value = panel.FindChildTraverse("UnsecuredPlusPreviewValue");
-    if (!value) value = $.CreatePanel("Label", panel, "UnsecuredPlusPreviewValue");
-    if (text && !text.text) text.text = "UNSECURED";
-    if (value && !value.text) value.text = "538";
-
-    SetPanelNonInteractive(panel);
-    SetPanelNonInteractive(icon);
-    SetPanelNonInteractive(text);
-    SetPanelNonInteractive(value);
-
-    gUnsecuredPlusPreviewPanel = panel;
-    gUnsecuredPlusPreviewIcon = icon;
-    gUnsecuredPlusPreviewText = text;
-    gUnsecuredPlusPreviewValue = value;
-    return panel;
+    const nodes = buildPreview("UnsecuredPlus");
+    gUnsecuredPlusPreviewPanel = nodes.panel || null;
+    gUnsecuredPlusPreviewIcon = nodes.icon || null;
+    gUnsecuredPlusPreviewText = nodes.text || null;
+    gUnsecuredPlusPreviewValue = nodes.value || null;
+    return nodes.ready ? nodes.panel : null;
 }
 
 function GetMinimapPreviewDiameter(sizePx) {
@@ -1047,216 +667,23 @@ function IsUnsecuredPlusPreviewConfig(configId) {
 
     // ── Preview hide/show functions ──
 
-function HideMinimapSizePreview() {
-    if (gMinimapSizePreviewPanel && gMinimapSizePreviewPanel.IsValid && gMinimapSizePreviewPanel.IsValid()) {
-        gMinimapSizePreviewPanel.RemoveClass("Visible");
-    }
-    if (gZoomMinimapPreviewPanel && gZoomMinimapPreviewPanel.IsValid && gZoomMinimapPreviewPanel.IsValid()) {
-        gZoomMinimapPreviewPanel.RemoveClass("Visible");
-    }
-    if (gZipBoostPreviewPanel && gZipBoostPreviewPanel.IsValid && gZipBoostPreviewPanel.IsValid()) {
-        gZipBoostPreviewPanel.RemoveClass("Visible");
-    }
-    if (gCrosshairStatsPreviewPanel && gCrosshairStatsPreviewPanel.IsValid && gCrosshairStatsPreviewPanel.IsValid()) {
-        gCrosshairStatsPreviewPanel.RemoveClass("Visible");
-    }
-    if (gUnsecuredSoulsPreviewPanel && gUnsecuredSoulsPreviewPanel.IsValid && gUnsecuredSoulsPreviewPanel.IsValid()) {
-        gUnsecuredSoulsPreviewPanel.RemoveClass("Visible");
-    }
-    if (gCompassPreviewPanel && gCompassPreviewPanel.IsValid && gCompassPreviewPanel.IsValid()) {
-        gCompassPreviewPanel.RemoveClass("Visible");
-    }
-    if (gSpeedPreviewPanel && gSpeedPreviewPanel.IsValid && gSpeedPreviewPanel.IsValid()) {
-        gSpeedPreviewPanel.RemoveClass("Visible");
-    }
-    if (gKeyboardOverlayPreviewPanel && gKeyboardOverlayPreviewPanel.IsValid && gKeyboardOverlayPreviewPanel.IsValid()) {
-        gKeyboardOverlayPreviewPanel.RemoveClass("Visible");
-    }
-    if (gItemCooldownPreviewPanel && gItemCooldownPreviewPanel.IsValid && gItemCooldownPreviewPanel.IsValid()) {
-        gItemCooldownPreviewPanel.RemoveClass("Visible");
-    }
-    if (gAmmoPreviewPanel && gAmmoPreviewPanel.IsValid && gAmmoPreviewPanel.IsValid()) {
-        gAmmoPreviewPanel.RemoveClass("Visible");
-    }
-    if (gReloadCooldownPreviewPanel && gReloadCooldownPreviewPanel.IsValid && gReloadCooldownPreviewPanel.IsValid()) {
-        gReloadCooldownPreviewPanel.RemoveClass("Visible");
-    }
-    if (gUnitTargetPreviewPanel && gUnitTargetPreviewPanel.IsValid && gUnitTargetPreviewPanel.IsValid()) {
-        gUnitTargetPreviewPanel.RemoveClass("Visible");
-    }
-    if (gDamageReportPreviewPanel && gDamageReportPreviewPanel.IsValid && gDamageReportPreviewPanel.IsValid()) {
-        gDamageReportPreviewPanel.RemoveClass("Visible");
-    }
-    if (gShopPreviewPanel && gShopPreviewPanel.IsValid && gShopPreviewPanel.IsValid()) {
-        gShopPreviewPanel.RemoveClass("Visible");
-    }
-    if (gUnsecuredPlusPreviewPanel && gUnsecuredPlusPreviewPanel.IsValid && gUnsecuredPlusPreviewPanel.IsValid()) {
-        gUnsecuredPlusPreviewPanel.RemoveClass("Visible");
-    }
-}
+function HideMinimapSizePreview() { hidePreviews(); }
 
-function ScheduleHideMinimapSizePreview(delaySec) {
-    gMinimapSizePreviewHideToken++;
-    var token = gMinimapSizePreviewHideToken;
-    $.Schedule(delaySec, function() {
-        if (token !== gMinimapSizePreviewHideToken) return;
-        HideMinimapSizePreview();
-    });
-}
-
-function ScheduleHideZoomMinimapPreview(delaySec) {
-    gZoomMinimapPreviewHideToken++;
-    var token = gZoomMinimapPreviewHideToken;
-    $.Schedule(delaySec, function() {
-        if (token !== gZoomMinimapPreviewHideToken) return;
-        if (gZoomMinimapPreviewPanel && gZoomMinimapPreviewPanel.IsValid && gZoomMinimapPreviewPanel.IsValid()) {
-            gZoomMinimapPreviewPanel.RemoveClass("Visible");
-        }
-    });
-}
-
-function ScheduleHideZipBoostPreview(delaySec) {
-    gZipBoostPreviewHideToken++;
-    var token = gZipBoostPreviewHideToken;
-    $.Schedule(delaySec, function() {
-        if (token !== gZipBoostPreviewHideToken) return;
-        if (gZipBoostPreviewPanel && gZipBoostPreviewPanel.IsValid && gZipBoostPreviewPanel.IsValid()) {
-            gZipBoostPreviewPanel.RemoveClass("Visible");
-        }
-    });
-}
-
-function ScheduleHideCrosshairStatsPreview(delaySec) {
-    gCrosshairStatsPreviewHideToken++;
-    var token = gCrosshairStatsPreviewHideToken;
-    $.Schedule(delaySec, function() {
-        if (token !== gCrosshairStatsPreviewHideToken) return;
-        if (gCrosshairStatsPreviewPanel && gCrosshairStatsPreviewPanel.IsValid && gCrosshairStatsPreviewPanel.IsValid()) {
-            gCrosshairStatsPreviewPanel.RemoveClass("Visible");
-        }
-    });
-}
-
-function ScheduleHideUnsecuredSoulsPreview(delaySec) {
-    gUnsecuredSoulsPreviewHideToken++;
-    var token = gUnsecuredSoulsPreviewHideToken;
-    $.Schedule(delaySec, function() {
-        if (token !== gUnsecuredSoulsPreviewHideToken) return;
-        if (gUnsecuredSoulsPreviewPanel && gUnsecuredSoulsPreviewPanel.IsValid && gUnsecuredSoulsPreviewPanel.IsValid()) {
-            gUnsecuredSoulsPreviewPanel.RemoveClass("Visible");
-        }
-    });
-}
-
-function ScheduleHideCompassPreview(delaySec) {
-    gCompassPreviewHideToken++;
-    var token = gCompassPreviewHideToken;
-    $.Schedule(delaySec, function() {
-        if (token !== gCompassPreviewHideToken) return;
-        if (gCompassPreviewPanel && gCompassPreviewPanel.IsValid && gCompassPreviewPanel.IsValid()) {
-            gCompassPreviewPanel.RemoveClass("Visible");
-        }
-    });
-}
-
-function ScheduleHideSpeedPreview(delaySec) {
-    gSpeedPreviewHideToken++;
-    var token = gSpeedPreviewHideToken;
-    $.Schedule(delaySec, function() {
-        if (token !== gSpeedPreviewHideToken) return;
-        if (gSpeedPreviewPanel && gSpeedPreviewPanel.IsValid && gSpeedPreviewPanel.IsValid()) {
-            gSpeedPreviewPanel.RemoveClass("Visible");
-        }
-    });
-}
-
-function ScheduleHideKeyboardOverlayPreview(delaySec) {
-    gKeyboardOverlayPreviewHideToken++;
-    var token = gKeyboardOverlayPreviewHideToken;
-    $.Schedule(delaySec, function() {
-        if (token !== gKeyboardOverlayPreviewHideToken) return;
-        if (gKeyboardOverlayPreviewPanel && gKeyboardOverlayPreviewPanel.IsValid && gKeyboardOverlayPreviewPanel.IsValid()) {
-            gKeyboardOverlayPreviewPanel.RemoveClass("Visible");
-        }
-    });
-}
-
-function ScheduleHideItemCooldownPreview(delaySec) {
-    gItemCooldownPreviewHideToken++;
-    var token = gItemCooldownPreviewHideToken;
-    $.Schedule(delaySec, function() {
-        if (token !== gItemCooldownPreviewHideToken) return;
-        if (gItemCooldownPreviewPanel && gItemCooldownPreviewPanel.IsValid && gItemCooldownPreviewPanel.IsValid()) {
-            gItemCooldownPreviewPanel.RemoveClass("Visible");
-        }
-    });
-}
-
-function ScheduleHideAmmoPreview(delaySec) {
-    gAmmoPreviewHideToken++;
-    var token = gAmmoPreviewHideToken;
-    $.Schedule(delaySec, function() {
-        if (token !== gAmmoPreviewHideToken) return;
-        if (gAmmoPreviewPanel && gAmmoPreviewPanel.IsValid && gAmmoPreviewPanel.IsValid()) {
-            gAmmoPreviewPanel.RemoveClass("Visible");
-        }
-    });
-}
-
-function ScheduleHideReloadCooldownPreview(delaySec) {
-    gReloadCooldownPreviewHideToken++;
-    var token = gReloadCooldownPreviewHideToken;
-    $.Schedule(delaySec, function() {
-        if (token !== gReloadCooldownPreviewHideToken) return;
-        if (gReloadCooldownPreviewPanel && gReloadCooldownPreviewPanel.IsValid && gReloadCooldownPreviewPanel.IsValid()) {
-            gReloadCooldownPreviewPanel.RemoveClass("Visible");
-        }
-    });
-}
-
-function ScheduleHideUnitTargetPreview(delaySec) {
-    gUnitTargetPreviewHideToken++;
-    var token = gUnitTargetPreviewHideToken;
-    $.Schedule(delaySec, function() {
-        if (token !== gUnitTargetPreviewHideToken) return;
-        if (gUnitTargetPreviewPanel && gUnitTargetPreviewPanel.IsValid && gUnitTargetPreviewPanel.IsValid()) {
-            gUnitTargetPreviewPanel.RemoveClass("Visible");
-        }
-    });
-}
-
-function ScheduleHideDamageReportPreview(delaySec) {
-    gDamageReportPreviewHideToken++;
-    var token = gDamageReportPreviewHideToken;
-    $.Schedule(delaySec, function() {
-        if (token !== gDamageReportPreviewHideToken) return;
-        if (gDamageReportPreviewPanel && gDamageReportPreviewPanel.IsValid && gDamageReportPreviewPanel.IsValid()) {
-            gDamageReportPreviewPanel.RemoveClass("Visible");
-        }
-    });
-}
-
-function ScheduleHideShopPreview(delaySec) {
-    gShopPreviewHideToken++;
-    var token = gShopPreviewHideToken;
-    $.Schedule(delaySec, function() {
-        if (token !== gShopPreviewHideToken) return;
-        if (gShopPreviewPanel && gShopPreviewPanel.IsValid && gShopPreviewPanel.IsValid()) {
-            gShopPreviewPanel.RemoveClass("Visible");
-        }
-    });
-}
-
-function ScheduleHideUnsecuredPlusPreview(delaySec) {
-    gUnsecuredPlusPreviewHideToken++;
-    var token = gUnsecuredPlusPreviewHideToken;
-    $.Schedule(delaySec, function() {
-        if (token !== gUnsecuredPlusPreviewHideToken) return;
-        if (gUnsecuredPlusPreviewPanel && gUnsecuredPlusPreviewPanel.IsValid && gUnsecuredPlusPreviewPanel.IsValid()) {
-            gUnsecuredPlusPreviewPanel.RemoveClass("Visible");
-        }
-    });
-}
+function ScheduleHideMinimapSizePreview(delaySec) { schedulePreviewHide("MinimapSize", delaySec); }
+function ScheduleHideZoomMinimapPreview(delaySec) { schedulePreviewHide("ZoomMinimap", delaySec); }
+function ScheduleHideZipBoostPreview(delaySec) { schedulePreviewHide("ZipBoost", delaySec); }
+function ScheduleHideCrosshairStatsPreview(delaySec) { schedulePreviewHide("CrosshairStats", delaySec); }
+function ScheduleHideUnsecuredSoulsPreview(delaySec) { schedulePreviewHide("UnsecuredSouls", delaySec); }
+function ScheduleHideCompassPreview(delaySec) { schedulePreviewHide("Compass", delaySec); }
+function ScheduleHideSpeedPreview(delaySec) { schedulePreviewHide("Speed", delaySec); }
+function ScheduleHideKeyboardOverlayPreview(delaySec) { schedulePreviewHide("KeyboardOverlay", delaySec); }
+function ScheduleHideItemCooldownPreview(delaySec) { schedulePreviewHide("ItemCooldown", delaySec); }
+function ScheduleHideAmmoPreview(delaySec) { schedulePreviewHide("Ammo", delaySec); }
+function ScheduleHideReloadCooldownPreview(delaySec) { schedulePreviewHide("ReloadCooldown", delaySec); }
+function ScheduleHideUnitTargetPreview(delaySec) { schedulePreviewHide("UnitTarget", delaySec); }
+function ScheduleHideDamageReportPreview(delaySec) { schedulePreviewHide("DamageReport", delaySec); }
+function ScheduleHideShopPreview(delaySec) { schedulePreviewHide("Shop", delaySec); }
+function ScheduleHideUnsecuredPlusPreview(delaySec) { schedulePreviewHide("UnsecuredPlus", delaySec); }
 
 function ShowMinimapSizePreview(sizePx) {
     if (MOD_CONFIG.PREVIEWS_ENABLED !== 1) {
@@ -1270,9 +697,9 @@ function ShowMinimapSizePreview(sizePx) {
     var sizeVal = Math.round(Number(sizePx) || 0);
     if (sizeVal <= 0) sizeVal = Math.round(Number(MOD_CONFIG.MINIMAP_SMALL_SIZE) || 0);
     if (sizeVal <= 0) return;
-    var xOffset = Math.round(Number(MOD_CONFIG.MINIMAP_X_OFFSET) || 0);
-    var yOffset = Math.round(Number(MOD_CONFIG.MINIMAP_Y_OFFSET) || 0);
-    var opacityVal = Number(MOD_CONFIG.MINIMAP_BASE_OPACITY);
+    var xOffset = QOL.settings.readNumber("MINIMAP_X_OFFSET", MOD_CONFIG.MINIMAP_X_OFFSET);
+    var yOffset = QOL.settings.readNumber("MINIMAP_Y_OFFSET", MOD_CONFIG.MINIMAP_Y_OFFSET);
+    var opacityVal = QOL.settings.readNumber("MINIMAP_BASE_OPACITY", MOD_CONFIG.MINIMAP_BASE_OPACITY);
     if (!isFinite(opacityVal)) opacityVal = 1.0;
     opacityVal = Math.max(0, Math.min(1, opacityVal));
 
@@ -1380,16 +807,10 @@ function ShowZipBoostPreview() {
     var panel = EnsureZipBoostPreviewPanel();
     if (!panel || !gZipBoostPreviewBox || !gZipBoostPreviewLabel) return;
 
-    var xOffset = Math.round(Number(MOD_CONFIG.ZIP_BOOST_X_OFFSET) || 0);
-    var yOffset = Math.round(Number(MOD_CONFIG.ZIP_BOOST_Y_OFFSET) || 0);
-    var scale = Math.round(Number(MOD_CONFIG.ZIP_BOOST_SCALE) || 100);
+    var xOffset = QOL.settings.readNumber("ZIP_BOOST_X_OFFSET", MOD_CONFIG.ZIP_BOOST_X_OFFSET);
+    var yOffset = QOL.settings.readNumber("ZIP_BOOST_Y_OFFSET", MOD_CONFIG.ZIP_BOOST_Y_OFFSET);
+    var scale = QOL.settings.readNumber("ZIP_BOOST_SCALE", MOD_CONFIG.ZIP_BOOST_SCALE);
 
-    if (xOffset < -2000) xOffset = -2000;
-    if (xOffset > 2000) xOffset = 2000;
-    if (yOffset < 0) yOffset = 0;
-    if (yOffset > 1000) yOffset = 1000;
-    if (scale < 50) scale = 50;
-    if (scale > 200) scale = 200;
 
     panel.style.marginLeft = (gZipBoostPreviewBaseX + xOffset) + "px";
     panel.style.marginBottom = (gZipBoostPreviewBaseY + yOffset) + "px";
@@ -1414,20 +835,12 @@ function ShowCrosshairStatsPreview() {
     var panel = EnsureCrosshairStatsPreviewPanel();
     if (!panel || !gCrosshairStatsPreviewBox || !gCrosshairStatsPreviewLabel) return;
 
-    var xOffset = Math.round(Number(MOD_CONFIG.CROSSHAIR_STATS_X_OFFSET) || 0);
-    var yOffset = Math.round(Number(MOD_CONFIG.CROSSHAIR_STATS_Y_OFFSET) || 0);
-    var scale = Math.round(Number(MOD_CONFIG.CROSSHAIR_STATS_SCALE) || 100);
-    var opacity = Number(MOD_CONFIG.CROSSHAIR_STATS_OPACITY);
+    var xOffset = QOL.settings.readNumber("CROSSHAIR_STATS_X_OFFSET", MOD_CONFIG.CROSSHAIR_STATS_X_OFFSET);
+    var yOffset = QOL.settings.readNumber("CROSSHAIR_STATS_Y_OFFSET", MOD_CONFIG.CROSSHAIR_STATS_Y_OFFSET);
+    var scale = QOL.settings.readNumber("CROSSHAIR_STATS_SCALE", MOD_CONFIG.CROSSHAIR_STATS_SCALE);
+    var opacity = QOL.settings.readNumber("CROSSHAIR_STATS_OPACITY", MOD_CONFIG.CROSSHAIR_STATS_OPACITY);
     if (isNaN(opacity)) opacity = 1;
 
-    if (xOffset < -500) xOffset = -500;
-    if (xOffset > 500) xOffset = 500;
-    if (yOffset < -500) yOffset = -500;
-    if (yOffset > 500) yOffset = 500;
-    if (scale < 50) scale = 50;
-    if (scale > 200) scale = 200;
-    if (opacity < 0) opacity = 0;
-    if (opacity > 1) opacity = 1;
 
     panel.style.marginLeft = (gCrosshairStatsPreviewBaseX + xOffset) + "px";
     // Subtract yOffset so the preview moves the same way the runtime overlay does
@@ -1455,17 +868,11 @@ function ShowUnsecuredSoulsPreview() {
     var panel = EnsureUnsecuredSoulsPreviewPanel();
     if (!panel || !gUnsecuredSoulsPreviewLabel) return;
 
-    var xOffset = Math.round(Number(MOD_CONFIG.UNSECURED_SOUL_TIMER_X_OFFSET) || 0);
-    var yOffset = Math.round(Number(MOD_CONFIG.UNSECURED_SOUL_TIMER_Y_OFFSET) || 0);
-    var scale = Math.round(Number(MOD_CONFIG.UNSECURED_SOUL_TIMER_SCALE) || 100);
+    var xOffset = QOL.settings.readNumber("UNSECURED_SOUL_TIMER_X_OFFSET", MOD_CONFIG.UNSECURED_SOUL_TIMER_X_OFFSET);
+    var yOffset = QOL.settings.readNumber("UNSECURED_SOUL_TIMER_Y_OFFSET", MOD_CONFIG.UNSECURED_SOUL_TIMER_Y_OFFSET);
+    var scale = QOL.settings.readNumber("UNSECURED_SOUL_TIMER_SCALE", MOD_CONFIG.UNSECURED_SOUL_TIMER_SCALE);
     var enabled = Number(MOD_CONFIG.ENABLE_UNSECURED_SOUL_TIMER) === 1;
 
-    if (xOffset < -1500) xOffset = -1500;
-    if (xOffset > 1500) xOffset = 1500;
-    if (yOffset < -100) yOffset = -100;
-    if (yOffset > 1000) yOffset = 1000;
-    if (scale < 50) scale = 50;
-    if (scale > 200) scale = 200;
     var fontPx = Math.round(16 * (scale / 100));
     if (fontPx < 8) fontPx = 8;
     if (fontPx > 72) fontPx = 72;
@@ -1479,12 +886,22 @@ function ShowUnsecuredSoulsPreview() {
     if (gUnsecuredSoulsPreviewLabel.style.fontSize !== fontSize) {
         gUnsecuredSoulsPreviewLabel.style.fontSize = fontSize;
     }
-    gUnsecuredSoulsPreviewLabel.text = enabled ? "23s" : "SAFE";
+    gUnsecuredSoulsPreviewLabel.text = enabled ? "23s" : LocalizeSettingsText("SAFE", true);
     panel.AddClass("Visible");
     ScheduleHideUnsecuredSoulsPreview(1.5);
 }
 
 function ShowConfigPreviewForConfigId(configId) {
+    if (MOD_CONFIG.PREVIEWS_ENABLED !== 1) { HideMinimapSizePreview(); return; }
+    if (!IsSettingsWindowVisible()) { HideMinimapSizePreview(); return; }
+    try { DispatchConfigPreview(configId); }
+    catch (error) {
+        hidePreviews();
+        WarnLog("settings", "preview failed: " + (error?.message || String(error)));
+    }
+}
+
+function DispatchConfigPreview(configId) {
     if (IsMinimapPreviewConfig(configId)) {
         ShowMinimapSizePreview(MOD_CONFIG.MINIMAP_SMALL_SIZE);
     }
@@ -1548,23 +965,13 @@ function ShowCompassPreview() {
     var panel = EnsureCompassPreviewPanel();
     if (!panel || !gCompassPreviewBox) return;
 
-    var scale = Math.round(Number(MOD_CONFIG.COMPASS_SCALE) || 100);
-    var stretchX = Math.round(Number(MOD_CONFIG.COMPASS_STRETCH_X) || 100);
-    var stretchY = Math.round(Number(MOD_CONFIG.COMPASS_STRETCH_Y) || 100);
-    var xOffset = Math.round(Number(MOD_CONFIG.COMPASS_X_OFFSET) || 0);
-    var yOffset = Math.round(Number(MOD_CONFIG.COMPASS_Y_OFFSET) || 120);
+    var scale = QOL.settings.readNumber("COMPASS_SCALE", MOD_CONFIG.COMPASS_SCALE);
+    var stretchX = QOL.settings.readNumber("COMPASS_STRETCH_X", MOD_CONFIG.COMPASS_STRETCH_X);
+    var stretchY = QOL.settings.readNumber("COMPASS_STRETCH_Y", MOD_CONFIG.COMPASS_STRETCH_Y);
+    var xOffset = QOL.settings.readNumber("COMPASS_X_OFFSET", MOD_CONFIG.COMPASS_X_OFFSET);
+    var yOffset = QOL.settings.readNumber("COMPASS_Y_OFFSET", MOD_CONFIG.COMPASS_Y_OFFSET);
     var showSpeed = (MOD_CONFIG.ENABLE_COMPASS_SPEED !== 0);
 
-    if (scale < 50) scale = 50;
-    if (scale > 200) scale = 200;
-    if (stretchX < 50) stretchX = 50;
-    if (stretchX > 200) stretchX = 200;
-    if (stretchY < 50) stretchY = 50;
-    if (stretchY > 200) stretchY = 200;
-    if (xOffset < -2000) xOffset = -2000;
-    if (xOffset > 2000) xOffset = 2000;
-    if (yOffset < -1000) yOffset = -1000;
-    if (yOffset > 300) yOffset = 300;
 
     panel.style.marginLeft = (gCompassPreviewBaseX + xOffset) + "px";
     var compassBaselineY = Number(DEFAULT_CONFIG.COMPASS_Y_OFFSET);
@@ -1616,18 +1023,10 @@ function ShowSpeedPreview() {
 
     // Compass geometry — unscaled box dims, matching how core anchors the speed
     // (the speed root isn't scaled, so it uses the unscaled box width/height).
-    var stretchX = Math.round(Number(MOD_CONFIG.COMPASS_STRETCH_X) || 100);
-    if (stretchX < 50) stretchX = 50;
-    if (stretchX > 200) stretchX = 200;
-    var stretchY = Math.round(Number(MOD_CONFIG.COMPASS_STRETCH_Y) || 100);
-    if (stretchY < 50) stretchY = 50;
-    if (stretchY > 200) stretchY = 200;
-    var compassOffsetX = Math.round(Number(MOD_CONFIG.COMPASS_X_OFFSET) || 0);
-    if (compassOffsetX < -2000) compassOffsetX = -2000;
-    if (compassOffsetX > 2000) compassOffsetX = 2000;
-    var compassOffsetY = Math.round(Number(MOD_CONFIG.COMPASS_Y_OFFSET) || 120);
-    if (compassOffsetY < -1000) compassOffsetY = -1000;
-    if (compassOffsetY > 300) compassOffsetY = 300;
+    var stretchX = QOL.settings.readNumber("COMPASS_STRETCH_X", MOD_CONFIG.COMPASS_STRETCH_X);
+    var stretchY = QOL.settings.readNumber("COMPASS_STRETCH_Y", MOD_CONFIG.COMPASS_STRETCH_Y);
+    var compassOffsetX = QOL.settings.readNumber("COMPASS_X_OFFSET", MOD_CONFIG.COMPASS_X_OFFSET);
+    var compassOffsetY = QOL.settings.readNumber("COMPASS_Y_OFFSET", MOD_CONFIG.COMPASS_Y_OFFSET);
 
     var compassBaselineY = Number(DEFAULT_CONFIG.COMPASS_Y_OFFSET);
     if (!isFinite(compassBaselineY)) compassBaselineY = 120;
@@ -1637,12 +1036,8 @@ function ShowSpeedPreview() {
     var boxHeight = Math.round(50 * (stretchY / 100));
     if (boxHeight < 25) boxHeight = 25;
 
-    var speedOffsetX = Math.round(Number(MOD_CONFIG.COMPASS_SPEED_X_OFFSET) || 0);
-    var speedOffsetY = Math.round(Number(MOD_CONFIG.COMPASS_SPEED_Y_OFFSET) || 0);
-    if (speedOffsetX < -2000) speedOffsetX = -2000;
-    if (speedOffsetX > 2000) speedOffsetX = 2000;
-    if (speedOffsetY < -2000) speedOffsetY = -2000;
-    if (speedOffsetY > 2000) speedOffsetY = 2000;
+    var speedOffsetX = QOL.settings.readNumber("COMPASS_SPEED_X_OFFSET", MOD_CONFIG.COMPASS_SPEED_X_OFFSET);
+    var speedOffsetY = QOL.settings.readNumber("COMPASS_SPEED_Y_OFFSET", MOD_CONFIG.COMPASS_SPEED_Y_OFFSET);
 
     gSpeedPreviewLabel.style.width = "100%";
     gSpeedPreviewLabel.style.height = "100%";
@@ -1657,7 +1052,7 @@ function ShowSpeedPreview() {
     panel.style.height = "50px";
     panel.style.marginLeft = Math.round(speedBaseX + speedOffsetX) + "px";
     panel.style.marginTop = Math.round(speedBaseY - speedOffsetY) + "px";
-    gSpeedPreviewLabel.text = "SPD";
+    gSpeedPreviewLabel.text = LocalizeSettingsText("SPD", true);
 
     panel.AddClass("Visible");
     ScheduleHideSpeedPreview(1.5);
@@ -1678,17 +1073,11 @@ function ShowKeyboardOverlayPreview() {
     var panel = EnsureKeyboardOverlayPreviewPanel();
     if (!panel || !gKeyboardOverlayPreviewBox || !gKeyboardOverlayPreviewLabel) return;
 
-    var scale = Math.round(Number(MOD_CONFIG.KEYBOARD_OVERLAY_SCALE) || 100);
-    var xOffset = Math.round(Number(MOD_CONFIG.KEYBOARD_OVERLAY_X_OFFSET) || 0);
-    var yOffset = Math.round(Number(MOD_CONFIG.KEYBOARD_OVERLAY_Y_OFFSET) || 0);
+    var scale = QOL.settings.readNumber("KEYBOARD_OVERLAY_SCALE", MOD_CONFIG.KEYBOARD_OVERLAY_SCALE);
+    var xOffset = QOL.settings.readNumber("KEYBOARD_OVERLAY_X_OFFSET", MOD_CONFIG.KEYBOARD_OVERLAY_X_OFFSET);
+    var yOffset = QOL.settings.readNumber("KEYBOARD_OVERLAY_Y_OFFSET", MOD_CONFIG.KEYBOARD_OVERLAY_Y_OFFSET);
     var kbFullLayout = Number(MOD_CONFIG.ENABLE_FULL_KEYBOARD_LAYOUT) === 1;
 
-    if (scale < 70) scale = 70;
-    if (scale > 150) scale = 150;
-    if (xOffset < -1500) xOffset = -1500;
-    if (xOffset > 1500) xOffset = 1500;
-    if (yOffset < -400) yOffset = -400;
-    if (yOffset > 1000) yOffset = 1000;
 
     var kbBaseMarginLeft = kbFullLayout ? 70 : gKeyboardOverlayPreviewBaseX;
     var kbScaleFactor = scale / 100;
@@ -1736,22 +1125,14 @@ function ShowItemCooldownPreview() {
     var panel = EnsureItemCooldownPreviewPanel();
     if (!panel || !gItemCooldownPreviewRow || !gItemCooldownPreviewIcon) return;
 
-    var size = Number(MOD_CONFIG.PASSIVE_COOLDOWN_SIZE);
+    var size = QOL.settings.readNumber("PASSIVE_COOLDOWN_SIZE", MOD_CONFIG.PASSIVE_COOLDOWN_SIZE);
     if (!isFinite(size)) size = 40;
-    if (size < 30) size = 30;
-    if (size > 60) size = 60;
 
-    var xOffset = Math.round(Number(MOD_CONFIG.PASSIVE_COOLDOWN_X) || 0);
-    var yOffset = Math.round(Number(MOD_CONFIG.PASSIVE_COOLDOWN_Y) || 0);
-    if (xOffset < -50) xOffset = -50;
-    if (xOffset > 50) xOffset = 50;
-    if (yOffset < -50) yOffset = -50;
-    if (yOffset > 50) yOffset = 50;
+    var xOffset = QOL.settings.readNumber("PASSIVE_COOLDOWN_X", MOD_CONFIG.PASSIVE_COOLDOWN_X);
+    var yOffset = QOL.settings.readNumber("PASSIVE_COOLDOWN_Y", MOD_CONFIG.PASSIVE_COOLDOWN_Y);
 
-    var opacity = Number(MOD_CONFIG.PASSIVE_COOLDOWN_OPACITY);
+    var opacity = QOL.settings.readNumber("PASSIVE_COOLDOWN_OPACITY", MOD_CONFIG.PASSIVE_COOLDOWN_OPACITY);
     if (!isFinite(opacity)) opacity = 0.5;
-    if (opacity < 0) opacity = 0;
-    if (opacity > 1) opacity = 1;
 
     var scale = size / 40;
     if (!isFinite(scale) || scale <= 0) scale = 1.0;
@@ -1782,25 +1163,17 @@ function ShowAmmoPreview() {
     if (!panel || !gAmmoPreviewCurrentLabel || !gAmmoPreviewTotalLabel) return;
     if (!IsSettingsWindowVisible()) return;
 
-    var currentScale = Math.round(Number(MOD_CONFIG.AMMO_CURRENT_SCALE));
+    var currentScale = QOL.settings.readNumber("AMMO_CURRENT_SCALE", MOD_CONFIG.AMMO_CURRENT_SCALE);
     if (!isFinite(currentScale)) currentScale = 100;
-    if (currentScale < 100) currentScale = 100;
-    if (currentScale > 300) currentScale = 300;
 
-    var totalScale = Math.round(Number(MOD_CONFIG.AMMO_TOTAL_SCALE));
+    var totalScale = QOL.settings.readNumber("AMMO_TOTAL_SCALE", MOD_CONFIG.AMMO_TOTAL_SCALE);
     if (!isFinite(totalScale)) totalScale = 100;
-    if (totalScale < 100) totalScale = 100;
-    if (totalScale > 300) totalScale = 300;
 
-    var xOffset = Math.round(Number(MOD_CONFIG.AMMO_PANEL_X_OFFSET));
+    var xOffset = QOL.settings.readNumber("AMMO_PANEL_X_OFFSET", MOD_CONFIG.AMMO_PANEL_X_OFFSET);
     if (!isFinite(xOffset)) xOffset = 0;
-    if (xOffset < -200) xOffset = -200;
-    if (xOffset > 200) xOffset = 200;
 
-    var yOffset = Math.round(Number(MOD_CONFIG.AMMO_PANEL_Y_OFFSET));
+    var yOffset = QOL.settings.readNumber("AMMO_PANEL_Y_OFFSET", MOD_CONFIG.AMMO_PANEL_Y_OFFSET);
     if (!isFinite(yOffset)) yOffset = 0;
-    if (yOffset < -200) yOffset = -200;
-    if (yOffset > 200) yOffset = 200;
 
     var currentScaleFactor = currentScale / 100.0;
     var totalScaleFactor = totalScale / 100.0;
@@ -1846,25 +1219,17 @@ function ShowReloadCooldownPreview() {
     if (!panel || !gReloadCooldownPreviewRing || !gReloadCooldownPreviewLabel) return;
     if (!IsSettingsWindowVisible()) return;
 
-    var opacity = Number(MOD_CONFIG.RELOAD_COOLDOWN_OPACITY);
+    var opacity = QOL.settings.readNumber("RELOAD_COOLDOWN_OPACITY", MOD_CONFIG.RELOAD_COOLDOWN_OPACITY);
     if (!isFinite(opacity)) opacity = 0.6;
-    if (opacity < 0) opacity = 0;
-    if (opacity > 1) opacity = 1;
 
-    var size = Math.round(Number(MOD_CONFIG.RELOAD_COOLDOWN_SIZE));
+    var size = QOL.settings.readNumber("RELOAD_COOLDOWN_SIZE", MOD_CONFIG.RELOAD_COOLDOWN_SIZE);
     if (!isFinite(size)) size = 28;
-    if (size < 16) size = 16;
-    if (size > 60) size = 60;
 
-    var offsetX = Math.round(Number(MOD_CONFIG.RELOAD_COOLDOWN_X_OFFSET));
+    var offsetX = QOL.settings.readNumber("RELOAD_COOLDOWN_X_OFFSET", MOD_CONFIG.RELOAD_COOLDOWN_X_OFFSET);
     if (!isFinite(offsetX)) offsetX = 0;
-    if (offsetX < -75) offsetX = -75;
-    if (offsetX > 75) offsetX = 75;
 
-    var offsetY = Math.round(Number(MOD_CONFIG.RELOAD_COOLDOWN_Y_OFFSET));
+    var offsetY = QOL.settings.readNumber("RELOAD_COOLDOWN_Y_OFFSET", MOD_CONFIG.RELOAD_COOLDOWN_Y_OFFSET);
     if (!isFinite(offsetY)) offsetY = 0;
-    if (offsetY < -75) offsetY = -75;
-    if (offsetY > 75) offsetY = 75;
 
     var context = $.GetContextPanel();
     var fallbackX = 950;
@@ -1909,15 +1274,11 @@ function ShowUnitTargetPreview() {
     if (!panel || !gUnitTargetPreviewImage || !gUnitTargetPreviewBinding) return;
     if (!IsSettingsWindowVisible()) return;
 
-    var size = Math.round(Number(MOD_CONFIG.UNIT_TARGET_SIZE));
+    var size = QOL.settings.readNumber("UNIT_TARGET_SIZE", MOD_CONFIG.UNIT_TARGET_SIZE);
     if (!isFinite(size)) size = 150;
-    if (size < 50) size = 50;
-    if (size > 300) size = 300;
 
-    var opacity = Number(MOD_CONFIG.UNIT_TARGET_OPACITY);
+    var opacity = QOL.settings.readNumber("UNIT_TARGET_OPACITY", MOD_CONFIG.UNIT_TARGET_OPACITY);
     if (!isFinite(opacity)) opacity = 1.0;
-    if (opacity < 0) opacity = 0;
-    if (opacity > 1) opacity = 1;
 
     var redDiamond = Number(MOD_CONFIG.ENABLE_RED_DIAMOND) === 1;
     var improvedHint = Number(MOD_CONFIG.ENABLE_IMPROVED_HINT) === 1;
@@ -1965,14 +1326,10 @@ function ShowDamageReportPreview() {
     if (!panel || !gDamageReportPreviewBox || !gDamageReportPreviewLabel) return;
     if (!IsSettingsWindowVisible()) return;
 
-    var offsetX = Math.round(Number(MOD_CONFIG.DAMAGE_REPORT_X_OFFSET));
+    var offsetX = QOL.settings.readNumber("DAMAGE_REPORT_X_OFFSET", MOD_CONFIG.DAMAGE_REPORT_X_OFFSET);
     if (!isFinite(offsetX)) offsetX = 0;
-    if (offsetX < 0) offsetX = 0;
-    if (offsetX > 2000) offsetX = 2000;
-    var offsetY = Math.round(Number(MOD_CONFIG.DAMAGE_REPORT_Y_OFFSET));
+    var offsetY = QOL.settings.readNumber("DAMAGE_REPORT_Y_OFFSET", MOD_CONFIG.DAMAGE_REPORT_Y_OFFSET);
     if (!isFinite(offsetY)) offsetY = 0;
-    if (offsetY < -200) offsetY = -200;
-    if (offsetY > 1000) offsetY = 1000;
     var isDisabled = Number(MOD_CONFIG.DISABLE_DAMAGE_REPORT) === 1;
 
     var context = $.GetContextPanel();
@@ -1999,7 +1356,7 @@ function ShowDamageReportPreview() {
     var targetY = anchoredToLive ? baseY : (baseY - offsetY);
     SetPreviewPanelPosition(panel, targetX, targetY);
     gDamageReportPreviewBox.SetHasClass("Disabled", isDisabled);
-    gDamageReportPreviewLabel.text = isDisabled ? "HIDDEN" : "DAMAGE REPORT";
+    gDamageReportPreviewLabel.text = LocalizeSettingsText(isDisabled ? "HIDDEN" : "DAMAGE REPORT", true);
     panel.AddClass("Visible");
     ScheduleHideDamageReportPreview(1.2);
 }
@@ -2013,22 +1370,14 @@ function ShowShopPreview() {
     if (!panel || !gShopPreviewBox || !gShopPreviewLabel) return;
     if (!IsSettingsWindowVisible()) return;
 
-    var offsetX = Math.round(Number(MOD_CONFIG.SHOP_OFFSET_X));
+    var offsetX = QOL.settings.readNumber("SHOP_OFFSET_X", MOD_CONFIG.SHOP_OFFSET_X);
     if (!isFinite(offsetX)) offsetX = 0;
-    if (offsetX < -500) offsetX = -500;
-    if (offsetX > 500) offsetX = 500;
-    var offsetY = Math.round(Number(MOD_CONFIG.SHOP_OFFSET_Y));
+    var offsetY = QOL.settings.readNumber("SHOP_OFFSET_Y", MOD_CONFIG.SHOP_OFFSET_Y);
     if (!isFinite(offsetY)) offsetY = 0;
-    if (offsetY < -500) offsetY = -500;
-    if (offsetY > 500) offsetY = 500;
-    var opacity = Number(MOD_CONFIG.SHOP_OPACITY);
+    var opacity = QOL.settings.readNumber("SHOP_OPACITY", MOD_CONFIG.SHOP_OPACITY);
     if (!isFinite(opacity)) opacity = 1.0;
-    if (opacity < 0) opacity = 0;
-    if (opacity > 1) opacity = 1;
-    var scale = Number(MOD_CONFIG.SHOP_SCALE);
+    var scale = QOL.settings.readNumber("SHOP_SCALE", MOD_CONFIG.SHOP_SCALE);
     if (!isFinite(scale)) scale = 1.0;
-    if (scale < 0.5) scale = 0.5;
-    if (scale > 1.5) scale = 1.5;
 
     var context = $.GetContextPanel();
     var fallbackX = 240;
@@ -2057,7 +1406,7 @@ function ShowShopPreview() {
     SetPanelOpacitySafe(panel, opacity, 1.0);
     panel.style.preTransformScale2d = "1.00, 1.00";
     panel.style.uiScale = Math.round(scale * 100) + "%";
-    gShopPreviewLabel.text = "SHOP";
+    gShopPreviewLabel.text = LocalizeSettingsText("SHOP", true);
     panel.AddClass("Visible");
     ScheduleHideShopPreview(1.2);
 }
@@ -2071,22 +1420,16 @@ function ShowUnsecuredPlusPreview() {
     if (!panel || !gUnsecuredPlusPreviewIcon || !gUnsecuredPlusPreviewText || !gUnsecuredPlusPreviewValue) return;
     if (!IsSettingsWindowVisible()) return;
 
-    var scale = Math.round(Number(MOD_CONFIG.UNSECURED_SOULS_HUD_SCALE));
+    var scale = QOL.settings.readNumber("UNSECURED_SOULS_HUD_SCALE", MOD_CONFIG.UNSECURED_SOULS_HUD_SCALE);
     if (!isFinite(scale)) scale = 100;
-    if (scale < 50) scale = 50;
-    if (scale > 200) scale = 200;
-    var xOffset = Math.round(Number(MOD_CONFIG.UNSECURED_SOULS_HUD_X_OFFSET));
+    var xOffset = QOL.settings.readNumber("UNSECURED_SOULS_HUD_X_OFFSET", MOD_CONFIG.UNSECURED_SOULS_HUD_X_OFFSET);
     if (!isFinite(xOffset)) xOffset = 0;
-    if (xOffset < -1000) xOffset = -1000;
-    if (xOffset > 2000) xOffset = 2000;
-    var yOffset = Math.round(Number(MOD_CONFIG.UNSECURED_SOULS_HUD_Y_OFFSET));
+    var yOffset = QOL.settings.readNumber("UNSECURED_SOULS_HUD_Y_OFFSET", MOD_CONFIG.UNSECURED_SOULS_HUD_Y_OFFSET);
     if (!isFinite(yOffset)) yOffset = 0;
-    if (yOffset < 800) yOffset = 800;
-    if (yOffset > 2000) yOffset = 2000;
 
     var showIcon = Number(MOD_CONFIG.ENABLE_BETTER_UNSECURED_SHOW_ICON) === 1;
     var showText = Number(MOD_CONFIG.ENABLE_BETTER_UNSECURED_SHOW_TEXT) === 1;
-    var fontPx = Math.max(8, Math.min(72, Math.round(14 * (scale / 100))));
+    var fontPx = Math.max(1, Math.round(14 * (scale / 100)));
 
     var context = $.GetContextPanel();
     var fallbackX = 780;
@@ -2188,6 +1531,7 @@ function WirePreviewToggleButton(btn) {
     QOL.preview = {
         // Hide all previews — called from close paths, search render, toggle handlers
         hideAll: HideMinimapSizePreview,
+        dispose() { hidePreviews(); previewTree.dispose(); previewContext = null; },
         // Show preview for a config ID — dispatcher called from CreateRow, toggle handlers
         showForConfigId: ShowConfigPreviewForConfigId,
         // Wire a preview toggle button — called from settings UI build

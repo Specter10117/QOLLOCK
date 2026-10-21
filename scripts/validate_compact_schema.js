@@ -3,6 +3,9 @@ const path = require("path");
 const vm = require("vm");
 
 const projectRoot = path.resolve(__dirname, "..");
+const contractPath = path.join(projectRoot, "panorama", "scripts", "ql_settings_contract.js");
+const legacyPath = path.join(projectRoot, "panorama", "scripts", "ql_legacy_compact.js");
+const installLegacyEncoder = require("./legacy_compact_encoder");
 const sharedPath = path.join(projectRoot, "panorama", "scripts", "ql_shared_presets.js");
 const utilsPath = path.join(projectRoot, "panorama", "scripts", "ql_utils.js");
 const bridgePath = path.join(projectRoot, "panorama", "scripts", "ql_bridge.js");
@@ -571,31 +574,33 @@ function runFuzzTests(settingsExports, coreExports, defaultConfig, settingsRegis
 
 function main() {
     const settingsContext = loadContext(
-        [namespacePath, utilsPath, panelHelpersPath, sharedPath, bridgePath, configPath, rendererPath, settingsPreviewsPath, settingsTooltipsPath, settingsPersistencePath, settingsModalPath, settingsConfigTabPath, settingsCloudSyncPath, settingsSupportPath, settingsAudioPath, settingsConsoleTabPath, settingsArcadeTabPath, settingsDevTabPath, settingsGameplayTabsPath, settingsThemePath, settingsMetadataPath, settingsTabsPath, settingsControlsPath, settingsPath],
+        [namespacePath, utilsPath, panelHelpersPath, sharedPath, contractPath, legacyPath, bridgePath, configPath, rendererPath, settingsPreviewsPath, settingsTooltipsPath, settingsPersistencePath, settingsModalPath, settingsConfigTabPath, settingsCloudSyncPath, settingsSupportPath, settingsAudioPath, settingsConsoleTabPath, settingsArcadeTabPath, settingsDevTabPath, settingsGameplayTabsPath, settingsThemePath, settingsMetadataPath, settingsTabsPath, settingsControlsPath, settingsPath],
         `globalThis.__schemaGuardExports = {
             sharedSemver: QOL_SCHEMA_SEMVER,
             sharedWireVersion: QOL_SCHEMA_WIRE_VERSION,
             defaultConfig: QOL_DEFAULT_CONFIG,
             presets: QOL_PRESETS,
-            latestSemver: LATEST_COMPACT_SEMVER,
+            latestSemver: QOL_LATEST_COMPACT_SEMVER,
             registry: QOL_COMPACT_SCHEMA_REGISTRY,
-            serialize: QOL.persistence.serializeCompactV2,
-            deserialize: QOL.persistence.deserializeCompactV2,
+            serialize: (config, version) => QOL.testEncodeLegacySettings(config, version),
+            deserialize: QOL.persistence.deserializeSettings,
             buildCandidateConfig: BuildCandidateConfigFromParsed,
             tryImport: TryApplyImportStringWithDiagnostics
         };`,
         false
     );
     const coreContext = loadContext(
-        [namespacePath, utilsPath, panelHelpersPath, sharedPath, bridgePath, codecPath],
+        [namespacePath, utilsPath, panelHelpersPath, sharedPath, contractPath, legacyPath, bridgePath, codecPath],
         `globalThis.__schemaGuardExports = {
-            latestSemver: QOL.core.codec.getLatestCompactSemver(),
-            registry: QOL.core.codec.getCompactSchemaRegistry(),
-            serialize: QOL.core.codec.serializeBuildPayloadCompact,
-            deserialize: QOL.core.codec.deserializeBuildPayloadCompact
+            latestSemver: QOL_SCHEMA_SEMVER,
+            registry: QOL.legacyCompact.registry,
+            serialize: (config, version) => QOL.testEncodeLegacySettings(config, version),
+            deserialize: QOL.core.codec.deserializeSettings
         };`,
         false
     );
+    installLegacyEncoder(settingsContext);
+    installLegacyEncoder(coreContext);
     var mirrorSettingsContext = null; // mirror not available
     var mirrorCoreContext = null; // mirror not available
 

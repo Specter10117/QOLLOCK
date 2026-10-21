@@ -9,7 +9,7 @@ const { spawnSync } = require("node:child_process");
 const { Clock } = require("../scripts/simulator/clock");
 const { Document } = require("../scripts/simulator/panel");
 const { install, counters, silently } = require("../scripts/simulator/perf/instrument");
-const { buildCapturedHud } = require("../scripts/simulator/perf/hud_tree");
+const { buildCapturedHud, buildMatchHud } = require("../scripts/simulator/perf/hud_tree");
 const { createProfiledHud, makeMaximalConfig } = require("../scripts/simulator/perf/profile");
 const { parseArgs, matchesLabel, collectTrace } = require("../scripts/trace_feature_hud");
 
@@ -78,6 +78,25 @@ test("aggregate and window captures without a Hud context cannot silently become
     assert.throws(() => buildCapturedHud(doc, { domTree: { id: "CitadelHudRoot", children: [] } }), /no direct Hud/);
 });
 
+test("XML composition keeps retired native layouts and prefers current overrides without a second mod-source list", t => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "qollock-native-layouts-"));
+    const files = ["hud.xml", "hud_health.xml", "ability_hud_element_unit_target.xml"];
+    t.after(() => { for (const file of files) fs.unlinkSync(path.join(dir, file)); fs.rmdirSync(dir); });
+    fs.writeFileSync(path.join(dir, "hud.xml"), '<root><Panel id="VanillaHudMustNotReplaceOverride" /></root>');
+    fs.writeFileSync(path.join(dir, "hud_health.xml"), '<root><Panel class="bars_container"><ProgressBarWithMiddle id="health_bar" /></Panel></root>');
+    fs.writeFileSync(path.join(dir, "ability_hud_element_unit_target.xml"), '<root><Panel class="unit_target_instance"><Panel id="unscaled_panel"><Panel id="hint_container" /><Panel id="scaled_panel"><Panel id="hint_container" /></Panel></Panel></Panel></root>');
+    const doc = new Document(new Clock()), tree = buildMatchHud(doc, { players: 1, damageNumbers: 0, dataFeed: 0, chatLines: 0, vanillaLayout: dir });
+    assert.equal(doc.root.FindChildTraverse("VanillaHudMustNotReplaceOverride"), null);
+    assert.ok(doc.root.FindChildTraverse("gameplay_hud")); assert.ok(doc.root.FindChildTraverse("QOLHealthbarGeometry"));
+    assert.equal(tree.byLayout["hud_health.xml"].perInstance, 2);
+    assert.equal(tree.byLayout["ability_hud_element_unit_target.xml"].perInstance, 5);
+    assert.ok(doc.root.FindChildTraverse("health_bar"));
+    assert.equal(doc.root.FindChildrenWithClassTraverse("unit_target_instance").length, 1);
+    assert.equal(doc.root.FindChildTraverse("cd_icons"), null);
+    assert.ok(tree.notes.includes("layout not found: vanilla/hud_minimap.xml"), "genuinely missing native sources remain reported");
+    for (const file of files) assert.equal(tree.notes.some(note => note.startsWith("layout not found:") && note.endsWith("/" + file)), false);
+});
+
 test("defaults plus overrides do not silently expand unrelated feature toggles", () => {
     const sandbox = { evalJson: () => ({ ENABLE_A: 0, ENABLE_B: 0, DISABLE_C: 1, MODE: 2 }) };
     assert.deepEqual(makeMaximalConfig(sandbox, { MODE: 3 }, false),
@@ -136,7 +155,10 @@ test("CLI emits parseable JSON even with a feature and verbose, without a local 
     fs.writeFileSync(capturePath, JSON.stringify(fixture()));
     const cli = spawnSync(process.execPath, ["scripts/trace_feature_hud.js", "ql_crosshair_stats",
         "--capture", capturePath, "--seconds", "2", "--json", "--verbose", "--events"],
-    { cwd: path.resolve(__dirname, ".."), encoding: "utf8" });
+    // Opt-in event traces repeat full native breadcrumbs; scoped resolvers add
+    // direct-child events alongside whole-tree searches. Preserve all events.
+    { cwd: path.resolve(__dirname, ".."), encoding: "utf8", maxBuffer: 8 * 1024 * 1024 });
+    assert.equal(cli.error, undefined, cli.error && cli.error.message);
     assert.equal(cli.status, 0, cli.stderr);
     const result = JSON.parse(cli.stdout);
     assert.ok(result.features[0].missedTargets.damageAmpContainer >= 1);

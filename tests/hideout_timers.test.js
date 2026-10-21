@@ -12,7 +12,7 @@ function fixture(id, config, inHideout = false) {
     let tick;
     const schedule = Q.core.Scheduler.createPollLoop;
     Q.core.Scheduler.createPollLoop = cb => { tick = cb; return { stop() {} }; };
-    const instance = Q.core.FeatureRegistry.getManifest(id).create({ config: { view: () => config } });
+    const instance = Q.core.FeatureRegistry.getManifest(id).create({ events: Q.core.EventBus, config: { view: () => config } });
     instance.onEnable();
     Q.core.Scheduler.createPollLoop = schedule;
     return { hud, Q, $, instance, tick: () => tick() };
@@ -51,7 +51,7 @@ test("urn retries missing minimap and restores replaced timer and hideout transi
     hud.clock.advance(2100);
     searches = 0;
     tick();
-    assert.equal(Q.state.riftTimerDisplayMode, "warning");
+    assert.equal(find("RiftTimer").BHasClass("rift_warning"), true);
     assert.equal(searches, 1);
     cp.RemoveClass("koth_warning");
     hud.clock.advance(500);
@@ -72,9 +72,11 @@ test("urn retries missing minimap and restores replaced timer and hideout transi
     assert.equal(find("RiftTimer").visible, true);
     assert.equal(find("RiftTimerLabel").text, text);
     instance.onDisable();
-    assert.equal(find("RiftTimer").visible, false);
+    hud.clock.advance(1);
+    assert.equal(find("RiftTimer"), null);
     instance.onEnable();
     instance.onSettingsChanged();
+    hud.clock.advance(1);
     assert.equal(find("RiftTimer").visible, true);
     assert.equal(hud.clock.errors.length, 0);
 });
@@ -84,10 +86,12 @@ test("urn retries a missing timer parent without requiring a clock text change",
     $.CreatePanel("Label", hud.root, "GameTime").text = "12:00";
     const find = hud.root.FindChildTraverse.bind(hud.root);
     let searches = 0;
-    hud.root.FindChildTraverse = id => { if (id === "RiftTimer") searches++; return find(id); };
+    hud.root.FindChildTraverse = id => { if (id === "TopBar") searches++; return find(id); };
     tick();
+    const firstSearches = searches;
+    assert.ok(firstSearches > 0);
     tick();
-    assert.equal(searches, 1);
+    assert.equal(searches, firstSearches, "missing native parent is not rescanned on the next callback");
     assert.equal(find("RiftTimer"), null);
     $.CreatePanel("Panel", hud.root, "TopBar");
     hud.clock.advance(2100);

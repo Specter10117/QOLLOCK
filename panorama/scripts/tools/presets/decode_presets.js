@@ -16,6 +16,7 @@ vm.createContext(sandbox);
 try {
     vm.runInContext(fs.readFileSync(path.join(__dirname, "..", "..", "ql_utils.js"), "utf8"), sandbox, { filename: "ql_utils.js" });
     vm.runInContext(src, sandbox, { filename: "ql_shared_presets.js" });
+    vm.runInContext(fs.readFileSync(path.join(__dirname, "..", "..", "ql_legacy_compact.js"), "utf8"), sandbox, { filename: "ql_legacy_compact.js" });
 } catch (e) {
     console.error("LOAD ERROR:", e.message);
 }

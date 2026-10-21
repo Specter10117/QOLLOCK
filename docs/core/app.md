@@ -9,7 +9,7 @@ Top-level application boot coordinator and native engine event bridge. Orchestra
 
 ## Interface (`QOL.core.App` / `QOL.core.app`)
 - `boot()`: Main entry point. Resolves HUD panel, restores configuration from `Deadlock_Mod_Settings_v1` attribute, boots all enabled features, starts cross-isolate config synchronization, and registers native engine event listeners.
-- `shutdown()`: Stops timers, saves modified settings back to HUD attributes, and shuts down all active features.
+- `shutdown()`: Retires the current polling generation, saves modified settings only to its captured living HUD when no newer publication is pending, and shuts down all active features.
 - `isBooted()`: Returns `true` if application initialization succeeded.
 - `getHud()`: Returns the cached reference to the Deadlock HUD panel.
 - `syncRootClasses(hud)`: Keeps layout state classes synchronized on the HUD root (e.g. `InHideout`, `Streetbrawl`).
@@ -28,7 +28,9 @@ Deadlock C++ engine events are captured using `$.RegisterForUnhandledEvent` and 
 ## Cross-Isolate Config Polling Bridge & Match Lifecycle
 Panorama executes settings UI (`EscapeMenu`) and game HUD in separate JavaScript execution contexts. `ql_app.js` maintains a 250ms heartbeat polling the serialized attribute on the HUD panel, allowing settings changed in the pause menu to propagate on a subsequent heartbeat.
 
-When a player leaves a match, the HUD panel is destroyed by the engine while the V8 runtime may persist. If the HUD panel becomes invalid during polling or `CitadelGameStateChanged`, `ql_app.js` triggers `shutdown()` to halt timers, cancel scheduler loops, and release feature listeners. Furthermore, `boot()` detects stale instances with invalid HUD handles and performs a clean reboot, preventing compounding polling overhead and frame jitter across successive matches.
+When a player leaves a match, the HUD panel is destroyed by the engine while the V8 runtime may persist. If the HUD panel becomes invalid during polling or `CitadelGameStateChanged`, `ql_app.js` triggers `shutdown()` to halt timers, cancel scheduler loops, and release feature listeners. Furthermore, `boot()` detects stale instances with invalid HUD handles and performs a clean reboot, preventing compounding polling overhead across successive matches. Poll callbacks carry a session generation, so rejected cancellation or a zero native timer handle cannot revive a retired loop. Teardown never discovers a replacement HUD for saving and preserves publications not yet consumed by its last poll.
+
+Runtime enable-state reconciliation uses the registry's automatic mode. It preserves explicit, failed-enable and error-triggered retirement across unrelated settings changes; an explicit retry, deliberate setting off/on transition, or new session may restore the owner. This transient policy does not change stored defaults or configuration.
 
 ## In-Game Benchmark & Stress Test Harness
 `ql_app.js` coordinates live in-game performance benchmarks requested via `QOL_DiagRequest` tokens (prefixed `bm_`):

@@ -1,0 +1,14 @@
+/* QOLLOCK overrides for hero_testing_menu.css; loaded after the native baseline. */
+
+.hud_hero_testing_root
+{
+    y: 75px;
+}
+
+/* The native menu deliberately collapses in the hideout even when the engine's
+   hero-testing class is active. QOLLOCK exposes the testing controls there when
+   the user enables the corresponding convar. */
+.connectedToHeroTesting.connectedToHideout:not(.InHideout) .hud_hero_testing_root
+{
+    visibility: visible;
+}

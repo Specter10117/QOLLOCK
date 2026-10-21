@@ -34,6 +34,8 @@
     };
 
     const isAlive = Q.core.panel.isAlive;
+    const localize = text => globalThis.LocalizeSettingsText(text, true);
+    const format = (text, values) => Q.ui.theme.FormatSettingsText(text, values);
 
     // =========================================================================
     // HUD Bridge Panel Resolver
@@ -137,7 +139,10 @@
         const unchecked = s.skipped + s.notRun;
         const incomplete = result.aborted || s.total === 0 || (audit && !audit.hudFound) || !result.report;
         return {
-            text: `Hooks: ${s.passed}/${s.total} OK, ${s.failed} failed, ${errors} errors, ${unchecked} unchecked${incomplete ? " (incomplete)" : ""}`,
+            text: format("Hooks: {passed}/{total} OK, {failed} failed, {errors} errors, {unchecked} unchecked{incomplete}", {
+                passed: s.passed, total: s.total, failed: s.failed, errors, unchecked,
+                incomplete: incomplete ? localize(" (incomplete)") : ""
+            }),
             color: (s.failed > 0 || errors > 0) ? "#cc4444" : (unchecked > 0 || incomplete) ? "#cc8844" : "#aaaaaa"
         };
     }
@@ -148,11 +153,12 @@
 
     let fitRunning = false;
     let fitToken = 0;
+    let fitRestore = null;
 
     function runFeatureIsolationTest(statusLabel, actionBtn) {
         const setStatus = (text, color) => {
             if (isAlive(statusLabel)) {
-                statusLabel.text = text;
+                statusLabel.text = localize(text);
                 statusLabel.style.color = color;
             }
         };
@@ -166,6 +172,9 @@
         if (fitRunning) {
             fitRunning = false;
             fitToken++;
+            const restore = fitRestore;
+            fitRestore = null;
+            if (restore) restore();
             setStatus("Stopped", "#aa8844");
             setBtnActive(false);
             return;
@@ -207,13 +216,17 @@
         }
 
         const modCfg = (typeof MOD_CONFIG !== "undefined" && MOD_CONFIG) ? MOD_CONFIG : {};
-        const savedConfig = {};
-        for (let ti = 0; ti < testQueue.length; ti++) {
-            const k = testQueue[ti].configKeys[0];
-            savedConfig[k] = modCfg[k];
-        }
-
+        const savedConfig = JSON.stringify(modCfg);
         const saveAndSync = (typeof SaveAndSync === "function") ? SaveAndSync : () => {};
+        const restore = () => {
+            // Normalization can derive additional flags from the tested toggle.
+            // Restore the complete snapshot so Stop cannot leave those behind.
+            const snapshot = JSON.parse(savedConfig);
+            for (const key of Object.keys(modCfg)) if (!Object.prototype.hasOwnProperty.call(snapshot, key)) delete modCfg[key];
+            Object.assign(modCfg, snapshot);
+            saveAndSync();
+        };
+        fitRestore = restore;
 
         let passed = 0;
         let failed = 0;
@@ -229,13 +242,10 @@
             if (index >= testQueue.length) {
                 fitRunning = false;
                 setBtnActive(false);
-                for (let rk = 0; rk < toggleKeys.length; rk++) {
-                    const k = toggleKeys[rk];
-                    modCfg[k] = savedConfig[k];
-                }
-                saveAndSync();
+                fitRestore = null;
+                restore();
                 const color = (failed > 0) ? "#cc8844" : "#66cc99";
-                setStatus(`Done: ${passed} passed, ${failed} failed, ${skipped} skipped`, color);
+                setStatus(format("Done: {passed} passed, {failed} failed, {skipped} skipped", { passed, failed, skipped }), color);
                 $.Msg(`[QOLLock][FeatureTest] Complete — ${passed} passed, ${failed} failed, ${skipped} skipped`);
                 return;
             }
@@ -273,11 +283,7 @@
                     if ((nowMs - pollStartMs) > 5500) {
                         skipped++;
                         $.Msg(`[QOLLock][FeatureTest] SKIP: ${entry.name} — diagnostic sync timeout`);
-                        for (let tdk = 0; tdk < entry.configKeys.length; tdk++) {
-                            const ck = entry.configKeys[tdk];
-                            modCfg[ck] = savedConfig[ck];
-                        }
-                        saveAndSync();
+                        restore();
                         index++;
                         $.Schedule(0.08, runNext);
                         return;
@@ -300,11 +306,7 @@
                                     passed++;
                                 }
 
-                                for (let dk = 0; dk < entry.configKeys.length; dk++) {
-                                    const ck = entry.configKeys[dk];
-                                    modCfg[ck] = savedConfig[ck];
-                                }
-                                saveAndSync();
+                                restore();
 
                                 index++;
                                 $.Schedule(0.08, runNext);
@@ -319,11 +321,7 @@
             } catch (e) {
                 failed++;
                 $.Msg(`[QOLLock][FeatureTest] FAIL: ${entry.name} threw: ${e?.message || e}`);
-                for (let rk2 = 0; rk2 < entry.configKeys.length; rk2++) {
-                    const ck = entry.configKeys[rk2];
-                    modCfg[ck] = savedConfig[ck];
-                }
-                saveAndSync();
+                restore();
                 index++;
                 $.Schedule(0.08, runNext);
             }
@@ -341,7 +339,7 @@
     function runManifestTests(statusLabel, actionBtn) {
         const setStatus = (text, color) => {
             if (isAlive(statusLabel)) {
-                statusLabel.text = text;
+                statusLabel.text = localize(text);
                 statusLabel.style.color = color;
             }
         };
@@ -442,7 +440,7 @@
         const hudPanel = findHudPanel();
         if (!hudPanel || !hudPanel.SetAttributeString) {
             if (isAlive(statusLabel)) {
-                statusLabel.text = "Hud panel not found";
+                statusLabel.text = localize("Hud panel not found");
                 statusLabel.style.color = "#cc4444";
             }
             return false;
@@ -453,14 +451,14 @@
         } catch (e) {
             warnLog("settings", `TreeDump request failed: ${e?.message || e}`);
             if (isAlive(statusLabel)) {
-                statusLabel.text = "Request failed";
+                statusLabel.text = localize("Request failed");
                 statusLabel.style.color = "#cc4444";
             }
             return false;
         }
         $.Msg(`[QOLLock][TreeDump] requested, token: ${forceToken}`);
         if (isAlive(statusLabel)) {
-            statusLabel.text = "Dumped to console log";
+            statusLabel.text = localize("Dumped to console log");
             statusLabel.style.color = "#66cc99";
         }
         const setFeedback = Q.ui?.configTab?.setLocalizedConfigFeedbackMessage || globalThis.SetLocalizedConfigFeedbackMessage;
@@ -505,7 +503,7 @@
         const hudPanel = findHudPanel();
         if (!hudPanel || !hudPanel.SetAttributeString) {
             if (isAlive(statusLabel)) {
-                statusLabel.text = "Hud panel not found";
+                statusLabel.text = localize("Hud panel not found");
                 statusLabel.style.color = "#cc4444";
             }
             return false;
@@ -515,14 +513,14 @@
         } catch (e) {
             warnLog("settings", `BuildStorage dry run failed: ${e?.message || e}`);
             if (isAlive(statusLabel)) {
-                statusLabel.text = "Request failed";
+                statusLabel.text = localize("Request failed");
                 statusLabel.style.color = "#cc4444";
             }
             return false;
         }
         $.Msg("[QOLLock][BuildStorage] requested tree dump dry run");
         if (isAlive(statusLabel)) {
-            statusLabel.text = "Dry run started";
+            statusLabel.text = localize("Dry run started");
             statusLabel.style.color = "#66cc99";
         }
         const setFeedback = Q.ui?.configTab?.setLocalizedConfigFeedbackMessage || globalThis.SetLocalizedConfigFeedbackMessage;
@@ -542,7 +540,7 @@
     function runInGameEngineAudit(container, statusLabel, actionBtn) {
         const setStatus = (text, color) => {
             if (isAlive(statusLabel)) {
-                statusLabel.text = text;
+                statusLabel.text = localize(text);
                 statusLabel.style.color = color;
             }
         };
@@ -566,7 +564,7 @@
             if (!hudPanel || !hudPanel.SetAttributeString) throw new Error("HUD panel not found");
             hudPanel.SetAttributeString("QOL_DiagRequest", forceToken);
         } catch (e) {
-            setStatus(`Audit not started: ${e.message || e}`, "#cc4444");
+            setStatus(format("Audit not started: {error}", { error: e.message || e }), "#cc4444");
             auditRunning = false;
             setBtnActive(false);
             return;
@@ -610,7 +608,7 @@
                         }
 
                         const status = observationStatus(diag);
-                        setStatus(`${status.text} (${copied ? "copied" : "copy failed; check ~"})`, (copied || status.color === "#cc4444") ? status.color : "#cc8844");
+                        setStatus(format("{status} ({copy})", { status: status.text, copy: localize(copied ? "copied" : "copy failed; check ~") }), (copied || status.color === "#cc4444") ? status.color : "#cc8844");
                         auditRunning = false;
                         setBtnActive(false);
                         return;
@@ -635,7 +633,7 @@
     function runFullTestSuite(container, statusLabel, actionBtn) {
         const setStatus = (text, color) => {
             if (isAlive(statusLabel)) {
-                statusLabel.text = text;
+                statusLabel.text = localize(text);
                 statusLabel.style.color = color;
             }
         };
@@ -703,7 +701,7 @@
                         }
 
                         const status = observationStatus(diag);
-                        setStatus(`${status.text} (${copied ? "copied" : "copy failed"})`, (copied || status.color === "#cc4444") ? status.color : "#cc8844");
+                        setStatus(format("{status} ({copy})", { status: status.text, copy: localize(copied ? "copied" : "copy failed") }), (copied || status.color === "#cc4444") ? status.color : "#cc8844");
                         fsRunning = false;
                         setBtnActive(false);
                         return;
@@ -727,7 +725,7 @@
     function runInGameBenchmark(container, statusLabel, actionBtn, isStressTest) {
         const setStatus = (text, color) => {
             if (isAlive(statusLabel)) {
-                statusLabel.text = text;
+                statusLabel.text = localize(text);
                 statusLabel.style.color = color;
             }
         };
@@ -761,7 +759,7 @@
         } catch {}
 
         const startTime = Date.now();
-        setStatus(`Benchmarking: ${durSec}s left...`, "#66cc99");
+        setStatus(format("Benchmarking: {seconds}s left...", { seconds: durSec }), "#66cc99");
 
         function pollBenchmark() {
             if (!bmRunning || token !== bmToken) return;
@@ -771,7 +769,7 @@
             const remaining = Math.max(0, durSec - elapsedSec);
 
             if (remaining > 0) {
-                setStatus(`Benchmarking: ${remaining}s left...`, "#66cc99");
+                setStatus(format("Benchmarking: {seconds}s left...", { seconds: remaining }), "#66cc99");
             } else {
                 setStatus("Finalizing report...", "#66cc99");
             }
@@ -813,12 +811,12 @@
                         $.Msg(`[QOLLock][DevTab] Benchmark finished: ${totalJs}ms in timed poll callbacks over ${durSec}s. Report ${copied ? "copied to clipboard" : "printed to console"}.`);
 
                         if (copied) {
-                            setStatus(`Copied! ${totalJs}ms callbacks (Check ~)`, "#66cc99");
+                            setStatus(format("Copied! {milliseconds}ms callbacks (Check ~)", { milliseconds: totalJs }), "#66cc99");
                             if (typeof setFeedback === "function") {
                                 setFeedback("Benchmark report copied to clipboard!", "success", 4000);
                             }
                         } else {
-                            setStatus(`Done: ${totalJs}ms callbacks (Check ~)`, "#e6b800");
+                            setStatus(format("Done: {milliseconds}ms callbacks (Check ~)", { milliseconds: totalJs }), "#e6b800");
                             if (typeof setFeedback === "function") {
                                 setFeedback("Benchmark finished! Check console (~).", "info", 4000);
                             }
@@ -851,7 +849,7 @@
     function runPresetCycle(statusLabel, actionBtn) {
         const setStatus = (text, color) => {
             if (isAlive(statusLabel)) {
-                statusLabel.text = text;
+                statusLabel.text = localize(text);
                 statusLabel.style.color = color;
             }
         };
@@ -871,7 +869,7 @@
             const done = pcResults.length;
             const presetsForTotal = (typeof PRESETS !== "undefined" && PRESETS) ? PRESETS : ((typeof globalThis !== "undefined" && (globalThis.QOL_PRESETS || globalThis.PRESETS)) ? (globalThis.QOL_PRESETS || globalThis.PRESETS) : {});
             const total = Object.keys(presetsForTotal).length;
-            setStatus(`Stopped (${done} of ${total})`, "#aa8844");
+            setStatus(format("Stopped ({done} of {total})", { done, total }), "#aa8844");
             if (typeof setFeedback === "function") {
                 setFeedback(`Stopped after ${done} presets.`, "info", 2400);
             }
@@ -914,7 +912,7 @@
                     }
                 }
                 const summaryColor = (failed > 0) ? "#cc8844" : "#66cc99";
-                const summary = `Done: ${passed} passed, ${failed} failed`;
+                const summary = format("Done: {passed} passed, {failed} failed", { passed, failed });
                 setStatus(summary, summaryColor);
                 $.Msg(`[QOLLock][presetCycle] === SUMMARY: ${summary} ===`);
                 if (failNames.length > 0) {
@@ -964,7 +962,7 @@
 
             if (!applyOk) {
                 pcResults.push({ name: presetName, passed: false, autoDisabled: [], featuresLoaded: 0, timeMs: Date.now() - startMs, exception: applyErr });
-                setStatus(`${label} — EXCEPTION`, "#cc4444");
+                setStatus(format("{label} — EXCEPTION", { label }), "#cc4444");
                 index++;
                 $.Schedule(0.05, runNext);
                 return;
@@ -994,7 +992,7 @@
                 if (elapsedPollMs > maxPollMs) {
                     pcResults.push({ name: presetName, passed: false, autoDisabled: [], featuresLoaded: 0, timeMs: nowMs - startMs, timeout: true });
                     $.Msg(`[QOLLock][presetCycle] ${label} — TIMEOUT (no diagnostic sync after ${Math.round(elapsedPollMs)}ms)`);
-                    setStatus(`${label} — TIMEOUT`, "#cc8844");
+                    setStatus(format("{label} — TIMEOUT", { label }), "#cc8844");
                     index++;
                     $.Schedule(0.05, runNext);
                     return;
@@ -1023,7 +1021,7 @@
                                 timeMs: elapsedMs
                             });
 
-                            const statusStr = isSuccess ? "OK" : `FAIL: ${autoDisabled.join(", ")}`;
+                            const statusStr = isSuccess ? "OK" : format("FAIL: {features}", { features: autoDisabled.join(", ") });
                             const color = isSuccess ? "#66cc99" : "#cc4444";
                             $.Msg(`[QOLLock][presetCycle] ${label} — ${statusStr} (${features.length} features, ${elapsedMs}ms, ${pollAttempts} polls)`);
                             setStatus(`${label} — ${statusStr}`, color);
@@ -1161,14 +1159,14 @@
             label.style.fontWeight = "bold";
             label.style.fontSize = "13px";
             label.style.color = "#e8ecea";
-            label.text = titleText;
+            label.text = localize(titleText);
 
             if (descText) {
                 const desc = $.CreatePanel("Label", labelWrap, "");
                 desc.AddClass("SettingDescription");
                 desc.style.fontSize = "12px";
                 desc.style.color = "#7c8480";
-                desc.text = descText;
+                desc.text = localize(descText);
             }
 
             const actionGroup = $.CreatePanel("Panel", row, "");
@@ -1180,7 +1178,7 @@
             let statusLbl = null;
             if (statusId) {
                 statusLbl = $.CreatePanel("Label", actionGroup, statusId);
-                statusLbl.text = "Idle";
+                statusLbl.text = localize("Idle");
                 statusLbl.style.fontSize = "12px";
                 statusLbl.style.color = "#7c8480";
                 statusLbl.style.marginRight = "10px";
@@ -1217,7 +1215,7 @@
             btnLabel.style.fontSize = "12px";
             btnLabel.style.fontWeight = "bold";
             btnLabel.style.verticalAlign = "center";
-            btnLabel.text = btnText;
+            btnLabel.text = localize(btnText);
 
             if (typeof onActivate === "function") {
                 btn.SetPanelEvent("onactivate", () => onActivate(statusLbl, btn));
@@ -1249,9 +1247,9 @@
             "BenchmarkRunBtn",
             "BenchmarkNormalStatus",
             "s2r://panorama/images/icons/icon_play.vsvg",
-            globalThis.LocalizeSettingsText("Benchmark (Current Config)", true),
-            globalThis.LocalizeSettingsText("Measure Scheduler polls and FindChildTraverse calls for 10 seconds with current settings. Native panel visits and FPS are unavailable.", true),
-            globalThis.LocalizeSettingsText("Run Current (10s)", true),
+            "Benchmark (Current Config)",
+            "Measure Scheduler polls and FindChildTraverse calls for 10 seconds with current settings. Native panel visits and FPS are unavailable.",
+            "Run Current (10s)",
             (statusLbl, btn) => runInGameBenchmark(list, statusLbl, btn, false)
         );
 
@@ -1263,9 +1261,9 @@
         createDevActionRow(
             list, "DevVisualCheckRow", "VisualCheckBtn", "VisualCheckStatus",
             "s2r://panorama/images/icons/icon_play.vsvg",
-            globalThis.LocalizeSettingsText("HUD settings walkthrough", true),
-            globalThis.LocalizeSettingsText("Open in a match or sandbox. Compare HUD changes and test gameplay. Stop restores settings without saving the test values.", true),
-            globalThis.LocalizeSettingsText("Start", true),
+            "HUD settings walkthrough",
+            "Open in a match or sandbox. Compare HUD changes and test gameplay. Stop restores settings without saving the test values.",
+            "Start",
             (statusLbl) => {
                 const started = Q.ui.visualCheck?.start(() => {
                     if (isAlive(statusLbl)) statusLbl.text = globalThis.LocalizeSettingsText("Settings restored", true);
@@ -1276,15 +1274,15 @@
 
         createDevActionRow(list, "DevHudStateRow", "HudStateStartBtn", "HudStateStartStatus",
             "s2r://panorama/images/icons/icon_play.vsvg",
-            globalThis.LocalizeSettingsText("HUD state recording", true),
-            globalThis.LocalizeSettingsText("Record HUD states and managed callback activity for 60 seconds. Reproduce the stutter or return to hideout. Settings are unchanged.", true),
-            globalThis.LocalizeSettingsText("Record HUD states", true),
+            "HUD state recording",
+            "Record HUD states and managed callback activity for 60 seconds. Reproduce the stutter or return to hideout. Settings are unchanged.",
+            "Record HUD states",
             status => requestHudStateObservation(status));
         createDevActionRow(list, "DevHudStateCopyRow", "HudStateCopyBtn", "HudStateCopyStatus",
             "s2r://panorama/images/icons/icon_copy.vsvg",
-            globalThis.LocalizeSettingsText("HUD state report", true),
-            globalThis.LocalizeSettingsText("After recording, copy HUD transitions, callback timings, delivery delays and active task counts. This is not an FPS measurement.", true),
-            globalThis.LocalizeSettingsText("Copy HUD state report", true),
+            "HUD state report",
+            "After recording, copy HUD transitions, callback timings, delivery delays and active task counts. This is not an FPS measurement.",
+            "Copy HUD state report",
             status => copyHudStateObservation(list, status));
 
         createDevActionRow(

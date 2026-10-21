@@ -100,8 +100,8 @@ test("bottom bar checks its known parent between periodic full-HUD searches", ()
         return original.call(this, id);
     };
     const cfg = { HUD_BOTTOM_BAR_ENABLED: 1, BOTTOM_BAR_X_OFFSET: 100 };
-    const feature = Q.core.FeatureRegistry.getManifest("ql_bottom_bar").create({
-        id: "ql_bottom_bar", config: { all: () => cfg }
+    const feature = Q.core.FeatureRegistry.getManifest("ql_bottom_bar").create({ events: Q.core.EventBus,
+        id: "ql_bottom_bar", config: { view: () => cfg }
     });
     feature.onEnable();
     assert.equal(first.style.x, "100px");
@@ -147,12 +147,12 @@ test("ammo geometry and late text targets survive hideout panel replacement", ()
     Q.core.ConfigStore.set("ql_ammo", "AMMO_PANEL_X_OFFSET", 100);
     Q.core.ConfigStore.set("ql_ammo", "AMMO_TEXT_COLOR", 3);
     hud.clock.advance(600);
-    assert.equal(first.style.x, "100px");
+    assert.equal(first.style.marginLeft, "100px");
     first.DeleteAsync(0);
     hud.clock.advance(1);
     const replacement = $.CreatePanel("Panel", hud.root, "ammo_panel");
     hud.clock.advance(600);
-    assert.equal(replacement.style.x, "100px");
+    assert.equal(replacement.style.marginLeft, "100px");
     const text = $.CreatePanel("Label", replacement, "AmmoText");
     text.AddClass("weapon_ammo");
     hud.clock.advance(600);
@@ -162,14 +162,17 @@ test("ammo geometry and late text targets survive hideout panel replacement", ()
     assert.equal(text.style.color, Q.core.panel.resolvePaletteColor(3), "selected ammo color survives native rewrites");
     const clip = $.CreatePanel("Panel", hud.root, "clip_status");
     const ring = $.CreatePanel("Panel", clip, "ClipRing");
+    ring.style.transform = "rotateZ(23deg)";
     Q.core.ConfigStore.set("ql_ammo", "AMMO_CLIP_ANGLE", 45);
     hud.clock.advance(600);
-    assert.equal(ring.style.transform, "rotateZ(-45deg)");
+    assert.equal(clip.style.transform, "rotateZ(-45deg)");
+    assert.equal(ring.style.transform, "rotateZ(23deg)", "engine-owned ring geometry is preserved");
     ring.DeleteAsync(0);
     hud.clock.advance(1);
     const newRing = $.CreatePanel("Panel", clip, "ClipRing");
     hud.clock.advance(600);
-    assert.equal(newRing.style.transform, "rotateZ(-45deg)");
+    assert.equal(clip.style.transform, "rotateZ(-45deg)");
+    assert.equal(newRing.style.transform, undefined);
     assert.deepEqual(hud.clock.errors, []);
 });
 
@@ -279,6 +282,8 @@ test("keyboard overlay keeps its wash on a recreated overlay", () => {
     const hud = createHud({ inHideout: true });
     hud.assertLoaded();
     const Q = hud.sandbox.global.QOL;
+    const core = hud.sandbox.global.$.CreatePanel("Panel", hud.root, ""); core.AddClass("HudCore");
+    hud.sandbox.global.$.CreatePanel("Panel", core, "gameplay_hud");
     Q.core.ConfigStore.set("ql_keyboard", "ENABLE_KEYBOARD_OVERLAY", true);
     Q.core.ConfigStore.set("ql_keyboard", "KEYBOARD_OVERLAY_WASH_COLOR", 3);
     hud.clock.advance(500);
@@ -305,32 +310,34 @@ test("reload label gets its configured style after replacement", () => {
     hud.clock.advance(600);
     const first = reticle.FindChildTraverse("QOLReloadCooldownText");
     assert.ok(first);
-    assert.equal(first.style.marginLeft, "20px");
+    assert.equal(first.style.x, "20px");
     first.DeleteAsync(0);
     hud.clock.advance(600);
     const replacement = reticle.FindChildTraverse("QOLReloadCooldownText");
     assert.ok(replacement);
     assert.notEqual(replacement, first);
-    assert.equal(replacement.style.marginLeft, "20px");
+    assert.equal(replacement.style.x, "20px");
     assert.deepEqual(hud.clock.errors, []);
 });
 
 test("combat status reapplies layout to a recreated overlay", () => {
     const hud = createHud({ inHideout: true });
     hud.assertLoaded();
-    const Q = hud.sandbox.global.QOL;
+    const { $, QOL: Q } = hud.sandbox.global;
+    const core = $.CreatePanel("Panel", hud.root, ""); core.AddClass("HudCore");
+    $.CreatePanel("Panel", core, "gameplay_hud");
     Q.core.ConfigStore.set("ql_combat_status", "ENABLE_COMBAT_STATUS", true);
     Q.core.ConfigStore.set("ql_combat_status", "COMBAT_STATUS_X_OFFSET", 100);
     hud.clock.advance(500);
     const first = hud.root.FindChildTraverse("QOLCombatStatusOverlay");
     assert.ok(first);
-    assert.equal(first.style.marginLeft, "100px");
+    assert.equal(first.style.x, "100px");
     first.DeleteAsync(0);
     hud.clock.advance(500);
     const replacement = hud.root.FindChildTraverse("QOLCombatStatusOverlay");
     assert.ok(replacement);
     assert.notEqual(replacement, first);
-    assert.equal(replacement.style.marginLeft, "100px");
+    assert.equal(replacement.style.x, "100px");
     assert.deepEqual(hud.clock.errors, []);
 });
 

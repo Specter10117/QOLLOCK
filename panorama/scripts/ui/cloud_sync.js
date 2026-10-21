@@ -157,19 +157,19 @@
         }
     };
 
-    const watchBuildSaveStatus = (saveBtn, saveLbl, expectedToken, defaultLabel) => {
+    const watchBuildSaveStatus = (saveBtn, saveLbl, expectedToken, defaultLabel, isCurrent = () => isAlive(saveBtn)) => {
         const startMs = Date.now ? Date.now() : (new Date()).getTime();
         const timeoutMs = 30000;
 
         const restoreDefault = () => {
-            if (!isAlive(saveBtn)) return;
+            if (!isCurrent()) return;
             saveBtn.RemoveClass("SuccessState");
             saveBtn.RemoveClass("FailureState");
             if (saveLbl) saveLbl.text = defaultLabel;
         };
 
         const tick = () => {
-            if (!isAlive(saveBtn)) return;
+            if (!isCurrent()) return;
             const nowMs = Date.now ? Date.now() : (new Date()).getTime();
             const elapsedMs = nowMs - startMs;
             const status = readBuildSaveStatus();
@@ -220,6 +220,7 @@
     };
 
     let gSaveButtonLastActionMs = 0;
+    let saveUiGeneration = 0;
     const SAVE_BUTTON_DEBOUNCE_MS = 1000;
 
     /**
@@ -230,6 +231,14 @@
         const nowMs = Date.now ? Date.now() : (new Date()).getTime();
         if (gSaveButtonLastActionMs > nowMs - SAVE_BUTTON_DEBOUNCE_MS) return;
         gSaveButtonLastActionMs = nowMs;
+        const generation = ++saveUiGeneration;
+        const context = $.GetContextPanel?.(), root = findRootPanel();
+        const isCurrent = () => {
+            try {
+                return generation === saveUiGeneration && isAlive(saveBtn) && isAlive(saveLbl) &&
+                    context === $.GetContextPanel?.() && root === findRootPanel();
+            } catch (_) { return false; }
+        };
 
         const cfgSave = localize("SAVE", true);
         const cfgSaving = localize("SAVING", true);
@@ -252,7 +261,7 @@
                 : ((typeof globalThis !== "undefined" && globalThis.MOD_CONFIG) ? globalThis.MOD_CONFIG : {});
 
             bridge.saveSettings(config, (err) => {
-                if (!isAlive(saveBtn)) return;
+                if (!isCurrent()) return;
                 if (err) {
                     saveBtn.RemoveClass("SuccessState");
                     saveBtn.AddClass("FailureState");
@@ -260,7 +269,7 @@
                     setFeedbackMessage(`Save failed: ${err.message || err}`, "error", 2600);
                     if (typeof $.Schedule === "function") {
                         $.Schedule(1.2, () => {
-                            if (!isAlive(saveBtn)) return;
+                            if (!isCurrent()) return;
                             saveBtn.RemoveClass("FailureState");
                             saveLbl.text = cfgSave;
                         });
@@ -273,8 +282,7 @@
                 saveLbl.text = cfgSaved;
                 setFeedbackMessage("Settings saved successfully.", "success", 2000);
 
-                const panel = $.GetContextPanel?.();
-                const root = findRootPanel();
+                const panel = context;
                 if (panel && typeof panel.SetAttributeString === "function") {
                     panel.SetAttributeString(ATTRS.saveState(), "success");
                     panel.SetAttributeString(ATTRS.saveMsg(), "success");
@@ -286,7 +294,7 @@
 
                 if (typeof $.Schedule === "function") {
                     $.Schedule(1.2, () => {
-                        if (!isAlive(saveBtn)) return;
+                        if (!isCurrent()) return;
                         saveBtn.RemoveClass("SuccessState");
                         saveLbl.text = cfgSave;
                     });
@@ -308,7 +316,7 @@
             setFeedbackMessage("Failed to queue save request.", "error", 2200);
             if (typeof $.Schedule === "function") {
                 $.Schedule(0.6, () => {
-                    if (!isAlive(saveBtn)) return;
+                    if (!isCurrent()) return;
                     saveBtn.RemoveClass("FailureState");
                     saveLbl.text = cfgSave;
                 });
@@ -316,7 +324,7 @@
             return;
         }
 
-        watchBuildSaveStatus(saveBtn, saveLbl, token, cfgSave);
+        watchBuildSaveStatus(saveBtn, saveLbl, token, cfgSave, isCurrent);
     };
 
     let gClearButtonLastActionMs = 0;

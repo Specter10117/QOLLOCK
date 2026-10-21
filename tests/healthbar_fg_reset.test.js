@@ -14,7 +14,9 @@ function fixture(env) {
         return p;
     }
     const health = add(hud.root, "health_and_abilities_container");
-    const bars = add(health, "hud_health_bars");
+    Object.assign(health, { actuallayoutwidth: 300, actuallayoutheight: 456, actualuiscale_x: 1.2, actualuiscale_y: 1.2 });
+    const geometry = add(health, "QOLHealthbarGeometry");
+    const bars = add(geometry, "hud_health_bars");
     const border = add(bars, "", "health_bar_border");
     const gold = add(hud.root, "gold_and_ap_container");
     add(gold, "Before");
@@ -33,14 +35,14 @@ function fixture(env) {
         if (args[2] === "QOLFGPortrait") panel.SetImage = src => imageCalls.push({ panel, src });
         return panel;
     };
-    return { health, bars, border, gold, portrait, add, crosshair, dash, imageCalls };
+    return { health, geometry, bars, border, gold, portrait, add, crosshair, dash, imageCalls };
 }
 
 for (const type of [0, 1, 2, 3, 4, 5]) {
     test(`healthbar ${type}: real size row reset releases the HUD scale`, () => {
         const env = loadSettingsEnvironment();
         const { global: g, list, clock, hud, doc } = env;
-        const { health } = fixture(env);
+        const { health, geometry } = fixture(env);
         g.MOD_CONFIG.HEALTHBAR_TYPE = type;
         const row = g.CreateSliderRow(list, "Size", "PLAYER_HEALTHBAR_SCALE", "size_50_200");
         const input = row.FindChildrenWithClassTraverse("ValueInput")[0];
@@ -49,12 +51,18 @@ for (const type of [0, 1, 2, 3, 4, 5]) {
             input.text = String(scale);
             input._fire("oninputsubmit");
             clock.advance(1200);
-            assert.equal(health.style.uiScale, Math.round(120 * scale / 100) + "%");
+            assert.equal(geometry.style.uiScale, scale + "%");
+            assert.equal(health.style.uiScale, undefined, "native owner keeps its CSS baseline");
+            assert.equal(health.style.preTransformScale2d, undefined);
             reset._fire("onactivate");
             clock.advance(1200);
             assert.equal(g.MOD_CONFIG.PLAYER_HEALTHBAR_SCALE, 100);
             assert.equal(hud.sandbox.global.QOL.core.ConfigStore.get("ql_healthbar", "PLAYER_HEALTHBAR_SCALE"), 100);
             assert.equal(health.style.uiScale, undefined, "native CSS owns scale again");
+            assert.equal(geometry.style.uiScale, undefined);
+            assert.equal(geometry.style.width, undefined);
+            assert.equal(geometry.style.height, undefined);
+            assert.equal(health.style.preTransformScale2d, undefined);
         }
         assert.deepEqual(doc.eventErrors, []);
         assert.deepEqual(clock.errors, []);
@@ -223,7 +231,7 @@ for (const [key, id, expected] of [["TOP_BAR_SCALE", "TopBar", "150%"], ["BOTTOM
         if (!panel.GetParent()) hud.root.addChild(panel);
         const row = g.CreateSliderRow(list, "Size", key, "scale_0_5_1_5");
         const input = row.FindChildrenWithClassTraverse("ValueInput")[0];
-        input.text = "1.5";
+        input.text = "150";
         input._fire("oninputsubmit");
         clock.advance(1200);
         assert.equal(panel.style.uiScale, expected);
