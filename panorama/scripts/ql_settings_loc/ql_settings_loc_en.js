@@ -5,6 +5,10 @@
     var _root = (typeof globalThis !== "undefined") ? globalThis : (typeof window !== "undefined") ? window : {};
     if (!_root.SETTINGS_LOCALE_TEXT) _root.SETTINGS_LOCALE_TEXT = {};
     _root.SETTINGS_LOCALE_TEXT["en"] = {
+    "Fountain Size": "Fountain Size",
+    "Small": "Small",
+    "Large": "Large",
+    "Choose the Damage Fountain animation size.": "Choose the Damage Fountain animation size.",
     "Dragging was interrupted. Grab the element again.": "Dragging was interrupted. Grab the element again.",
     "HUD settings updated": "HUD settings updated",
     "Updating HUD...": "Updating HUD...",

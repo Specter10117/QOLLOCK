@@ -40,6 +40,7 @@ const SETTING_CREATED_BY_BY_CONFIG = {
     ENABLE_CLEAN_DAMAGE_INDICATORS: "Lustie",
     ENABLE_HIDE_TROOPER_DAMAGE: "ninjabladejr",
     ENABLE_DAMAGE_FOUNTAIN: "ArkanoidVFX",
+    DAMAGE_FOUNTAIN_SIZE: "ArkanoidVFX",
     ENABLE_AMMO_STATUS: "mikoboy",
     ENABLE_RED_DIAMOND: "Hanturaya",
     ENABLE_OBJ_MAP: "bonclide",

@@ -45,7 +45,7 @@ tables, CSS values, test history or general verification caveats into it.
 | [ql_combat_indicator](../../panorama/scripts/manifests/ql_combat_indicator/manifest.js) | Native healthbar/root indicator classes with private recovery history and source retirement. |
 | [ql_heroshop](../../panorama/scripts/manifests/ql_heroshop/manifest.js) | Shop layout, simplification and quickbuy behavior; quickbuy has a special-context companion. |
 | [ql_keyboard](ql_keyboard.md) | Private keyboard/binding overlay generations and reactive geometry/color; native glyphs remain engine-owned. |
-| [ql_damage_numbers](../../panorama/scripts/manifests/ql_damage_numbers/manifest.js) | Native combat indicator presentation; settings use DAMAGE_NUMBER_OPACITY and HUD_INDICATOR_SIZE. |
+| [ql_damage_numbers](ql_damage_numbers.md) | Native combat indicator presentation, visibility filters and scoped Damage Fountain variants. |
 | [ql_topbar](../../panorama/scripts/manifests/ql_topbar/manifest.js) | Top-bar geometry/visibility and shared warning/objective settings. |
 | [ql_crosshair_stats](../../panorama/scripts/manifests/ql_crosshair_stats/manifest.js) | Selected stat/buff/debuff readouts near the crosshair. |
 | [ql_better_unsecured_hud](../../panorama/scripts/manifests/ql_better_unsecured_hud/manifest.js) | Unsecured-souls amount/icon overlay; separate from decay estimation. |

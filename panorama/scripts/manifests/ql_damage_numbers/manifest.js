@@ -18,6 +18,7 @@
             { key: "ENABLE_HIDE_SMALL_NUMBERS", type: "toggle" },
             { key: "ENABLE_HIDE_TROOPER_DAMAGE", type: "toggle" },
             { key: "ENABLE_DAMAGE_FOUNTAIN", type: "toggle" },
+            { key: "DAMAGE_FOUNTAIN_SIZE", type: "dropdown" },
             { key: "ENABLE_CUMULATIVE_DMG", type: "toggle" }
         ],
         create(ctx) {

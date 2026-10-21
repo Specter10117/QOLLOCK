@@ -200,6 +200,9 @@
             createRow(list, "Trooper Damage", "ENABLE_HIDE_TROOPER_DAMAGE", "toggle", null, null, null, [{ invert: true }]);
             createRow(list, "Clean Indicators", "ENABLE_CLEAN_DAMAGE_INDICATORS", "toggle", null, null, null, null, "Modify damage numbers for a cleaner style and animation to be more out of the way");
             createRow(list, "Damage Fountain", "ENABLE_DAMAGE_FOUNTAIN", "toggle", null, null, null, null, "Fountain-style damage number animation.");
+            createRow(list, "Fountain Size", "DAMAGE_FOUNTAIN_SIZE", "dropdown", null, null, null, [
+                { label: "Small", value: 0 }, { label: "Medium", value: 1 }, { label: "Large", value: 2 }
+            ], "Choose the Damage Fountain animation size.");
         }
 
         createSep(list);

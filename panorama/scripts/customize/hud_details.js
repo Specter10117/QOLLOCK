@@ -44,7 +44,9 @@
         { id: "damageNumbers", name: "Damage Numbers", group: "Crosshair", frame: false, fields: [
             f("DAMAGE_NUMBER_OPACITY", "Opacity"), f("HUD_INDICATOR_SIZE", "Size"), t("ENABLE_CLEAN_DAMAGE_INDICATORS", "Clean Damage Indicators"),
             t("ENABLE_HIDE_SMALL_NUMBERS", "Hide Small Numbers"), t("ENABLE_HIDE_TROOPER_DAMAGE", "Hide Trooper Damage"),
-            t("ENABLE_DAMAGE_FOUNTAIN", "Damage Fountain"), t("ENABLE_CUMULATIVE_DMG", "Cumulative Damage")
+            t("ENABLE_DAMAGE_FOUNTAIN", "Damage Fountain"),
+            f("DAMAGE_FOUNTAIN_SIZE", "Fountain Size", "enum", { options: [[0, "Small"], [1, "Medium"], [2, "Large"]] }),
+            t("ENABLE_CUMULATIVE_DMG", "Cumulative Damage")
         ] },
         { id: "statlocker", name: "Statlocker", group: "HUD", fields: [toggle("ENABLE_STATLOCKER")],
             note: "HUD profile links use this toggle. Profile and profile-card additions have their own context and no editable geometry." }

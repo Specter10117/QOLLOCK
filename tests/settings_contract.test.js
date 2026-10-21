@@ -38,3 +38,22 @@ test("catalog runtime owners match actual manifest declarations including multi-
             setting.options?.some(option => option.key === field.key)), field.key + ":" + id);
     }
 });
+
+test("Fountain dropdown publishes and JSON import retains its selected size", () => {
+    const env = load(), g = env.global;
+    g.QOL.ui.window.setOpen(true); env.clock.advance(500);
+    g.QOL.ui.gameplayTabs.renderCrosshairTab(env.list);
+    const dropdown = env.em.FindChildTraverse("DAMAGE_FOUNTAIN_SIZE_dropdown");
+    assert.ok(dropdown);
+    for (const size of [0, 2, 1]) {
+        dropdown.SetSelected("DAMAGE_FOUNTAIN_SIZE_opt_" + size);
+        dropdown._fire("oninputsubmit"); env.clock.advance(1200);
+        assert.equal(g.MOD_CONFIG.DAMAGE_FOUNTAIN_SIZE, size);
+        assert.equal(env.hud.sandbox.global.QOL.core.ConfigAdapter.exportToFlat().DAMAGE_FOUNTAIN_SIZE, size);
+        const raw = g.QOL.persistence.serializeSettings(g.MOD_CONFIG);
+        const parsed = env.hud.sandbox.global.QOL.core.codec.deserializeSettings(raw);
+        assert.equal(parsed.DAMAGE_FOUNTAIN_SIZE, size);
+    }
+    assert.equal(g.QOL.settings.normalize("DAMAGE_FOUNTAIN_SIZE", "broken"), null);
+    assert.equal(g.QOL.settings.readNumber("DAMAGE_FOUNTAIN_SIZE", 99), 2);
+});

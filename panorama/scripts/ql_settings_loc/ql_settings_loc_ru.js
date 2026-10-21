@@ -5,6 +5,10 @@
     var _root = (typeof globalThis !== "undefined") ? globalThis : (typeof window !== "undefined") ? window : {};
     if (!_root.SETTINGS_LOCALE_TEXT) _root.SETTINGS_LOCALE_TEXT = {};
     _root.SETTINGS_LOCALE_TEXT["ru"] = {
+    "Fountain Size": "Размер фонтана",
+    "Small": "Маленький",
+    "Large": "Большой",
+    "Choose the Damage Fountain animation size.": "Выберите размер анимации Damage Fountain.",
     "Dragging was interrupted. Grab the element again.": "Перетаскивание прервано. Захватите элемент ещё раз.",
     "HUD settings updated": "Настройки HUD обновлены",
     "Updating HUD...": "Обновление HUD…",
