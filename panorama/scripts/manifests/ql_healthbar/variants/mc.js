@@ -47,7 +47,8 @@
             mcCheckModifierNextMs: 0,
             mcLastModifierResult: false,
         };
-        const heartsTree = P.createOwnedTree(), barrierTree = P.createOwnedTree();
+        const heartsTree = P.createOwnedTree(), barrierTree = P.createOwnedTree(), armorTree = P.createOwnedTree();
+        const armorHearts = [];
         const ownedStyles = new Map(), ownedText = new Map(), imageSignatures = new Map(), foodOwners = new Set();
         const goldResolver = QOL.panelCache.createIdResolver("gold_and_ap_container", {
             retryMs: 400, ownerPath: [{ id: "Hud", optional: true }, { className: "HudCore" }, "gameplay_hud", "gameplay_hud_alive"]
@@ -95,7 +96,7 @@
         }
 
         // ── Minecraft healthbar constants ──
-        const MC_CHARGE_MAX_ANGLES = { 1: 90, 2: 42, 3: 26, 4: 20, 5: 15.5, 6: 13, 7: 10.86 };
+        const MC_CHARGE_MAX_ANGLES = { 1: 90, 2: 42, 3: 28, 4: 20, 5: 15.5, 6: 13, 7: 10.86 };
         const MC_HP_PER_HALF_SEGMENT = 50;
         const MC_LOW_HEALTH_HALF_SEGMENTS = 4;
         const MC_HEARTS_PER_ROW = 10;
@@ -120,13 +121,15 @@
             if (!P.isAlive(canvas)) return null;
             const heartsBox = P.findChild(heartsRoot, "MinecraftHeartsContainer");
             const shieldBox = P.findChild(heartsRoot, "MinecraftShieldHeartsContainer");
+            const armorBox = P.findChild(heartsRoot, "MinecraftArmorHeartsContainer");
             const xpBox = P.findChild(heartsRoot, "MinecraftXPBarContainer");
             const hotbar = P.findChild(heartsRoot, "MinecraftHotbarContainer");
             const content = P.findChild(canvas, "HealthBarContent");
             const numbersBox = P.findChild(heartsBox, "MinecraftHeartsHealthNumbersContainer");
             const numbers = P.findChild(numbersBox, "MinecraftHeartsHealthNumbers");
             return {
-                canvas, heartsRoot, heartsBox, shieldBox,
+                canvas, heartsRoot, heartsBox, shieldBox, armorBox,
+                armor: P.findChild(armorBox, "MinecraftArmorHearts"),
                 hearts: P.findChild(heartsBox, "MinecraftHearts") || P.findChild(heartsRoot, "MinecraftHearts"),
                 shieldHearts: P.findChild(shieldBox, "MinecraftShieldHearts"),
                 food: P.findChild(heartsBox, "MinecraftFoodContainer") || P.findChild(heartsRoot, "MinecraftFoodContainer"),
@@ -144,8 +147,8 @@
             const currentSources = readSources(root);
             if (!currentSources) { McResetRuntime(); return null; }
             const current = Object.values(currentSources);
-            const heartsStable = heartsTree.sweep(), barrierStable = barrierTree.sweep();
-            if (current.some((owner, index) => owner !== sourceGeneration[index]) || !heartsStable || !barrierStable) {
+            const heartsStable = heartsTree.sweep(), barrierStable = barrierTree.sweep(), armorStable = armorTree.sweep();
+            if (current.some((owner, index) => owner !== sourceGeneration[index]) || !heartsStable || !barrierStable || !armorStable) {
                 McResetRuntime();
                 contextRoot = root;
                 sourceGeneration = current;
@@ -170,6 +173,8 @@
             }
             heartsTree.clear();
             barrierTree.clear();
+            armorTree.clear();
+            armorHearts.length = 0;
             for (const [panel, text] of ownedText) if (P.isAlive(panel)) panel.text = text;
             ownedText.clear();
             for (const panel of foodOwners) if (P.isAlive(panel)) panel.SetImage("s2r://panorama/images/minecraft/food_8x_png.vtex");
@@ -668,6 +673,35 @@
         function McParseDeferredDamage(hudRoot) { return readPendingFraction(hudRoot, "pending_incoming_damage"); }
         function McParseIncomingHeal(hudRoot) { return readPendingFraction(hudRoot, "pending_incoming_heal"); }
 
+        function renderArmor(amount) {
+            const box = sources && sources.armorBox, parent = sources && sources.armor;
+            if (!P.isAlive(box) || !P.isAlive(parent)) return;
+            ownStyle(box, "visibility", amount > 0 ? "visible" : "collapse");
+            const halfSegments = Math.max(0, Math.ceil(amount / MC_HP_PER_HALF_SEGMENT));
+            const count = Math.ceil(halfSegments / 2);
+            for (let i = 0; i < count; i++) {
+                if (armorHearts[i]) continue;
+                const row = armorTree.child(parent, "Panel", "QOLMcArmorRow" + Math.floor(i / MC_HEARTS_PER_ROW));
+                const slot = armorTree.child(row, "Panel", "QOLMcArmorSlot" + i);
+                const backer = armorTree.child(slot, "Image", "QOLMcArmorBacker" + i);
+                const fill = armorTree.child(slot, "Image", "QOLMcArmorFill" + i);
+                if (![row, slot, backer, fill].every(P.isAlive)) throw new Error("Minecraft armor creation failed");
+                row.AddClass("HeartsRow"); slot.AddClass("HeartSlot"); slot.AddClass("ArmorHeart");
+                backer.AddClass("HeartContainer"); fill.AddClass("HeartFill");
+                armorHearts.push({ row, slot, backer, fill });
+            }
+            for (let i = 0; i < armorHearts.length; i++) {
+                const { row, slot, backer, fill } = armorHearts[i];
+                const visible = i < count, half = visible && i === count - 1 && halfSegments % 2 === 1;
+                if (i % MC_HEARTS_PER_ROW === 0 && row.visible !== visible) row.visible = visible;
+                if (slot.visible !== visible) slot.visible = visible;
+                P.setClass(slot, "half", half);
+                if (!visible) continue;
+                setImage(backer, "s2r://panorama/images/minecraft/" + (half ? "armor_half_empty" : "armor_empty") + "_8x_png.vtex");
+                setImage(fill, "s2r://panorama/images/minecraft/" + (half ? "armor_half" : "armor_full") + "_8x_png.vtex");
+            }
+        }
+
         function McReadHealthValues(hudRoot) {
             const numbers = sources && sources.nativeNumbers || P.findChild(hudRoot, "HealthRegenAndTotal");
             const group = U.FindFirstPanelByClass(numbers, "healthContainer");
@@ -714,66 +748,38 @@
             const crosshair = P.findTraverse(root, "crosshair");
             const search = P.isAlive(crosshair) ? crosshair : root;
             const elements = U.FindPanelsByClass(search, "ability_element_charges") || [];
+            let fallback = null;
             for (const element of elements) {
                 const container = element.id === "charges_container" ? element : P.findTraverse(element, "charges_container");
-                if (P.isAlive(container) && (U.FindPanelsByClass(container, "charge") || []).length) return container;
+                if (!P.isAlive(container) || !(U.FindPanelsByClass(container, "charge") || []).length) continue;
+                // The debugger capture distinguishes native dash from ability charges.
+                if (element.paneltype === "Citadel_AbilityHUDElement_Dash") return container;
+                if (!fallback) fallback = container;
             }
+            if (fallback) return fallback;
             const direct = P.findTraverse(search, "charges_container");
             return P.isAlive(direct) && (U.FindPanelsByClass(direct, "charge") || []).length ? direct : null;
         }
 
         function McParseChargesForHunger(root) {
-                    let container = McResolveChargesContainer(root);
+            const container = McResolveChargesContainer(root);
             if (!container) return null;
-
-            let allCharges = container.FindChildrenWithClassTraverse ? container.FindChildrenWithClassTraverse("charge") : null;
-            if (!allCharges || allCharges.length === 0) return null;
-
-            let maxCharges = 0;
-            let activeCharges = [];
-            for (let i = 0; i < allCharges.length; i += 1) {
-                if (allCharges[i].BHasClass("has_charge")) {
-                    maxCharges += 1;
-                    activeCharges.push(allCharges[i]);
-                }
-            }
-            if (maxCharges === 0) return null;
-
-            let maxAngle = MC_CHARGE_MAX_ANGLES[maxCharges] || 26;
+            const activeCharges = (U.FindPanelsByClass(container, "charge") || []).filter(charge => charge.BHasClass("has_charge"));
+            const maxCharges = activeCharges.length;
+            if (!maxCharges) return null;
+            const maxAngle = MC_CHARGE_MAX_ANGLES[maxCharges] || 26;
             let totalChargeValue = 0;
-
-            for (let i = 0; i < activeCharges.length; i += 1) {
-                let charge = activeCharges[i];
-                let isCharging = charge.BHasClass("charging");
-                let isDraining = charge.BHasClass("draining") || charge.BHasClass("drained");
-                let isDisabled = charge.BHasClass("disabled");
-
-                if (!isCharging && !isDraining && !isDisabled) {
-                    // Ready / full dash charge
-                    totalChargeValue += 1.0;
-                } else if (isCharging) {
-                    // Actively recharging
-                    let chargeFgElements = charge.FindChildrenWithClassTraverse ? charge.FindChildrenWithClassTraverse("charge_fg") : null;
-                    let chargeFg = (chargeFgElements && chargeFgElements.length > 0) ? chargeFgElements[0] : null;
-                    let clipStyle = (chargeFg && chargeFg.style && chargeFg.style.clip) ? chargeFg.style.clip.toString() : "";
-                    let match = clipStyle.match(/radial\([^,]+,[^,]+,\s*([\d.]+)deg\s*\)/);
-                    if (match) {
-                        let extentAngle = parseFloat(match[1]) || 0;
-                        let progress = (extentAngle > maxAngle) ? (extentAngle / 360) : (extentAngle / maxAngle);
-                        totalChargeValue += Math.min(Math.max(progress, 0.0), 1.0);
-                    } else {
-                        // Recharging
-                        totalChargeValue += 0.2;
-                    }
-                }
-                // isDraining || isDisabled -> 0.0
+            for (const charge of activeCharges) {
+                const foreground = U.FindFirstPanelByClass(charge, "charge_fg");
+                if (!foreground) continue;
+                if (foreground.BHasClass("finished")) { totalChargeValue += 1; continue; }
+                const clip = String(foreground.style.clip || "");
+                const match = clip.match(/radial\([^,]+,[^,]+,\s*(-?[\d.]+)deg\s*\)/);
+                // Native arcs can sweep either way. Missing progress is unavailable,
+                // never an invented full charge or a fixed recharge percentage.
+                if (match) totalChargeValue += Math.min(Math.abs(parseFloat(match[1]) || 0) / maxAngle, 1);
             }
-
-            let hungerPercent = Math.round((totalChargeValue / maxCharges) * 100);
-            if (hungerPercent < 0) hungerPercent = 0;
-            if (hungerPercent > 100) hungerPercent = 100;
-
-            return { percent: hungerPercent, chargesFilled: totalChargeValue, maxCharges: maxCharges };
+            return { percent: Math.round(totalChargeValue / maxCharges * 100), chargesFilled: totalChargeValue, maxCharges };
         }
 
         function McUpdateFood(percent) {
@@ -846,6 +852,7 @@
             }
             const bars = sources && sources.bars;
             return { ...health, ...hp, afflicted: state.mcLastModifierResult,
+                armor: P.isAlive(bars) && bars.BHasClass("ratKingArmorActive") ? readPendingFraction(hudRoot, "ratking_armor_bar") * health.totalHealth : 0,
                 barrier: readBarrier(hudRoot), experience: readExperience(root),
                 hunger: McParseChargesForHunger(root),
                 hasRejuvenator: P.isAlive(bars) && bars.BHasClass("HasRejuvenator") };
@@ -860,6 +867,7 @@
             McUpdateHealingHearts(model.currentHealth, model.healingHealth, model.totalHealth);
             McUpdateDeferredHearts(model.trueCurrentHealth, model.deferredDamage, model.totalHealth);
             McUpdateBarrierHearts(model.barrier.current, model.barrier.maximum, model.barrier.hasBarrier);
+            renderArmor(model.armor);
             renderTotem(model.hasRejuvenator);
             if (model.experience.percent !== null) {
                 ownStyle(sources && sources.xpFill, "clip",

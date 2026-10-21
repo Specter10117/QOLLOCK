@@ -71,6 +71,11 @@ queried. Verify both overlays and their healing/blink timing after compilation;
 offline tests prove source routing and lifecycle, not native progress rendering.
 Native current/max number bindings remain native; only derived percentage and
 experience labels are written by Minecraft.
+Armor icons read the same measured middle-fraction contract from native
+`ratking_armor_bar` while `ratKingArmorActive` is present. Their separate owned
+tree retires moved/replaced icons without deleting foreign children. Food reads
+the native Dash element before other ability charges, accepts either radial
+sweep direction and uses foreground completion instead of inferred ready states.
 For native layout, hero switching and fill alignment, follow
 [client verification](../TESTING.md) after maintainer compile/repack.
 

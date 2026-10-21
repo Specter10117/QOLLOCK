@@ -69,6 +69,64 @@ function start(env, cfg) {
 }
 function fills(tree, className) { return tree.hearts.FindChildrenWithClassTraverse(className); }
 
+test("Minecraft food reads signed native stamina arcs and prefers dash over ability charges", () => {
+    const env = fixture();
+    for (const food of env.tree.food.Children()) food.SetImage = image => { food._image = image; };
+    const crosshair = env.game.crosshairPanel;
+    const charges = (type, angle) => {
+        const element = env.add(crosshair, "", ["ability_element_charges"], type);
+        const container = env.add(element, "charges_container");
+        return Array.from({ length: 3 }, () => {
+            const charge = env.add(container, "", ["charge", "has_charge"]);
+            const foreground = env.add(charge, "", ["charge_fg"]);
+            foreground.style.clip = `radial(50% 50%, 135deg, ${angle}deg)`;
+            return foreground;
+        });
+    };
+    charges("Citadel_AbilityHUDElement_Progress", 0);
+    const dash = charges("Citadel_AbilityHUDElement_Dash", -14);
+    const mc = env.q.healthbar.mc.create({ id: "ql_healthbar" });
+    const update = time => mc.update(env.root, { HEALTHBAR_TYPE: 5 }, time, true);
+    const fullFood = () => env.tree.food.Children().filter(p => p._image === "s2r://panorama/images/minecraft/food_8x_png.vtex").length;
+    update(0);
+    assert.equal(fullFood(), 5, "three half-full negative arcs mean 50% stamina");
+    dash.forEach(p => { p.style.clip = "radial(50% 50%, 135deg, 14deg)"; });
+    update(50);
+    assert.equal(fullFood(), 5, "sweep direction does not change fill");
+    dash.forEach(p => { p.AddClass("finished"); p.style.clip = ""; });
+    update(100);
+    assert.equal(fullFood(), 10, "finished foregrounds mean full stamina");
+    dash.forEach(p => { p.RemoveClass("finished"); p.style.clip = ""; });
+    update(150);
+    assert.equal(fullFood(), 0, "unreadable arcs never invent a ready charge");
+    mc.release();
+});
+
+test("Minecraft armor follows the native middle fraction and retires its own icons", () => {
+    const env = fixture(), { tree } = env;
+    const box = env.add(tree.heartsRoot, "MinecraftArmorHeartsContainer");
+    const armor = env.add(box, "MinecraftArmorHearts");
+    const foreign = env.add(armor, "ForeignArmorChild");
+    const bar = env.add(tree.bars, "ratking_armor_bar");
+    bar.actuallayoutheight = 400;
+    const middle = env.add(bar, "", ["ProgressBarMiddle"]);
+    middle.actuallayoutheight = 100;
+    tree.bars.AddClass("ratKingArmorActive");
+    const f = start(env, { HEALTHBAR_TYPE: 5 });
+    const icons = () => armor.FindChildrenWithClassTraverse("ArmorHeart");
+    assert.equal(icons().length, 3, "250 armor HP occupies two full icons and a half");
+    assert.equal(icons().filter(p => p.BHasClass("half")).length, 1);
+    middle.actuallayoutheight = 20;
+    env.clock.advance(100);
+    assert.equal(icons().filter(p => p.visible).length, 1);
+    tree.bars.RemoveClass("ratKingArmorActive");
+    env.clock.advance(100);
+    assert.equal(box.style.visibility, "collapse");
+    f.onDisable(); env.clock.advance(1);
+    assert.equal(icons().length, 0);
+    assert.equal(foreign.IsValid(), true);
+});
+
 test("healthbar factories have no panel, style, callback or shared-state side effects", () => {
     const env = fixture();
     const before = env.clock.pendingCount();

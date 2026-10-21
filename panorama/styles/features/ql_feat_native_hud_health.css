@@ -1072,13 +1072,13 @@
 	transform: rotateZ(90deg);
 	margin: 0px 10px 0px 10px;
 	horizontal-align: center;
-	margin-top: 60px;
+	margin-top: 63px;
 }
 
 .minimalist_healthbar_active .regen_container
 {
 	padding: 0px;
-	margin-top: 217px;
+	margin-top: 220px;
 	margin-left: 10px;
 }
 
@@ -1168,6 +1168,23 @@
 	margin-top: 206px;
 	margin-left: 331px;
 	transform: scale3d(0.8, 0.8, 1);
+}
+
+.minimalist_healthbar_active #shield_bar_2,
+.minimalist_healthbar_active #ratking_armor_bar,
+.minimalist_healthbar_active #healthLines
+{
+    width: 36px;
+    height: 312px;
+    margin: 10px;
+    opacity-mask: url("s2r://panorama/images/hud/healthbar/healthbar_backer_mask.vsvg") 0;
+    border: 2px solid offBlack;
+    border-radius: 10px;
+}
+
+.minimalist_healthbar_active #healthLines
+{
+    transform: scaleX(-1);
 }
 
 .budhud_healthbar_active .bars_container

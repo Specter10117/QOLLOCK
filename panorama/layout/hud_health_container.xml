@@ -45,6 +45,11 @@
 			<!-- ============================================================= -->
 			<Panel id="MinecraftHeartsRoot" class="MinecraftHeartsRoot">
 				<CitadelStatusEffect id="StatusEffects" display_location="healthbar" max_modifiers="6" />
+				<!-- ==== QOLLOCK: Minecraft armor hearts ==== -->
+				<Panel id="MinecraftArmorHeartsContainer">
+					<Panel id="MinecraftArmorHearts" />
+				</Panel>
+				<!-- ==== END QOLLOCK: Minecraft armor hearts ==== -->
 				<Panel id="MinecraftShieldHeartsContainer" class="MinecraftShieldHeartsContainer">
 					<Panel id="MinecraftShieldHearts" class="MinecraftShieldHearts" />
 				</Panel>

@@ -51,7 +51,7 @@
 .minimalist_healthbar_active .healthContainer
 {
 	horizontal-align: center;
-	margin-top: 177px;
+	margin-top: 180px;
 	width: 320px;
 	height: 70px;
 	flow-children: down;
@@ -67,7 +67,7 @@
 {
 	flow-children: right;
 	horizontal-align: right;
-	margin-top: 155px;
+	margin-top: 172px;
 	margin-right: 48px;
 }
 
@@ -80,7 +80,7 @@
 {
 	flow-children: right;
 	margin-left: 43px;
-	margin-top: 155px;
+	margin-top: 172px;
 }
 
 .minimalist_healthbar_active .recentDamageCounter
@@ -1510,4 +1510,21 @@
 	color: lightgreen;
 	font-size: 16px;
 	text-shadow: 0px 0px 3.0 offBlack;
+}
+
+/* Armor is derived from the native ratking_armor_bar middle fraction. */
+#MinecraftArmorHeartsContainer,
+#MinecraftArmorHearts
+{
+    flow-children: down;
+    horizontal-align: left;
+    width: fit-children;
+    height: fit-children;
+}
+
+#MinecraftArmorHeartsContainer
+{
+    visibility: collapse;
+    margin-left: 2px;
+    margin-bottom: -2px;
 }
