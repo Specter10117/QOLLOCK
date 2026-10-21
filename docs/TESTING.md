@@ -19,6 +19,7 @@ that model, but cannot prove real client panel structure, rendering or FPS.
 ```
 node panorama/scripts/tools/qollock_smoke_test.js   # actual hud.xml script order
 npm run check:styles                               # delimiters and selector-list budget
+npm run check:origin-css                           # duplicate HUD CSS imports vs live GameTracking master
 node scripts/validate_compact_schema.js             # config codec round-trips
 npm run check:api                                  # known game API usage
 npm run lint                                      # JavaScript static checks
@@ -33,6 +34,14 @@ The stylesheet gate scans every shipped CSS source, including native base
 imports, for mismatched delimiters, unfinished strings/comments and oversized
 selector lists. It does not implement native CSS grammar or compile resources;
 the maintainer's compilation and client checks remain required.
+
+`check:origin-css` resolves GameTracking's remote `master` SHA, reads the native
+HUD layout and its recursive stylesheet imports from that pinned GitHub
+revision, then checks imports reachable through QOLLOCK HUD stylesheets for
+imports of resources already loaded by the native HUD. It skips the vendored
+`styles/base/` snapshots, whose imports come from the copied native stylesheets.
+This check requires network access and is kept separate from `npm test` so a
+temporary GitHub outage does not block offline verification.
 
 ## Focused release regressions
 
