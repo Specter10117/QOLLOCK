@@ -57,3 +57,24 @@ test("Fountain dropdown publishes and JSON import retains its selected size", ()
     assert.equal(g.QOL.settings.normalize("DAMAGE_FOUNTAIN_SIZE", "broken"), null);
     assert.equal(g.QOL.settings.readNumber("DAMAGE_FOUNTAIN_SIZE", 99), 2);
 });
+
+test("keyboard dropdowns preserve legacy Full Keys and publish/share all themes and layouts", () => {
+    const env = load(), g = env.global;
+    const legacy = g.MergeConfig({ ENABLE_FULL_KEYBOARD_LAYOUT: 1 });
+    assert.equal(legacy.KEYBOARD_OVERLAY_THEME, 0);
+    assert.equal(legacy.KEYBOARD_OVERLAY_LAYOUT, 0);
+    assert.equal(legacy.ENABLE_FULL_KEYBOARD_LAYOUT, 1);
+    g.QOL.ui.window.setOpen(true); env.clock.advance(500);
+    g.QOL.ui.gameplayTabs.renderOverlayTab(env.list);
+    for (const [key, count] of [["KEYBOARD_OVERLAY_THEME", 8], ["KEYBOARD_OVERLAY_LAYOUT", 3]]) {
+        const dropdown = env.em.FindChildTraverse(key + "_dropdown"); assert.ok(dropdown);
+        for (let value = count - 1; value >= 0; value--) {
+            dropdown.SetSelected(key + "_opt_" + value); dropdown._fire("oninputsubmit"); env.clock.advance(1200);
+            assert.equal(g.MOD_CONFIG[key], value);
+            assert.equal(env.hud.sandbox.global.QOL.core.ConfigAdapter.exportToFlat()[key], value);
+            const raw = g.QOL.persistence.serializeSettings(g.MOD_CONFIG);
+            assert.equal(env.hud.sandbox.global.QOL.core.codec.deserializeSettings(raw)[key], value);
+        }
+        assert.equal(g.QOL.settings.normalize(key, "broken"), null);
+    }
+});

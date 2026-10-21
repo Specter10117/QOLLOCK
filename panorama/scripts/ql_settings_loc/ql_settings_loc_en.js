@@ -5,6 +5,21 @@
     var _root = (typeof globalThis !== "undefined") ? globalThis : (typeof window !== "undefined") ? window : {};
     if (!_root.SETTINGS_LOCALE_TEXT) _root.SETTINGS_LOCALE_TEXT = {};
     _root.SETTINGS_LOCALE_TEXT["en"] = {
+    "Keyboard Theme": "Keyboard Theme",
+    "Keyboard Layout": "Keyboard Layout",
+    "Choose the keyboard overlay appearance.": "Choose the keyboard overlay appearance.",
+    "Choose the keyboard overlay layout.": "Choose the keyboard overlay layout.",
+    "Deadlock": "Deadlock",
+    "Citadel": "Citadel",
+    "Keystrokes": "Keystrokes",
+    "NohBoard": "NohBoard",
+    "KeyViewer": "KeyViewer",
+    "Light": "Light",
+    "Outline": "Outline",
+    "Minimal": "Minimal",
+    "Full": "Full",
+    "Compact": "Compact",
+    "Grid": "Grid",
     "Fountain Size": "Fountain Size",
     "Small": "Small",
     "Large": "Large",

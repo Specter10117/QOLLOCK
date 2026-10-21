@@ -94,6 +94,41 @@
         ]);
     };
 
+    // Adapted compact/grid geometry; native CitadelBinding still owns the glyph
+    // and pressed state. The retained Full Keys toggle selects the extra actions.
+    function buildAlternateLayout(createOwned, parent, mode, full) {
+        const layout = createOwned("Panel", parent, "");
+        layout.AddClass("KeyboardLayout"); layout.AddClass("KeyboardLayoutAlternate");
+        const rects = {};
+        const add = (action, x, y, w = 1, h = 1) => { rects[action] = [x, y, w, h]; };
+        if (mode === 1) {
+            add("AbilityMelee", 0, 0); add("MoveForward", 1, 0); add("HeldItem", 2, 0);
+            add("MoveLeft", 0, 1); add("MoveBackwards", 1, 1); add("MoveRight", 2, 1);
+            add("Attack", 0, 2, 1.5); add("ADS", 1.5, 2, 1.5);
+            add("Mantle", 0, 3, 3, 0.6);
+            add("Roll", 0, 3.6, 1.5, 0.6); add("Crouch", 1.5, 3.6, 1.5, 0.6);
+            if (full) for (let i = 0; i < 4; i++) {
+                add("Ability" + (i + 1), i * 0.75, -0.75, 0.75, 0.75);
+                add("Item" + (i + 1), i * 0.75, 4.2, 0.75, 0.6);
+            }
+        } else {
+            const pairs = [["Roll", "Crouch"], ["AbilityMelee", "MoveLeft"], ["MoveForward", "MoveBackwards"],
+                [full ? "Reload" : null, "MoveRight"], ["HeldItem", "Mantle"], ["Attack", "ADS"]];
+            pairs.forEach((pair, x) => pair.forEach((action, y) => { if (action) add(action, x, y + (full ? 1 : 0)); }));
+            if (full) for (let i = 0; i < 4; i++) {
+                add("Ability" + (i + 1), i + 1, 0); add("Item" + (i + 1), i + 1, 3);
+            }
+        }
+        const values = Object.values(rects), minY = Math.min(...values.map(rect => rect[1]));
+        const keys = Object.entries(rects).map(([action, [x, y, w, h]]) => {
+            const panel = createKeyboardOverlayKey(createOwned, layout, { action, glyphstyle: "light",
+                keyClass: action === "Attack" || action === "ADS" ? "MouseKey" : "QWERTYKey" });
+            return { panel, x, y: y - minY, w, h };
+        });
+        return { panel: layout, keys, width: Math.max(...values.map(rect => rect[0] + rect[2])),
+            height: Math.max(...values.map(rect => rect[1] + rect[3])) - minY };
+    }
+
     QOL.core.FeatureRegistry.register({
         id: "ql_keyboard",
         enableKey: "ENABLE_KEYBOARD_OVERLAY",
@@ -102,6 +137,8 @@
             ...QOL.presentation.stateSettings("ql_keyboard"),
             { key: "ENABLE_KEYBOARD_OVERLAY", type: "toggle" },
             { key: "ENABLE_FULL_KEYBOARD_LAYOUT", type: "toggle" },
+            { key: "KEYBOARD_OVERLAY_THEME", type: "dropdown" },
+            { key: "KEYBOARD_OVERLAY_LAYOUT", type: "dropdown" },
             { key: "KEYBOARD_OVERLAY_SCALE", type: "slider" },
             { key: "KEYBOARD_OVERLAY_X_OFFSET", type: "slider" },
             { key: "KEYBOARD_OVERLAY_Y_OFFSET", type: "slider" },
@@ -119,12 +156,16 @@
             function readModel() {
                 const cfg = QOL.presentation.captureVisibility(ctx, ctx.config.view());
                 const full = U.IsCfgEnabled(cfg, "ENABLE_FULL_KEYBOARD_LAYOUT");
+                const layout = QOL.settings.readNumber("KEYBOARD_OVERLAY_LAYOUT", cfg.KEYBOARD_OVERLAY_LAYOUT);
+                const theme = QOL.settings.readNumber("KEYBOARD_OVERLAY_THEME", cfg.KEYBOARD_OVERLAY_THEME);
                 const scale = QOL.settings.readNumber("KEYBOARD_OVERLAY_SCALE", cfg.KEYBOARD_OVERLAY_SCALE) / 100;
                 const x = Math.round(Number(cfg.KEYBOARD_OVERLAY_X_OFFSET)) || 0;
                 const y = Math.round(Number(cfg.KEYBOARD_OVERLAY_Y_OFFSET)) || 0;
                 const size = value => Math.max(1, Math.round(value * scale)) + "px";
                 const mouseSize = Math.max(1, Math.round(20 * scale)) + "px";
-                return { wash: U.ResolveWashColorFromPalette(U.ReadKeyboardOverlayWashColorIndex(cfg)),
+                return { full, layout, layoutKey: layout ? layout + ":" + full : "0", unit: 40 * scale,
+                    themeClasses: Object.fromEntries(Array.from({ length: 8 }, (_, i) => ["QOLKeyboardTheme" + i, i === theme])),
+                    wash: U.ResolveWashColorFromPalette(U.ReadKeyboardOverlayWashColorIndex(cfg)),
                     box: { uiScale: "100%", marginLeft: (full ? 70 : 150) + "px", marginBottom: "300px",
                         x: x + "px", y: -y + "px", width: "fit-children" },
                     widths: { TabKey: size(53), SpaceKey: size(full ? 133 : 192), ShiftKey: size(80),
@@ -143,7 +184,7 @@
 
             function ensure(parent) {
                 const stable = tree.sweep();
-                if (stable && generation && generation.parent === parent) return true;
+                if (stable && generation && generation.parent === parent && generation.layoutKey === model.layoutKey) return true;
                 retire();
                 if (!P.isAlive(parent)) return false;
                 // Retire foreign previous generations too. Merely waiting for
@@ -152,7 +193,7 @@
                     tree.child(parent, "Panel", "QOLKeyboardOverlayRoot");
                     return false;
                 }
-                generation = { parent, overlay: null, box: null, keys: [] };
+                generation = { parent, overlay: null, box: null, keys: [], alternate: null, layoutKey: model.layoutKey };
                 const created = [];
                 let childIndex = 0;
                 const createOwned = (type, owner, id, properties) => {
@@ -169,7 +210,8 @@
                     P.setVisible(generation.overlay, false);
                     generation.box = createOwned("Panel", generation.overlay, "AllBindingsBox", {
                         "class": "AllBindingsScope", hittest: "false", hittestchildren: "false" });
-                    buildKeyboardOverlayLayouts(createOwned, generation.box);
+                    if (model.layout) generation.alternate = buildAlternateLayout(createOwned, generation.box, model.layout, model.full);
+                    else buildKeyboardOverlayLayouts(createOwned, generation.box);
                     generation.keys = created.filter(panel => panel.BHasClass("Key"));
                     return true;
                 } catch (error) {
@@ -187,6 +229,13 @@
                     const width = Object.keys(model.widths).find(name => key.BHasClass(name));
                     desired.set(key, width ? { ...model.key, width: model.widths[width] } : model.key);
                 }
+                if (generation.alternate) {
+                    const alternate = generation.alternate, px = value => Math.round(value * model.unit) + "px";
+                    desired.set(alternate.panel, { width: px(alternate.width), height: px(alternate.height), flowChildren: "none" });
+                    for (const { panel, x, y, w, h } of alternate.keys) desired.set(panel, {
+                        x: px(x + 0.05), y: px(y + 0.05), width: px(w - 0.1), height: px(h - 0.1), margin: "0px"
+                    });
+                }
                 // Native KeyboardLetter/ModifierCombinerLabel are Label types, not a "Label" class.
                 // CitadelBinding creates/replaces their glyph tree after our own construction.
                 const stack = generation.box.Children().map(panel => ({ panel, depth: 0 }));
@@ -198,7 +247,7 @@
                     if (depth < 64) for (const child of panel.Children()) stack.push({ panel: child, depth: depth + 1 });
                 }
                 styles.retain(desired.keys());
-                for (const [panel, next] of desired) ready = styles.apply(panel, next) && ready;
+                for (const [panel, next] of desired) ready = styles.apply(panel, next, panel === generation.box ? model.themeClasses : undefined) && ready;
                 if (generation.overlay.visible !== ready) P.setVisible(generation.overlay, ready);
             }
 

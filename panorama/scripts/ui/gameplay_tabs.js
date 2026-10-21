@@ -501,6 +501,12 @@
             createSep(list);
             createAnimatedToggle(list, "Keyboard", "ENABLE_KEYBOARD_OVERLAY", "Realtime Key Inputs", (sectionParent) => {
                 if (createRow) {
+                    createRow(sectionParent, "Keyboard Theme", "KEYBOARD_OVERLAY_THEME", "dropdown", null, null, null, [
+                        "Deadlock", "Citadel", "Keystrokes", "NohBoard", "KeyViewer", "Light", "Outline", "Minimal"
+                    ].map((label, value) => ({ label, value })), "Choose the keyboard overlay appearance.");
+                    createRow(sectionParent, "Keyboard Layout", "KEYBOARD_OVERLAY_LAYOUT", "dropdown", null, null, null, [
+                        { label: "Full", value: 0 }, { label: "Compact", value: 1 }, { label: "Grid", value: 2 }
+                    ], "Choose the keyboard overlay layout.");
                     createRow(sectionParent, "Full Keys", "ENABLE_FULL_KEYBOARD_LAYOUT", "toggle", null, null, null, null, "");
                 }
                 if (createRow) {

@@ -5,6 +5,21 @@
     var _root = (typeof globalThis !== "undefined") ? globalThis : (typeof window !== "undefined") ? window : {};
     if (!_root.SETTINGS_LOCALE_TEXT) _root.SETTINGS_LOCALE_TEXT = {};
     _root.SETTINGS_LOCALE_TEXT["ru"] = {
+    "Keyboard Theme": "Тема клавиатуры",
+    "Keyboard Layout": "Раскладка клавиатуры",
+    "Choose the keyboard overlay appearance.": "Выберите оформление клавиатурного оверлея.",
+    "Choose the keyboard overlay layout.": "Выберите раскладку клавиатурного оверлея.",
+    "Deadlock": "Deadlock",
+    "Citadel": "Citadel",
+    "Keystrokes": "Keystrokes",
+    "NohBoard": "NohBoard",
+    "KeyViewer": "KeyViewer",
+    "Light": "Светлая",
+    "Outline": "Контур",
+    "Minimal": "Минимальная",
+    "Full": "Полная",
+    "Compact": "Компактная",
+    "Grid": "Сетка",
     "Fountain Size": "Размер фонтана",
     "Small": "Маленький",
     "Large": "Большой",

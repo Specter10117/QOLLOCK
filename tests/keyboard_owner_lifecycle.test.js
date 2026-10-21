@@ -51,6 +51,36 @@ test("keyboard keeps both native binding layouts and reacts to geometry/palette/
     env.feature.onDisable(); env.clock.advance(20); assert.equal(env.overlay(), null); assert.deepEqual(env.clock.errors, []);
 });
 
+test("keyboard themes update in place and alternate layouts retain native actions and generation cleanup", () => {
+    const env = setup(); env.feature.onEnable();
+    const original = env.overlay();
+    for (let theme = 0; theme < 8; theme++) {
+        env.cfg.KEYBOARD_OVERLAY_THEME = theme; env.feature.onSettingsChanged();
+        assert.equal(env.overlay(), original, "theme selection does not recreate native bindings");
+        for (let other = 0; other < 8; other++) assert.equal(env.box().BHasClass("QOLKeyboardTheme" + other), other === theme);
+    }
+    env.cfg.KEYBOARD_OVERLAY_LAYOUT = 1; env.feature.onSettingsChanged(); env.clock.advance(250);
+    const compact = env.box().FindChildrenWithClassTraverse("KeyboardLayoutAlternate")[0];
+    assert.ok(compact);
+    assert.equal(compact.style.width, "120px");
+    const actions = () => env.box().FindChildrenWithClassTraverse("Key").map(p => env.bindingActions.get(p));
+    assert.ok(actions().includes("MoveForward")); assert.ok(actions().includes("Mantle"));
+    assert.equal(actions().includes("Ability1"), false);
+    env.cfg.ENABLE_FULL_KEYBOARD_LAYOUT = true; env.feature.onSettingsChanged(); env.clock.advance(250);
+    assert.ok(actions().includes("Ability1")); assert.ok(actions().includes("Item4"));
+    env.cfg.KEYBOARD_OVERLAY_LAYOUT = 2; env.feature.onSettingsChanged(); env.clock.advance(250);
+    const grid = env.box().FindChildrenWithClassTraverse("KeyboardLayoutAlternate")[0];
+    assert.equal(grid.style.width, "240px");
+    assert.equal(grid.style.height, "160px");
+    env.cfg.KEYBOARD_OVERLAY_SCALE = 150; env.feature.onSettingsChanged();
+    assert.equal(grid.style.width, "360px"); assert.equal(grid.style.height, "240px");
+    assert.equal(compact.IsValid(), false);
+    env.cfg.KEYBOARD_OVERLAY_LAYOUT = 0; env.feature.onSettingsChanged(); env.clock.advance(250);
+    assert.ok(env.box().FindChildrenWithClassTraverse("KeyboardLayoutFull")[0]);
+    env.feature.onDisable(); env.clock.advance(20);
+    assert.equal(env.overlay(), null); assert.deepEqual(env.clock.errors, []);
+});
+
 test("keyboard scopes its shop visibility exception to the selected Customize sample and clears it on expiry", () => {
     const env = setup(); env.feature.onEnable();
     const { Q, root, clock } = env, preview = Q.presentation.preview;

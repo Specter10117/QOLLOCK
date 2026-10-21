@@ -35,6 +35,8 @@
         ] },
         { id: "keyboard", name: "Keyboard Overlay", group: "Overlay", path: [...gameplay, "QOLKeyboardOverlayRoot", "AllBindingsBox"], fields: [
             toggle("ENABLE_KEYBOARD_OVERLAY"), f("ENABLE_FULL_KEYBOARD_LAYOUT", "Full Keyboard", "toggle", { hidden: true }), ...geometry("KEYBOARD_OVERLAY_", true), opacity("KEYBOARD_OVERLAY_"),
+            f("KEYBOARD_OVERLAY_THEME", "Keyboard Theme", "enum", { options: ["Deadlock", "Citadel", "Keystrokes", "NohBoard", "KeyViewer", "Light", "Outline", "Minimal"].map((name, index) => [index, name]) }),
+            f("KEYBOARD_OVERLAY_LAYOUT", "Keyboard Layout", "enum", { options: [[0, "Full"], [1, "Compact"], [2, "Grid"]] }),
             f("KEYBOARD_OVERLAY_WASH_COLOR", "Color", "palette")
         ] },
         { id: "reload", name: "Reload Cooldown", group: "Crosshair", path: [...crosshair, "gun", "gun_data", "reticle_status", "QOLReloadCooldownText"], fields: [

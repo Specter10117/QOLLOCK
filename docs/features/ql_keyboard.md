@@ -2,8 +2,16 @@
 
 The HUD `ql_keyboard` manifest owns its created overlay, layouts, rows and
 `CitadelBinding` panels. Native input, binding state and shared HUD CSS remain
-with their existing owners. The basic/full action layouts and persisted setting
-catalog are retained.
+with their existing owners. The basic/full action choice is retained for saved
+configurations. The appearance and Full/Compact/Grid controls use current JSON
+settings and the same owned overlay, alongside existing scale, offsets and color
+wash. Themes change only presentation; native bindings and press classes remain
+the input source.
+Theme and scale edits reuse existing bindings; changing an alternate layout or
+its action set retires that created generation through the existing owned tree.
+Preset colors, borders, fonts and pressed presentation are scoped to this overlay;
+native binding/glyph styles elsewhere are unchanged. The upstream standalone
+settings window, external storage, counters and trails are not loaded.
 
 The instance resolves the current native `Hud > .HudCore > gameplay_hud` and
 waits when gameplay is absent. A replaced living HUD, parent or created child
