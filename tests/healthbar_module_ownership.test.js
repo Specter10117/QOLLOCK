@@ -226,6 +226,26 @@ test("accent retries rejected writes and disable cancels its delayed generation"
     assert.equal(frame.style.washColor, undefined);
 });
 
+test("default healthbar accent skips descendant discovery and still releases a previous wash", () => {
+    const env = fixture(), { health, frame } = env.tree;
+    let searches = 0;
+    for (const method of ["FindChildTraverse", "FindChildrenWithClassTraverse"]) {
+        const native = health[method].bind(health);
+        health[method] = (...args) => { searches++; return native(...args); };
+    }
+    const accent = env.q.healthbar.accent.create({ id: "ql_healthbar" });
+    accent.update(env.root, { PLAYER_HEALTHBAR_ACCENT_COLOR: 0 }, health);
+    assert.equal(searches, 0, "default appearance has no targets to discover");
+    accent.update(env.root, { PLAYER_HEALTHBAR_ACCENT_COLOR: 2 }, health); env.clock.advance(20);
+    assert.ok(frame.style.washColor);
+    searches = 0;
+    accent.update(env.root, { PLAYER_HEALTHBAR_ACCENT_COLOR: 0 }, health);
+    assert.equal(frame.style.washColor, undefined);
+    accent.update(env.root, { PLAYER_HEALTHBAR_ACCENT_COLOR: 0 }, health);
+    assert.equal(searches, 0, "restoration uses owned handles without another subtree walk");
+    accent.release();
+});
+
 test("retained Minimalist preset offsets and shared warning keys reach the actual dispatcher slice", () => {
     const env = fixture(), { q, tree } = env;
     q.core.ConfigAdapter.loadFromFlat({

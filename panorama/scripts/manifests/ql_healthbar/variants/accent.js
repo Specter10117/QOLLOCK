@@ -37,8 +37,12 @@
         }
 
         function update(root, cfg, health) {
-            const current = discover(health);
             const color = P.resolvePaletteColor(readIndex(cfg));
+            if (!color) {
+                if (active || pending !== null || targets.length) release();
+                return;
+            }
+            const current = discover(health);
             const same = current.length === targets.length && current.every((panel, index) => panel === targets[index]);
             if (same && signature === color) {
                 if (color) for (const panel of current) owner.apply(panel, { washColor: color });

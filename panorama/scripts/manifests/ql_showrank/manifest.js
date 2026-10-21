@@ -41,9 +41,12 @@
             function classPanel(owner, className) { return U.FindFirstPanelByClass(owner, className); }
             function text(panel) { try { return P.isAlive(panel) ? String(panel.text || "").trim() : ""; } catch (_) { return ""; } }
             function classBinding(record, key, className) {
+                const direct = record.kind === "topbar" && ["HeroNameHidden", "AlwaysPlayerName", "PlayerAccountHiddenTopBar"].includes(className);
+                const owner = direct && className === "PlayerAccountHiddenTopBar"
+                    ? P.findChild(record.source, "PlayerDetailsContainer") || record.source : record.source;
                 let panel = record.bindings[key];
-                if (!P.isAlive(panel) || !belongs(panel, record.source) || !panel.BHasClass(className) || U.PerfNowMs() >= record.nextBindingRefresh) {
-                    panel = classPanel(record.source, className);
+                if (!P.isAlive(panel) || !belongs(panel, owner) || (direct && panel.GetParent() !== owner) || !panel.BHasClass(className) || U.PerfNowMs() >= record.nextBindingRefresh) {
+                    panel = direct ? owner.Children().find(child => P.isAlive(child) && child.BHasClass(className)) || null : classPanel(owner, className);
                     record.bindings[key] = panel;
                 }
                 return panel;
@@ -76,8 +79,17 @@
                 record.bindings = {};
             }
             function refreshRecord(record) {
-                const base = record.baseResolver.resolve(record.source);
-                const overlay = record.overlayResolver.resolve(record.source);
+                // Own badges have explicit XML parents. Avoid searching through
+                // the native player's inventory/ability/glyph descendants for them.
+                let owner = P.findChild(record.source, "MainContents");
+                if (record.kind === "topbar") {
+                    const details = P.findChild(record.source, "PlayerDetailsContainer");
+                    const hero = P.findChild(details, "HeroContents");
+                    owner = P.isAlive(hero) && hero.Children().find(child => P.isAlive(child) && child.BHasClass("HeroInnerContent"));
+                }
+                const suffix = record.kind === "topbar" ? "TopBar" : "";
+                const base = P.isAlive(owner) ? P.findChild(owner, "RankPredictionBadge" + suffix) : record.baseResolver.resolve(record.source);
+                const overlay = P.isAlive(owner) ? P.findChild(owner, "RankPredictionBadge" + suffix + "Overlay") : record.overlayResolver.resolve(record.source);
                 const accountLabel = classBinding(record, "account", record.kind === "row" ? "PlayerAccountHidden" : "PlayerAccountHiddenTopBar");
                 if (base !== record.base || overlay !== record.overlay || accountLabel !== record.accountLabel) {
                     clearPresentation(record);

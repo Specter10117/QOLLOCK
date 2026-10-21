@@ -410,12 +410,39 @@
             function readCards() {
                 if (!P.isAlive(topBar)) return [];
                 const result = [];
-                for (const label of topBar.FindChildrenWithClassTraverse("HeroNameHidden")) {
+                const teams = P.findChild(topBar, "TeamsContainer");
+                const nativeLabels = [];
+                if (P.isAlive(teams)) {
+                    // Current topbar/team/player XML: inspect roster membership
+                    // and direct hidden labels without walking inventory/glyph trees.
+                    for (const team of teams.Children()) {
+                        const contents = P.findChild(team, "PlayerContents");
+                        const players = P.findChild(contents, "PlayersContainer");
+                        if (!P.isAlive(players)) continue;
+                        for (const player of players.Children()) {
+                            if (!P.isAlive(player)) continue;
+                            const label = player.Children().find(child => P.isAlive(child) && child.BHasClass("HeroNameHidden"));
+                            if (label) nativeLabels.push(label);
+                        }
+                    }
+                }
+                // Keep the earlier non-roster layout path where native team
+                // containers are absent; never use it for a temporarily empty roster.
+                const labels = P.isAlive(teams) ? nativeLabels : topBar.FindChildrenWithClassTraverse("HeroNameHidden");
+                for (const label of labels) {
                     let card = label.GetParent(), badge = null;
-                    for (let depth = 0; P.isAlive(card) && card !== topBar && depth < 64; depth++) {
-                        badge = P.findTraverse(card, "HeroBadge");
-                        if (P.isAlive(badge)) break;
-                        card = card.GetParent();
+                    if (P.isAlive(teams)) {
+                        const details = P.findChild(card, "PlayerDetailsContainer");
+                        const hero = P.findChild(details, "HeroContents");
+                        const image = P.findChild(hero, "HeroImageArea");
+                        const icon = P.isAlive(image) && image.Children().find(child => P.isAlive(child) && child.BHasClass("HeroIconContainer"));
+                        badge = P.findChild(icon, "HeroBadge");
+                    } else {
+                        for (let depth = 0; P.isAlive(card) && card !== topBar && depth < 64; depth++) {
+                            badge = P.findTraverse(card, "HeroBadge");
+                            if (P.isAlive(badge)) break;
+                            card = card.GetParent();
+                        }
                     }
                     if (!P.isAlive(card) || card === topBar || !P.isAlive(badge)) continue;
                     const id = badge.heroid;

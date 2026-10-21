@@ -147,6 +147,28 @@ test("rank badges follow alive roster replacement and reused player identity", (
     assert.equal(overlay.currentImage, rankUrl("321"));
 });
 
+test("rank reads owned topbar labels and badge slots without full player-subtree discovery", () => {
+    const env = fixture(), list = row(env, "Alice", "Infernus"), top = topPlayer(env, "Alice", "Infernus");
+    const details = env.add(top.player, "PlayerDetailsContainer"), hero = env.add(details, "HeroContents");
+    const inner = env.add(hero, "", ["HeroInnerContent"]);
+    top.base.SetParent(inner); top.overlay.SetParent(inner); top.account.SetParent(details);
+    let broad = 0;
+    const find = top.player.FindChildTraverse.bind(top.player), classes = top.player.FindChildrenWithClassTraverse.bind(top.player);
+    top.player.FindChildTraverse = id => { if (id.startsWith("RankPredictionBadge")) broad++; return find(id); };
+    top.player.FindChildrenWithClassTraverse = name => {
+        if (["HeroNameHidden", "PlayerAccountHiddenTopBar", "AlwaysPlayerName"].includes(name)) broad++;
+        return classes(name);
+    };
+    openRanks(env, new Map([[list.contents, "321"]])); env.hud.clock.advance(5000);
+    assert.equal(top.overlay.currentImage, rankUrl("321"));
+    assert.equal(broad, 0, "owned XML locations exclude native inventory and glyph descendants");
+    top.heroLabel.SetParent(env.retired);
+    const late = env.text(top.player, "", "Infernus", ["HeroNameHidden"]);
+    env.hud.clock.advance(500);
+    assert.equal(top.overlay.currentImage, rankUrl("321"));
+    assert.equal(late.IsValid(), true); assert.equal(broad, 0);
+});
+
 test("rank probe rejects late cards and aborts immediately when scoreboard identity changes", () => {
     const env = fixture(), list = row(env, "Alice", "Infernus");
     const cards = [];

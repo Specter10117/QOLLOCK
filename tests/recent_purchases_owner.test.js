@@ -394,6 +394,36 @@ test("hero popups follow living card replacement and native hero identity change
     env.stop(); env.clean();
 });
 
+test("hero popup roster uses native direct owners without recurring topbar or card subtree walks", () => {
+    const env = fixture({ ENABLE_HERO_PURCHASE_POPUPS: 1 });
+    const teams = env.add(env.top, "TeamsContainer"), team = env.add(teams, "TeamFriendly");
+    const contents = env.add(team, "PlayerContents"), players = env.add(contents, "PlayersContainer");
+    const makeCard = () => {
+        const card = env.card(players);
+        const details = env.add(card.panel, "PlayerDetailsContainer"), hero = env.add(details, "HeroContents");
+        const image = env.add(hero, "HeroImageArea"), icon = env.add(image, "", ["HeroIconContainer"]);
+        card.badge.SetParent(icon);
+        return card;
+    };
+    const first = makeCard();
+    let broad = 0;
+    const find = env.top.FindChildrenWithClassTraverse.bind(env.top);
+    env.top.FindChildrenWithClassTraverse = name => { if (name === "HeroNameHidden") broad++; return find(name); };
+    const traverse = first.panel.FindChildTraverse.bind(first.panel);
+    first.panel.FindChildTraverse = id => { broad++; return traverse(id); };
+    env.start();
+    env.purchase(); env.clock.advance(250);
+    assert.equal(env.entries(first.panel).length, 1);
+    assert.equal(broad, 0, "roster refresh must not traverse item/glyph descendants");
+    first.panel.SetParent(env.retired);
+    const next = makeCard(); env.clock.advance(800);
+    assert.equal(env.entries(first.panel).length, 0);
+    env.purchase(env.shop.list, { time: "01:01" }); env.clock.advance(250);
+    assert.equal(env.entries(next.panel).length, 1);
+    assert.equal(broad, 0);
+    env.stop(); env.clean();
+});
+
 test("hero popups retain late purchaser evidence without blocking another purchase", () => {
     const env = fixture({ ENABLE_HERO_PURCHASE_POPUPS: 1, RECENT_PURCHASES_QUICK_MAX: 5 });
     const player = env.card(); env.start();
