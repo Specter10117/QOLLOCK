@@ -61,6 +61,23 @@ function fixture(config = {}) {
         start, stop, clean, replaceInstance, get feature() { return feature; } };
 }
 
+test("localized updated item and hero names resolve in native history and new notifications", () => {
+    const env = fixture();
+    const armor = env.purchase(env.shop.list, { name: "Armor Piercer" });
+    const infuser = env.purchase(env.shop.list, { name: "Aşılayıcı", time: "01:01" });
+    env.start();
+    assert.equal(armor.icon.style.backgroundImage, 'url("s2r://panorama/images/items/weapon/armor_piercing_rounds_psd.vtex")');
+    assert.equal(infuser.icon.style.backgroundImage, 'url("s2r://panorama/images/items/vitality/infuser_psd.vtex")');
+    env.purchase(env.shop.list, { name: "Spirit Shredder", hero: "Cravache", time: "01:02" });
+    env.clock.advance(700);
+    const row = env.entries()[0]; assert.ok(row);
+    assert.equal(row.FindChildrenWithClassTraverse("quickHeroIcon")[0].style.backgroundImage,
+        'url("s2r://panorama/images/heroes/lash_sm_psd.vtex")');
+    assert.equal(row.FindChildrenWithClassTraverse("mod_icon")[0].style.backgroundImage,
+        'url("s2r://panorama/images/items/weapon/spirit_shredder_bullets_psd.vtex")');
+    env.stop(); env.clean();
+});
+
 for (const hero of [false, true]) test(`selected purchase sample remains stable beyond expiry (${hero ? "hero" : "central"})`, () => {
     const env = fixture({ ENABLE_HERO_PURCHASE_POPUPS: hero ? 1 : 0, RECENT_PURCHASES_QUICK_MAX: 2, RECENT_PURCHASES_QUICK_DISPLAY_SEC: 3 });
     if (hero) env.card();
