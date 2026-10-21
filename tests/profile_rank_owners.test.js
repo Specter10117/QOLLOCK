@@ -4,7 +4,7 @@ const assert = require("node:assert/strict");
 const path = require("node:path");
 const { createHud, Sandbox } = require("../scripts/simulator");
 const source = file => path.resolve(__dirname, "../panorama/scripts", file);
-const rankUrl = account => "https://api.deadlock-api.com/v1/players/" + account + "/rank-predict/image?format=webp&size=small";
+const rankUrl = account => "https://api.deadlock-api.com/v1/players/" + account + "/rank/image?format=webp";
 
 function fixture() {
     const hud = createHud({ inHideout: false });

@@ -10,6 +10,11 @@ and `profile_card.xml`.
 
 ## Rank discovery and publication
 
+HUD and profile-page images use the current Deadlock API
+`/v1/players/{account_id}/rank/image?format=webp` endpoint. Its badge reflects the
+latest ranked match rather than a prediction; the former `rank-predict/image`
+route is a deprecated alias. Rank-image loading remains native and asynchronous.
+
 Show Rank reads the current TopBar roster through the native team/player
 containers and discovers escape-menu `CitadelPlayersListEntry` panels under
 `PlayersList`. Each native source has private identity, presentation and resolver

@@ -5,7 +5,7 @@
 (() => {
     "use strict";
     const API_URL = "https://api.deadlock-api.com/v1/players/";
-    const imageUrl = account => API_URL + account + "/rank-predict/image?format=webp&size=small";
+    const imageUrl = account => API_URL + account + "/rank/image?format=webp";
     const nameKey = name => String(name || "").toLowerCase().split("%").join("%25").split("|").join("%7C");
 
     QOL.core.FeatureRegistry.register({

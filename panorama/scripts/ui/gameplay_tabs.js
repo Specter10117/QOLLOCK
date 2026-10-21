@@ -264,7 +264,7 @@
                     createRow(sectionParent, "Top Bar Background", "DISABLE_PLAYER_NAME_BLUR", "toggle", null, null, null, [{ invert: true }], "");
                 }
                 if (createSecondaryCheckboxRow) {
-                    createSecondaryCheckboxRow(sectionParent, "Show Player Ranks", "SHOW_RANK", "Top Bar", "SHOW_RANK_TOPBAR", "Show rank prediction badges on top bar and escape menu player list.", "Show rank prediction badges on top bar player panels (requires Show Player Ranks).");
+                    createSecondaryCheckboxRow(sectionParent, "Show Player Ranks", "SHOW_RANK", "Top Bar", "SHOW_RANK_TOPBAR", "Show rank badges on the top bar and escape menu player list.", "Show rank badges on top bar player panels (requires Show Player Ranks).");
                 }
                 if (createRow) {
                     createRow(sectionParent, "Enemy HP Warning", "ENABLE_TOPBAR_ENEMY_HP_WARNING", "multitoggle", null, null, null, TOPBAR_ENEMY_HP_WARNING_THRESHOLD_OPTIONS, "Enemy HP Warning");

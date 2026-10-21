@@ -68,7 +68,7 @@
     }
     function render(accountId) {
         if (alive(image) && imageAccount !== accountId) {
-            image.SetImage(accountId ? "https://api.deadlock-api.com/v1/players/" + accountId + "/rank-predict/image?format=webp&size=small" : "");
+            image.SetImage(accountId ? "https://api.deadlock-api.com/v1/players/" + accountId + "/rank/image?format=webp" : "");
             imageAccount = accountId;
         }
         if (alive(button) && boundButton !== button) {

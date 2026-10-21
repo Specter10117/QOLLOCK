@@ -5,6 +5,8 @@
     var _root = (typeof globalThis !== "undefined") ? globalThis : (typeof window !== "undefined") ? window : {};
     if (!_root.SETTINGS_LOCALE_TEXT) _root.SETTINGS_LOCALE_TEXT = {};
     _root.SETTINGS_LOCALE_TEXT["en"] = {
+    "Show rank badges on the top bar and escape menu player list.": "Show rank badges on the top bar and escape menu player list.",
+    "Show rank badges on top bar player panels (requires Show Player Ranks).": "Show rank badges on top bar player panels (requires Show Player Ranks).",
     "Keyboard Theme": "Keyboard Theme",
     "Keyboard Layout": "Keyboard Layout",
     "Choose the keyboard overlay appearance.": "Choose the keyboard overlay appearance.",
