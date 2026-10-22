@@ -301,7 +301,7 @@
 /* Selected presets from the updated overlay. Native glyphs and pressed states
  * remain engine-owned; themes are confined to the QOL-created bindings. */
 
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme0 .Key:not(.EmptyKey):not(.EmptyKeyWide)
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme0 CitadelBinding.Key
 {
     background-color: #0000007f;
     border: 2px solid #ffffff26;
@@ -311,7 +311,7 @@
     box-shadow: none;
 }
 
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme0 .Key:not(.EmptyKey):not(.EmptyKeyWide) Label
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme0 CitadelBinding.Key Label
 {
     color: #ffefd7ff;
     font-family: "Radiance";
@@ -320,34 +320,34 @@
     text-shadow: none;
 }
 
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme0 .Key:not(.EmptyKey):not(.EmptyKeyWide) .MouseButtonGlyph,
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme0 .Key:not(.EmptyKey):not(.EmptyKeyWide) .KeyboardButtonGlyph
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme0 CitadelBinding.Key .MouseButtonGlyph,
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme0 CitadelBinding.Key .KeyboardButtonGlyph
 {
     wash-color: #ffefd7ff;
 }
 
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme0 .Key:not(.EmptyKey):not(.EmptyKeyWide).IsPressed,
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme0 .Key:not(.EmptyKey):not(.EmptyKeyWide).DownActivated
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme0 CitadelBinding.Key.IsPressed,
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme0 CitadelBinding.Key.DownActivated
 {
     background-color: #ffffff4d;
     border-color: #ffffffbf;
 }
 
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme0 .Key:not(.EmptyKey):not(.EmptyKeyWide).IsPressed Label,
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme0 .Key:not(.EmptyKey):not(.EmptyKeyWide).DownActivated Label
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme0 CitadelBinding.Key.IsPressed Label,
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme0 CitadelBinding.Key.DownActivated Label
 {
     color: #ffffffff;
 }
 
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme0 .Key:not(.EmptyKey):not(.EmptyKeyWide).IsPressed .MouseButtonGlyph,
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme0 .Key:not(.EmptyKey):not(.EmptyKeyWide).IsPressed .KeyboardButtonGlyph,
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme0 .Key:not(.EmptyKey):not(.EmptyKeyWide).DownActivated .MouseButtonGlyph,
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme0 .Key:not(.EmptyKey):not(.EmptyKeyWide).DownActivated .KeyboardButtonGlyph
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme0 CitadelBinding.Key.IsPressed .MouseButtonGlyph,
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme0 CitadelBinding.Key.IsPressed .KeyboardButtonGlyph,
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme0 CitadelBinding.Key.DownActivated .MouseButtonGlyph,
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme0 CitadelBinding.Key.DownActivated .KeyboardButtonGlyph
 {
     wash-color: #ffffffff;
 }
 
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme1 .Key:not(.EmptyKey):not(.EmptyKeyWide)
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme1 CitadelBinding.Key
 {
     background-color: #2e2c27bf;
     border: 2px solid #ffefd74d;
@@ -357,7 +357,7 @@
     box-shadow: none;
 }
 
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme1 .Key:not(.EmptyKey):not(.EmptyKeyWide) Label
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme1 CitadelBinding.Key Label
 {
     color: #ffefd7ff;
     font-family: "VALVEPulp";
@@ -366,34 +366,34 @@
     text-shadow: none;
 }
 
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme1 .Key:not(.EmptyKey):not(.EmptyKeyWide) .MouseButtonGlyph,
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme1 .Key:not(.EmptyKey):not(.EmptyKeyWide) .KeyboardButtonGlyph
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme1 CitadelBinding.Key .MouseButtonGlyph,
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme1 CitadelBinding.Key .KeyboardButtonGlyph
 {
     wash-color: #ffefd7ff;
 }
 
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme1 .Key:not(.EmptyKey):not(.EmptyKeyWide).IsPressed,
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme1 .Key:not(.EmptyKey):not(.EmptyKeyWide).DownActivated
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme1 CitadelBinding.Key.IsPressed,
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme1 CitadelBinding.Key.DownActivated
 {
     background-color: #ffed794d;
     border-color: #ffed79ff;
 }
 
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme1 .Key:not(.EmptyKey):not(.EmptyKeyWide).IsPressed Label,
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme1 .Key:not(.EmptyKey):not(.EmptyKeyWide).DownActivated Label
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme1 CitadelBinding.Key.IsPressed Label,
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme1 CitadelBinding.Key.DownActivated Label
 {
     color: #ffefd7ff;
 }
 
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme1 .Key:not(.EmptyKey):not(.EmptyKeyWide).IsPressed .MouseButtonGlyph,
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme1 .Key:not(.EmptyKey):not(.EmptyKeyWide).IsPressed .KeyboardButtonGlyph,
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme1 .Key:not(.EmptyKey):not(.EmptyKeyWide).DownActivated .MouseButtonGlyph,
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme1 .Key:not(.EmptyKey):not(.EmptyKeyWide).DownActivated .KeyboardButtonGlyph
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme1 CitadelBinding.Key.IsPressed .MouseButtonGlyph,
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme1 CitadelBinding.Key.IsPressed .KeyboardButtonGlyph,
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme1 CitadelBinding.Key.DownActivated .MouseButtonGlyph,
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme1 CitadelBinding.Key.DownActivated .KeyboardButtonGlyph
 {
     wash-color: #ffefd7ff;
 }
 
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme2 .Key:not(.EmptyKey):not(.EmptyKeyWide)
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme2 CitadelBinding.Key
 {
     background-color: #0000007f;
     border: 0px solid #00000000;
@@ -403,7 +403,7 @@
     box-shadow: none;
 }
 
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme2 .Key:not(.EmptyKey):not(.EmptyKeyWide) Label
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme2 CitadelBinding.Key Label
 {
     color: #ffffffff;
     font-family: "Radiance";
@@ -412,34 +412,34 @@
     text-shadow: none;
 }
 
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme2 .Key:not(.EmptyKey):not(.EmptyKeyWide) .MouseButtonGlyph,
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme2 .Key:not(.EmptyKey):not(.EmptyKeyWide) .KeyboardButtonGlyph
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme2 CitadelBinding.Key .MouseButtonGlyph,
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme2 CitadelBinding.Key .KeyboardButtonGlyph
 {
     wash-color: #ffffffff;
 }
 
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme2 .Key:not(.EmptyKey):not(.EmptyKeyWide).IsPressed,
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme2 .Key:not(.EmptyKey):not(.EmptyKeyWide).DownActivated
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme2 CitadelBinding.Key.IsPressed,
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme2 CitadelBinding.Key.DownActivated
 {
     background-color: #ffffffe5;
     border-color: #00000000;
 }
 
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme2 .Key:not(.EmptyKey):not(.EmptyKeyWide).IsPressed Label,
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme2 .Key:not(.EmptyKey):not(.EmptyKeyWide).DownActivated Label
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme2 CitadelBinding.Key.IsPressed Label,
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme2 CitadelBinding.Key.DownActivated Label
 {
     color: #000000ff;
 }
 
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme2 .Key:not(.EmptyKey):not(.EmptyKeyWide).IsPressed .MouseButtonGlyph,
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme2 .Key:not(.EmptyKey):not(.EmptyKeyWide).IsPressed .KeyboardButtonGlyph,
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme2 .Key:not(.EmptyKey):not(.EmptyKeyWide).DownActivated .MouseButtonGlyph,
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme2 .Key:not(.EmptyKey):not(.EmptyKeyWide).DownActivated .KeyboardButtonGlyph
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme2 CitadelBinding.Key.IsPressed .MouseButtonGlyph,
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme2 CitadelBinding.Key.IsPressed .KeyboardButtonGlyph,
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme2 CitadelBinding.Key.DownActivated .MouseButtonGlyph,
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme2 CitadelBinding.Key.DownActivated .KeyboardButtonGlyph
 {
     wash-color: #000000ff;
 }
 
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme3 .Key:not(.EmptyKey):not(.EmptyKeyWide)
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme3 CitadelBinding.Key
 {
     background-color: #000000e5;
     border: 1px solid #7a7a7aff;
@@ -449,7 +449,7 @@
     box-shadow: none;
 }
 
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme3 .Key:not(.EmptyKey):not(.EmptyKeyWide) Label
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme3 CitadelBinding.Key Label
 {
     color: #c6c6c6ff;
     font-family: "Retail Text Demo";
@@ -458,34 +458,34 @@
     text-shadow: none;
 }
 
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme3 .Key:not(.EmptyKey):not(.EmptyKeyWide) .MouseButtonGlyph,
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme3 .Key:not(.EmptyKey):not(.EmptyKeyWide) .KeyboardButtonGlyph
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme3 CitadelBinding.Key .MouseButtonGlyph,
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme3 CitadelBinding.Key .KeyboardButtonGlyph
 {
     wash-color: #c6c6c6ff;
 }
 
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme3 .Key:not(.EmptyKey):not(.EmptyKeyWide).IsPressed,
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme3 .Key:not(.EmptyKey):not(.EmptyKeyWide).DownActivated
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme3 CitadelBinding.Key.IsPressed,
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme3 CitadelBinding.Key.DownActivated
 {
     background-color: #ffffffff;
     border-color: #ffffffff;
 }
 
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme3 .Key:not(.EmptyKey):not(.EmptyKeyWide).IsPressed Label,
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme3 .Key:not(.EmptyKey):not(.EmptyKeyWide).DownActivated Label
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme3 CitadelBinding.Key.IsPressed Label,
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme3 CitadelBinding.Key.DownActivated Label
 {
     color: #000000ff;
 }
 
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme3 .Key:not(.EmptyKey):not(.EmptyKeyWide).IsPressed .MouseButtonGlyph,
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme3 .Key:not(.EmptyKey):not(.EmptyKeyWide).IsPressed .KeyboardButtonGlyph,
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme3 .Key:not(.EmptyKey):not(.EmptyKeyWide).DownActivated .MouseButtonGlyph,
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme3 .Key:not(.EmptyKey):not(.EmptyKeyWide).DownActivated .KeyboardButtonGlyph
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme3 CitadelBinding.Key.IsPressed .MouseButtonGlyph,
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme3 CitadelBinding.Key.IsPressed .KeyboardButtonGlyph,
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme3 CitadelBinding.Key.DownActivated .MouseButtonGlyph,
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme3 CitadelBinding.Key.DownActivated .KeyboardButtonGlyph
 {
     wash-color: #000000ff;
 }
 
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme4 .Key:not(.EmptyKey):not(.EmptyKeyWide)
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme4 CitadelBinding.Key
 {
     background-color: #000000bf;
     border: 2px solid #7c4dffff;
@@ -495,7 +495,7 @@
     box-shadow: none;
 }
 
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme4 .Key:not(.EmptyKey):not(.EmptyKeyWide) Label
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme4 CitadelBinding.Key Label
 {
     color: #ffffffff;
     font-family: "Radiance";
@@ -504,34 +504,34 @@
     text-shadow: none;
 }
 
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme4 .Key:not(.EmptyKey):not(.EmptyKeyWide) .MouseButtonGlyph,
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme4 .Key:not(.EmptyKey):not(.EmptyKeyWide) .KeyboardButtonGlyph
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme4 CitadelBinding.Key .MouseButtonGlyph,
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme4 CitadelBinding.Key .KeyboardButtonGlyph
 {
     wash-color: #ffffffff;
 }
 
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme4 .Key:not(.EmptyKey):not(.EmptyKeyWide).IsPressed,
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme4 .Key:not(.EmptyKey):not(.EmptyKeyWide).DownActivated
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme4 CitadelBinding.Key.IsPressed,
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme4 CitadelBinding.Key.DownActivated
 {
     background-color: #ffffffff;
     border-color: #ffffffff;
 }
 
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme4 .Key:not(.EmptyKey):not(.EmptyKeyWide).IsPressed Label,
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme4 .Key:not(.EmptyKey):not(.EmptyKeyWide).DownActivated Label
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme4 CitadelBinding.Key.IsPressed Label,
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme4 CitadelBinding.Key.DownActivated Label
 {
     color: #000000ff;
 }
 
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme4 .Key:not(.EmptyKey):not(.EmptyKeyWide).IsPressed .MouseButtonGlyph,
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme4 .Key:not(.EmptyKey):not(.EmptyKeyWide).IsPressed .KeyboardButtonGlyph,
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme4 .Key:not(.EmptyKey):not(.EmptyKeyWide).DownActivated .MouseButtonGlyph,
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme4 .Key:not(.EmptyKey):not(.EmptyKeyWide).DownActivated .KeyboardButtonGlyph
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme4 CitadelBinding.Key.IsPressed .MouseButtonGlyph,
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme4 CitadelBinding.Key.IsPressed .KeyboardButtonGlyph,
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme4 CitadelBinding.Key.DownActivated .MouseButtonGlyph,
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme4 CitadelBinding.Key.DownActivated .KeyboardButtonGlyph
 {
     wash-color: #000000ff;
 }
 
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme5 .Key:not(.EmptyKey):not(.EmptyKeyWide)
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme5 CitadelBinding.Key
 {
     background-color: #ffffffe5;
     border: 2px solid #c6c6c6ff;
@@ -541,7 +541,7 @@
     box-shadow: none;
 }
 
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme5 .Key:not(.EmptyKey):not(.EmptyKeyWide) Label
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme5 CitadelBinding.Key Label
 {
     color: #2e2c27ff;
     font-family: "Radiance";
@@ -550,35 +550,35 @@
     text-shadow: none;
 }
 
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme5 .Key:not(.EmptyKey):not(.EmptyKeyWide) .MouseButtonGlyph,
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme5 .Key:not(.EmptyKey):not(.EmptyKeyWide) .KeyboardButtonGlyph
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme5 CitadelBinding.Key .MouseButtonGlyph,
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme5 CitadelBinding.Key .KeyboardButtonGlyph
 {
     wash-color: #2e2c27ff;
 }
 
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme5 .Key:not(.EmptyKey):not(.EmptyKeyWide).IsPressed,
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme5 .Key:not(.EmptyKey):not(.EmptyKeyWide).DownActivated
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme5 CitadelBinding.Key.IsPressed,
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme5 CitadelBinding.Key.DownActivated
 {
     background-color: #5b9dffff;
     border-color: #5b9dffff;
     transform: translateY(2px) scale3d(0.95, 0.95, 1);
 }
 
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme5 .Key:not(.EmptyKey):not(.EmptyKeyWide).IsPressed Label,
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme5 .Key:not(.EmptyKey):not(.EmptyKeyWide).DownActivated Label
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme5 CitadelBinding.Key.IsPressed Label,
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme5 CitadelBinding.Key.DownActivated Label
 {
     color: #ffffffff;
 }
 
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme5 .Key:not(.EmptyKey):not(.EmptyKeyWide).IsPressed .MouseButtonGlyph,
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme5 .Key:not(.EmptyKey):not(.EmptyKeyWide).IsPressed .KeyboardButtonGlyph,
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme5 .Key:not(.EmptyKey):not(.EmptyKeyWide).DownActivated .MouseButtonGlyph,
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme5 .Key:not(.EmptyKey):not(.EmptyKeyWide).DownActivated .KeyboardButtonGlyph
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme5 CitadelBinding.Key.IsPressed .MouseButtonGlyph,
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme5 CitadelBinding.Key.IsPressed .KeyboardButtonGlyph,
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme5 CitadelBinding.Key.DownActivated .MouseButtonGlyph,
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme5 CitadelBinding.Key.DownActivated .KeyboardButtonGlyph
 {
     wash-color: #ffffffff;
 }
 
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme6 .Key:not(.EmptyKey):not(.EmptyKeyWide)
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme6 CitadelBinding.Key
 {
     background-color: #00000000;
     border: 2px solid #7dd3fcff;
@@ -588,7 +588,7 @@
     box-shadow: none;
 }
 
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme6 .Key:not(.EmptyKey):not(.EmptyKeyWide) Label
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme6 CitadelBinding.Key Label
 {
     color: #7dd3fcff;
     font-family: "Radiance";
@@ -597,34 +597,34 @@
     text-shadow: none;
 }
 
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme6 .Key:not(.EmptyKey):not(.EmptyKeyWide) .MouseButtonGlyph,
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme6 .Key:not(.EmptyKey):not(.EmptyKeyWide) .KeyboardButtonGlyph
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme6 CitadelBinding.Key .MouseButtonGlyph,
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme6 CitadelBinding.Key .KeyboardButtonGlyph
 {
     wash-color: #7dd3fcff;
 }
 
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme6 .Key:not(.EmptyKey):not(.EmptyKeyWide).IsPressed,
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme6 .Key:not(.EmptyKey):not(.EmptyKeyWide).DownActivated
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme6 CitadelBinding.Key.IsPressed,
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme6 CitadelBinding.Key.DownActivated
 {
     background-color: #7dd3fcff;
     border-color: #7dd3fcff;
 }
 
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme6 .Key:not(.EmptyKey):not(.EmptyKeyWide).IsPressed Label,
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme6 .Key:not(.EmptyKey):not(.EmptyKeyWide).DownActivated Label
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme6 CitadelBinding.Key.IsPressed Label,
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme6 CitadelBinding.Key.DownActivated Label
 {
     color: #000000ff;
 }
 
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme6 .Key:not(.EmptyKey):not(.EmptyKeyWide).IsPressed .MouseButtonGlyph,
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme6 .Key:not(.EmptyKey):not(.EmptyKeyWide).IsPressed .KeyboardButtonGlyph,
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme6 .Key:not(.EmptyKey):not(.EmptyKeyWide).DownActivated .MouseButtonGlyph,
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme6 .Key:not(.EmptyKey):not(.EmptyKeyWide).DownActivated .KeyboardButtonGlyph
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme6 CitadelBinding.Key.IsPressed .MouseButtonGlyph,
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme6 CitadelBinding.Key.IsPressed .KeyboardButtonGlyph,
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme6 CitadelBinding.Key.DownActivated .MouseButtonGlyph,
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme6 CitadelBinding.Key.DownActivated .KeyboardButtonGlyph
 {
     wash-color: #000000ff;
 }
 
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme7 .Key:not(.EmptyKey):not(.EmptyKeyWide)
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme7 CitadelBinding.Key
 {
     background-color: #00000000;
     border: 0px solid #00000000;
@@ -634,7 +634,7 @@
     box-shadow: none;
 }
 
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme7 .Key:not(.EmptyKey):not(.EmptyKeyWide) Label
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme7 CitadelBinding.Key Label
 {
     color: #ffffff7f;
     font-family: "VALVEPulp";
@@ -643,29 +643,29 @@
     text-shadow: none;
 }
 
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme7 .Key:not(.EmptyKey):not(.EmptyKeyWide) .MouseButtonGlyph,
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme7 .Key:not(.EmptyKey):not(.EmptyKeyWide) .KeyboardButtonGlyph
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme7 CitadelBinding.Key .MouseButtonGlyph,
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme7 CitadelBinding.Key .KeyboardButtonGlyph
 {
     wash-color: #ffffff7f;
 }
 
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme7 .Key:not(.EmptyKey):not(.EmptyKeyWide).IsPressed,
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme7 .Key:not(.EmptyKey):not(.EmptyKeyWide).DownActivated
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme7 CitadelBinding.Key.IsPressed,
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme7 CitadelBinding.Key.DownActivated
 {
     background-color: #00000000;
     border-color: #00000000;
 }
 
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme7 .Key:not(.EmptyKey):not(.EmptyKeyWide).IsPressed Label,
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme7 .Key:not(.EmptyKey):not(.EmptyKeyWide).DownActivated Label
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme7 CitadelBinding.Key.IsPressed Label,
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme7 CitadelBinding.Key.DownActivated Label
 {
     color: #ffffffff;
 }
 
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme7 .Key:not(.EmptyKey):not(.EmptyKeyWide).IsPressed .MouseButtonGlyph,
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme7 .Key:not(.EmptyKey):not(.EmptyKeyWide).IsPressed .KeyboardButtonGlyph,
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme7 .Key:not(.EmptyKey):not(.EmptyKeyWide).DownActivated .MouseButtonGlyph,
-.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme7 .Key:not(.EmptyKey):not(.EmptyKeyWide).DownActivated .KeyboardButtonGlyph
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme7 CitadelBinding.Key.IsPressed .MouseButtonGlyph,
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme7 CitadelBinding.Key.IsPressed .KeyboardButtonGlyph,
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme7 CitadelBinding.Key.DownActivated .MouseButtonGlyph,
+.keyboard_overlay_active #QOLKeyboardOverlayRoot #AllBindingsBox.QOLKeyboardTheme7 CitadelBinding.Key.DownActivated .KeyboardButtonGlyph
 {
     wash-color: #ffffffff;
 }

@@ -2,6 +2,29 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const { createHud } = require("../scripts/simulator");
+const fs = require("node:fs");
+const path = require("node:path");
+
+test("keyboard themes use positive binding selectors and exclude spacer panels in every layout", () => {
+    const css = fs.readFileSync(path.join(__dirname, "../panorama/styles/features/ql_feat_keyboard.css"), "utf8");
+    const themeSelectors = css.split("\n").filter(line => line.startsWith(".keyboard_overlay_active") && line.includes(".QOLKeyboardTheme"));
+    assert.ok(themeSelectors.length > 0);
+    for (const selector of themeSelectors) {
+        assert.doesNotMatch(selector, /:not\(/, "theme selectors must stay within the verified native positive-selector syntax");
+        assert.match(selector, / CitadelBinding\.Key(?:[.\s,]|$)/);
+    }
+    const env = setup(); env.feature.onEnable();
+    for (let layout = 0; layout < 3; layout++) {
+        env.cfg.KEYBOARD_OVERLAY_LAYOUT = layout; env.feature.onSettingsChanged();
+        const keys = env.box().FindChildrenWithClassTraverse("Key");
+        assert.ok(keys.length > 0);
+        for (const key of keys) {
+            const spacer = key.BHasClass("EmptyKey") || key.BHasClass("EmptyKeyWide");
+            assert.equal(key.paneltype === "CitadelBinding", !spacer);
+        }
+    }
+    env.feature.onDisable();
+});
 
 function setup(overrides = {}) {
     const env = createHud({ inHideout: false }); env.assertLoaded();
