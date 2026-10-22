@@ -1,4 +1,4 @@
-// OWNS: Ammo digits/geometry/color and magazine container rotation.
+// OWNS: Ammo digits/geometry/color, native arc masks and magazine container rotation.
 // Native ring/bullet transforms are engine-owned and must remain intact.
 // DOES NOT OWN: Reload cooldown, crosshair stats or native weapon/ammo state.
 // Sources: hud.xml, element_gun.xml, element_tokamak_custom_semi_circles.xml/css and debugger gun ancestry.
@@ -56,77 +56,39 @@
                 panelAPI.createNativeStyleOwner({ resetValues: { position: "0px 0px 0px", fontSize: fontSize + "px" } })]));
             const clipStyles = new Map([0, 90, 180].map(baseline => [baseline,
                 panelAPI.createNativeStyleOwner({ resetValues: { transform: "rotateZ(" + baseline + "deg)" } })]));
-            const pipTree = panelAPI.createOwnedTree();
-            const pipStyles = panelAPI.createNativeStyleOwner();
-            const pipHost = panelAPI.createNativeStyleOwner();
+            const visualStyles = panelAPI.createNativeStyleOwner();
             let panel = null;
             let model = null;
             let loop = null;
             let active = false;
-            const pips = { owner: null, children: [], maximum: 0, current: -1, color: "" };
-            const maxCustomPips = 40;
-            // rate-exempt: 10Hz follows shot-by-shot native ammo labels for custom pips.
-            const visualInterval = 0.1;
-            const idleInterval = 0.5;
+            // Above this density use the existing continuous native arc. Only
+            // capacity selects a mask; C++ still owns every shot/reload update.
+            const maxTickCount = 40;
 
-            function releasePips() {
-                pipHost.clear();
-                pipStyles.clear();
-                pipTree.clear();
-                pips.owner = null;
-                pips.children = [];
-                pips.maximum = 0;
-                pips.current = -1;
-                pips.color = "";
-            }
-
-            function readAmmo(className) {
-                for (const label of QOL.utils.FindPanelsByClass(panel, className)) {
-                    const match = String(label.text ?? "").match(/\d+/);
-                    if (match) return Number(match[0]);
+            function renderVisuals(sources) {
+                const standard = model.visualEnabled && sources.size === 1 && panelAPI.isAlive(panel);
+                let mask = "";
+                if (standard) {
+                    const maximumLabel = QOL.utils.FindPanelsByClass(panel, "weapon_ammo_max")[0];
+                    const maximum = Number(String(maximumLabel?.text ?? "").match(/\d+/)?.[0]);
+                    if (Number.isInteger(maximum) && maximum >= 1 && maximum <= maxTickCount) {
+                        mask = 'url("s2r://panorama/images/custom/ammo_ticks/' + maximum + '.vsvg")';
+                    }
                 }
-                return NaN;
-            }
-
-            function renderPips(sources) {
-                const clip = sources.size === 1 ? sources.keys().next().value : null;
-                const maximum = Math.round(readAmmo("weapon_ammo_max"));
-                const current = Math.round(readAmmo("weapon_ammo"));
-                if (!model.visualEnabled || !clip || !panel || !Number.isFinite(current) ||
-                    !Number.isFinite(maximum) || maximum < 1 || maximum > maxCustomPips) {
-                    releasePips();
-                    return;
+                const retained = [];
+                for (const clip of sources.keys()) {
+                    visualStyles.apply(clip, {}, { "qol-ammo-native-arc": standard });
+                    retained.push(clip);
+                    for (const id of ["clip_progress_bar", "clip_bg_progress_bar", "clip_bonus_progress_bar"]) {
+                        const target = panelAPI.findChild(clip, id);
+                        if (!target) continue;
+                        const styles = standard && mask ? { opacityMask: mask } : {};
+                        if (standard && id === "clip_progress_bar" && model.currentStyles.color) styles.borderColor = model.currentStyles.color;
+                        visualStyles.apply(target, styles);
+                        retained.push(target);
+                    }
                 }
-                pipTree.sweep();
-                if (clip !== pips.owner || maximum !== pips.maximum || pips.children.some(pip => !panelAPI.isAlive(pip) || pip.GetParent() !== clip)) {
-                    releasePips();
-                    pips.owner = clip;
-                    pips.maximum = maximum;
-                }
-                const children = pipTree.children(clip, "Panel", Array.from({ length: maximum }, (_, index) => ({ id: "QOLAmmoPip_" + index })));
-                if (children.some(pip => !panelAPI.isAlive(pip))) {
-                    for (const pip of children) panelAPI.setVisible(pip, false);
-                    pipHost.clear(); return;
-                }
-                pips.children = children;
-                const count = Math.max(0, Math.min(maximum, current));
-                const color = model.currentStyles.color || "";
-                pips.current = count;
-                pips.color = color;
-                const segment = 90 / maximum;
-                const gap = Math.min(1.2, segment * 0.18);
-                let complete = true;
-                pips.children.forEach((pip, index) => {
-                    const live = index < count;
-                    const styles = { clip: "radial( 50% 50%, " + (index * segment + gap / 2) + "deg, " + (segment - gap) + "deg )",
-                        ...(live && color ? { borderColor: color } : {}) };
-                    if (!pipStyles.apply(pip, styles, { "qol-ammo-pip": true, "qol-ammo-pip-live": live, "qol-ammo-pip-empty": !live })) complete = false;
-                });
-                pipStyles.retain(pips.children);
-                // Keep the native ring until every generated pip is ready.
-                for (const pip of pips.children) panelAPI.setVisible(pip, complete);
-                pipHost.apply(clip, {}, complete ? { "qol-ammo-pips-populated": true } : {});
-                pipHost.retain([clip]);
+                visualStyles.retain(retained);
             }
 
             function readModel() {
@@ -248,7 +210,7 @@
                 }
                 const clipSources = discoverClips(root);
                 renderClips(clipSources, root);
-                renderPips(clipSources);
+                renderVisuals(clipSources);
                 const textSources = panel ? discoverTexts() : new Map();
                 renderTexts(textSources);
                 geometry.retain([panel, ...clipSources.keys()]);
@@ -263,7 +225,6 @@
                 ammoResolver.reset();
                 clipResolver.reset();
                 update();
-                if (loop) loop.reschedule(model.visualEnabled ? visualInterval : idleInterval);
                 QOL.core.hud.refreshRootClasses(panelAPI.findHud($.GetContextPanel()));
             }
 
@@ -271,7 +232,7 @@
                 onEnable() {
                     active = true;
                     refreshSettings();
-                    loop = QOL.core.Scheduler.createPollLoop(update, model.visualEnabled ? visualInterval : idleInterval, ctx.id);
+                    loop = QOL.core.Scheduler.createPollLoop(update, 0.5, ctx.id);
                 },
                 onSettingsChanged: refreshSettings,
                 onDisable() {
@@ -279,8 +240,7 @@
                     if (loop) { loop.stop(); loop = null; }
                     QOL.core.Scheduler.cancelAllForFeature(ctx.id);
                     releaseMain();
-                    releasePips();
-                    pipTree.dispose();
+                    visualStyles.clear();
                     for (const owner of clipStyles.values()) owner.clear();
                     geometry.clear();
                     panel = model = null;

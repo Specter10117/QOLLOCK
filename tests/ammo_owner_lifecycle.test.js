@@ -24,6 +24,35 @@ function setup() {
     return { ...env, Q, $, cfg, feature, add, native, reads: () => reads };
 }
 
+test("ammo uses per-round masks through 40 rounds and native continuous fill for larger clips", () => {
+    const env = setup(), source = env.native(env.root), clip = env.add(source.gun, "clip_status");
+    const progress = env.add(clip, "clip_progress_bar", "CircularProgressBar");
+    const background = env.add(clip, "clip_bg_progress_bar", "CircularProgressBar");
+    const bonus = env.add(clip, "clip_bonus_progress_bar", "CircularProgressBar");
+    Object.defineProperty(source.current, "text", { get() { throw Error("ammo fill must stay native, without current-ammo polling"); } });
+    env.cfg.ENABLE_AMMO_STATUS = 1; source.maximum.text = " / 40";
+    progress.style.clip = "radial( 50% 50%, 0deg, 45deg )";
+    env.feature.onEnable();
+    const mask = 'url("s2r://panorama/images/custom/ammo_ticks/40.vsvg")';
+    for (const target of [progress, background, bonus]) assert.equal(target.style.opacityMask, mask);
+    assert.equal(progress.style.clip, "radial( 50% 50%, 0deg, 45deg )");
+    assert.equal(clip.GetChildCount(), 3, "the visualizer uses existing native rings without generated panels");
+    for (const maximum of [41, 66, 200, 500]) {
+        source.maximum.text = " / " + maximum; env.clock.advance(700);
+        for (const target of [progress, background, bonus]) assert.equal(target.style.opacityMask, undefined, "large magazines retain continuous fill");
+        assert.equal(clip.BHasClass("qol-ammo-native-arc"), true);
+        assert.equal(clip.GetChildCount(), 3);
+    }
+    source.maximum.text = " / 8"; env.clock.advance(700);
+    assert.equal(progress.style.opacityMask, 'url("s2r://panorama/images/custom/ammo_ticks/8.vsvg")');
+    progress.style.clip = "radial( 50% 50%, 0deg, 22.5deg )"; env.clock.advance(700);
+    assert.equal(progress.style.clip, "radial( 50% 50%, 0deg, 22.5deg )", "native shot/reload feedback remains untouched");
+    env.feature.onDisable();
+    for (const target of [progress, background, bonus]) assert.equal(target.style.opacityMask, undefined);
+    assert.equal(clip.BHasClass("qol-ammo-native-arc"), false);
+    assert.deepEqual(env.clock.errors, []);
+});
+
 test("ammo restores customized digit fonts after native feedback without changing native text", () => {
     const env = setup(), source = env.native(env.root);
     env.feature.onEnable();
@@ -142,56 +171,38 @@ test("Ammo mirrored rotation returns each CSS baseline and retains a rejected re
     assert.equal(right.style.transform, undefined); assert.deepEqual(env.clock.errors, []);
 });
 
-test("Ammo pips observe native style feedback and retire a moved generated child before replacement", () => {
+test("ammo mask and tint follow native feedback and release a living replaced progress source", () => {
     const env = setup(), source = env.native(env.root), clip = env.add(source.gun, "clip_status");
+    const progress = env.add(clip, "clip_progress_bar", "CircularProgressBar");
     env.cfg.ENABLE_AMMO_STATUS = 1; env.cfg.AMMO_TEXT_COLOR = 1; env.feature.onEnable();
-    const pip = clip.FindChild("QOLAmmoPip_0"), expected = pip.style.borderColor;
-    assert.ok(expected); pip.style.borderColor = "#000000";
-    env.clock.advance(250); assert.equal(pip.style.borderColor, expected);
-    const foreign = env.add(env.root, "ForeignPipParent"); pip.SetParent(foreign);
-    env.clock.advance(250);
-    assert.equal(pip.IsValid(), false); assert.ok(clip.FindChild("QOLAmmoPip_0"));
-    assert.equal(clip.BHasClass("qol-ammo-pips-populated"), true);
-    source.current.text = "2"; env.clock.advance(250);
-    assert.equal(clip.FindChild("QOLAmmoPip_2").BHasClass("qol-ammo-pip-empty"), true);
-    env.feature.onDisable(); env.clock.advance(250);
-    assert.equal(clip.Children().filter(item => item.id.startsWith("QOLAmmoPip_")).length, 0);
-    assert.equal(clip.BHasClass("qol-ammo-pips-populated"), false); assert.deepEqual(env.clock.errors, []);
+    const mask = progress.style.opacityMask, color = progress.style.borderColor;
+    assert.ok(mask && color);
+    progress.style.opacityMask = "none"; progress.style.borderColor = "#000000";
+    env.clock.advance(700);
+    assert.equal(progress.style.opacityMask, mask); assert.equal(progress.style.borderColor, color);
+    progress.SetParent(env.add(env.root, "RetiredNativeProgress"));
+    const replacement = env.add(clip, "clip_progress_bar", "CircularProgressBar");
+    env.clock.advance(700);
+    assert.equal(progress.style.opacityMask, undefined); assert.equal(progress.style.borderColor, undefined);
+    assert.equal(replacement.style.opacityMask, mask); assert.equal(replacement.style.borderColor, color);
+    env.cfg.AMMO_TEXT_COLOR = 0; env.feature.onSettingsChanged();
+    assert.equal(replacement.style.borderColor, undefined, "default tint releases native low-ammo and bonus color policy");
+    env.feature.onDisable(); assert.equal(replacement.style.opacityMask, undefined);
+    assert.deepEqual(env.clock.errors, []);
 });
 
-test("Ammo leaves the native ring visible until partial pip styles are ready", () => {
-    const env = setup(), source = env.native(env.root), clip = env.add(source.gun, "clip_status"), create = env.$.CreatePanel;
-    let reject = true;
-    env.$.CreatePanel = (type, parent, id, properties) => {
-        const created = create(type, parent, id, properties);
-        if (id === "QOLAmmoPip_3") created.style = new Proxy(created.style, { set(target, key, value) {
-            if (reject && key === "clip") throw Error("pip clip unavailable");
-            target[key] = value; return true;
-        } });
-        return created;
-    };
-    env.cfg.ENABLE_AMMO_STATUS = 1; env.feature.onEnable();
-    assert.equal(clip.BHasClass("qol-ammo-pips-populated"), false);
-    assert.equal(clip.FindChild("QOLAmmoPip_0").visible, false);
-    reject = false; env.clock.advance(250);
-    assert.equal(clip.BHasClass("qol-ammo-pips-populated"), true);
-    assert.equal(clip.FindChild("QOLAmmoPip_0").visible, true);
-    env.feature.onDisable(); assert.deepEqual(env.clock.errors, []);
-});
-
-test("Ammo re-enable waits for rejected old-pip deletion and never adopts the retiring tree", () => {
+test("ammo mask retirement retries after disable without reading settings or overwriting native fill", () => {
     const env = setup(), source = env.native(env.root), clip = env.add(source.gun, "clip_status");
+    const progress = env.add(clip, "clip_progress_bar", "CircularProgressBar");
+    progress.style.clip = "radial( 50% 50%, 0deg, 67.5deg )";
     env.cfg.ENABLE_AMMO_STATUS = 1; env.feature.onEnable();
-    const retired = clip.FindChild("QOLAmmoPip_0"), remove = retired.DeleteAsync.bind(retired); let reject = true;
-    retired.DeleteAsync = delay => { if (reject) throw Error("pip deletion unavailable"); remove(delay); };
-    env.feature.onDisable(); env.clock.advance(1);
-    assert.equal(retired.IsValid(), true); assert.equal(retired.visible, false);
-    const next = env.Q.core.FeatureRegistry.getManifest("ql_ammo").create({ events: env.Q.core.EventBus, id: "ql_ammo", config: { view: () => env.cfg } });
-    next.onEnable();
-    assert.equal(clip.BHasClass("qol-ammo-pips-populated"), false);
-    assert.equal(retired.visible, false);
-    reject = false; env.clock.advance(750);
-    assert.equal(retired.IsValid(), false); assert.notEqual(clip.FindChild("QOLAmmoPip_0"), retired);
-    assert.equal(clip.BHasClass("qol-ammo-pips-populated"), true);
-    next.onDisable(); env.clock.advance(500); assert.deepEqual(env.clock.errors, []);
+    const clear = progress.ClearPropertyFromCode.bind(progress); let reject = true;
+    progress.ClearPropertyFromCode = property => property === "opacity-mask" && reject ? false : clear(property);
+    env.feature.onDisable();
+    assert.ok(progress.style.opacityMask); const reads = env.reads();
+    reject = false; env.clock.advance(700);
+    assert.equal(progress.style.opacityMask, undefined); assert.equal(env.reads(), reads);
+    assert.equal(progress.style.clip, "radial( 50% 50%, 0deg, 67.5deg )");
+    assert.equal(clip.BHasClass("qol-ammo-native-arc"), false);
+    assert.deepEqual(env.clock.errors, []);
 });

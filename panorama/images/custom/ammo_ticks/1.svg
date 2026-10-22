@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <!-- Radial opacity mask: one sector per round in a native quarter-circle. -->
+  <g fill="#ffffff">
+  <path d="M64 64 L65.34039 -63.99298 L191.99298 62.65961 Z"/>
+  <path d="M64 64 L191.99298 65.34039 L65.34039 191.99298 Z"/>
+  <path d="M64 64 L62.65961 191.99298 L-63.99298 65.34039 Z"/>
+  <path d="M64 64 L-63.99298 62.65961 L62.65961 -63.99298 Z"/>
+  </g>
+</svg>

@@ -29,37 +29,12 @@
 	visibility: visible !important;
 }
 
-#clip_status.qol-ammo-visual-enabled.qol-ammo-pips-populated #clip_progress_bar
+/* C++ owns native radial fill; the feature only selects its opacity mask.
+ * Suppress native per-bullet children while that same arc is presented.
+ */
+#clip_status.qol-ammo-native-arc #clip_bullet
 {
-	visibility: collapse !important;
-}
-
-#clip_status.qol-ammo-pips-populated #clip_bullet
-{
-	visibility: collapse !important;
-}
-
-.qol-ammo-pip
-{
-	width: 96px;
-	height: 96px;
-	vertical-align: center;
-	horizontal-align: center;
-	border-radius: 50%;
-	border: 6px solid clipEmptyBulletColor;
-	opacity: 0.35;
-}
-
-.qol-ammo-pip.qol-ammo-pip-live
-{
-	border-color: clipLiveBulletColor;
-	opacity: 0.8;
-}
-
-.lowAmmo .qol-ammo-pip.qol-ammo-pip-live
-{
-	border-color: clipLowBulletColor;
-	opacity: 1;
+    visibility: collapse !important;
 }
 
 /*

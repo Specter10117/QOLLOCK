@@ -501,6 +501,7 @@ test("ammo preserves untouched native digit properties and restores owned RGB af
     maximum.AddClass("weapon_ammo_max");
     maximum.text = "8";
     const clip = env.$.CreatePanel("Panel", gunData, "clip_status");
+    const progress = env.$.CreatePanel("CircularProgressBar", clip, "clip_progress_bar");
     const native = { fontSize: "17px", width: "39px", color: "#998877", marginLeft: "5px" };
     Object.assign(current.style, native);
     env.feature.onEnable();
@@ -509,16 +510,17 @@ test("ammo preserves untouched native digit properties and restores owned RGB af
     env.cfg.AMMO_TEXT_COLOR = rgb;
     env.feature.onSettingsChanged();
     assert.equal(current.style.color, "#123ABC");
-    const pip = clip.FindChildrenWithClassTraverse("qol-ammo-pip")[0];
-    assert.equal(pip.style.borderColor, "#123ABC");
+    assert.equal(progress.style.borderColor, "#123ABC");
     current.style.color = "#000000";
-    env.clock.advance(120);
+    env.clock.advance(700);
     assert.equal(current.style.color, "#123ABC", "native ammo-state feedback cannot discard the user color");
     env.feature.onDisable();
     env.clock.advance(1);
     assert.equal(current.style.color, undefined);
     for (const property of ["fontSize", "width", "marginLeft"]) assert.equal(current.style[property], native[property], property);
-    assert.equal(clip.FindChildrenWithClassTraverse("qol-ammo-pip").length, 0);
+    assert.equal(progress.style.borderColor, undefined);
+    assert.equal(progress.style.opacityMask, undefined);
+    assert.equal(clip.GetChildCount(), 1, "the native progress bar is retained without generated ticks");
     assert.deepEqual(env.clock.errors, []);
 });
 
