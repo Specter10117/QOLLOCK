@@ -91,12 +91,12 @@
 	</scripts>
 	<!-- ============================================================= -->
 	<!-- ==== QOLLOCK: Cancel Customize before the native escape menu ==== -->
-	<CitadelHudEscapeMenu oncancel="if (!($.HandleCustomizeCancel &amp;&amp; $.HandleCustomizeCancel())) { CitadelResumePlaying(); }">
+	<CitadelHudEscapeMenu oncancel="if (!($.HandleCustomizeCancel &amp;&amp; $.HandleCustomizeCancel())) { $.DispatchEvent(&apos;CitadelResumePlaying&apos;, $.GetContextPanel()); }">
 	<!-- ==== END QOLLOCK: Cancel Customize before the native escape menu ==== -->
 		<!-- ============================================================= -->
 		<!-- QOLLOCK CUSTOM: Close settings on background activation    -->
 		<!-- ============================================================= -->
-		<Panel id="EscapeBackground" onactivate="if (typeof QOL !== &apos;undefined&apos; &amp;&amp; QOL.ui &amp;&amp; QOL.ui.customize &amp;&amp; QOL.ui.customize.isRunning()) {} else if ($.IsModSettingsOpen &amp;&amp; $.IsModSettingsOpen()) { $.ForceCloseModSettings(true); } else { CitadelResumePlaying(); }" />
+		<Panel id="EscapeBackground" onactivate="if (typeof QOL !== &apos;undefined&apos; &amp;&amp; QOL.ui &amp;&amp; QOL.ui.customize &amp;&amp; QOL.ui.customize.isRunning()) {} else if ($.IsModSettingsOpen &amp;&amp; $.IsModSettingsOpen()) { $.ForceCloseModSettings(true); } else { $.DispatchEvent(&apos;CitadelResumePlaying&apos;, $.GetContextPanel()); }" />
 		<!-- ============================================================= -->
 		<!-- END QOLLOCK CUSTOM                                        -->
 		<!-- ============================================================= -->
@@ -189,7 +189,7 @@
 		</Panel>
 		<CitadelPrivilegedFeatures id="PrivilegedFeatures" />
 		<!-- ==== QOLLOCK: Consume MenuBack while Customize is active ==== -->
-		<CitadelBindingButton id="EscapeButton" action="MenuBack" onactivate="if (!($.HandleCustomizeCancel &amp;&amp; $.HandleCustomizeCancel())) { CitadelResumePlaying(); }" text="#menu_resume" />
+		<CitadelBindingButton id="EscapeButton" action="MenuBack" onactivate="if (!($.HandleCustomizeCancel &amp;&amp; $.HandleCustomizeCancel())) { $.DispatchEvent(&apos;CitadelResumePlaying&apos;, $.GetContextPanel()); }" text="#menu_resume" />
 		<!-- ==== END QOLLOCK: Consume MenuBack while Customize is active ==== -->
 		<Panel id="RightSideBlur" hittest="false" />
 		<Panel id="RightSide" hittest="false">

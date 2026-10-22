@@ -115,7 +115,7 @@ Because layout is purely declarative:
 
 - **Window Close Semantics (`forceCloseModSettings`)**:
   Closing the settings window (via the header close button 'X' or ESC handling) toggles the visibility of the `SettingsWindow` panel without dispatching `CitadelResumePlaying`. This ensures that closing the QOLLOCK settings window preserves Deadlock's native Escape Menu rather than dismissing the pause state.
-  The escape-menu root keeps Deadlock's native `CitadelResumePlaying()` cancel handler. The focused QOLLOCK settings window handles its own cancel by hiding the window. If a hidden settings window receives `MenuBack`, its handler dispatches the existing resume event. Background activation checks the live window state before closing settings or resuming.
+  The escape-menu root and MenuBack binding dispatch the existing `CitadelResumePlaying` event after the customization cancellation guard. Compound XML handlers execute JavaScript, where the native layout action is not a global function. The focused QOLLOCK settings window handles its own cancel by hiding the window. If a hidden settings window receives `MenuBack`, its handler dispatches the existing resume event. Background activation checks the live window state before closing settings or resuming.
 
 
 ## 6. Dirty edits and asynchronous restore

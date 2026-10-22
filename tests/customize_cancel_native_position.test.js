@@ -61,9 +61,25 @@ test("Souls Cancel also restores layout when removing x/y records does not relay
 function nativeHandlers() {
     const xml = fs.readFileSync(path.join(__dirname, "../panorama/layout/hud_escape_menu.xml"), "utf8");
     return {
-        root: xml.match(/<CitadelHudEscapeMenu oncancel="([^"]+)"/)[1].replace(/&amp;/g, "&"),
-        binding: xml.match(/<CitadelBindingButton id="EscapeButton"[^>]*onactivate="([^"]+)"/)[1].replace(/&amp;/g, "&")
+        root: xml.match(/<CitadelHudEscapeMenu oncancel="([^"]+)"/)[1].replace(/&amp;/g, "&").replace(/&apos;/g, "'"),
+        binding: xml.match(/<CitadelBindingButton id="EscapeButton"[^>]*onactivate="([^"]+)"/)[1].replace(/&amp;/g, "&").replace(/&apos;/g, "'"),
+        background: xml.match(/<Panel id="EscapeBackground"[^>]*onactivate="([^"]+)"/)[1].replace(/&amp;/g, "&").replace(/&apos;/g, "'")
     };
+}
+
+for (const target of ["root", "binding", "background"]) {
+    test(`escape menu ${target} resumes through the event API without a global native function`, () => {
+        const env = load();
+        let resumes = 0;
+        env.global.$.RegisterForUnhandledEvent("CitadelResumePlaying", context => {
+            assert.equal(context, env.em);
+            resumes++;
+        });
+        vm.runInNewContext(nativeHandlers()[target], { $: env.global.$ });
+        assert.equal(resumes, 1);
+        assert.deepEqual(env.doc.eventErrors, []);
+        assert.deepEqual(env.clock.errors, []);
+    });
 }
 
 for (const exit of ["Cancel", "overlay", "window", "binding", "root"]) {
@@ -75,7 +91,11 @@ for (const exit of ["Cancel", "overlay", "window", "binding", "root"]) {
         const pending = env.em.FindChildTraverse("QOLCustomize_PLAYER_HEALTHBAR_X_OFFSET");
         pending.text = "777";
         let resumes = 0;
-        const callNative = source => vm.runInNewContext(source, { $: g.$, CitadelResumePlaying: () => { resumes++; } });
+        g.$.RegisterForUnhandledEvent("CitadelResumePlaying", context => {
+            assert.equal(context, env.em);
+            resumes++;
+        });
+        const callNative = source => vm.runInNewContext(source, { $: g.$ });
         const handlers = nativeHandlers();
         if (exit === "Cancel") env.em.FindChildTraverse("QOLCustomizeCancel")._fire("onactivate");
         else if (exit === "overlay") env.em.FindChildTraverse("QOLCustomizeEditor")._fire("oncancel");

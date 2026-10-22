@@ -252,11 +252,14 @@ test("Escape menu root keeps the native cancel path while QOLLOCK settings handl
     const xml = fs.readFileSync(path.resolve(__dirname, "../panorama/layout/hud_escape_menu.xml"), "utf8");
     const handler = xml.match(/<CitadelHudEscapeMenu oncancel="([^"]+)"/);
     assert.ok(handler, "escape menu must declare a cancel handler");
-    assert.match(handler[1], /CitadelResumePlaying\(\)/, "the root must retain Deadlock's native cancel fallback");
     let resumes = 0;
-    const cancel = () => vm.runInNewContext(handler[1].replace(/&amp;/g, "&"), {
-        $: mockDollar,
-        CitadelResumePlaying: () => { resumes++; }
+    mockDollar.DispatchEvent = (name, context) => {
+        assert.equal(name, "CitadelResumePlaying");
+        assert.equal(context, mockDollar.GetContextPanel());
+        resumes++;
+    };
+    const cancel = () => vm.runInNewContext(handler[1].replace(/&amp;/g, "&").replace(/&apos;/g, "'"), {
+        $: mockDollar
     });
 
     windowApi.boot();
@@ -277,8 +280,7 @@ test("Escape menu root keeps the native cancel path while QOLLOCK settings handl
     assert.ok(backgroundHandler);
     const clickBackground = (customizing = false) => vm.runInNewContext(backgroundHandler[1].replace(/&amp;/g, "&").replace(/&apos;/g, "'"), {
         $: mockDollar,
-        ...(customizing ? { QOL: { ui: { customize: { isRunning: () => true } } } } : {}),
-        CitadelResumePlaying: () => { resumes++; }
+        ...(customizing ? { QOL: { ui: { customize: { isRunning: () => true } } } } : {})
     });
     windowApi.setOpen(true);
     clickBackground(true);
@@ -308,7 +310,17 @@ test("the native MenuBack binding remains the only EscapeButton", () => {
     const xml = fs.readFileSync(path.resolve(__dirname, "../panorama/layout/hud_escape_menu.xml"), "utf8");
     const buttons = xml.match(/\bid="EscapeButton"/g) || [];
     assert.equal(buttons.length, 1, "duplicate EscapeButton ids can intercept the native MenuBack action");
-    assert.match(xml, /<CitadelBindingButton\s+id="EscapeButton"\s+action="MenuBack"\s+onactivate="[^"]*CitadelResumePlaying\(\)/);
+    const binding = xml.match(/<CitadelBindingButton\s+id="EscapeButton"\s+action="MenuBack"\s+onactivate="([^"]+)"/);
+    assert.ok(binding);
+    const { mockDollar } = createTestEnvironment();
+    let resumes = 0;
+    mockDollar.DispatchEvent = (name, context) => {
+        assert.equal(name, "CitadelResumePlaying");
+        assert.equal(context, mockDollar.GetContextPanel());
+        resumes++;
+    };
+    vm.runInNewContext(binding[1].replace(/&amp;/g, "&").replace(/&apos;/g, "'"), { $: mockDollar });
+    assert.equal(resumes, 1);
 });
 
 test("window: ensureDiscordTextureLogo and ensureDiscordFooterTextureLogo attach logo image", () => {

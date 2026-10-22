@@ -2261,7 +2261,7 @@
             });
         }
 
-        // Keep the XML root's native CitadelResumePlaying() fallback. The root
+        // Keep the XML root's resume-event fallback. The root
         // is the context panel itself, so FindChildTraverse("EscapeMenu")
         // cannot locate it as a descendant.
     };
