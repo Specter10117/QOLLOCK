@@ -72,7 +72,12 @@
                 if (enabled) {
                     if (x !== 0) styles.x = x + "px";
                     if (y !== 0) styles.y = -y + "px";
-                    if (Math.abs(scale - 1) > 0.0001) styles.uiScale = Math.round(scale * 100) + "%";
+                    if (Math.abs(scale - 1) > 0.0001) {
+                        styles.uiScale = Math.round(scale * 100) + "%";
+                        // Native TeamsContainer has fixed-width left/right teams.
+                        // Squishing it to the scaled viewport pulls portraits inward.
+                        styles.overflow = "noclip";
+                    }
                     if (Math.abs(opacity - 1) > 0.0001) styles.opacity = opacity.toFixed(2);
                 } else {
                     styles.visibility = "collapse";

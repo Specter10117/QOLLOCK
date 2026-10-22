@@ -25,6 +25,8 @@ for (const basic of [0, 1]) test(`disabled Item Cooldowns have no frame, catalog
     const env = setup(), g = env.global;
     Object.assign(g.MOD_CONFIG, { ENABLE_PASSIVE_COOLDOWN: 0, ENABLE_OLD_ITEM_COOLDOWNS: basic });
     const target = env.add(basic ? env.abilities : env.gameplay, basic ? "hud_passive_items" : "QOLItemMirrorRoot");
+    const row = basic ? target : env.add(target, "QOLItemMirrorRow");
+    env.add(row, "RetainedCooldownIcon", [basic ? "ability_container" : "QOLItemMirrorIcon"]);
     assert.equal(g.QOL.ui.customize.start(), true);
     const frame = env.find("QOLCustomizeFrame_cooldowns");
     assert.equal(frame.visible, false, "a surviving panel is not an enabled feature");

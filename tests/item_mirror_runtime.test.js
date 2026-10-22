@@ -80,6 +80,28 @@ for (const basic of [false, true]) test(`selected ${basic ? "Basic" : "Advanced"
     feature.onDisable(); env.clock.advance(0); assert.deepEqual(env.clock.errors, []);
 });
 
+for (const basic of [false, true]) test(`${basic ? "Basic" : "Advanced"} percentage offsets do not consume the icon row's available layout`, () => {
+    const env = setup(); env.Q.core.App.shutdown();
+    env.apply({ ENABLE_OLD_ITEM_COOLDOWNS: basic ? 1 : 0, PASSIVE_COOLDOWN_X: 70, PASSIVE_COOLDOWN_Y: -45 });
+    const id = basic ? "ql_passive_cooldown" : "ql_item_mirror";
+    const feature = env.Q.core.FeatureRegistry.getManifest(id).create(env.Q.core.FeatureRegistry.createContext(id));
+    env.buy(env.lists[0], "ModIcon0", "medicBullets", "isWeapon", 1, "isPassiveItem", "weapon/restorative_shot", "9");
+    feature.onEnable();
+    const host = basic ? env.root.FindChildTraverse("hud_passive_items") : env.overlay();
+    assert.ok(host);
+    assert.equal(parseFloat(host.style.marginLeft) + parseFloat(host.style.marginRight), 0, "horizontal margins translate without reducing available width");
+    assert.equal(parseFloat(host.style.marginTop) + parseFloat(host.style.marginBottom), 0, "vertical margins translate without reducing available height");
+    env.Q.core.ConfigStore.load({ [id]: { PASSIVE_COOLDOWN_X: -80, PASSIVE_COOLDOWN_Y: 55 } });
+    feature.onSettingsChanged();
+    assert.equal(parseFloat(host.style.marginLeft), -80);
+    assert.equal(parseFloat(host.style.marginLeft) + parseFloat(host.style.marginRight), 0);
+    assert.equal(parseFloat(host.style.marginTop) + parseFloat(host.style.marginBottom), 0);
+    feature.onDisable(); env.clock.advance(0);
+    if (basic) for (const key of ["marginLeft", "marginRight", "marginTop", "marginBottom"]) assert.equal(host.style[key], undefined);
+    else assert.equal(host.IsValid(), false);
+    assert.deepEqual(env.clock.errors, []);
+});
+
 test("Advanced mirrors survive category filters, same local IDs in different lists, purchases, sales and shop transitions", () => {
     const env = setup();
     const offPassive = env.buy(env.lists[0], "ModIcon0", "acolytesGlove", "isTech", 1, "isPassiveItem", "spirit/spirit_strike");

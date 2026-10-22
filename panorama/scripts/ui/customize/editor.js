@@ -698,7 +698,15 @@
             owner.view = view;
             view.AddClass("QOLCustomizeView");
             view.AddClass("QOLUnifiedModalSurface");
-            owner.chrome.header(view, "QOLCustomizeDragView", "Customize");
+            const topBar = Q.presentation.elements.find(item => item.id === "topBar");
+            owner.chrome.header(view, "QOLCustomizeDragView", "Customize", (bounds, viewport) => {
+                const frame = owner.frames.get("topBar");
+                const target = !frame && owner.hud && topBar ? resolve(owner, topBar) : null;
+                const content = frame?.measured || (target && G.isShown(target) ? G.frameBox(topBar, target, overlay) : null);
+                if (!content) return null;
+                const y = content.y + content.height + 15;
+                return y + bounds.height <= viewport.height ? { x: (viewport.width - bounds.width) / 2, y } : null;
+            });
             const viewActions = P.create("Panel", view, "");
             viewActions.AddClass("QOLCustomizeActions");
             const panels = I.button(viewActions, "QOLCustomizeTogglePanels", "Hide panels", () => {

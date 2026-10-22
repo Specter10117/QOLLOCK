@@ -198,6 +198,7 @@ function createPreviewTestEnvironment(configOverrides = {}) {
 
     return {
         ctx,
+        clock,
         rootPanel,
         settingsWin,
         list,
@@ -216,6 +217,24 @@ test("QOL.preview subsystem exports and initializes", () => {
     assert.strictEqual(typeof ctx.QOL.preview.isSpeedPreviewConfig, "function");
 });
 
+test("ordinary feature switches retire floating previews without creating placeholders", () => {
+    for (const key of ["ENABLE_ZIP_BOOST", "ENABLE_COMPASS", "ENABLE_COMPASS_SPEED", "ENABLE_CROSSHAIR_STATS",
+        "ENABLE_UNSECURED_SOUL_TIMER", "ENABLE_KEYBOARD_OVERLAY", "ENABLE_PASSIVE_COOLDOWN",
+        "ENABLE_OLD_ITEM_COOLDOWNS", "ENABLE_RED_DIAMOND", "ENABLE_IMPROVED_HINT", "DISABLE_DAMAGE_REPORT",
+        "ENABLE_BETTER_UNSECURED", "ENABLE_BETTER_UNSECURED_SHOW_ICON", "ENABLE_BETTER_UNSECURED_SHOW_TEXT"]) {
+        const { ctx, rootPanel, clock } = createPreviewTestEnvironment();
+        ctx.QOL.preview.showForConfigId("ZIP_BOOST_SCALE");
+        const old = rootPanel.FindChildTraverse("ZipBoostPreview"); assert.ok(old);
+        for (const value of [0, 1]) {
+            ctx.MOD_CONFIG[key] = value;
+            ctx.QOL.preview.showForConfigId(key);
+            assert.strictEqual(rootPanel.Children().some(panel => panel.id.endsWith("Preview") && panel.BHasClass("Visible")), false, key + "=" + value);
+            clock.advance(20);
+            assert.strictEqual(old.IsValid(), false, "the old sample is retired");
+        }
+    }
+});
+
 test("Preview detection helpers recognize toggles and sliders", () => {
     const { ctx } = createPreviewTestEnvironment();
     assert.strictEqual(ctx.QOL.preview.isCompassPreviewConfig("ENABLE_COMPASS"), true);
@@ -229,7 +248,7 @@ test("Preview detection helpers recognize toggles and sliders", () => {
 
 test("ShowConfigPreviewForConfigId displays Zipline Boost preview correctly", () => {
     const { ctx, rootPanel } = createPreviewTestEnvironment();
-    ctx.QOL.preview.showForConfigId("ENABLE_ZIP_BOOST");
+    ctx.QOL.preview.showForConfigId("ZIP_BOOST_SCALE");
 
     const previewPanel = rootPanel.FindChildTraverse("ZipBoostPreview");
     assert.ok(previewPanel, "ZipBoostPreview panel should exist");
@@ -242,7 +261,7 @@ test("ShowConfigPreviewForConfigId displays Zipline Boost preview correctly", ()
 
 test("ShowConfigPreviewForConfigId displays Speed preview correctly with formatted label", () => {
     const { ctx, rootPanel } = createPreviewTestEnvironment();
-    ctx.QOL.preview.showForConfigId("ENABLE_COMPASS_SPEED");
+    ctx.QOL.preview.showForConfigId("COMPASS_SPEED_X_OFFSET");
 
     const speedPanel = rootPanel.FindChildTraverse("SpeedPreview");
     assert.ok(speedPanel, "SpeedPreview panel should exist");
@@ -257,24 +276,24 @@ test("ShowConfigPreviewForConfigId displays Speed preview correctly with formatt
 
 test("ShowConfigPreviewForConfigId hides panel when feature toggle is disabled", () => {
     const { ctx, rootPanel } = createPreviewTestEnvironment();
-    ctx.QOL.preview.showForConfigId("ENABLE_ZIP_BOOST");
+    ctx.QOL.preview.showForConfigId("ZIP_BOOST_SCALE");
     const previewPanel = rootPanel.FindChildTraverse("ZipBoostPreview");
     assert.strictEqual(previewPanel.BHasClass("Visible"), true);
 
     // Disable and trigger again
     ctx.MOD_CONFIG.ENABLE_ZIP_BOOST = 0;
-    ctx.QOL.preview.showForConfigId("ENABLE_ZIP_BOOST");
+    ctx.QOL.preview.showForConfigId("ZIP_BOOST_SCALE");
     assert.strictEqual(previewPanel.BHasClass("Visible"), false);
 });
 
 test("ShowConfigPreviewForConfigId hides speed preview when ENABLE_COMPASS_SPEED is disabled", () => {
     const { ctx, rootPanel } = createPreviewTestEnvironment();
-    ctx.QOL.preview.showForConfigId("ENABLE_COMPASS_SPEED");
+    ctx.QOL.preview.showForConfigId("COMPASS_SPEED_X_OFFSET");
     const speedPanel = rootPanel.FindChildTraverse("SpeedPreview");
     assert.strictEqual(speedPanel.BHasClass("Visible"), true);
 
     ctx.MOD_CONFIG.ENABLE_COMPASS_SPEED = 0;
-    ctx.QOL.preview.showForConfigId("ENABLE_COMPASS_SPEED");
+    ctx.QOL.preview.showForConfigId("COMPASS_SPEED_X_OFFSET");
     assert.strictEqual(speedPanel.BHasClass("Visible"), false);
 });
 
@@ -288,7 +307,7 @@ test("Previews do not show if PREVIEWS_ENABLED is 0", () => {
 test("Previews do not show if SettingsWindow is not visible", () => {
     const { ctx, rootPanel, settingsWin } = createPreviewTestEnvironment();
     settingsWin.RemoveClass("Visible");
-    ctx.QOL.preview.showForConfigId("ENABLE_ZIP_BOOST");
+    ctx.QOL.preview.showForConfigId("ZIP_BOOST_SCALE");
     const previewPanel = rootPanel.FindChildTraverse("ZipBoostPreview");
     assert.strictEqual(previewPanel ? previewPanel.BHasClass("Visible") : false, false);
 });
@@ -314,8 +333,8 @@ test("wirePreviewToggleButton sets up toggle button and handles activation", () 
 
 test("hideAll hides visible previews", () => {
     const { ctx, rootPanel } = createPreviewTestEnvironment();
-    ctx.QOL.preview.showForConfigId("ENABLE_ZIP_BOOST");
-    ctx.QOL.preview.showForConfigId("ENABLE_COMPASS_SPEED");
+    ctx.QOL.preview.showForConfigId("ZIP_BOOST_SCALE");
+    ctx.QOL.preview.showForConfigId("COMPASS_SPEED_X_OFFSET");
 
     const zipPanel = rootPanel.FindChildTraverse("ZipBoostPreview");
     const speedPanel = rootPanel.FindChildTraverse("SpeedPreview");
@@ -327,7 +346,7 @@ test("hideAll hides visible previews", () => {
     assert.strictEqual(speedPanel.BHasClass("Visible"), false);
 });
 
-test("createAnimatedInlineToggleSection triggers preview on toggle click", () => {
+test("createAnimatedInlineToggleSection updates live settings without floating toggle previews", () => {
     const { ctx, rootPanel, list } = createPreviewTestEnvironment({ ENABLE_ZIP_BOOST: 0 });
     const controls = ctx.QOL.ui.controls;
 
@@ -344,7 +363,5 @@ test("createAnimatedInlineToggleSection triggers preview on toggle click", () =>
 
     assert.strictEqual(ctx.MOD_CONFIG.ENABLE_ZIP_BOOST, 1, "Config should update to 1");
 
-    const previewPanel = rootPanel.FindChildTraverse("ZipBoostPreview");
-    assert.ok(previewPanel, "ZipBoostPreview panel should exist");
-    assert.strictEqual(previewPanel.BHasClass("Visible"), true, "ZipBoostPreview should be visible after activating section");
+    assert.strictEqual(rootPanel.FindChildTraverse("ZipBoostPreview"), null);
 });

@@ -49,6 +49,18 @@
                 const basic = Number(config?.ENABLE_OLD_ITEM_COOLDOWNS) === 1;
                 return C.findPath(hud, basic ? [...C.paths.abilities, "hud_passive_items"] : [...gameplay, "QOLItemMirrorRoot"]);
             },
+            measurePanels(target) {
+                // The native Basic owner reserves a wide placement canvas;
+                // only its actual icons and the leased sample are content.
+                if (target.id === "hud_passive_items") {
+                    const panels = QOL_UTILS.FindPanelsByClass(target, "ability_container");
+                    const sample = QOL.core.panel.findChild(target, "QOLCustomizeBasicCooldownSample");
+                    if (QOL.core.panel.isAlive(sample)) panels.push(sample);
+                    return panels;
+                }
+                const row = QOL.core.panel.findChild(target, "QOLItemMirrorRow");
+                return QOL.core.panel.isAlive(row) ? row.Children().filter(child => child.BHasClass("QOLItemMirrorIcon")) : [];
+            },
             fields: [
                 toggle("ENABLE_PASSIVE_COOLDOWN"), f("ENABLE_OLD_ITEM_COOLDOWNS", "Basic Mode", "toggle", { hidden: true }),
                 f("PASSIVE_COOLDOWN_X", "Horizontal Offset (%)", null, { axis: "x", unit: "%" }),

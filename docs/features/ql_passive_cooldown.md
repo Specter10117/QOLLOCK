@@ -5,6 +5,11 @@ selects Basic or Advanced mode using HUD classes. Basic styles the native
 `hud_passive_items` panel; Advanced delegates item matching and overlay panels
 to [ql_item_mirror](ql_item_mirror.md). This manifest is the sole owner of Basic
 geometry, opacity, mode classes and shop visibility.
+Both renderers pair each percentage margin with its opposite negative margin:
+placement does not consume the row's available width/height, and a centered
+owner moves by the full parent percentage. Customize measures visible icon
+content and its owned sample, while moving the existing native/custom owner;
+the Basic placement canvas is not the selection frame.
 Selecting Item Cooldowns in a leased Customize session allows Basic visibility
 through the shop gate and creates a representative owned icon/readout under its
 native geometry owner. Advanced mode uses its production slot constructor under

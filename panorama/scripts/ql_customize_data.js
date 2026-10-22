@@ -17,7 +17,15 @@
     const color = key => ({ key, label: "Color", type: "color" });
     const elements = [];
     const nativeElements = [
-        { id: "souls", name: "Souls", path: [...lower, "gold_and_ap_container"], measureId: "CurrentGoldAmount", fields: [toggle("HUD_SOULS_ENABLED"), ...geometry("SOULS_"), opacity("SOULS_")] },
+        { id: "souls", name: "Souls", path: [...lower, "gold_and_ap_container"],
+            measurePanels(target) {
+                // Overall scale belongs to the level-and-currency owner. Its
+                // conditional CurrentGoldAmount row omits other visible content.
+                const panels = ["PlayerLevelContainer", "hudGoldContainer"]
+                    .map(id => Q.core.panel.findChild(target, id)).filter(Q.core.panel.isAlive);
+                return panels.length ? panels : [target];
+            },
+            fields: [toggle("HUD_SOULS_ENABLED"), ...geometry("SOULS_"), opacity("SOULS_")] },
         { id: "items", name: "Items", path: [...lower, "ModsContainer"], fields: [toggle("HUD_ITEMS_ENABLED"), ...geometry("ITEMS_"), opacity("ITEMS_"), color("ITEMS_WASH_COLOR")] },
         { id: "topBar", name: "Top Bar", path: [...core, "TopBar"], fields: [toggle("HUD_TOP_BAR_ENABLED"), ...geometry("TOP_BAR_", true), opacity("TOP_BAR_")] },
         { id: "bottomBar", name: "Abilities", path: [...abilities, "hud_signature"], fields: [toggle("HUD_BOTTOM_BAR_ENABLED"), ...geometry("BOTTOM_BAR_", true), opacity("BOTTOM_BAR_"), { key: "BOTTOM_BAR_WASH_COLOR", label: "Color", type: "palette" }] },

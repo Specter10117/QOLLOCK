@@ -114,6 +114,10 @@ with a fixed origin at capture; contexts without GameUI retain the validated
 compositor fallback. Interactive children do
 not act as window drag handles. Viewport and selection changes re-clamp moved
 windows without transferring them to the compositor.
+Until manually moved, the view toolbar follows the measured bottom of top-bar
+content when space permits. It does not use the native full-height TopBar owner
+as its obstacle. Sessions opening without measurable content use the ordinary
+stylesheet placement.
 These view choices are session-only. Missing elements are dimmed in the catalog;
 the selected inspector shows their availability without repeating a suffix on
 every catalog row.
@@ -231,6 +235,9 @@ It multiplies the verified CSS baseline for the current mode and releases its
 override at default, disable or owner replacement; content, rotations and
 visibility keep their existing owners.
 Compact stats scale the content block rather than its full-screen wrapper.
+Souls frames include the level and currency groups scaled by their shared native
+owner, without its empty width reserve. A conditional current-souls row does not
+define the overall frame.
 Frame geometry uses actual native layout measurements, including stamina pip
 unions, without multiplying them again by the configured scale.
 A panel replacement or hidden owner cancels an active move/resize gesture.

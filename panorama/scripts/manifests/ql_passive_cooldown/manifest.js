@@ -46,7 +46,10 @@
                 const opacity = QOL.utils.NormalizeOpacityNumber(cfg.PASSIVE_COOLDOWN_OPACITY, 0.5);
                 return { mode, styles: {
                     uiScale: scale + "%", x: "11px", y: "30px",
-                    marginLeft: x.toFixed(2) + "%", marginTop: (-6 - y).toFixed(2) + "%",
+                    // Opposing margins retain the available canvas size and
+                    // make centered horizontal placement track the full offset.
+                    marginLeft: x.toFixed(2) + "%", marginRight: (-x).toFixed(2) + "%",
+                    marginTop: (-6 - y).toFixed(2) + "%", marginBottom: (6 + y).toFixed(2) + "%",
                     opacity: opacity.toFixed(2)
                 } };
             }

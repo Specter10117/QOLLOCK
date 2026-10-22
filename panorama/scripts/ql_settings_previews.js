@@ -894,6 +894,9 @@ function ShowUnsecuredSoulsPreview() {
 function ShowConfigPreviewForConfigId(configId) {
     if (MOD_CONFIG.PREVIEWS_ENABLED !== 1) { HideMinimapSizePreview(); return; }
     if (!IsSettingsWindowVisible()) { HideMinimapSizePreview(); return; }
+    // Feature switches update their live HUD owner. Floating samples belong to
+    // appearance/placement edits; retire an earlier sample when switching modes.
+    if (QOL.settings.get(configId)?.kind === "toggle") { hidePreviews(); return; }
     try { DispatchConfigPreview(configId); }
     catch (error) {
         hidePreviews();

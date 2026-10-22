@@ -3238,7 +3238,7 @@ CitadelHudEscapeMenu.QOLCustomizeActive { background-color: #0000; }
 	color: #aeb8bb;
 	font-size: 12px;
 	font-size: 13px;
-	line-height: 20px;
+	line-height: normal;
 	text-align: left;
 	text-transform: none;
 	white-space: normal;
@@ -16095,7 +16095,7 @@ CitadelHudEscapeMenu.QOLCustomizeActive { background-color: #0000; }
 {
 	color: #b7c1c6;
 	font-size: 13px;
-	line-height: 20px;
+	line-height: normal;
 	letter-spacing: 0.2px;
 }
 

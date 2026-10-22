@@ -494,6 +494,37 @@ test("Hide panels changes the actual editor windows; Show frames changes outline
     clean(env);
 });
 
+test("the view toolbar follows measured top-bar content until the user drags it", () => {
+    const env = setup("topBar", 1400, 1080, 260, 0);
+    const clock = env.panel.addChild(env.doc.create("Panel", { classes: ["GameClock"] }));
+    rect(clock, 100, 50, 650, 0);
+    env.global.QOL.ui.customize.start(null, { elementId: "topBar" });
+    rect(env.find("QOLCustomizeEditor"), 1920, 1080);
+    const toolbar = rect(env.find("QOLCustomizeView"), 300, 90, 810, 15);
+    env.clock.advance(300);
+    assert.equal(toolbar.style.x, "810px");
+    assert.equal(toolbar.style.y, "65px", "avoid the content, not the full-height TopBar owner");
+    clock.actuallayoutheight = 100;
+    env.clock.advance(300);
+    assert.equal(toolbar.style.y, "115px");
+    const overlay = env.find("QOLCustomizeEditor");
+    rect(overlay, 3840, 2160);
+    overlay.actualuiscale_x = 2; overlay.actualuiscale_y = 2;
+    rect(env.panel, 2800, 2160, 520, 0);
+    rect(clock, 200, 200, 1300, 0);
+    rect(toolbar, 600, 180, 1620, 230);
+    env.clock.advance(300);
+    assert.equal(toolbar.style.y, "115px", "placement shares the canvas density conversion used by selection frames");
+    const proxy = startDrag(env, env.find("QOLCustomizeDragView"));
+    proxy.actualyoffset += 200;
+    startDrag.end(env, env.find("QOLCustomizeDragView"), proxy);
+    const movedY = toolbar.style.y;
+    clock.actuallayoutheight = 300;
+    env.clock.advance(300);
+    assert.equal(toolbar.style.y, movedY, "native layout changes preserve the user's session position");
+    clean(env);
+});
+
 for (const [id, handle] of [["QOLCustomizeCatalog", "QOLCustomizeDragCatalog"], ["QOLCustomizeTools", "QOLCustomizeDragTools"],
     ["QOLCustomizeView", "QOLCustomizeDragView"]]) {
     test(`${id}: draggable header keeps controls and native windows in place, clamps to viewport and cleans its proxy`, () => {

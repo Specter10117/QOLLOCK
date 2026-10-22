@@ -21,7 +21,7 @@ function fixture() {
 test("preview deadlines cancel handle zero, bound repeated requests, and reject callbacks after failed cancellation", () => {
     const e = fixture();
     e.api.CancelScheduled = id => { e.canceled.push(id); throw Error("modeled native cancellation failure"); };
-    e.show("ENABLE_ZIP_BOOST");
+    e.show("ZIP_BOOST_SCALE");
     const panel = e.em.FindChild("ZipBoostPreview"), old = e.deadline(0);
     for (let i = 0; i < 50; i++) e.show("ZIP_BOOST_SCALE");
     assert.ok(e.canceled.includes(0));
@@ -41,7 +41,7 @@ test("complete preview ownership repairs moved and partially created descendants
         if (reject && args[2] === "KeyboardOverlayPreviewKey3") throw Error("modeled partial construction");
         return create(...args);
     };
-    e.show("ENABLE_KEYBOARD_OVERLAY");
+    e.show("KEYBOARD_OVERLAY_SCALE");
     const root = e.em.FindChild("KeyboardOverlayPreview");
     assert.equal(root.BHasClass("Visible"), false);
     assert.equal(e.deadlines().length, 0, "incomplete preview does not paint or allocate a deadline");
@@ -61,11 +61,11 @@ test("complete preview ownership repairs moved and partially created descendants
 });
 
 test("preview context replacement retires the living old tree without transferring its hide deadline", () => {
-    const e = fixture(); e.show("ENABLE_ZIP_BOOST");
+    const e = fixture(); e.show("ZIP_BOOST_SCALE");
     const old = e.em.FindChild("ZipBoostPreview"), callback = e.deadline(0);
     const next = e.api.CreatePanel("Panel", null, "NextSettingsContext");
     e.api.GetContextPanel = () => next;
-    e.show("ENABLE_ZIP_BOOST");
+    e.show("ZIP_BOOST_SCALE");
     const current = next.FindChild("ZipBoostPreview");
     assert.equal(old.visible, false); assert.equal(current.BHasClass("Visible"), true);
     callback(); assert.equal(current.BHasClass("Visible"), true);
@@ -75,13 +75,13 @@ test("preview context replacement retires the living old tree without transferri
 });
 
 test("preview expiry cleans moved children and a replaced live host while hidden settings allocate nothing", () => {
-    const e = fixture(); e.show("ENABLE_CROSSHAIR_STATS");
+    const e = fixture(); e.show("CROSSHAIR_STATS_SCALE");
     const panel = e.em.FindChild("CrosshairStatsPreview"), value = panel.FindChildTraverse("CrosshairStatsPreviewValue_fireRate");
     assert.equal(value.text, "−15%");
     const orphan = e.api.CreatePanel("Panel", null, "OrphanPreview"); value.SetParent(orphan);
     e.deadline(0)(); e.clock.advance(20);
     assert.equal(value.IsValid(), false); assert.equal(panel.IsValid(), false);
-    e.show("ENABLE_ZIP_BOOST"); const next = e.em.FindChild("ZipBoostPreview");
+    e.show("ZIP_BOOST_SCALE"); const next = e.em.FindChild("ZipBoostPreview");
     e.api.GetContextPanel = () => orphan;
     e.deadline(1)(); e.clock.advance(20); assert.equal(next.IsValid(), false);
     e.g.IsSettingsWindowVisible = () => false;

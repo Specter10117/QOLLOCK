@@ -1,6 +1,6 @@
 # Settings Realtime Previews Architecture
 
-The QOLLOCK settings window provides realtime visual previews for HUD elements when their positions, scales, or toggle states are adjusted in the UI.
+The QOLLOCK settings window provides realtime floating previews for HUD elements when their position or appearance is adjusted in the UI. Ordinary toggle changes update their live owners and retire existing floating samples; they do not open placeholder previews. Customize owns its separate live editing preview.
 
 ---
 
@@ -28,7 +28,7 @@ maintainer client verification.
 ```
 ┌─────────────────────────────────────────────────────────┐
 │                    Settings UI Action                   │
-│ (Slider move, Animated Section toggle, Title Checkbox)  │
+│              Position or appearance edit              │
 └────────────────────────────┬────────────────────────────┘
                              │
                              ▼
@@ -56,7 +56,7 @@ ShowZipBoostPreview()  ShowCompassPreview()   ShowSpeedPreview()
 
 ## 2. Public API (`QOL.preview`)
 
-- **`showForConfigId(configId)`**: Dispatches preview creation or update for the given configuration key.
+- **`showForConfigId(configId)`**: Dispatches preview creation or update for the given configuration key. Toggle keys retire existing floating previews without creating a sample, including when switching a feature off.
 - **`hideAll()`**: Cancels pending hides and retires all owned preview trees.
 - **`dispose()`**: Final cleanup of preview trees and deadline ownership.
 - **`wirePreviewToggleButton(buttonPanel)`**: Attaches event listeners and active state styling to the preview master switch (`MOD_CONFIG.PREVIEWS_ENABLED`).
@@ -81,12 +81,12 @@ ShowZipBoostPreview()  ShowCompassPreview()   ShowSpeedPreview()
 
 | Preview Type | Supported Config Keys | Description |
 | :--- | :--- | :--- |
-| **Zipline Boost** | `ENABLE_ZIP_BOOST`, `ZIP_BOOST_X_OFFSET`, `ZIP_BOOST_Y_OFFSET`, `ZIP_BOOST_SCALE` | Floating green glowing pill showing configured position and scale. |
-| **Speedometer** | `ENABLE_COMPASS_SPEED`, `COMPASS_SPEED_X_OFFSET`, `COMPASS_SPEED_Y_OFFSET` | Styled square 50x50 gold glow pill displaying `"SPD"` matching in-game speedometer coordinates. |
-| **Compass** | `ENABLE_COMPASS`, `COMPASS_X_OFFSET`, `COMPASS_Y_OFFSET`, `COMPASS_SCALE`, `COMPASS_STRETCH_X`, `COMPASS_STRETCH_Y` | Bounding box showing compass placement and aspect ratio. |
-| **Crosshair Stats** | `ENABLE_CROSSHAIR_STATS`, `CROSSHAIR_STATS_X_OFFSET`, `CROSSHAIR_STATS_Y_OFFSET`, `CROSSHAIR_STATS_SCALE`, `CROSSHAIR_STATS_OPACITY` | Active stats indicator near crosshair. |
-| **Unsecured Souls** | `ENABLE_UNSECURED_SOUL_TIMER`, `UNSECURED_SOUL_TIMER_X_OFFSET`, `UNSECURED_SOUL_TIMER_Y_OFFSET`, `UNSECURED_SOUL_TIMER_SCALE` | Unsecured soul countdown preview. |
-| **Keyboard Overlay**| `ENABLE_KEYBOARD_OVERLAY`, `KEYBOARD_OVERLAY_X_OFFSET`, `KEYBOARD_OVERLAY_Y_OFFSET`, `KEYBOARD_OVERLAY_SCALE` | Overlay footprint showing scaled dimensions. |
+| **Zipline Boost** | `ZIP_BOOST_X_OFFSET`, `ZIP_BOOST_Y_OFFSET`, `ZIP_BOOST_SCALE` | Floating green glowing pill showing configured position and scale. |
+| **Speedometer** | `COMPASS_SPEED_X_OFFSET`, `COMPASS_SPEED_Y_OFFSET` | Styled square 50x50 gold glow pill displaying `"SPD"` matching in-game speedometer coordinates. |
+| **Compass** | `COMPASS_X_OFFSET`, `COMPASS_Y_OFFSET`, `COMPASS_SCALE`, `COMPASS_STRETCH_X`, `COMPASS_STRETCH_Y` | Bounding box showing compass placement and aspect ratio. |
+| **Crosshair Stats** | `CROSSHAIR_STATS_X_OFFSET`, `CROSSHAIR_STATS_Y_OFFSET`, `CROSSHAIR_STATS_SCALE`, `CROSSHAIR_STATS_OPACITY` | Active stats indicator near crosshair. |
+| **Unsecured Souls** | `UNSECURED_SOUL_TIMER_X_OFFSET`, `UNSECURED_SOUL_TIMER_Y_OFFSET`, `UNSECURED_SOUL_TIMER_SCALE` | Unsecured soul countdown preview. |
+| **Keyboard Overlay**| `KEYBOARD_OVERLAY_X_OFFSET`, `KEYBOARD_OVERLAY_Y_OFFSET`, `KEYBOARD_OVERLAY_SCALE` | Overlay footprint showing scaled dimensions. |
 | **Item Cooldown** | `PASSIVE_COOLDOWN_SIZE`, `PASSIVE_COOLDOWN_X_OFFSET`, `PASSIVE_COOLDOWN_Y_OFFSET` | Cooldown icon frame next to crosshair. |
 | **Minimap Size & Offset** | `MINIMAP_SMALL_SIZE`, `MINIMAP_X_OFFSET`, `MINIMAP_Y_OFFSET`, `MINIMAP_BASE_OPACITY` | Bounding circular reticle indicating exact minimap placement, diameter, and opacity. |
 
@@ -96,8 +96,8 @@ ShowZipBoostPreview()  ShowCompassPreview()   ShowSpeedPreview()
 
 When a user interacts with a control in `panorama/scripts/ui/controls.js`:
 1. **Sliders (`createSliderSettingsRow`, `createDualSliderSettingsRow`, `createOffsetControlRow`)**: Calls `getPreview().showForConfigId(configId)` during drag/change.
-2. **Animated Section Toggles (`createAnimatedInlineToggleSection`)**: Calls `getPreview().showForConfigId(enableConfigId)` immediately upon switch activation or deactivation.
-3. **Title Checkboxes (`createSectionTitleCheckboxToggle`)**: Calls `getPreview().showForConfigId(configId)` upon check state toggle.
+2. **Animated Section Toggles (`createAnimatedInlineToggleSection`)**: Calls `getPreview().showForConfigId(enableConfigId)` immediately upon switch activation or deactivation to retire floating samples.
+3. **Title Checkboxes (`createSectionTitleCheckboxToggle`)**: Calls `getPreview().showForConfigId(configId)` upon check state toggle; the same retirement rule applies.
 
 ---
 

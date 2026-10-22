@@ -26,12 +26,15 @@
             const number = (value, fallback) => Number.isFinite(Number(value)) ? Number(value) : fallback;
             const scale = Q.settings.readNumber("PASSIVE_COOLDOWN_SIZE", cfg.PASSIVE_COOLDOWN_SIZE) / 40;
             const opacity = Math.max(0, Math.min(1, number(cfg.PASSIVE_COOLDOWN_OPACITY, 0.5))).toFixed(2);
+            const x = number(cfg.PASSIVE_COOLDOWN_X, 0), y = number(cfg.PASSIVE_COOLDOWN_Y, -2);
             return {
                 enabled: Number(cfg.ENABLE_PASSIVE_COOLDOWN) === 1 && Number(cfg.ENABLE_OLD_ITEM_COOLDOWNS) !== 1,
                 filters: Object.fromEntries(["ITEM_FILTER_DEF_PASSIVE", "ITEM_FILTER_OFF_PASSIVE",
                     "ITEM_FILTER_DEF_ACTIVE", "ITEM_FILTER_OFF_ACTIVE"].filter(key => Object.hasOwn(cfg, key)).map(key => [key, cfg[key]])),
                 rootStyles: { uiScale: Number((scale * 100).toFixed(2)) + "%",
-                    marginLeft: number(cfg.PASSIVE_COOLDOWN_X, 0) + "%", marginTop: -number(cfg.PASSIVE_COOLDOWN_Y, -2) + "%" },
+                    // Keep the fit-content row's available size unchanged while
+                    // moving its centered owner by the full parent percentage.
+                    marginLeft: x + "%", marginRight: -x + "%", marginTop: -y + "%", marginBottom: y + "%" },
                 rowStyles: { opacity }
             };
         }

@@ -72,6 +72,12 @@ for (const id of ["souls", "items", "topBar", "bottomBar", "activeItems", "abili
         if (id === "minimap") env.add(env.add(panel, "minimap_container"), "hud_minimap");
         Q.core.ConfigAdapter.loadFromFlat(cfg); Q.core.FeatureRegistry.enable(ownerId);
         assert.equal(panel.style.visibility, "collapse", id);
+        Q.core.ConfigStore.set(ownerId, normal, false);
+        Q.core.FeatureRegistry.getInstance(ownerId).onSettingsChanged({ key: normal, value: false });
+        assert.equal(panel.style.visibility, undefined, "clearing normal flag releases its override");
+        Q.core.ConfigStore.set(ownerId, normal, true);
+        Q.core.FeatureRegistry.getInstance(ownerId).onSettingsChanged({ key: normal, value: true });
+        assert.equal(panel.style.visibility, "collapse");
         const position = panel.style.x || panel.style.marginLeft || panel.style.margin;
         env.hud.root.AddClass("gScoreboardOpen"); Q.core.EventBus.emit("engine:scoreboard_toggle"); env.hud.clock.advance(1);
         assert.equal(panel.style.visibility, undefined, "native visibility resumes; no forced visible override");
@@ -79,6 +85,11 @@ for (const id of ["souls", "items", "topBar", "bottomBar", "activeItems", "abili
         Q.core.ConfigStore.set(ownerId, tab, true);
         Q.core.FeatureRegistry.getInstance(ownerId).onSettingsChanged({ key: tab, value: true });
         assert.equal(panel.style.visibility, "collapse");
+        Q.core.ConfigStore.set(ownerId, tab, false);
+        Q.core.FeatureRegistry.getInstance(ownerId).onSettingsChanged({ key: tab, value: false });
+        assert.equal(panel.style.visibility, undefined, "clearing TAB flag releases its override");
+        Q.core.ConfigStore.set(ownerId, tab, true);
+        Q.core.FeatureRegistry.getInstance(ownerId).onSettingsChanged({ key: tab, value: true });
         Q.core.FeatureRegistry.disable(ownerId);
         assert.equal(panel.style.visibility, undefined);
         Q.core.EventBus.emit("engine:scoreboard_toggle");
@@ -137,12 +148,20 @@ for (const [id, ownerId, enabled, targetId] of [
         Q.core.FeatureRegistry.getInstance(ownerId).onSettingsChanged({ key: normal, value: true });
         const panel = env.hud.root.FindChildTraverse(targetId); assert.ok(panel, targetId);
         assert.equal(panel.style.visibility, "collapse", id);
+        Q.core.ConfigStore.set(ownerId, normal, false);
+        Q.core.FeatureRegistry.getInstance(ownerId).onSettingsChanged({ key: normal, value: false });
+        assert.notEqual(panel.style.visibility, "collapse", "clearing normal flag resumes owner visibility");
+        Q.core.ConfigStore.set(ownerId, normal, true);
+        Q.core.FeatureRegistry.getInstance(ownerId).onSettingsChanged({ key: normal, value: true });
         env.hud.root.AddClass("gScoreboardOpen"); Q.core.EventBus.emit("engine:scoreboard_toggle"); env.hud.clock.advance(1);
         assert.notEqual(panel.style.visibility, "collapse", "existing content/preview rules resume");
         Q.core.ConfigStore.set(ownerId, tab, true);
         Q.core.FeatureRegistry.getInstance(ownerId).onSettingsChanged({ key: tab, value: true });
         assert.equal(panel.style.visibility, "collapse");
         assert.equal(Q.core.FeatureRegistry.isEnabled(ownerId), true, "state suppression never disables the data owner");
+        Q.core.ConfigStore.set(ownerId, tab, false);
+        Q.core.FeatureRegistry.getInstance(ownerId).onSettingsChanged({ key: tab, value: false });
+        assert.notEqual(panel.style.visibility, "collapse", "clearing TAB flag resumes owner visibility");
         Q.core.FeatureRegistry.disable(ownerId); env.hud.clock.advance(1);
         Q.core.EventBus.emit("engine:scoreboard_toggle"); env.hud.clock.advance(1);
         if (ownerId === "ql_passive_cooldown") {
@@ -181,5 +200,27 @@ test("hide-only Customize supports preview, Undo/Redo, Cancel, Save and JSON wit
     const imported = g.QOL.ui.modal.tryApplyImportStringWithDiagnostics(code);
     assert.equal(imported.ok, true); assert.equal(imported.candidateConfig.STATS_POSITION_HIDE_NORMAL, 1);
     assert.equal(imported.candidateConfig.ENABLE_STATS_POSITION, 0); assert.equal(imported.candidateConfig.STATS_POSITION_X_OFFSET, 901);
+    assert.deepEqual(env.clock.errors, []);
+});
+
+test("Stamina Customize releases normal and TAB suppression when its checkbox returns to the baseline", () => {
+    const env = load(), g = env.global, Q = env.hud.sandbox.global.QOL;
+    g.QOL.ui.window.setOpen(true); env.clock.advance(500);
+    let panel = env.hud.root;
+    for (const [id, classes] of [["", ["HudCore"]], ["gameplay_hud", []], ["gameplay_hud_alive", []], ["crosshair", []], ["dash", []], ["charges_container", []]]) {
+        panel = panel.addChild(env.doc.create("Panel", { id, classes }));
+    }
+    Object.assign(panel, { actuallayoutwidth: 100, actuallayoutheight: 20 });
+    g.QOL.ui.customize.start(null, { elementId: "stamina" }); env.clock.advance(700);
+    const click = key => {
+        const control = env.em.FindChildTraverse("QOLCustomize_" + key); assert.ok(control, key);
+        control._fire("onactivate"); env.clock.advance(700);
+    };
+    click("STAMINA_HIDE_NORMAL"); assert.equal(panel.style.visibility, "collapse");
+    click("STAMINA_HIDE_NORMAL"); assert.equal(panel.style.visibility, undefined);
+    env.hud.root.AddClass("gScoreboardOpen"); Q.core.EventBus.emit("engine:scoreboard_toggle");
+    click("STAMINA_HIDE_SCOREBOARD"); assert.equal(panel.style.visibility, "collapse");
+    click("STAMINA_HIDE_SCOREBOARD"); assert.equal(panel.style.visibility, undefined);
+    env.em.FindChildTraverse("QOLCustomizeCancel")._fire("onactivate"); env.clock.advance(700);
     assert.deepEqual(env.clock.errors, []);
 });
