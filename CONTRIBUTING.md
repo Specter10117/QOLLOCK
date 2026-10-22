@@ -32,11 +32,45 @@ snapshot reports and outstanding acceptance work.
 - [Release checklist](docs/TEST_CHECKLIST.md): client verification.
 - [Releases and automation](docs/RELEASING.md): packaging, publication and upstream monitoring.
 
-Keep changes focused. Reuse helpers with matching semantics, clean up owned work
-and handle replaced panels. Agree new persistent setting defaults with a maintainer.
-Localize visible mod text through the current catalogs. Write documentation in English.
-Update documentation when behavior or a contract changes, rather than recording
-every implementation step. Agent-specific instructions live in [AGENTS.md](AGENTS.md).
+## Change Requirements
+
+- Keep each change focused on its stated purpose. Avoid unrelated reformatting,
+  duplicate implementations and temporary development artifacts.
+- Write new and rewritten JavaScript with `const` and `let`, using supported
+  Panorama APIs and preserving callback and cross-file global semantics.
+  Node development tools and in-game scripts have different environments.
+- Keep features with their owners and reuse helpers with matching semantics.
+  Small features can remain in one manifest; split complex ones along real
+  responsibilities rather than an arbitrary file-size limit.
+- Keep native stylesheet wrappers as ordered `@import` lists. Place mod rules
+  in the owning context's feature stylesheet, scope selectors to the intended
+  component and preserve the native baseline. Existing full replacements and
+  custom sheets follow their documented loading contracts.
+- React to setting changes through the owning hook, avoid unnecessary recurring
+  work and clean up owned panels, styles, classes, subscriptions and schedules.
+  Handle late, destroyed and still-live replaced native panels, and reject
+  asynchronous results belonging to a retired operation or context.
+- Agree new persistent setting defaults with a maintainer and follow the complete
+  settings path. Localize visible mod text through the current catalogs.
+  Version and schema bumps require explicit maintainer authorization.
+- Add meaningful regression coverage for changed behavior using existing suites.
+  Static source checks can protect structural rules but cannot establish runtime
+  behavior or native rendering. Run `npm test` before submitting a change.
+
+Include the problem, resulting behavior, verification results and any remaining
+client checks in the change description. The detailed code-quality requirements
+are directly in [AGENTS.md](AGENTS.md#code-quality), alongside agent workflow rules.
+
+Read the relevant technical references before changing their subsystem. Write
+documentation in English and update it when the change invalidates documented
+behavior, formats, ownership, contracts or verification procedures. Keep current
+defaults, ranges and implementation details in source instead of duplicating them
+in prose. Documentation-only changes do not need unrelated source edits.
+
+Changing an implementation does not by itself authorize relaxing project rules,
+removing acceptance checks or redefining a contract. Propose such changes
+explicitly and agree them with a maintainer; do not rewrite the requirements
+to make an otherwise nonconforming patch acceptable.
 
 ## Build and Verify
 
