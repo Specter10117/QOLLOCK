@@ -12,8 +12,7 @@ function setup(id = "souls", language = 0) {
     const window = env.em.FindChildTraverse("SettingsWindow");
     const session = g.QOL.ui.customizeSession.create(env.doc.root, env.hud.root, window, element);
     const host = g.QOL.core.panel.create("Panel", env.em, "InspectorUXFixture");
-    let inspector;
-    inspector = g.QOL.ui.customizeInspector.build(host, element, session, options => inspector.sync(options));
+    const inspector = g.QOL.ui.customizeInspector.build(host, element, session, options => inspector.sync(options));
     const find = id => host.FindChildTraverse(id);
     const type = (key, text) => {
         const input = find("QOLCustomize_" + key);

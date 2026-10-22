@@ -3,9 +3,8 @@
 // Flat ESLint config (ESLint 9/10).
 // Adapted from Deadlock-UI-Mods/Minigames for QOLLOCK Panorama runtime.
 //
-// PURPOSE: Static bug net against undefined variables (no-undef), dead code,
-// syntax hazards, and Panorama ASI continuation-line pitfalls.
-// Deliberately NARROW: correctness only, no cosmetic style enforcement.
+// PURPOSE: Static bug net for runtime and tooling, plus modern declarations in
+// Node code. Panorama keeps its historical cross-file globals and script syntax.
 
 // Panorama's JS runtime globals (Deadlock Source 2 engine)
 const PANORAMA_GLOBALS = {
@@ -434,7 +433,7 @@ const SHARED_GLOBALS = {
     clearInterval: "readonly",
 };
 
-// Correctness rules only — no cosmetic formatting noise
+// Core rules only: no plugin dependency or runtime API assumptions.
 const BUG_RULES = {
     "no-undef": "error",
     "no-unreachable": "error",
@@ -461,13 +460,34 @@ const BUG_RULES = {
     "no-unsafe-finally": "error",
     "no-const-assign": "error",
     "no-dupe-class-members": "error",
+    "constructor-super": "error",
+    "no-class-assign": "error",
+    "no-constructor-return": "error",
+    "no-new-native-nonconstructor": "error",
+    "no-setter-return": "error",
+    "no-dupe-else-if": "error",
+    "no-loss-of-precision": "error",
+    "no-unsafe-optional-chaining": "error",
+    "array-callback-return": "error",
+    // Executors settle through resolve/reject. Async executors lose rejections;
+    // returned values (including timer handles) do not settle the outer Promise.
+    "no-async-promise-executor": "error",
+    "no-promise-executor-return": "error",
     "no-unused-vars": ["warn", { args: "none", caughtErrors: "none", varsIgnorePattern: "^_" }],
+};
+
+// Do not mechanically turn Panorama var exports into lexical bindings: native
+// includes and other scripts can depend on their global-object properties.
+const MODERN_DECLARATION_RULES = {
+    "no-var": "error",
+    "prefer-const": ["error", { destructuring: "all", ignoreReadBeforeAssign: true }],
 };
 
 module.exports = [
     {
         ignores: [
             "node_modules/**",
+            ".claude/worktrees/**",
             ".upstream-review/**",
             ".tmp_*/**",
             "build_mod/**",
@@ -523,14 +543,49 @@ module.exports = [
             "tests/**/*.js",
             "scripts/**/*.js",
             "scripts/**/*.cjs",
-            "panorama/scripts/tools/**/*.js",
+            "panorama/scripts/tools/qollock_smoke_test.js",
+            "panorama/scripts/tools/scaffold.js",
+            "panorama/scripts/tools/presets/**/*.js",
             "eslint.config.js",
         ],
         languageOptions: {
             ecmaVersion: 2021,
-            sourceType: "script",
+            sourceType: "commonjs",
             globals: Object.assign({}, SHARED_GLOBALS, NODE_GLOBALS, PANORAMA_GLOBALS, QOLLOCK_GLOBALS),
         },
-        rules: BUG_RULES,
+        rules: { ...BUG_RULES, ...MODERN_DECLARATION_RULES },
+    },
+
+    // Node ESM tests use the same checks without CommonJS parsing or globals.
+    {
+        files: ["tests/**/*.mjs"],
+        languageOptions: {
+            ecmaVersion: 2022,
+            sourceType: "module",
+            globals: {
+                console: "readonly",
+                Response: "readonly",
+                Request: "readonly",
+                structuredClone: "readonly",
+                btoa: "readonly",
+            },
+        },
+        rules: { ...BUG_RULES, ...MODERN_DECLARATION_RULES },
+    },
+
+    // Cloudflare Worker modules are neither Panorama nor Node scripts.
+    {
+        files: ["tools/updater/**/*.mjs"],
+        languageOptions: {
+            ecmaVersion: 2022,
+            sourceType: "module",
+            globals: {
+                console: "readonly",
+                fetch: "readonly",
+                Response: "readonly",
+                atob: "readonly",
+            },
+        },
+        rules: { ...BUG_RULES, ...MODERN_DECLARATION_RULES },
     },
 ];

@@ -24,8 +24,7 @@ function installScheduleProbe(sandbox) {
     $.Schedule = (delay, callback) => {
         if (typeof callback !== "function") return schedule(delay, callback);
         const row = rowFor(origin());
-        let handle;
-        handle = schedule(delay, function (...args) {
+        const handle = schedule(delay, function (...args) {
             pending.delete(handle);
             row.pending--;
             row.fired++;

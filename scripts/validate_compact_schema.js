@@ -358,7 +358,7 @@ function randomInRange(min, max, step) {
     const range = max - min;
     const slots = Math.floor(range / step);
     const randomSlot = Math.floor(Math.random() * (slots + 1));
-    let value = min + (randomSlot * step);
+    const value = min + (randomSlot * step);
     const decimals = String(step).includes(".")
         ? String(step).split(".")[1].length
         : 0;
@@ -601,13 +601,13 @@ function main() {
     );
     installLegacyEncoder(settingsContext);
     installLegacyEncoder(coreContext);
-    var mirrorSettingsContext = null; // mirror not available
-    var mirrorCoreContext = null; // mirror not available
+    const mirrorSettingsContext = null; // mirror not available
+    const mirrorCoreContext = null; // mirror not available
 
     const settingsExports = getValue(settingsContext, "globalThis.__schemaGuardExports");
     const coreExports = getValue(coreContext, "globalThis.__schemaGuardExports");
-    var mirrorSettingsExports = null; // mirror not available
-    var mirrorCoreExports = null; // mirror not available
+    const mirrorSettingsExports = null; // mirror not available
+    const mirrorCoreExports = null; // mirror not available
     const defaultConfig = JSON.parse(JSON.stringify(settingsExports.defaultConfig));
     const presets = JSON.parse(JSON.stringify(settingsExports.presets));
     const sharedSemver = settingsExports.sharedSemver;
@@ -624,9 +624,9 @@ function main() {
     if (!community319Import || community319Import.ok !== true || !community319Import.parsedConfig) {
         fail("Current settings failed to import known 3.1.9 community string");
     }
-    var mirrorDefaultConfig = null; var hasMirror = false; // mirror not available
-    var mirrorSettingsRegistry = null; // mirror not available
-    var mirrorCoreRegistry = null; // mirror not available
+    const mirrorDefaultConfig = null; const hasMirror = false; // mirror not available
+    const mirrorSettingsRegistry = null; // mirror not available
+    const mirrorCoreRegistry = null; // mirror not available
 
     if (sharedSemver !== settingsLatestSemver) {
         fail(`Shared schema semver ${sharedSemver} does not match settings latest ${settingsLatestSemver}`);

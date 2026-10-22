@@ -30,6 +30,20 @@ fails when an included script is missing. It is not a settings-context smoke or
 a runtime behavior test. The schema validator exercises codec round-trips;
 load checks alone cannot catch gameplay or lifecycle bugs.
 
+ESLint checks Panorama scripts, CommonJS tooling/tests, Node ESM tests and the
+updater Worker with separate script/module contexts. Promise executor, array
+callback and other correctness checks are errors; unused declarations remain
+warnings. `no-var` and `prefer-const` apply to tooling/tests and the Worker, while
+Panorama retains legacy declarations and cross-file globals. Local duplicate
+checkouts under `.claude/worktrees/` are excluded. `tests/eslint_config.test.js`
+exercises both rejected and accepted examples through the actual config.
+
+These core ESLint rules do not establish that Promises are handled everywhere,
+or that Scheduler callbacks and lifecycle hooks are synchronous. Following
+aliases, callback return types and asynchronous operation ownership requires
+context-aware analysis or behavior tests; the existing lifecycle checks remain
+necessary. ESLint parsing also does not establish Panorama engine API support.
+
 The stylesheet gate scans every shipped CSS source, including native base
 imports, for mismatched delimiters, unfinished strings/comments and oversized
 selector lists. It does not implement native CSS grammar or compile resources;

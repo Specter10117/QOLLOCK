@@ -151,7 +151,7 @@ test("renderer: snapToStep calculates correct increments and precision", () => {
 
 test("renderer: createToggle toggles state and invokes onChange callback", () => {
     const { renderer, rootPanel } = createTestEnvironment();
-    let changeLog = [];
+    const changeLog = [];
 
     const setting = {
         key: "TEST_TOGGLE",

@@ -230,7 +230,7 @@ test("pointer coordinates use independently calibrated window and layout density
 function smallTargets(env) {
     const add = (parent, name, classes = [], type = "Panel") => parent.FindChild(name) ||
         parent.addChild(env.doc.create(type, { id: name, classes }));
-    let core = env.hud.root.Children().find(p => p.BHasClass("HudCore"));
+    const core = env.hud.root.Children().find(p => p.BHasClass("HudCore"));
     const crosshair = add(add(add(core, "gameplay_hud"), "gameplay_hud_alive"), "crosshair");
     const ammo = add(add(add(crosshair, "gun"), "gun_data"), "ammo_panel");
     const current = add(ammo, "TestCurrent", ["weapon_ammo"], "Label");

@@ -52,8 +52,7 @@ test("range refresh never overwrites off-screen exact input or creates edits; ab
     const target = parent.addChild(env.doc.create("Panel", { id: "RangeTarget" }));
     let geometry = { target, host, bounds: { x: 100, y: 50, width: 200, height: 100 },
         values: { SOULS_X_OFFSET: 0, SOULS_Y_OFFSET: 0 }, view: { x: 0, y: 0, width: 1920, height: 1080 } };
-    let inspector;
-    inspector = Q.ui.customizeInspector.build(host, element, session, options => inspector.sync(options), host, () => geometry);
+    const inspector = Q.ui.customizeInspector.build(host, element, session, options => inspector.sync(options), host, () => geometry);
     const input = host.FindChildTraverse("QOLCustomize_SOULS_X_OFFSET");
     const slider = host.FindChildTraverse("QOLCustomizeSlider_SOULS_X_OFFSET");
     assert.equal(slider.min, -100); assert.equal(slider.max, 1620);

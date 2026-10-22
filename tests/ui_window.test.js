@@ -443,7 +443,7 @@ test("window: setActiveTabAndRefresh clears search query and cancels pending sea
     assert.strictEqual(sandbox.currentSearchQuery, "", "currentSearchQuery must be cleared on tab navigation");
     assert.strictEqual(searchInput.text, "", "searchInput text must be cleared on tab navigation");
 
-    await new Promise((resolve) => setTimeout(resolve, 250));
+    await new Promise((resolve) => { setTimeout(resolve, 250); });
     assert.strictEqual(windowApi.getActiveTab(), "Console", "Active tab must be Console after fade");
 });
 

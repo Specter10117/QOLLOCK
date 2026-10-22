@@ -24,8 +24,7 @@ function setup(elementId = "items") {
     const fixture = create("Panel", env.em, "PaletteFixture");
     const host = create("Panel", fixture, "QOLCustomizeFields");
     const dock = create("Panel", fixture, "QOLCustomizePaletteDock");
-    let inspector;
-    inspector = g.QOL.ui.customizeInspector.build(host, element, session, options => inspector.sync(options), dock);
+    const inspector = g.QOL.ui.customizeInspector.build(host, element, session, options => inspector.sync(options), dock);
     return { ...env, session, inspector, handlers, host, dock, element, find: id => fixture.FindChildTraverse(id) };
 }
 
@@ -57,8 +56,7 @@ test("disposing an older inspector cannot hide or delete a newer docked palette"
     const env = setup(), old = env.inspector, key = "ITEMS_WASH_COLOR";
     const retiredPicker = env.find("QOLCustomizePicker_" + key);
     const retiredEmit = env.handlers.get(retiredPicker.id);
-    let current;
-    current = env.global.QOL.ui.customizeInspector.build(env.host, env.element, env.session,
+    const current = env.global.QOL.ui.customizeInspector.build(env.host, env.element, env.session,
         options => current.sync(options), env.dock);
     env.clock.advance(1);
     const picker = env.find("QOLCustomizePicker_" + key);
