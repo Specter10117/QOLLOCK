@@ -1,0 +1,3 @@
+/* Native event-indicator styles and their QOLLOCK presentation extension. */
+@import url("s2r://panorama/styles/base/hud_event_indicator.vcss_c");
+@import url("s2r://panorama/styles/features/ql_feat_damage_numbers.vcss_c");

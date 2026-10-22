@@ -1,12 +1,10 @@
-// OWNS: Damage indicator text size/opacity overrides and small-number filtering.
+// OWNS: Damage indicator text size/opacity overrides.
 // DOES NOT OWN: Valve indicators, cumulative/batched typography or fade animations.
 // Source: native hud_event_indicator.css, existing HudIndicatorText class traversal
 // and verified event-indicator IDs. Root CSS owns clean/fountain/trooper gates.
 (() => {
     "use strict";
     const ID = "ql_damage_numbers";
-    const smallDamageClasses = ["bullet_damage_new", "ability_damage_new", "melee_damage_new", "pure_damage_new",
-        "damage_type_gun", "damage_type_melee", "damage_type_ability", "damage_type_pure", "damage_type_poison"];
 
     QOL.core.FeatureRegistry.register({
         id: ID,
@@ -54,9 +52,7 @@
                 const cfg = ctx.config.view();
                 const opacity = utils.NormalizeOpacityNumber(cfg.DAMAGE_NUMBER_OPACITY ?? 1, 1).toFixed(2);
                 const size = QOL.settings.readNumber("HUD_INDICATOR_SIZE", cfg.HUD_INDICATOR_SIZE);
-                const hideSmall = utils.IsCfgEnabled(cfg, "ENABLE_HIDE_SMALL_NUMBERS");
-                const clean = utils.IsCfgEnabled(cfg, "ENABLE_CLEAN_DAMAGE_INDICATORS");
-                return { size, opacity, hideSmall, active: size !== 18 || opacity !== "1.00" || hideSmall || clean };
+                return { size, opacity, active: size !== 18 || opacity !== "1.00" };
             }
 
             function release(target) { styles.apply(target, {}); }
@@ -73,15 +69,14 @@
                 for (const target of current) if (panels.isAlive(target) && !owners.has(target)) {
                     owners.add(target);
                 }
-                nextDiscovery = utils.PerfNowMs() + (model.hideSmall ? 700 : 2500);
+                nextDiscovery = utils.PerfNowMs() + 2500;
             }
 
             function apply(target) {
                 // Valve can recycle a live label for another indicator role.
                 // Re-read those native classes rather than freezing metadata.
                 const cumulative = utils.HasClassInHierarchy(target, "cumulative") || utils.HasClassInHierarchy(target, "batched");
-                const small = model.hideSmall && smallDamageClasses.some(name => utils.HasClassInHierarchy(target, name));
-                const plan = small ? { opacity: "0.00" } : model.opacity !== "1.00" ? { opacity: model.opacity } : {};
+                const plan = model.opacity !== "1.00" ? { opacity: model.opacity } : {};
                 if (!cumulative && model.size !== 18) plan.fontSize = (target.id === "Desc" || target.id === "Effectiveness" ? Math.min(28, model.size) : model.size) + "px";
                 return styles.apply(target, plan);
             }

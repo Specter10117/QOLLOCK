@@ -193,7 +193,11 @@
         }
 
         createSep(list);
-        createTitle(list, "Damage Numbers", null, "damageNumbers");
+        createTitle(list, "Damage Numbers");
+        if (createSliderRow) {
+            createSliderRow(list, "Size", "HUD_INDICATOR_SIZE", "size_10_60");
+            createSliderRow(list, "Opacity", "DAMAGE_NUMBER_OPACITY", "opacity");
+        }
         if (createRow) {
             createRow(list, "Big Numbers", "ENABLE_CUMULATIVE_DMG", "toggle", null, null, null, null);
             createRow(list, "Small Numbers", "ENABLE_HIDE_SMALL_NUMBERS", "toggle", null, null, null, [{ invert: true }]);

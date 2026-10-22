@@ -1,9 +1,18 @@
 # Damage number presentation
 
-The `ql_damage_numbers` manifest owns native indicator size/opacity overrides
-and small-number filtering. The shared HUD projector owns the Fountain, clean,
-cumulative and trooper gates; retiring the manifest releases those gates without
-changing persisted choices.
+The `ql_damage_numbers` manifest owns native indicator size/opacity overrides.
+CSS collapses small, cumulative (including final totals), and trooper events
+without waiting for JavaScript label discovery. The shared HUD projector owns
+the Fountain, clean, cumulative and trooper gates; retiring the manifest releases
+those gates without changing persisted choices.
+
+Size and opacity are edited directly beside the damage modes in the Crosshair
+tab. These indicators follow world/combat events and have no HUD-canvas entry
+or screen position controls.
+
+The native `hud_event_indicator.css` import wrapper loads the preserved game
+baseline before the QOLLOCK rules and Fountain keyframes. These rules must load
+in the event indicator context; importing them only from HUD CSS is insufficient.
 
 Fountain size is a current JSON setting exposed in the Crosshair tab. Its
 size-specific root classes exist only while Fountain is enabled. The stylesheet

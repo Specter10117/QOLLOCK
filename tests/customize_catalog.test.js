@@ -28,9 +28,17 @@ test("catalog covers current visual manifest controls, with explicit compatibili
         "ENABLE_ALT_ZOOM_REM_TUNNELS", "ALT_ZOOM_REM_TUNNELS_OPACITY",
         "ENABLE_TAB_ZOOM_REM_TUNNELS", "TAB_ZOOM_REM_TUNNELS_OPACITY"
     ]);
+    // World damage controls live in their own tab instead of a screen canvas.
+    // Keep checking every manifest key is reachable through the real renderer.
+    env.global.QOL.ui.window.setActiveTabAndRefresh("Crosshair"); env.clock.advance(300);
     for (const id of registry.getRegisteredIds()) {
         if (excludedOwners.has(id)) continue;
         for (const setting of registry.getManifest(id).settings || []) {
+            if (id === "ql_damage_numbers") {
+                assert.ok(env.list.FindChildrenWithClassTraverse("SettingRow_" + setting.key).length,
+                    `${id}: missing inline setting ${setting.key}`);
+                continue;
+            }
             if (!catalog.settingFields.has(setting.key) || setting.type === "multitoggle" || excludedKeys.has(setting.key)) continue;
             assert.ok(catalog.fieldMap.has(setting.key), `${id}: missing visual setting ${setting.key}`);
         }
@@ -219,7 +227,6 @@ test("the whole catalog draft reaches registered HUD buckets and closing restore
     checkBuckets(expected);
     const minimums = {};
     for (const [key, field] of catalog.fieldMap) minimums[key] = field.type === "color" || field.type === "palette" ? 0 : catalog.settingFields.get(key).min;
-    minimums.HUD_INDICATOR_SIZE = 1; // Numeric HUD_ prefix must survive 0/1 coercion.
     assert.equal(session.edit(minimums), true);
     clock.advance(400);
     checkBuckets(g.QOL.mergeConfig({ ...baseline, ...session.snapshot() }));

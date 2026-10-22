@@ -30,6 +30,17 @@ function nativeTarget(env, parent = env.doc.root) {
     return { root, instance, unscaled, hint, scaled, scaledHint, shape };
 }
 
+test("small-number filtering leaves cumulative opacity to its own setting instead of a label poll", () => {
+    const env = setup("ql_damage_numbers", { ENABLE_HIDE_SMALL_NUMBERS: 1, DAMAGE_NUMBER_OPACITY: 0.5 });
+    const source = env.add(env.root, "HudEventIndicatorsPanel");
+    const event = env.add(source, "Total", ["cumulative", "damage_type_gun"]);
+    const label = env.add(event, "Value", ["HudIndicatorText"], "Label");
+    env.feature.onEnable();
+    assert.equal(label.style.opacity, "0.50", "Small Numbers must not erase the independent cumulative number");
+    env.feature.onDisable();
+    assert.deepEqual(env.clock.errors, []);
+});
+
 for (const [id, classes, config] of [
     ["ql_target_shapes", ["target_shape"], { UNIT_TARGET_SIZE: 200, UNIT_TARGET_OPACITY: 0.4 }],
     ["ql_damage_numbers", ["HudIndicatorText"], { HUD_INDICATOR_SIZE: 30, DAMAGE_NUMBER_OPACITY: 0.4 }]
@@ -172,7 +183,7 @@ test("damage styling preserves cumulative typography and native fades while clea
     const cumulative = env.add(cumulativeParent, "TotalFixture", ["HudIndicatorText"], "Label"); cumulative.style.fontSize = "38px";
     description.style.color = "#ABCDEF";
     env.feature.onEnable();
-    assert.equal(small.style.fontSize, "45px"); assert.equal(small.style.opacity, "0.00");
+    assert.equal(small.style.fontSize, "45px"); assert.equal(small.style.opacity, "0.40", "filtering belongs to CSS, not polled label opacity");
     assert.equal(description.style.fontSize, "28px"); assert.equal(description.style.opacity, "0.40");
     assert.equal(cumulative.style.fontSize, "38px", "cumulative font stays native");
     assert.equal(smallParent.style.opacity, "0", "controller must not revive an unowned native container fade");
@@ -187,7 +198,7 @@ test("damage live class reuse changes hide/font roles and returns to native defa
     const env = setup("ql_damage_numbers", { HUD_INDICATOR_SIZE: 32, ENABLE_HIDE_SMALL_NUMBERS: 1 });
     const source = env.add(env.root, "HudEventIndicatorsPanel");
     const panel = env.add(source, "PooledIndicatorFixture", ["HudIndicatorText", "bullet_damage_new"], "Label");
-    env.feature.onEnable(); assert.equal(panel.style.opacity, "0.00"); assert.equal(panel.style.fontSize, "32px");
+    env.feature.onEnable(); assert.equal(panel.style.opacity, undefined); assert.equal(panel.style.fontSize, "32px");
     panel.RemoveClass("bullet_damage_new"); panel.AddClass("cumulative");
     env.clock.advance(600); assert.equal(panel.style.opacity, undefined); assert.equal(panel.style.fontSize, undefined);
     panel.RemoveClass("cumulative"); env.clock.advance(600); assert.equal(panel.style.fontSize, "32px");
