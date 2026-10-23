@@ -83,3 +83,27 @@ test("Minecraft source loss retires old hearts even while their former panels re
     assert.equal(e.mc.inspect().pendingAnimations, 0);
     assert.deepEqual(e.clock.errors, []);
 });
+
+test("Minecraft can release active animations repeatedly and rebuild the same-size grid", () => {
+    const e = fixture();
+    e.current.text = "100"; e.clock.advance(100); e.mc.update(e.root, {}, e.clock.now(), true);
+    assert.equal(e.mc.inspect().lowHealth, true);
+    assert.ok(e.mc.inspect().pendingAnimations > 0);
+    const previous = e.hearts.FindChildrenWithClassTraverse("HeartSlot");
+    e.mc.release(); e.mc.release(); e.clock.advance(1000);
+    assert.equal(e.mc.inspect().active, false);
+    assert.equal(e.mc.inspect().pendingAnimations, 0);
+    assert.ok(previous.every(panel => !panel.IsValid()));
+    e.current.text = "900";
+    e.mc.update(e.root, {}, e.clock.now(), true);
+    assert.equal(e.mc.inspect().hearts, previous.length, "unchanged capacity still rebuilds all retired slots");
+    assert.equal(e.percent.text.trim(), "[90%]");
+    assert.equal(e.mc.inspect().active, true);
+    assert.equal(e.mc.inspect().blinking, false);
+    assert.equal(e.mc.inspect().lowHealth, false);
+    assert.equal(e.mc.inspect().pendingAnimations, 0);
+    e.clock.advance(1000);
+    assert.equal(e.mc.inspect().pendingAnimations, 0, "retired animation callbacks cannot revive the old state");
+    e.mc.release(); e.clock.advance(1000);
+    assert.deepEqual(e.clock.errors, []);
+});

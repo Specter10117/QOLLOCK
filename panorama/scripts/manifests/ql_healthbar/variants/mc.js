@@ -4,7 +4,7 @@
     "use strict";
     const H = QOL.healthbar, P = QOL.core.panel, U = QOL.utils;
     H.registerVariant("mc", function(ctx) {
-        const state = {
+        const createState = () => ({
             mcHeartsBlinkTimer: null,
             mcLowHealthJiggleTimer: null,
             mcHealingWaveTimer: null,
@@ -46,7 +46,8 @@
             mcBarrierHeartsCapacity: 0,
             mcCheckModifierNextMs: 0,
             mcLastModifierResult: false,
-        };
+        });
+        const state = createState();
         const heartsTree = P.createOwnedTree(), barrierTree = P.createOwnedTree(), armorTree = P.createOwnedTree();
         const armorHearts = [];
         const ownedStyles = new Map(), ownedText = new Map(), imageSignatures = new Map(), foodOwners = new Set();
@@ -189,45 +190,8 @@
             sourceGeneration = [];
             sources = null;
             contextRoot = null;
-            state.mcCheckModifierNextMs = 0;
-            state.mcLastModifierResult = false;
-            state.mcHeartsBlinking = false;
-            state.mcHeartsBlinkPhase = 0;
-            state.mcLowHealthJiggleActive = false;
-            state.mcHealingWaveActive = false;
-            state.mcHealingWaveCurrentIndex = 0;
-            state.mcLastBlinkHalfSegments = null;
-            state.mcLastIsBlinkOn = null;
-            state.mcLastContainerHeartsNeeded = -1;
-            state.mcLastContainerLastSlotIsHalf = null;
-            state.mcLastFillFullHearts = -1;
-            state.mcLastFillHasHalf = null;
-            state.mcLastFillAfflicted = null;
-            state.mcLastDeferredFullHearts = -1;
-            state.mcLastDeferredHasHalf = null;
-            state.mcLastDeferredStartSlots = -1;
-            state.mcLastHealingFullHearts = -1;
-            state.mcLastHealingHasHalf = null;
-            state.mcLastHealingStartSlots = -1;
-            state.mcLastBarrierFullHearts = -1;
-            state.mcLastBarrierHasHalf = null;
-            state.mcLastBarrierLastSlotIsHalf = null;
-            state.mcLastBarrierHeartsNeeded = -1;
-            state.mcWasEnabled = false;
+            Object.assign(state, createState());
             runtimeRoot = null;
-            state.mcNextUpdateMs = 0;
-            state.mcHeartSlots = [];
-            state.mcHeartContainerImages = [];
-            state.mcHeartHealingImages = [];
-            state.mcHeartDeferredImages = [];
-            state.mcHeartFillImages = [];
-            state.mcHeartsCapacity = 0;
-            state.mcHeartsRowCount = 0;
-            state.mcLastVisibleHeartsCount = 0;
-            state.mcBarrierHeartsPanels = [];
-            state.mcBarrierHeartContainerImages = [];
-            state.mcBarrierHeartFillImages = [];
-            state.mcBarrierHeartsCapacity = 0;
         }
 
         function McCanAnimate() {
