@@ -94,6 +94,44 @@ test("Ammo opacity includes mirrored rings while compact stats keep their outer 
     assert.equal(stats.style.opacity, "0"); assert.deepEqual(env.clock.errors, []);
 });
 
+test("stamina state suppression keeps native visibility and child presentation intact across restoration and replacement", () => {
+    const env = setup(), { q, cfg, feature, add, owner, clock } = env;
+    const element = q.presentation.elements.find(item => item.id === "stamina");
+    const first = owner(element);
+    first.style.visibility = "visible";
+    const charge = add(first, "", ["charge", "has_charge"]);
+    const progress = add(charge, "progress", ["charge_fg"]);
+    progress.style.clip = "radial(50% 50%, 197deg, -28deg)";
+    cfg.STAMINA_HIDE_NORMAL = 1;
+    cfg.STAMINA_OPACITY = 0.42;
+    feature.onEnable();
+    assert.equal(first.style.opacity, "0.00", "state hiding takes priority over the configured opacity");
+    assert.equal(first.style.visibility, "visible", "dynamic native charge content must never be collapsed");
+    cfg.STAMINA_HIDE_NORMAL = 0; feature.onSettingsChanged();
+    assert.equal(first.style.opacity, "0.42");
+    cfg.STAMINA_HIDE_SCOREBOARD = 1; feature.onSettingsChanged();
+    assert.equal(first.style.opacity, "0.42");
+    env.hud.root.AddClass("gScoreboardOpen"); q.core.EventBus.emit("engine:scoreboard_toggle");
+    assert.equal(first.style.opacity, "0.00");
+    assert.equal(first.style.visibility, "visible");
+    assert.equal(progress.style.clip, "radial(50% 50%, 197deg, -28deg)");
+    const parent = first.GetParent(); first.SetParent(add(env.hud.root, "RetiredStamina"));
+    const second = add(parent, "charges_container"); second.style.visibility = "visible";
+    clock.advance(700);
+    assert.equal(first.style.opacity, undefined);
+    assert.equal(second.style.opacity, "0.00");
+    assert.equal(first.style.visibility, "visible");
+    feature.onDisable();
+    assert.equal(second.style.opacity, undefined); assert.equal(second.style.visibility, "visible");
+    assert.equal(progress.IsValid(), true, "native segments remain engine-owned");
+    feature.onEnable(); assert.equal(second.style.opacity, "0.00");
+    cfg.STAMINA_HIDE_SCOREBOARD = 0; cfg.STAMINA_OPACITY = 1; feature.onSettingsChanged();
+    assert.equal(second.style.opacity, undefined, "the native opacity resumes at default");
+    assert.equal(second.style.visibility, "visible");
+    feature.onDisable();
+    assert.deepEqual(clock.errors, []);
+});
+
 test("opacity inspector uses percentages, keeps Cancel transient and Apply/import on the envelope", () => {
     const env = load(), g = env.global;
     g.QOL.ui.window.setOpen(true); env.clock.advance(500);

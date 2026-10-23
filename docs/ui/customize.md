@@ -490,7 +490,13 @@ the extra override; it cannot force conditional content to appear. Optional
 features still require their existing enable setting. Native Ammo and Player
 Stats can activate suppression independently of their visual/placement options.
 Stats hides through the outer wrapper opacity so its native data remains available
-to mirrors; its compact child keeps custom opacity. Other owners combine hiding
+to mirrors; its compact child keeps custom opacity. Stamina also suppresses
+through opacity, keeping the dynamic native dash charge tree in layout. The
+presentation owner combines state suppression with its independent opacity
+control and releases both at their defaults. The maintainer's client captures
+showed that clearing a collapse override restored computed visibility without
+restoring the drawn stamina pips; computed visibility alone is not a client pass.
+Other owners combine hiding
 with their own native style retirement or custom overlay visibility.
 
 `core/ql_hud_state.js` supplies the same verified native scoreboard observation

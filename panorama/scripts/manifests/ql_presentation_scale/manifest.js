@@ -51,22 +51,26 @@
                     // actual scale/offset needs applying or retiring.
                     const moved = positions.has(element.id) && element.fields.some(field => field.axis && Number(cfg[field.key]));
                     const hidden = positions.has(element.id) && Q.presentation.shouldHide(element.id, cfg, hud);
+                    // Native dash pips did not return after collapse even when
+                    // computed visibility was visible again (2026-10-24 capture).
+                    // Keep that dynamic tree in layout, as with native stats.
+                    const opacityHidden = element.id === "stamina" && hidden;
                     if (!hud || (value === 1 && !moved && alpha === 1 && !hidden)) continue;
                     const owner = Q.presentation.resolve(element, hud, cfg);
                     const panel = Q.presentation.scaleTarget(element, owner);
-                    if (alpha !== 1) {
+                    if (alpha !== 1 || opacityHidden) {
                         // Stats visibility is owned on the outer wrapper. Apply
                         // custom opacity only to the compact block, never over
                         // the wrapper's conditional opacity=0.
                         const targets = element.id === "playerStats" ? [P.findChild(owner, "HudStatBlock")]
                             : element.id === "ammo" && P.isAlive(owner) ? element.measurePanels(owner) : [panel];
                         for (const target of targets.filter(P.isAlive)) {
-                            opacityStyles.apply(target, { opacity: alpha.toFixed(2) });
+                            opacityStyles.apply(target, { opacity: (opacityHidden ? 0 : alpha).toFixed(2) });
                             opacityPanels.push(target);
                         }
                     }
                     if (!P.isAlive(panel)) continue;
-                    const styles = hidden ? { visibility: "collapse" } : {};
+                    const styles = hidden && !opacityHidden ? { visibility: "collapse" } : {};
                     if (value !== 1) styles.uiScale = Number((basePercent(element, hud) * value).toFixed(2)) + "%";
                     if (positions.has(element.id)) for (const field of element.fields.filter(field => field.axis)) {
                         const offset = QOL.settings.readNumber(field.key, cfg[field.key]);
