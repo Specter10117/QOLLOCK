@@ -367,8 +367,7 @@
         } catch (_) { /* best-effort */ }
     };
 
-    let benchmarkTimer = null;
-    let benchmarkProgressTimer = null;
+    let currentBenchmark = null;
     let lookupObservation = null;
 
     // Native searches execute inside the engine. Observe calls only. The native
@@ -566,16 +565,27 @@
         const state = getState();
         if (!state) return null;
 
-        if (benchmarkTimer !== null) {
-            $.CancelScheduled(benchmarkTimer);
-            benchmarkTimer = null;
-        }
-        if (benchmarkProgressTimer !== null) {
-            $.CancelScheduled(benchmarkProgressTimer);
-            benchmarkProgressTimer = null;
-        }
+        if (currentBenchmark) currentBenchmark.stop();
         if (lookupObservation) lookupObservation.stop();
         const lookupSession = options?.capturePanelLookups ? startLookupObservation(options.panelRoot) : null;
+        let benchmarkTimer = null;
+        let benchmarkProgressTimer = null;
+        const session = {
+            stop: () => {
+                if (currentBenchmark !== session) return;
+                currentBenchmark = null;
+                state.benchmarkActive = false;
+                if (lookupSession) lookupSession.stop();
+                for (const handle of [benchmarkTimer, benchmarkProgressTimer]) {
+                    if (handle === null) continue;
+                    try { $.CancelScheduled(handle); }
+                    catch (e) { $.Msg(`[QOLLock][ERROR][Scheduler] benchmark cancellation failed: ${e?.message || e}`); }
+                }
+                benchmarkTimer = null;
+                benchmarkProgressTimer = null;
+            }
+        };
+        currentBenchmark = session;
 
         state.benchmarkActive = true;
         state.benchmarkStats = {
@@ -601,6 +611,7 @@
         if (durSec >= 4) {
             const halfDur = Math.floor(durSec / 2);
             benchmarkProgressTimer = $.Schedule(halfDur, () => {
+                if (currentBenchmark !== session) return;
                 benchmarkProgressTimer = null;
                 if (!state.benchmarkActive || !state.benchmarkStats) return;
                 const bm = state.benchmarkStats;
@@ -610,13 +621,10 @@
         }
 
         benchmarkTimer = $.Schedule(durSec, () => {
+            if (currentBenchmark !== session) return;
             benchmarkTimer = null;
-            if (benchmarkProgressTimer !== null) {
-                $.CancelScheduled(benchmarkProgressTimer);
-                benchmarkProgressTimer = null;
-            }
             const bm = state.benchmarkStats;
-            state.benchmarkActive = false;
+            session.stop();
             if (lookupSession) bm.lookupStats = lookupSession.stop();
             const actualDurSec = Math.max(0.1, (nowMs() - (bm ? bm.startTime : 0)) / 1000);
 
@@ -643,20 +651,7 @@
             }
         });
 
-        return {
-            stop: () => {
-                if (benchmarkTimer !== null) {
-                    $.CancelScheduled(benchmarkTimer);
-                    benchmarkTimer = null;
-                }
-                if (benchmarkProgressTimer !== null) {
-                    $.CancelScheduled(benchmarkProgressTimer);
-                    benchmarkProgressTimer = null;
-                }
-                if (state) state.benchmarkActive = false;
-                if (lookupSession) lookupSession.stop();
-            }
-        };
+        return session;
     };
 
     const perfApi = {
