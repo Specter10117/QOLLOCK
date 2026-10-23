@@ -286,11 +286,11 @@
             if (typeof resp.savePartAck === "number") {
                 const nextPart = resp.savePartAck + 1;
                 if (pending.saveChunks && nextPart < pending.saveChunks.length) {
-                    _resetPendingTimer(pending, reqId);
                     const b64Key = pending.b64Key;
                     const b64Chunk = pending.saveChunks[nextPart];
                     const total = pending.saveChunks.length;
                     try {
+                        _resetPendingTimer(pending, reqId);
                         _sendFragment("saveChunk", [b64Key, nextPart, total, b64Chunk, reqId, true]);
                     } catch (e) {
                         _finishRequest(reqId, new Error(`Failed to send save chunk ${nextPart}: ${e?.message || e}`), null);
@@ -322,8 +322,8 @@
 
                 const nextPart = pending.expectedPart;
                 if (nextPart < resp.total) {
-                    _resetPendingTimer(pending, reqId);
                     try {
+                        _resetPendingTimer(pending, reqId);
                         _sendFragment("next", [reqId, nextPart]);
                     } catch (e) {
                         _finishRequest(reqId, new Error(`Failed to request chunk ${nextPart}: ${e?.message || e}`), null);
@@ -456,12 +456,12 @@
                 lastResponseSeq: 0,
                 chunks: null,
                 start: () => {
-                    if (!_isPanelAlive(_bridgePanel) || typeof _bridgePanel.SetURL !== "function") {
-                        const err = new Error("Bridge panel unavailable");
-                        return _finishRequest(reqId, err, null);
-                    }
-                    _resetPendingTimer(req, reqId);
                     try {
+                        if (!_isPanelAlive(_bridgePanel) || typeof _bridgePanel.SetURL !== "function") {
+                            const err = new Error("Bridge panel unavailable");
+                            return _finishRequest(reqId, err, null);
+                        }
+                        _resetPendingTimer(req, reqId);
                         startFn(reqId);
                     } catch (e) {
                         _finishRequest(reqId, e, null);
@@ -473,13 +473,16 @@
             _pendingRequests[reqId] = req;
             _requestQueue.push(req);
 
-            // Always arm the timeout timer immediately so unstarted requests cannot hang indefinitely
-            _resetPendingTimer(req, reqId);
-
-            if (_bridgeReady) {
-                _processQueue();
-            } else {
-                _logWarn(`Bridge not ready yet; request ${reqId} queued (queue depth: ${_requestQueue.length})`);
+            try {
+                // Always arm immediately so unstarted requests cannot hang indefinitely.
+                _resetPendingTimer(req, reqId);
+                if (_bridgeReady) {
+                    _processQueue();
+                } else {
+                    _logWarn(`Bridge not ready yet; request ${reqId} queued (queue depth: ${_requestQueue.length})`);
+                }
+            } catch (e) {
+                _finishRequest(reqId, e, null);
             }
         });
 

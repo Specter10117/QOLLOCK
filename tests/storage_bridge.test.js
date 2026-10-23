@@ -559,6 +559,103 @@ test("storage_bridge: FIFO serializes concurrent calls, ignores stale titles and
     assert.equal(new Set(messages.map(msg => msg.q)).size, messages.length);
 });
 
+test("storage_bridge: a rejected initial timeout arm cannot leave a save queued for later dispatch", async () => {
+    const env = createTestEnvironment(), bridge = env.sandbox.QOL.core.storageBridge;
+    const schedule = env.sandbox.$.Schedule, callbacks = [];
+    env.sandbox.$.Schedule = () => { throw Error("modeled initial timer failure"); };
+    const failed = bridge.save("failed-key", "rejected payload", (error, data) => callbacks.push({ error, data }));
+    const notifiedBeforeReadiness = callbacks.length;
+    await assert.rejects(failed, /modeled initial timer failure/);
+    env.sandbox.$.Schedule = schedule;
+    const storage = new Map();
+    connectEmbeddedPage(env, storage);
+    assert.equal(storage.has("failed-key"), false, "a rejected operation cannot write after a later handshake");
+    assert.equal(notifiedBeforeReadiness, 1, "the low-level error callback settles synchronously");
+    assert.equal(callbacks.length, 1);
+    assert.match(callbacks[0].error.message, /modeled initial timer failure/);
+    assert.equal(callbacks[0].data, null);
+    const fresh = bridge.save("fresh-key", "accepted payload");
+    env.clock.advance(0);
+    assert.equal(await fresh, true);
+    assert.equal(storage.get("fresh-key"), "accepted payload");
+    assert.deepEqual(env.clock.errors, []);
+});
+
+test("storage_bridge: a rejected dispatch timeout arm releases FIFO before callback-enqueued work", async () => {
+    const env = createTestEnvironment(), bridge = env.sandbox.QOL.core.storageBridge;
+    const callbacks = [], outcomes = [];
+    let reentrant;
+    const failed = bridge.save("failed-key", "rejected payload", (error, data) => {
+        callbacks.push({ key: "failed", error, data });
+        reentrant = bridge.save("callback-key", "callback payload", (nextError, nextData) => {
+            callbacks.push({ key: "callback", error: nextError, data: nextData });
+        });
+    });
+    const queued = bridge.save("queued-key", "queued payload", (error, data) => callbacks.push({ key: "queued", error, data }));
+    failed.then(() => outcomes.push("failed:success"), () => outcomes.push("failed:error"));
+    queued.then(() => outcomes.push("queued:success"), () => outcomes.push("queued:error"));
+    const schedule = env.sandbox.$.Schedule;
+    let reject = true;
+    env.sandbox.$.Schedule = (delay, callback) => {
+        if (reject) { reject = false; throw Error("modeled dispatch timer failure"); }
+        return schedule(delay, callback);
+    };
+    const storage = new Map();
+    connectEmbeddedPage(env, storage);
+    await Promise.resolve();
+    assert.deepEqual(outcomes, ["failed:error", "queued:success"], "failure cannot leave the active FIFO slot occupied");
+    await assert.rejects(failed, /modeled dispatch timer failure/);
+    assert.equal(await queued, true);
+    assert.equal(await reentrant, true);
+    assert.deepEqual(callbacks.map(result => result.key), ["failed", "queued", "callback"]);
+    assert.match(callbacks[0].error.message, /modeled dispatch timer failure/);
+    assert.equal(callbacks[0].data, null);
+    for (const result of callbacks.slice(1)) { assert.equal(result.error, null); assert.equal(result.data, true); }
+    assert.equal(storage.has("failed-key"), false);
+    assert.equal(storage.get("queued-key"), "queued payload");
+    assert.equal(storage.get("callback-key"), "callback payload");
+    assert.deepEqual(env.clock.errors, []);
+});
+
+for (const operation of ["save", "load"]) {
+    test(`storage_bridge: failed ${operation} chunk timeout arm retires partial transport and releases FIFO`, async () => {
+        const env = createTestEnvironment(), bridge = env.sandbox.QOL.core.storageBridge;
+        const payload = JSON.stringify({ schema: "4.0.0", data: { LANGUAGE: 12, TOP_BAR_SCALE: 1.25, padding: "x".repeat(4000) } });
+        const previous = JSON.stringify({ schema: "4.0.0", data: { LANGUAGE: 0 } });
+        const stored = operation === "save" ? previous : payload;
+        const storage = new Map([["qollock_settings", stored]]);
+        connectEmbeddedPage(env, storage, { duplicateTitles: true });
+        const rawBefore = env.hudPanel.GetAttributeString("Deadlock_Mod_Settings_v1", "");
+        const configBefore = { ...env.sandbox.MOD_CONFIG }, stateBefore = env.sandbox.State.lastConfig;
+        const callbacks = [], outcomes = [];
+        const callback = (error, data) => callbacks.push({ error, data });
+        const failed = operation === "save" ? bridge.save("qollock_settings", payload, callback) : bridge.loadSettings(callback);
+        const queued = bridge.save("successor", "accepted payload");
+        failed.then(() => outcomes.push("failed:success"), () => outcomes.push("failed:error"));
+        queued.then(() => outcomes.push("queued:success"), () => outcomes.push("queued:error"));
+        const schedule = env.sandbox.$.Schedule;
+        let reject = true;
+        env.sandbox.$.Schedule = (delay, fn) => {
+            if (reject) { reject = false; throw Error("modeled chunk timer failure"); }
+            return schedule(delay, fn);
+        };
+        env.clock.advance(0);
+        await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
+        assert.deepEqual(outcomes.sort(), ["failed:error", "queued:success"], "partial chunk transport cannot retain the active request");
+        await assert.rejects(failed, /Failed to (send save|request) chunk 1: modeled chunk timer failure/);
+        assert.equal(await queued, true);
+        assert.equal(callbacks.length, 1);
+        assert.match(callbacks[0].error.message, /modeled chunk timer failure/);
+        assert.equal(callbacks[0].data, null);
+        assert.equal(storage.get("qollock_settings"), stored, "an incomplete save cannot replace previous disk data");
+        assert.equal(storage.get("successor"), "accepted payload");
+        assert.equal(env.hudPanel.GetAttributeString("Deadlock_Mod_Settings_v1", ""), rawBefore);
+        assert.deepEqual(env.sandbox.MOD_CONFIG, configBefore);
+        assert.equal(env.sandbox.State.lastConfig, stateBefore);
+        assert.deepEqual(env.clock.errors, []);
+    });
+}
+
 test("storage_bridge: expired queued saves never execute when the bridge connects later", async () => {
     const env = createTestEnvironment();
     const bridge = env.sandbox.QOL.core.storageBridge;
