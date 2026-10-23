@@ -24,6 +24,27 @@ function setup() {
     return { ...env, Q, $, cfg, feature, add, ring };
 }
 
+test("Default preset releases native stamina border tint through the settings-to-HUD bridge", () => {
+    const env = loadSettings(), g = env.global, { QOL: Q, $ } = env.hud.sandbox.global;
+    const wrapper = $.CreatePanel("Citadel_AbilityHUDElement_Dash", env.hud.root, "dash");
+    wrapper.AddClass("ability_element_charges");
+    const container = $.CreatePanel("Panel", wrapper, "charges_container");
+    const charge = $.CreatePanel("Panel", container, "");
+    charge.AddClass("has_charge");
+    const foreground = $.CreatePanel("Panel", charge, "progress"); foreground.AddClass("charge_fg");
+    const drained = $.CreatePanel("Panel", charge, ""); drained.AddClass("charge_drained");
+    Object.assign(g.MOD_CONFIG, { STAMINA_CHARGE_COLOR: 13, STAMINA_CHARGE_ANGLE: 90 });
+    g.SaveAndSync(); env.clock.advance(1000);
+    assert.equal(foreground.style.borderColor, "#44e3ff");
+    assert.equal(drained.style.borderColor, "#44e3ff");
+    assert.equal(g.ApplyPresetByName("Default"), true); env.clock.advance(1000);
+    assert.equal(Q.core.ConfigStore.get("ql_stamina", "STAMINA_CHARGE_COLOR"), 0);
+    assert.equal(foreground.style.borderColor, undefined, "a void alias clear cannot strand the old tint");
+    assert.equal(drained.style.borderColor, undefined);
+    assert.equal(container.style.transform, undefined);
+    assert.deepEqual(env.clock.errors, []);
+});
+
 test("stamina instance handoff keeps native transform baseline and retries rotation/color restore after stop", () => {
     const env = setup(), native = env.ring(env.root);
     native.container.style.transform = "translateX(8px)";
@@ -31,7 +52,7 @@ test("stamina instance handoff keeps native transform baseline and retries rotat
     assert.equal(native.container.style.transform, "translateX(8px) rotateZ(45deg)");
     const clear = native.foreground.ClearPropertyFromCode.bind(native.foreground);
     let reject = true;
-    native.foreground.ClearPropertyFromCode = property => reject && property === "border-color" ? false : clear(property);
+    native.foreground.ClearPropertyFromCode = property => reject && property === "border" ? false : clear(property);
     native.container.style = new Proxy(native.container.style, { set(target, property, value) {
         if (reject && property === "transform" && value === "translateX(8px)") throw Error("restore rejected");
         target[property] = value; return true;

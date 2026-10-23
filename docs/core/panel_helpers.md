@@ -160,3 +160,19 @@ Both clear helpers translate JavaScript-style property names (for example
 `pre-transform-scale2d`, `wash-color`) before `ClearPropertyFromCode`. Already
 hyphenated names are accepted unchanged. This is shared by HUD features, so a
 scale reset must release the override for every caller, not only healthbars.
+
+The core helper additionally canonicalizes `border-color`, `border-width` and
+`border-style` to the stored `border` property. Native-style leases use that same
+composite key, so an old tint owner cannot clear a newer full-border owner.
+Retirement releases the whole code border; these components are not independent
+native ownership slots. Native CSS and its state-dependent borders then resume.
+
+This mapping comes from the inspected client binaries on 2026-10-24:
+`panorama.dll`'s `CStylePropertyBorder` constructor (RVA `0x174990`) initializes
+the canonical border symbol, including for alias parsing. The
+`panoramauiclient.dll` `ClearPropertyFromCode` binding (RVA `0xCD170`) checks for
+an exact stored symbol before removing it. It returns void even when that check
+finds nothing. Clearing a color alias therefore cannot be treated as evidence
+that the override was released. The simulator models this composite boundary;
+the Default-preset bridge regression exercises the resulting stamina cleanup.
+Native rendering still requires a compiled/repacked client check.

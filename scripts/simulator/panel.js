@@ -304,6 +304,13 @@ class Panel {
         if (this.style && typeof prop === "string") {
             // Native API takes CSS names; style writes expose camelCase aliases.
             if (/[A-Z]/.test(prop)) return false;
+            // CStylePropertyBorder stores color/width/style aliases as one
+            // `border` code property. Clearing an alias is a native void no-op.
+            if (/^border-(?:color|width|style)$/.test(prop)) return;
+            if (prop === "border") {
+                for (const key of ["border", "borderColor", "borderWidth", "borderStyle"]) delete this.style[key];
+                return;
+            }
             const jsProp = prop.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
             delete this.style[jsProp];
             return true;

@@ -14,6 +14,19 @@ function setup() {
     return { ...env, Q, $, add, P: Q.core.panel, baselinePending };
 }
 
+test("border tint retirement cannot clear the next owner's composite border lease", () => {
+    const env = setup(), panel = env.add("NativeBorder");
+    const tint = env.P.createNativeStyleOwner(), next = env.P.createNativeStyleOwner();
+    tint.apply(panel, { borderColor: "#44e3ff" });
+    next.apply(panel, { border: "4px solid white" });
+    tint.clear();
+    assert.equal(panel.style.border, "4px solid white");
+    next.clear();
+    assert.equal(panel.style.borderColor, undefined, "the native composite code property retires as a whole");
+    assert.equal(panel.style.border, undefined);
+    assert.deepEqual(env.clock.errors, []);
+});
+
 test("preserved native class baselines survive rejected retirement and instance handoff", () => {
     const env = setup(), panel = env.add("ClassHandoff");
     panel.AddClass("nativePresent");

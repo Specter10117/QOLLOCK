@@ -138,6 +138,9 @@ Native clears normalize camelCase style aliases to CSS names before calling
 `ClearPropertyFromCode`: `uiScale` becomes `ui-scale`, for example. The simulator
 models this boundary separately from JS style writes; accepting camelCase in
 both places would conceal a failed return to CSS defaults.
+The core helper also clears border color/width/style through their native
+composite `border` key and leases that composite; see the
+[native evidence and ownership boundary](core/panel_helpers.md).
 
 Presentation state visibility uses the current settings metadata in
 `ql_customize_data.js`. `captureVisibility(ctx, config)` retains the settings

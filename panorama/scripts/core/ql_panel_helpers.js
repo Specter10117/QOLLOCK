@@ -145,10 +145,17 @@
         return { changed: true, sig: succeeded ? sig : null };
     };
 
+    const nativeStylePropertyName = property => {
+        const name = property.replace(/[A-Z]/g, c => "-" + c.toLowerCase());
+        // CStylePropertyBorder uses the `border` symbol for these aliases.
+        // ClearPropertyFromCode only removes an exact stored symbol, and its
+        // void return also occurs when an alias did not remove anything.
+        return name === "border-color" || name === "border-width" || name === "border-style" ? "border" : name;
+    };
     const clearStyleProperty = (panel, prop) => {
         if (!isPanelAlive(panel) || typeof prop !== "string") return false;
         try {
-            return panel.ClearPropertyFromCode(prop.replace(/[A-Z]/g, c => "-" + c.toLowerCase())) !== false;
+            return panel.ClearPropertyFromCode(nativeStylePropertyName(prop)) !== false;
         } catch (_) {
             return false;
         }
@@ -157,7 +164,7 @@
     const nativeStyleLeases = new Map();
     const nativeClassBaselines = new Map();
     const nativeCodeBaselines = new Map();
-    const styleKey = property => "style:" + property.replace(/[A-Z]/g, c => "-" + c.toLowerCase());
+    const styleKey = property => "style:" + nativeStylePropertyName(property);
     const positionKeys = ["style:x", "style:y", "style:position"];
     // Own only attempted code properties/classes; native discovery and lifetime
     // remain with each caller. Rejected cleanup stays recorded for the next pass.
