@@ -302,10 +302,9 @@
     function updateDragState(owner) {
         if (current !== owner || !owner.drag) return;
         const drag = owner.drag;
-        const config = Object.assign({}, Q.getSettingsConfig(), owner.transaction.snapshot());
         if (!owner.transaction.valid() || !P.isAlive(drag.frame) || resolve(owner, drag.element) !== drag.target ||
             drag.target.GetParent() !== drag.parent || Q.presentation.scaleTarget(drag.element, drag.target) !== drag.scaleTarget || !G.isShown(drag.target) ||
-            (drag.element.available && !drag.element.available(owner.hud, config))) {
+            (drag.element.available && !drag.element.available(owner.hud, { ...Q.getSettingsConfig(), ...owner.transaction.snapshot() }))) {
             finishDrag(owner, true);
             return;
         }
@@ -315,81 +314,11 @@
         if (point) {
             drag.lastPoint = point;
             if (!drag.origin) drag.origin = point;
-            let delta = G.windowDelta({ x: point.x - drag.origin.x, y: point.y - drag.origin.y }, owner.overlay, owner.unitProbe);
-            if (!drag.moved && delta.x === 0 && delta.y === 0) {
-                if (drag.ending) finishDrag(owner);
-                else owner.dragTimer = $.Schedule(0.016, () => updateDrag(owner));
-                return;
+            const delta = G.windowDelta({ x: point.x - drag.origin.x, y: point.y - drag.origin.y }, owner.overlay, owner.unitProbe);
+            if (drag.moved || delta.x !== 0 || delta.y !== 0) {
+                drag.moved = true;
+                if (!updateDragPreview(owner, drag, delta)) return;
             }
-            drag.moved = true;
-            if (!drag.resize) {
-                const neighbors = [];
-                if (owner.snapEnabled) for (const [id, item] of owner.frames) {
-                    const family = drag.element.parentId;
-                    if (id !== drag.element.id && item.available && item.target !== drag.target && item.measured &&
-                        id !== family && (!family || item.element.parentId !== family) && item.element.parentId !== drag.element.id) neighbors.push(item.measured);
-                }
-                const snapped = owner.snapEnabled ? G.snap(drag.startBox, delta, G.viewport(owner.overlay), neighbors,
-                    drag.element.fields.filter(field => field.axis).map(field => field.axis)) : { delta, guides: {} };
-                delta = snapped.delta;
-                drag.guides = snapped.guides;
-            }
-            const pixels = G.screenDelta(delta, owner.overlay);
-            const previousValues = drag.values;
-            drag.values = drag.resize ? G.resizeValues(drag.element, drag.startValues, drag.resizeBox, pixels, owner.overlay, drag.resize)
-                : G.dragValues(drag.element, drag.target, drag.startValues, pixels);
-            if (!drag.resize && drag.element.fields.some(field => field.axis && drag.values[field.key] === undefined)) {
-                finishDrag(owner, true);
-                return;
-            }
-            if (drag.resize && previousValues && owner.transaction.acknowledged()) {
-                const field = Q.presentation.resizeField(drag.element);
-                const measured = G.frameBox(drag.element, drag.target, owner.overlay);
-                if (G.scaleBoundsMatch(measured, drag.startBox, previousValues[field.key] / drag.startValues[field.key],
-                    fontResize(drag.element) ? ["height"] : undefined)) {
-                    const values = {};
-                    for (const item of drag.element.fields) values[item.key] = owner.transaction.value(item.key);
-                    Object.assign(drag.values, G.anchorValues(drag.element, drag.target, drag.startBox, measured, values, owner.overlay, drag.resize));
-                }
-            }
-            const bounds = { ...drag.startBox };
-            if (drag.resize) {
-                const field = Q.presentation.resizeField(drag.element);
-                const ratio = drag.values[field.key] / drag.startValues[field.key];
-                bounds.width *= ratio;
-                bounds.height *= ratio;
-                if (drag.resize.x < 0) bounds.x += drag.startBox.width - bounds.width;
-                if (drag.resize.y < 0) bounds.y += drag.startBox.height - bounds.height;
-            } else {
-                // Show normalized/clamped settings, rather than a rectangle
-                // beyond a declared offset limit that cannot be dropped there.
-                const accepted = {};
-                for (const axis of ["x", "y"]) {
-                    const field = drag.element.fields.find(item => item.axis === axis);
-                    if (!field) { accepted[axis] = 0; continue; }
-                    const change = (drag.values[field.key] - drag.startValues[field.key]) * (field.direction || 1);
-                    const size = axis === "x" ? "actuallayoutwidth" : "actuallayoutheight";
-                    accepted[axis] = field.unit === "%" ? change * Number(drag.parent[size]) / 100 : change * G.scale(drag.parent, axis);
-                }
-                const offset = G.canvasDelta(accepted, owner.overlay);
-                bounds.x += offset.x;
-                bounds.y += offset.y;
-            }
-            drag.previewBox = bounds;
-            // The transaction groups every live update into one Undo entry.
-            // Input bounds stay fixed; visual children follow live intent.
-            const signature = JSON.stringify(drag.values);
-            if (signature !== drag.editSignature) {
-                if (!owner.transaction.edit(drag.values)) { finishDrag(owner, true); return; }
-                drag.editSignature = signature;
-                owner.inspector?.sync();
-            }
-            syncFrame(owner, owner.frames.get(drag.element.id), bounds);
-            drag.previewSignature = P.syncStyles(drag.preview, {
-                x: `${Math.round(bounds.x)}px`, y: `${Math.round(bounds.y)}px`,
-                width: `${Math.round(bounds.width)}px`, height: `${Math.round(bounds.height)}px`
-            }, drag.previewSignature).sig;
-            showGuides(owner, drag);
         }
         if (drag.ending) {
             if (drag.values) owner.transaction.edit(drag.values);
@@ -398,6 +327,81 @@
             return;
         }
         owner.dragTimer = $.Schedule(0.016, () => updateDrag(owner));
+    }
+    function dragPreviewBounds(owner, drag) {
+        const bounds = { ...drag.startBox };
+        if (drag.resize) {
+            const field = Q.presentation.resizeField(drag.element);
+            const ratio = drag.values[field.key] / drag.startValues[field.key];
+            bounds.width *= ratio;
+            bounds.height *= ratio;
+            if (drag.resize.x < 0) bounds.x += drag.startBox.width - bounds.width;
+            if (drag.resize.y < 0) bounds.y += drag.startBox.height - bounds.height;
+            return bounds;
+        }
+        // Show normalized/clamped settings, rather than a rectangle
+        // beyond a declared offset limit that cannot be dropped there.
+        const accepted = {};
+        for (const axis of ["x", "y"]) {
+            const field = drag.element.fields.find(item => item.axis === axis);
+            if (!field) { accepted[axis] = 0; continue; }
+            const change = (drag.values[field.key] - drag.startValues[field.key]) * (field.direction || 1);
+            const size = axis === "x" ? "actuallayoutwidth" : "actuallayoutheight";
+            accepted[axis] = field.unit === "%" ? change * Number(drag.parent[size]) / 100 : change * G.scale(drag.parent, axis);
+        }
+        const offset = G.canvasDelta(accepted, owner.overlay);
+        bounds.x += offset.x;
+        bounds.y += offset.y;
+        return bounds;
+    }
+    function updateDragPreview(owner, drag, delta) {
+        if (!drag.resize) {
+            const neighbors = [];
+            if (owner.snapEnabled) for (const [id, item] of owner.frames) {
+                const family = drag.element.parentId;
+                if (id !== drag.element.id && item.available && item.target !== drag.target && item.measured &&
+                    id !== family && (!family || item.element.parentId !== family) && item.element.parentId !== drag.element.id) neighbors.push(item.measured);
+            }
+            const snapped = owner.snapEnabled ? G.snap(drag.startBox, delta, G.viewport(owner.overlay), neighbors,
+                drag.element.fields.filter(field => field.axis).map(field => field.axis)) : { delta, guides: {} };
+            delta = snapped.delta;
+            drag.guides = snapped.guides;
+        }
+        const pixels = G.screenDelta(delta, owner.overlay);
+        const previousValues = drag.values;
+        drag.values = drag.resize ? G.resizeValues(drag.element, drag.startValues, drag.resizeBox, pixels, owner.overlay, drag.resize)
+            : G.dragValues(drag.element, drag.target, drag.startValues, pixels);
+        if (!drag.resize && drag.element.fields.some(field => field.axis && drag.values[field.key] === undefined)) {
+            finishDrag(owner, true);
+            return false;
+        }
+        if (drag.resize && previousValues && owner.transaction.acknowledged()) {
+            const field = Q.presentation.resizeField(drag.element);
+            const measured = G.frameBox(drag.element, drag.target, owner.overlay);
+            if (G.scaleBoundsMatch(measured, drag.startBox, previousValues[field.key] / drag.startValues[field.key],
+                fontResize(drag.element) ? ["height"] : undefined)) {
+                const values = {};
+                for (const item of drag.element.fields) values[item.key] = owner.transaction.value(item.key);
+                Object.assign(drag.values, G.anchorValues(drag.element, drag.target, drag.startBox, measured, values, owner.overlay, drag.resize));
+            }
+        }
+        const bounds = dragPreviewBounds(owner, drag);
+        drag.previewBox = bounds;
+        // The transaction groups every live update into one Undo entry.
+        // Input bounds stay fixed; visual children follow live intent.
+        const signature = JSON.stringify(drag.values);
+        if (signature !== drag.editSignature) {
+            if (!owner.transaction.edit(drag.values)) { finishDrag(owner, true); return false; }
+            drag.editSignature = signature;
+            owner.inspector?.sync();
+        }
+        syncFrame(owner, owner.frames.get(drag.element.id), bounds);
+        drag.previewSignature = P.syncStyles(drag.preview, {
+            x: `${Math.round(bounds.x)}px`, y: `${Math.round(bounds.y)}px`,
+            width: `${Math.round(bounds.width)}px`, height: `${Math.round(bounds.height)}px`
+        }, drag.previewSignature).sig;
+        showGuides(owner, drag);
+        return true;
     }
     function settleResize(owner, drag, correction) {
         const deadline = Date.now() + 2500;
