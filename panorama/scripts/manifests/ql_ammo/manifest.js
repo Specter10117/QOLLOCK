@@ -68,12 +68,14 @@
             function renderVisuals(sources) {
                 const standard = model.visualEnabled && sources.size === 1 && panelAPI.isAlive(panel);
                 let mask = "";
+                let dense = false;
                 if (standard) {
                     const maximumLabel = QOL.utils.FindPanelsByClass(panel, "weapon_ammo_max")[0];
                     const maximum = Number(String(maximumLabel?.text ?? "").match(/\d+/)?.[0]);
                     if (Number.isInteger(maximum) && maximum >= 1 && maximum <= maxTickCount) {
                         mask = 'url("s2r://panorama/images/custom/ammo_ticks/' + maximum + '.vsvg")';
                     }
+                    dense = Number.isInteger(maximum) && maximum > maxTickCount;
                 }
                 const retained = [];
                 for (const clip of sources.keys()) {
@@ -83,7 +85,8 @@
                         const target = panelAPI.findChild(clip, id);
                         if (!target) continue;
                         const styles = standard && mask ? { opacityMask: mask } : {};
-                        if (standard && id === "clip_progress_bar" && model.currentStyles.color) styles.borderColor = model.currentStyles.color;
+                        const color = model.currentStyles.color || (dense ? "#ffffff" : "");
+                        if (standard && id === "clip_progress_bar" && color) styles.borderColor = color;
                         visualStyles.apply(target, styles);
                         retained.push(target);
                     }
@@ -182,7 +185,9 @@
                     sources.set(clip, { angle: 90 - model.angle, baseline: 90 });
                     sources.set(mirrored, { angle: 180 - model.angle, baseline: 180 });
                 } else {
-                    sources.set(clip, { angle: -model.angle, baseline: 0 });
+                    // Native 0..90 degrees occupies the upper-right quadrant.
+                    // Center the enabled magazine below the reticle at setting zero.
+                    sources.set(clip, { angle: (model.visualEnabled ? 135 : 0) - model.angle, baseline: 0 });
                 }
                 return sources;
             }
@@ -192,7 +197,7 @@
                 for (const [target, source] of sources) {
                     geometry.apply(target, QOL.presentation.visibilityStyles("ammo", QOL.presentation.visibilityConfig(ctx), root, model.clipStyles));
                     clipStyles.get(source.baseline).apply(target,
-                        model.angle ? { transform: "rotateZ(" + source.angle + "deg)" } : {},
+                        source.angle !== source.baseline ? { transform: "rotateZ(" + source.angle + "deg)" } : {},
                         { "qol-ammo-visual-enabled": model.visualEnabled, "qol-ammo-visual-disabled": !model.visualEnabled });
                     retained.get(source.baseline).push(target);
                 }

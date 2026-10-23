@@ -290,13 +290,15 @@ The Ammo frame measures the union of these surfaces rather than the gun wrapper.
 Native ring rotation and its feature classes use the common native-style owner,
 with the extracted standard and mirrored CSS baselines on retirement. Native
 overwrite invalidates its cached write, and rejected retirement retries after
-disable. Small magazines use capacity-specific SVG masks on the native progress,
-background and bonus arcs; each division represents one round. Dense magazines
-release the mask and use the continuous native arc. The game owns shot/reload
+disable. The enabled standard magazine points down at rotation zero; angle-only
+customization retains the native baseline when the visualizer is off. Small
+magazines use capacity-specific SVG masks on the native progress, background and
+bonus arcs; each division represents one round. Dense magazines release the mask
+and use a continuous white native arc unless a palette color is selected. The game owns shot/reload
 fill, low-ammo and bonus feedback; JavaScript only discovers sources and selects
 the mask from capacity. No per-round panels or current-ammo polling are created.
 Mirrored heat layouts retain their native arc presentation. Default tint releases
-the foreground border color back to the native stylesheet. Mask/tint ownership
+the small-magazine foreground border color back to the native stylesheet. Mask/tint ownership
 follows living source replacement and retries rejected retirement after disable.
 Digit font retirement explicitly writes its native layout baseline before
 releasing the code property. The Tokamak layout uses its own font baseline and
