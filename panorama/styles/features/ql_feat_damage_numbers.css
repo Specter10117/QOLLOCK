@@ -57,18 +57,31 @@
 	
 }
 
-.cumulative_dmg_disabled .cumulative,
-.cumulative_dmg_disabled .batched,
-.cumulative_dmg_disabled .cumulative_final,
 .hide_small_numbers_active .bullet_damage_new,
 .hide_small_numbers_active .ability_damage_new,
 .hide_small_numbers_active .melee_damage_new,
 .hide_small_numbers_active .pure_damage_new,
-.hide_small_numbers_active .damage.damage_type_gun:not(.cumulative):not(.batched):not(.cumulative_final),
-.hide_small_numbers_active .damage.damage_type_melee:not(.cumulative):not(.batched):not(.cumulative_final),
-.hide_small_numbers_active .damage.damage_type_ability:not(.cumulative):not(.batched):not(.cumulative_final),
-.hide_small_numbers_active .damage.damage_type_pure:not(.cumulative):not(.batched):not(.cumulative_final),
-.hide_small_numbers_active .damage.damage_type_poison:not(.cumulative):not(.batched):not(.cumulative_final)
+.hide_small_numbers_active .damage.damage_type_gun,
+.hide_small_numbers_active .damage.damage_type_melee,
+.hide_small_numbers_active .damage.damage_type_ability,
+.hide_small_numbers_active .damage.damage_type_pure,
+.hide_small_numbers_active .damage.damage_type_poison
+{
+	visibility: collapse;
+}
+
+/* Keep cumulative events independent without chained :not() selectors in the
+ * native layout's style dependency. Leave native root opacity untouched. */
+.hide_small_numbers_active:not(.cumulative_dmg_disabled) .damage.cumulative,
+.hide_small_numbers_active:not(.cumulative_dmg_disabled) .damage.batched,
+.hide_small_numbers_active:not(.cumulative_dmg_disabled) .damage.cumulative_final
+{
+	visibility: visible;
+}
+
+.cumulative_dmg_disabled .cumulative,
+.cumulative_dmg_disabled .batched,
+.cumulative_dmg_disabled .cumulative_final
 {
 	visibility: collapse;
 	opacity: 0;

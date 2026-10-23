@@ -159,11 +159,12 @@
       "local_sha256": "bbc73d428c4bcb476dae320ed964d959b31f84e5071d78fbcc55f2cdf9ec7fda"
     },
     "styles/ability_hud_elements/element_gun.css": {
-      "blob": "acc8903c3e66252a8b21b7199a1fbb35dc4b9725",
+      "blob": "7c88b2886103142f20f8d6ac55d2cdc8e65b5925",
       "destination": "panorama/styles/base/ability_hud_elements/element_gun.css",
       "kind": "css",
       "auto_sync": true,
-      "local_sha256": "c775619f7f497b6cc5dc4e57e02cd431211d52080e46f20c720c2cc8f1c2ddc4"
+      "local_sha256": "dafbdc73060cc452748915e35c7274a3e31e8328249cbdcabe2683f0d5c8efe6",
+      "base_commit": "17462b250a0ca80e7f80102f2c83cc3eecff5f12"
     },
     "styles/ability_hud_elements/element_progress_bar.css": {
       "blob": "b608fb56108f670bdfc55cf61634fb6fcae8849d",
@@ -640,5 +641,5 @@
       "base_commit": "2d87734ca5663301b9cc293131f64d80cee73d38"
     }
   },
-  "fingerprint": "f4b8a320bd771b927c86242c116263dc8cafc4a558e1c633b3a243fcdc6d0242"
+  "fingerprint": "33cb00df979d83c4fdde56edf02d7234460dd5a2a5ffa3f0f0266259dd09af8c"
 }
