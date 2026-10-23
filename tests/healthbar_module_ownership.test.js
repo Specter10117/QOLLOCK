@@ -329,6 +329,45 @@ test("Minecraft reads verified native pending bars and keeps damage, healing and
     assert.equal(tree.shieldBox.style.visibility, undefined);
 });
 
+test("Minecraft projects full, half and empty fills with each layer's texture", () => {
+    const env = fixture(), { tree, q } = env;
+    const images = new Map(), create = env.sandbox.global.$.CreatePanel;
+    env.sandbox.global.$.CreatePanel = (...args) => {
+        const panel = create(...args), setImage = panel.SetImage;
+        panel.SetImage = image => { images.set(panel, image); return setImage.call(panel, image); };
+        return panel;
+    };
+    tree.current.text = "450";
+    tree.damage.actuallayoutheight = 40;
+    tree.heal.actuallayoutheight = 80;
+    tree.shields.AddClass("HasBulletShield");
+    const mc = q.healthbar.mc.create({ id: "ql_healthbar" });
+    mc.update(env.root, {}, env.clock.now(), true);
+    const check = (panels, start, prefix) => {
+        for (const [offset, kind] of ["full", "half", "empty"].entries()) {
+            const panel = panels[start + offset];
+            assert.deepEqual(["full", "half", "empty"].filter(cls => panel.BHasClass(cls)), [kind]);
+            assert.equal(panel.style.visibility, kind === "empty" ? "collapse" : "visible");
+            if (kind !== "empty") assert.equal(images.get(panel), `s2r://panorama/images/minecraft/${prefix}${kind}_8x_png.vtex`);
+        }
+    };
+    check(fills(tree, "HeartFill"), 2, "");
+    check(fills(tree, "HeartDeferred"), 3, "orange_");
+    check(fills(tree, "HeartHealing"), 5, "green_");
+    check(tree.shieldHearts.FindChildrenWithClassTraverse("HeartFill"), 1, "absorption_");
+    env.add(env.root, "", ["modifier_name"], "Label").text = "AFFLICTED";
+    env.clock.advance(501); mc.update(env.root, {}, env.clock.now(), true);
+    check(fills(tree, "HeartFill"), 2, "poisoned_");
+    const changing = fills(tree, "HeartFill")[3];
+    tree.current.text = "500"; mc.update(env.root, {}, env.clock.now() + 50, true);
+    assert.equal(changing.BHasClass("full"), true); assert.equal(changing.BHasClass("half"), false);
+    tree.current.text = "400"; mc.update(env.root, {}, env.clock.now() + 100, true);
+    assert.equal(changing.BHasClass("full"), false); assert.equal(changing.BHasClass("empty"), true);
+    assert.equal(changing.style.visibility, "collapse");
+    mc.release(); env.clock.advance(1000);
+    assert.deepEqual(env.clock.errors, []);
+});
+
 test("Minecraft tracks grid/food/health source replacements while previous panels stay alive", () => {
     const env = fixture(), { tree } = env;
     tree.current.text = "100";

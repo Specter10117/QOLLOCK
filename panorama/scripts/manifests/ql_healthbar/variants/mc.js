@@ -447,6 +447,19 @@
             return true;
         }
 
+        function renderHeartFill(fill, index, fullHearts, hasHalfHeart, texturePrefix) {
+            fill.RemoveClass("full"); fill.RemoveClass("half"); fill.RemoveClass("empty");
+            if (index < fullHearts) {
+                fill.AddClass("full"); fill.style.visibility = "visible";
+                setImage(fill, "s2r://panorama/images/minecraft/" + texturePrefix + "full_8x_png.vtex");
+            } else if (index === fullHearts && hasHalfHeart) {
+                fill.AddClass("half"); fill.style.visibility = "visible";
+                setImage(fill, "s2r://panorama/images/minecraft/" + texturePrefix + "half_8x_png.vtex");
+            } else {
+                fill.AddClass("empty"); fill.style.visibility = "collapse";
+            }
+        }
+
         function McUpdateHearts(trueHp, totalHp, afflicted) {
                     let hudRoot = runtimeRoot;
             if (!hudRoot) return;
@@ -480,17 +493,7 @@
                 state.mcLastFillAfflicted = afflicted;
                 let texturePrefix = afflicted ? "poisoned_" : "";
                 for (let i = 0; i < state.mcHeartFillImages.length; i += 1) {
-                    let fill = state.mcHeartFillImages[i];
-                    fill.RemoveClass("full"); fill.RemoveClass("half"); fill.RemoveClass("empty");
-                    if (i < fullHearts) {
-                        fill.AddClass("full"); fill.style.visibility = "visible";
-                        setImage(fill, "s2r://panorama/images/minecraft/" + texturePrefix + "full_8x_png.vtex");
-                    } else if (i === fullHearts && hasHalfHeart) {
-                        fill.AddClass("half"); fill.style.visibility = "visible";
-                        setImage(fill, "s2r://panorama/images/minecraft/" + texturePrefix + "half_8x_png.vtex");
-                    } else {
-                        fill.AddClass("empty"); fill.style.visibility = "collapse";
-                    }
+                    renderHeartFill(state.mcHeartFillImages[i], i, fullHearts, hasHalfHeart, texturePrefix);
                 }
             }
             state.mcLastVisibleHeartsCount = heartsNeeded;
@@ -514,16 +517,7 @@
             for (let i = 0; i < state.mcHeartDeferredImages.length; i += 1) {
                 let deferred = state.mcHeartDeferredImages[i];
                 if (i < fillFullSlots) { deferred.style.visibility = "collapse"; continue; }
-                deferred.RemoveClass("full"); deferred.RemoveClass("half"); deferred.RemoveClass("empty");
-                if (i < fullHearts) {
-                    deferred.AddClass("full"); deferred.style.visibility = "visible";
-                    setImage(deferred, "s2r://panorama/images/minecraft/orange_full_8x_png.vtex");
-                } else if (i === fullHearts && hasHalfHeart) {
-                    deferred.AddClass("half"); deferred.style.visibility = "visible";
-                    setImage(deferred, "s2r://panorama/images/minecraft/orange_half_8x_png.vtex");
-                } else {
-                    deferred.AddClass("empty"); deferred.style.visibility = "collapse";
-                }
+                renderHeartFill(deferred, i, fullHearts, hasHalfHeart, "orange_");
             }
         }
 
@@ -543,16 +537,7 @@
             for (let i = 0; i < state.mcHeartHealingImages.length; i += 1) {
                 let healing = state.mcHeartHealingImages[i];
                 if (i < healingStartSlots) { healing.style.visibility = "collapse"; continue; }
-                healing.RemoveClass("full"); healing.RemoveClass("half"); healing.RemoveClass("empty");
-                if (i < fullHearts) {
-                    healing.AddClass("full"); healing.style.visibility = "visible";
-                    setImage(healing, "s2r://panorama/images/minecraft/green_full_8x_png.vtex");
-                } else if (i === fullHearts && hasHalfHeart) {
-                    healing.AddClass("half"); healing.style.visibility = "visible";
-                    setImage(healing, "s2r://panorama/images/minecraft/green_half_8x_png.vtex");
-                } else {
-                    healing.AddClass("empty"); healing.style.visibility = "collapse";
-                }
+                renderHeartFill(healing, i, fullHearts, hasHalfHeart, "green_");
             }
         }
 
@@ -607,16 +592,7 @@
                 if (slot) slot.style.visibility = "visible";
                 let isLastSlot = lastSlotIsHalf && (i === heartsNeeded - 1);
                 setImage(container, isLastSlot ? "s2r://panorama/images/minecraft/container_half_8x_png.vtex" : "s2r://panorama/images/minecraft/container_8x_png.vtex");
-                fill.RemoveClass("full"); fill.RemoveClass("half"); fill.RemoveClass("empty");
-                if (i < fullHearts) {
-                    fill.AddClass("full"); fill.style.visibility = "visible";
-                    setImage(fill, "s2r://panorama/images/minecraft/absorption_full_8x_png.vtex");
-                } else if (i === fullHearts && hasHalfHeart) {
-                    fill.AddClass("half"); fill.style.visibility = "visible";
-                    setImage(fill, "s2r://panorama/images/minecraft/absorption_half_8x_png.vtex");
-                } else {
-                    fill.AddClass("empty"); fill.style.visibility = "collapse";
-                }
+                renderHeartFill(fill, i, fullHearts, hasHalfHeart, "absorption_");
             }
         }
 
