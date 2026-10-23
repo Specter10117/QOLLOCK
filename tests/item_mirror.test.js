@@ -260,6 +260,30 @@ test("item mirror discards radial speed when a semantic item's native mask is re
     f.api.onDisable();
 });
 
+test("item mirror keeps fractional estimates monotonic and resets them on a rapid new cooldown", () => {
+    const f = fixture(); f.tick(0);
+    const radial = (degrees, ms) => {
+        f.source.cooldownMask.style.clip = `radial(50% 50%, 0deg, ${degrees}deg)`;
+        f.tick(ms);
+    };
+    radial(160, 200); assert.equal(f.slot.cooldownText.text, "2");
+    radial(80, 800); assert.equal(f.slot.cooldownText.text, "0.8");
+    radial(79, 800);
+    assert.equal(f.slot.cooldownText.text, "0.8", "a slower radial slope cannot raise a fractional display lock above one second");
+    f.setCooling(false); f.tick(50);
+    assert.equal(f.slot.cooldownText.style.visibility, "collapse");
+    f.setCooling(true); radial(350, 50);
+    assert.equal(f.slot.cooldownText.style.visibility, "collapse", "a new cooldown needs fresh samples");
+    radial(340, 100);
+    assert.equal(f.slot.cooldownText.text, "4", "the preceding fractional lock cannot cap the next cooldown");
+    radial(240, 100);
+    assert.equal(f.slot.cooldownText.style.visibility, "collapse", "rapid retrigger suppresses the early derived fraction");
+    radial(239, 1000);
+    assert.equal(f.slot.cooldownText.style.visibility, "visible");
+    assert.equal(f.slot.cooldownText.text, "0.7", "fractional display recovers when retrigger suppression expires");
+    f.api.onDisable();
+});
+
 test("item mirror discovers every purchased item when native classes live on anonymous owner panels", () => {
     const f = fixture();
     const root = makeTreePanel("Hud");

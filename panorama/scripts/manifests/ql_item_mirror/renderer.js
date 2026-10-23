@@ -86,6 +86,14 @@
         return rounded.toFixed(1);
     }
 
+    function resetCooldownEstimate(state) {
+        state.cdLastDeg = null;
+        state.cdLastMs = 0;
+        state.cdSlopeEma = null;
+        state.cdDirection = 0;
+        state.cdDisplayLock = null;
+    }
+
     N.createRenderer = (ctx, readState, native) => {
         const { _getStableRuntimePanelId, _getInlineStyleProperty, _probeCooldownTextFromSourceIcon } = native;
         const ITEM_MIRROR_FLASH_DEBUG = false, ITEM_MIRROR_COOLDOWN_DEBUG = false, ITEM_MIRROR_COOLDOWN_DEBUG_THROTTLE_MS = 350;
@@ -229,11 +237,7 @@
                 slotState.lastClip = "";
                 slotState.wasOnCooldown = false;
                 slotState.wasCooldownTextVisible = false;
-                slotState.cdLastDeg = null;
-                slotState.cdLastMs = 0;
-                slotState.cdSlopeEma = null;
-                slotState.cdDirection = 0;
-                slotState.cdDisplayLock = null;
+                resetCooldownEstimate(slotState);
                 slotState.lastCooldownEndMs = 0;
                 slotState.rapidRetriggerSuppressUntilMs = 0;
                 if (mirrorMask) {
@@ -354,11 +358,7 @@
                 } else {
                     slotState.rapidRetriggerSuppressUntilMs = 0;
                 }
-                slotState.cdLastDeg = null;
-                slotState.cdLastMs = 0;
-                slotState.cdSlopeEma = null;
-                slotState.cdDirection = 0;
-                slotState.cdDisplayLock = null;
+                resetCooldownEstimate(slotState);
             }
 
             const cooldownClassSig = (isOnCooldown ? "1" : "0") + "|" + (isVerticalCooldown ? "1" : "0");
@@ -487,29 +487,18 @@
                             const displayRaw = _formatDerivedCooldownSeconds(remainingSec);
                             let n = parseFloat(displayRaw);
                             if (isFinite(n)) {
-                                if (n >= 1) {
-                                    let intVal = Math.ceil(n);
-                                    if (slotState.cdDisplayLock !== null && isFinite(slotState.cdDisplayLock)) {
-                                        intVal = Math.min(intVal, slotState.cdDisplayLock);
-                                    }
-                                    slotState.cdDisplayLock = intVal;
-                                    cooldownText = String(intVal);
-                                    cooldownTextFromDerived = true;
-                                    cooldownTextDerivedNum = intVal;
-                                } else {
-                                    if (slotState.cdDisplayLock !== null && isFinite(slotState.cdDisplayLock)) {
-                                        n = Math.min(n, slotState.cdDisplayLock);
-                                    }
-                                    slotState.cdDisplayLock = n;
-                                    cooldownText = (Math.round(n * 10) / 10).toFixed(1);
-                                    cooldownTextFromDerived = true;
-                                    cooldownTextDerivedNum = n;
+                                const whole = n >= 1;
+                                if (whole) n = Math.ceil(n);
+                                if (slotState.cdDisplayLock !== null && isFinite(slotState.cdDisplayLock)) {
+                                    n = Math.min(n, slotState.cdDisplayLock);
                                 }
+                                slotState.cdDisplayLock = n;
+                                cooldownText = whole ? String(n) : (Math.round(n * 10) / 10).toFixed(1);
                             } else {
                                 cooldownText = displayRaw;
-                                cooldownTextFromDerived = true;
-                                cooldownTextDerivedNum = parseFloat(displayRaw);
                             }
+                            cooldownTextFromDerived = true;
+                            cooldownTextDerivedNum = n;
                         }
                     }
                 }
@@ -576,11 +565,7 @@
             slotState.wasOnCooldown = !!isOnCooldown;
 
             if (!isOnCooldown) {
-                slotState.cdLastDeg = null;
-                slotState.cdLastMs = 0;
-                slotState.cdSlopeEma = null;
-                slotState.cdDirection = 0;
-                slotState.cdDisplayLock = null;
+                resetCooldownEstimate(slotState);
                 slotState.nextCooldownTextProbeMs = 0;
                 slotState.lastProbeCooldownText = "";
             } else {
