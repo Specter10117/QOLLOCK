@@ -428,6 +428,58 @@ test("storage_bridge: permanently cached page retries at most five attempts and 
     assert.deepEqual(env.clock.errors, []);
 });
 
+for (const cancellation of ["ignored", "throw"]) for (const zeroHandle of [false, true]) {
+    test(`storage_bridge: retired watchdog cannot navigate a replacement with cancellation=${cancellation}, zero=${zeroHandle}`, () => {
+        const env = createTestEnvironment(), bridge = env.sandbox.QOL.core.storageBridge;
+        const initial = bridge.getPanel();
+        env.fireTitleEvent(initial, "QOL_BRIDGE_READY:frag1");
+        const schedule = env.sandbox.$.Schedule;
+        let zeroNativeHandle = null;
+        const cancellations = [];
+        env.sandbox.$.Schedule = (delay, callback) => {
+            const handle = schedule(delay, callback);
+            if (zeroHandle && zeroNativeHandle === null) { zeroNativeHandle = handle; return 0; }
+            return handle;
+        };
+        env.sandbox.$.CancelScheduled = handle => {
+            cancellations.push(handle);
+            if (cancellation === "throw") throw Error("modeled cancellation failure");
+        };
+        initial.IsValid = () => false;
+        const first = bridge.init(env.hudPanel, { autoload: false });
+        env.clock.advance(10000);
+        first.IsValid = () => false;
+        const replacement = bridge.init(env.hudPanel, { autoload: false });
+        const before = env.urls.length;
+        env.clock.advance(10000);
+        assert.equal(env.urls.length, before, "the retired watchdog cannot consume the new panel's retry budget");
+        assert.equal(bridge.getPanel(), replacement);
+        assert.equal(bridge.isReady(), false);
+        env.clock.advance(10000);
+        assert.equal(env.urls.length, before + 1, "the replacement owns its full twenty-second startup interval");
+        if (zeroHandle) assert.ok(cancellations.includes(0));
+        assert.deepEqual(env.clock.errors, []);
+    });
+}
+
+test("storage_bridge: retired cached-page watchdogs cannot repeat exhausted initialization", async () => {
+    const env = createTestEnvironment(), bridge = env.sandbox.QOL.core.storageBridge;
+    env.sandbox.$.CancelScheduled = () => {};
+    connectEmbeddedPage(env, new Map(), { oldPageLoads: 100, duplicateTitles: true });
+    env.clock.advance(4000);
+    const rejected = assert.rejects(bridge.save("pending", "payload"), /Bridge initialization failed/);
+    env.clock.advance(1000);
+    await rejected;
+    const loads = env.cef.loads;
+    assert.equal(loads, 5);
+    assert.equal(env.logs.filter(message => /failed to initialize after 5 attempts/.test(message)).length, 1);
+    env.clock.advance(25000);
+    assert.equal(env.cef.loads, loads);
+    assert.equal(env.logs.filter(message => /failed to initialize after 5 attempts/.test(message)).length, 1,
+        "cancelled startup/cached-page callbacks remain retired after exhaustion");
+    assert.deepEqual(env.clock.errors, []);
+});
+
 test("storage_bridge: readiness rejects plain and unsupported fragment versions", () => {
     const env = createTestEnvironment();
     const bridge = env.sandbox.QOL.core.storageBridge;

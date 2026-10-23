@@ -46,10 +46,9 @@
     let _pendingRequests = {};
     let _requestQueue = [];
     let _activeRequest = null;
-    let _watchdogTimer = null;
+    let _watchdog = null;
     let _initAttempts = 0;
     let _oldPageLogged = false;
-    let _cachedPageRetryScheduled = false;
     let _hasAutoloaded = false;
     let _autoloadEnabled = false;
     let _autoloadState = null;
@@ -346,6 +345,25 @@
         }
     };
 
+    const _cancelWatchdog = () => {
+        const watchdog = _watchdog;
+        _watchdog = null;
+        if (!watchdog || watchdog.handle === null || typeof $.CancelScheduled !== "function") return;
+        try { $.CancelScheduled(watchdog.handle); } catch (_) {}
+    };
+
+    const _scheduleWatchdog = (delaySec, cachedPageRetry = false) => {
+        if (typeof $.Schedule !== "function") return;
+        _cancelWatchdog();
+        const watchdog = { handle: null, cachedPageRetry };
+        _watchdog = watchdog;
+        watchdog.handle = $.Schedule(delaySec, () => {
+            if (_watchdog !== watchdog) return;
+            _watchdog = null;
+            _watchdogTick();
+        });
+    };
+
     /**
      * Handles HTMLTitle events from the CitadelHTMLPanel.
      */
@@ -369,13 +387,7 @@
                     }
                 } catch (_) {}
             }
-            if (_watchdogTimer) {
-                if (typeof $.CancelScheduled === "function") {
-                    try { $.CancelScheduled(_watchdogTimer); } catch (_) {}
-                }
-                _watchdogTimer = null;
-            }
-            _cachedPageRetryScheduled = false;
+            _cancelWatchdog();
 
             _runAutoload();
             return;
@@ -387,13 +399,7 @@
                 _oldPageLogged = true;
                 _logWarn("Outdated cached bridge page: waiting for fragment protocol v1.");
             }
-            if (!_cachedPageRetryScheduled && typeof $.Schedule === "function") {
-                _cachedPageRetryScheduled = true;
-                if (_watchdogTimer && typeof $.CancelScheduled === "function") {
-                    try { $.CancelScheduled(_watchdogTimer); } catch (_) {}
-                }
-                _watchdogTimer = $.Schedule(CACHED_PAGE_RETRY_SEC, _watchdogTick);
-            }
+            if (!_watchdog?.cachedPageRetry) _scheduleWatchdog(CACHED_PAGE_RETRY_SEC, true);
             return;
         }
 
@@ -413,14 +419,10 @@
      * Watchdog to verify the bridge achieves ready state after creation.
      */
     const _watchdogTick = () => {
-        _watchdogTimer = null;
-        _cachedPageRetryScheduled = false;
         if (_bridgeReady) return;
         _initAttempts++;
         if (_initAttempts < MAX_INIT_ATTEMPTS) {
-            if (typeof $.Schedule === "function") {
-                _watchdogTimer = $.Schedule(WATCHDOG_INTERVAL_SEC, _watchdogTick);
-            }
+            _scheduleWatchdog(WATCHDOG_INTERVAL_SEC);
             if (_isPanelAlive(_bridgePanel) && typeof _bridgePanel.SetURL === "function") {
                 _log(`Watchdog: bridge not ready yet (attempt ${_initAttempts}/${MAX_INIT_ATTEMPTS}), retrying URL navigation...`);
                 _bridgePanel.SetURL(BRIDGE_URL);
@@ -552,7 +554,6 @@
         _bridgeReady = false;
         _initAttempts = 0;
         _oldPageLogged = false;
-        _cachedPageRetryScheduled = false;
 
         if (typeof panel.SetURL === "function") {
             try {
@@ -563,12 +564,7 @@
             }
         }
 
-        if (typeof $.Schedule === "function") {
-            if (_watchdogTimer) {
-                try { $.CancelScheduled(_watchdogTimer); } catch (_) {}
-            }
-            _watchdogTimer = $.Schedule(WATCHDOG_INTERVAL_SEC, _watchdogTick);
-        }
+        _scheduleWatchdog(WATCHDOG_INTERVAL_SEC);
 
         return _bridgePanel;
     };
