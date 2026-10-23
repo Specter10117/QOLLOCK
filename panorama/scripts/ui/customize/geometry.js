@@ -233,26 +233,17 @@
         });
     }
     function anchorValues(element, target, startBox, currentBox, currentValues, host, corner) {
-        const values = {};
-        if (!startBox || !currentBox) return values;
+        if (!startBox || !currentBox) return {};
+        const delta = {};
         for (const field of element.fields) {
             if (!field.axis) continue;
             const axis = field.axis;
             const size = axis === "x" ? "width" : "height";
             const opposite = corner[axis] < 0 ? 1 : 0;
             const correction = startBox[axis] + opposite * startBox[size] - currentBox[axis] - opposite * currentBox[size];
-            if (field.unit === "%") {
-                const parent = target.GetParent();
-                const dim = Number(axis === "x" ? parent?.actuallayoutwidth : parent?.actuallayoutheight);
-                if (!(dim > 0)) continue;
-                const deltaPct = (correction * scale(host, axis) / dim) * 100;
-                values[field.key] = Q.presentation.normalize(field.key, Number(currentValues[field.key]) + deltaPct * (field.direction || 1));
-            } else {
-                values[field.key] = Q.presentation.normalize(field.key, Number(currentValues[field.key]) +
-                    correction * scale(host, axis) / scale(target.GetParent(), axis) * (field.direction || 1));
-            }
+            delta[axis] = correction * scale(host, axis);
         }
-        return values;
+        return dragValues(element, target, currentValues, delta);
     }
     function dragValues(element, target, startValues, delta) {
         const parent = target.GetParent();

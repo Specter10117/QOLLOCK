@@ -237,6 +237,40 @@ test("percentage offsets use measured physical dimensions without applying UI de
     assert.equal(Object.keys(G.dragValues(element, target, values, { x: 384, y: -216 })).length, 0);
 });
 
+test("resize anchors preserve corner, density and position-unit conversions before rounding", () => {
+    const env = setup(), G = env.global.QOL.ui.customizeGeometry;
+    const parent = rect(env.doc.create("Panel"), 1500, 750);
+    Object.assign(parent, { actualuiscale_x: 1.5, actualuiscale_y: 0.75 });
+    const target = parent.addChild(env.doc.create("Panel"));
+    const host = rect(env.doc.create("Panel"), 3840, 1350);
+    Object.assign(host, { actualuiscale_x: 2, actualuiscale_y: 1.25 });
+    const before = { x: 100.125, y: 60.5, width: 180, height: 90 };
+    const after = { x: 119.625, y: 48.5, width: 225, height: 120 };
+    for (const [id, keys, values, expectedX, expectedY] of [
+        ["souls", ["SOULS_X_OFFSET", "SOULS_Y_OFFSET"], [73.25, -41.25], [47, -13], [-61, -11]],
+        ["cooldowns", ["PASSIVE_COOLDOWN_X", "PASSIVE_COOLDOWN_Y"], [17.5, -8.25], [15, 9], [-10, -5]]
+    ]) {
+        const element = env.global.QOL.presentation.elements.find(item => item.id === id);
+        const current = Object.fromEntries(keys.map((key, index) => [key, values[index]]));
+        for (const x of [1, -1]) for (const y of [1, -1]) {
+            const patch = G.anchorValues(element, target, before, after, current, host, { x, y });
+            assert.equal(patch[keys[0]], expectedX[x < 0 ? 1 : 0], `${id}: x corner ${x}`);
+            assert.equal(patch[keys[1]], expectedY[y < 0 ? 1 : 0], `${id}: y corner ${y}`);
+        }
+        const missing = G.anchorValues(element, target, before, after, {}, host, { x: 1, y: 1 });
+        assert.equal(missing[keys[0]], null);
+        assert.equal(missing[keys[1]], null);
+        assert.equal(Object.keys(G.anchorValues(element, target, null, after, current, host, { x: 1, y: 1 })).length, 0);
+        if (id === "cooldowns") {
+            parent.actuallayoutwidth = 0;
+            const partial = G.anchorValues(element, target, before, after, current, host, { x: 1, y: 1 });
+            assert.equal(Object.hasOwn(partial, keys[0]), false, "missing parent width skips only that percentage axis");
+            assert.equal(partial[keys[1]], -10);
+        }
+    }
+    assert.deepEqual(env.doc.eventErrors, []); assert.deepEqual(env.clock.errors, []);
+});
+
 test("guides follow the held outline, magnets toggle final movement, and Undo records one drop", () => {
     const env = setup();
     const { global: g, panel, clock } = env;

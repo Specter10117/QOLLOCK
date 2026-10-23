@@ -14,6 +14,11 @@
             x: Math.max(0, Math.min(Math.max(0, view.width - bounds.width), bounds.x)),
             y: Math.max(0, Math.min(Math.max(0, view.height - bounds.height), bounds.y))
         });
+        function place(item, position) {
+            item.signature = P.syncStyles(item.panel, {
+                align: "left top", margin: "0px", x: `${Math.round(position.x)}px`, y: `${Math.round(position.y)}px`
+            }, item.signature).sig;
+        }
         function finish() {
             if (timer !== null) $.CancelScheduled(timer);
             timer = null;
@@ -37,9 +42,7 @@
             const delta = G.windowDelta({ x: point.x - gesture.origin.x, y: point.y - gesture.origin.y }, overlay, probe);
             const position = clamp({ ...bounds, x: bounds.x + delta.x, y: bounds.y + delta.y }, view);
             gesture.item.position = position;
-            gesture.item.signature = P.syncStyles(panel, {
-                align: "left top", margin: "0px", x: `${Math.round(position.x)}px`, y: `${Math.round(position.y)}px`
-            }, gesture.item.signature).sig;
+            place(gesture.item, position);
             if (ending) finish();
             else timer = $.Schedule(0.016, () => update());
         }
@@ -85,9 +88,7 @@
                 // A measured default may follow native layout until the user
                 // chooses a session position by dragging this window.
                 if (item.position) item.position = position;
-                item.signature = P.syncStyles(item.panel, {
-                    align: "left top", margin: "0px", x: `${Math.round(position.x)}px`, y: `${Math.round(position.y)}px`
-                }, item.signature).sig;
+                place(item, position);
             }
         }
         return { header, refresh, isDragging: () => !!gesture,
