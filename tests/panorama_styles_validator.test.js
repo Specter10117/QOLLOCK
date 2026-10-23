@@ -43,6 +43,35 @@ test("style check reports mixed, missing and unmatched delimiters at their sourc
     assert.deepEqual(scanSource("\nPanel {"), [{ file: "<source>", line: 2, column: 7, message: "Unclosed '{'" }]);
 });
 
+test("style check rejects repeated negations on the same selector component", () => {
+    for (const selector of [
+        ".Key:not(.EmptyKey):not(.EmptyKeyWide)",
+        ".damage:not(.cumulative):not(.batched):not(.cumulative_final)",
+        ".Key:not(.EmptyKey).IsPressed:not(.EmptyKeyWide)",
+        ".Key:not(.EmptyKey)/* separator */:not(.EmptyKeyWide)",
+        '.Key[data-mode="normal"]:not(.EmptyKey):hover:NOT(.EmptyKeyWide)'
+    ]) {
+        const issues = scanSource(`\n${selector} { visibility: collapse; }`, "indicator.css");
+        assert.equal(issues.length, 1, selector);
+        assert.equal(issues[0].file, "indicator.css");
+        assert.equal(issues[0].line, 2);
+        assert.match(issues[0].message, /Chained :not\(\)/);
+    }
+});
+
+test("negation check allows separate components and ignores strings, comments and declarations", () => {
+    for (const source of [
+        ".Root:not(.Disabled) .Child:not(.Hidden) { opacity: 1; }",
+        ".Root:not(.Disabled) > .Child:not(.Hidden) { opacity: 1; }",
+        ".Root:not(.Disabled), .Child:not(.Hidden) { opacity: 1; }",
+        ".Root:not(.Disabled) + .Child:not(.Hidden) { opacity: 1; }",
+        ".Root:not(.Disabled) ~ .Child:not(.Hidden) { opacity: 1; }",
+        '.Key[data-text=":not(.A):not(.B)"]:not(.Hidden) { opacity: 1; }',
+        '/* .Key:not(.A):not(.B) */ Panel { font-family: ":not(.A):not(.B)"; }',
+        'Panel { background-image: url("s2r://panorama/images/:not(.A):not(.B).vtex"); }'
+    ]) assert.deepEqual(scanSource(source), [], source);
+});
+
 test("style check rejects unterminated comments and strings instead of masking the remaining file", () => {
     assert.match(scanSource("Panel {}\n/* trailing comment")[0].message, /Unterminated block comment/);
     assert.match(scanSource('Panel { background-image: url("unterminated); }')[0].message, /Unterminated quoted string/);
@@ -91,6 +120,10 @@ test("style CLI fails for malformed, empty and missing sources and accepts repai
     const failed = run(directory);
     assert.equal(failed.status, 1);
     assert.match(failed.stderr, /native\.css:1:\d+: Unexpected/);
+    fs.writeFileSync(file, ".Key:not(.EmptyKey):not(.EmptyKeyWide) { opacity: 1; }");
+    const chained = run(directory);
+    assert.equal(chained.status, 1);
+    assert.match(chained.stderr, /native\.css:1:1: Chained :not\(\)/);
     fs.writeFileSync(file, "Panel { color: rgba(0, 0, 0, 0.80); }");
     assert.equal(run(directory).status, 0);
 });

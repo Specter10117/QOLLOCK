@@ -18,7 +18,7 @@ that model, but cannot prove real client panel structure, rendering or FPS.
 
 ```
 node panorama/scripts/tools/qollock_smoke_test.js   # actual hud.xml script order
-npm run check:styles                               # delimiters and selector-list budget
+npm run check:styles                               # delimiters, selector budget and negation chains
 npm run check:origin-css                           # duplicate HUD CSS imports vs live GameTracking master
 node scripts/validate_compact_schema.js             # config codec round-trips
 npm run check:api                                  # known game API usage
@@ -45,8 +45,11 @@ context-aware analysis or behavior tests; the existing lifecycle checks remain
 necessary. ESLint parsing also does not establish Panorama engine API support.
 
 The stylesheet gate scans every shipped CSS source, including native base
-imports, for mismatched delimiters, unfinished strings/comments and oversized
-selector lists. It does not implement native CSS grammar or compile resources;
+imports, for mismatched delimiters, unfinished strings/comments, oversized
+selector lists and chained `:not()` on the same selector component. The negation
+rule prevents recurrence of the keyboard and event-indicator compatibility
+regressions; single negations on separate ancestors/descendants or comma-separated
+selectors remain allowed. It does not implement native CSS grammar or compile resources;
 the maintainer's compilation and client checks remain required.
 
 `check:origin-css` resolves GameTracking's remote `master` SHA, reads the native

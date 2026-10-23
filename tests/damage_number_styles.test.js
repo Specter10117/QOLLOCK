@@ -6,21 +6,6 @@ const path = require("node:path");
 const { parseCssImports } = require("../scripts/check_native_css_imports");
 const read = file => fs.readFileSync(path.join(__dirname, "../panorama/styles", file), "utf8");
 
-test("event-indicator styles avoid chained negations in their independently loaded context", () => {
-    const visited = new Set();
-    const visit = file => {
-        if (visited.has(file)) return;
-        visited.add(file);
-        const css = read(file).replace(/\/\*[\s\S]*?\*\//g, "");
-        assert.doesNotMatch(css, /:not\([^)]*\)[^\s,{]*:not\(/, file);
-        if (file.startsWith("base/")) return; // Further native dependencies are supplied by the game.
-        for (const resource of parseCssImports(css)) {
-            visit(resource.replace("s2r://panorama/styles/", "").replace(/\.vcss(?:_c)?$/, ".css"));
-        }
-    };
-    visit("hud_event_indicator.css");
-});
-
 test("native event indicators load their baseline before QOLLOCK fountain keyframes and visibility rules", () => {
     assert.ok(fs.existsSync(path.join(__dirname, "../panorama/styles/hud_event_indicator.css")),
         "the native indicator layout must receive its own stylesheet extension");
