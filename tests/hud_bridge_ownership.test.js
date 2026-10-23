@@ -94,6 +94,68 @@ test("HUD bridge retirement retries failed clears independently of the current h
     assert.equal(next.GetAttributeString("QOL_COLORED_HEALTHBAR", ""), "1");
 });
 
+for (const rejection of ["false", "silent"]) {
+    test(`HUD bridge retirement verifies attribute clears after ${rejection} rejection`, () => {
+        const e = fixture(), quickbuy = e.mountQuickbuy(), health = e.mountHealth();
+        const content = e.add(quickbuy, "NativeQueueEntry");
+        quickbuy.AddClass("NativeQueueState"); health.AddClass("NativeHealthState");
+        e.refresh();
+        const attempts = [];
+        for (const [panel, name] of [[quickbuy, "qol_enhanced_quickbuy_count"], [health, "QOL_COLORED_HEALTHBAR"]]) {
+            const write = panel.SetAttributeString;
+            let clears = 0;
+            panel.SetAttributeString = function(attr, value) {
+                if (attr === name && value === "" && ++clears === 1) return rejection === "false" ? false : undefined;
+                return write.call(this, attr, value);
+            };
+            attempts.push(() => clears);
+        }
+        quickbuy.SetParent(e.retired); health.SetParent(e.retired);
+        const currentQuickbuy = e.mountQuickbuy(), currentHealth = e.mountHealth();
+        e.refresh();
+        assert.equal(quickbuy.GetAttributeString("qol_enhanced_quickbuy_count", ""), "5");
+        assert.equal(health.GetAttributeString("QOL_COLORED_HEALTHBAR", ""), "1");
+        e.refresh();
+        assert.equal(quickbuy.GetAttributeString("qol_enhanced_quickbuy_count", ""), "");
+        assert.equal(health.GetAttributeString("QOL_COLORED_HEALTHBAR", ""), "");
+        assert.deepEqual(attempts.map(read => read()), [2, 2]);
+        e.refresh();
+        assert.deepEqual(attempts.map(read => read()), [2, 2], "completed retirement does not keep writing");
+        assert.equal(currentQuickbuy.GetAttributeString("qol_enhanced_quickbuy_count", ""), "5");
+        assert.equal(currentHealth.GetAttributeString("QOL_COLORED_HEALTHBAR", ""), "1");
+        assert.equal(quickbuy.BHasClass("NativeQueueState"), true);
+        assert.equal(health.BHasClass("NativeHealthState"), true);
+        assert.equal(content.GetParent(), quickbuy);
+        assert.deepEqual(e.clock.errors, []);
+    });
+}
+
+test("a living bridge host returning during rejected retirement retains current ownership", () => {
+    const e = fixture(), quickbuy = e.mountQuickbuy(), health = e.mountHealth(); e.refresh();
+    const attempts = [];
+    for (const [panel, name] of [[quickbuy, "qol_enhanced_quickbuy_count"], [health, "QOL_COLORED_HEALTHBAR"]]) {
+        const write = panel.SetAttributeString;
+        let clears = 0;
+        panel.SetAttributeString = function(attr, value) {
+            if (attr === name && value === "") { clears++; return false; }
+            return write.call(this, attr, value);
+        };
+        attempts.push(() => clears);
+    }
+    quickbuy.SetParent(e.retired); health.SetParent(e.retired);
+    const nextQuickbuy = e.mountQuickbuy(), nextHealth = e.mountHealth(); e.refresh();
+    nextQuickbuy.SetParent(e.retired); nextHealth.SetParent(e.retired);
+    quickbuy.SetParent(e.left); health.SetParent(e.gameplay);
+    e.refresh();
+    assert.deepEqual(attempts.map(read => read()), [1, 1], "current ownership cancels its pending old clear");
+    assert.equal(quickbuy.GetAttributeString("qol_enhanced_quickbuy_count", ""), "5");
+    assert.equal(health.GetAttributeString("QOL_COLORED_HEALTHBAR", ""), "1");
+    assert.equal(quickbuy.BHasClass("enhanced_quickbuy_active"), true);
+    assert.equal(nextQuickbuy.GetAttributeString("qol_enhanced_quickbuy_count", ""), "");
+    assert.equal(nextHealth.GetAttributeString("QOL_COLORED_HEALTHBAR", ""), "");
+    assert.deepEqual(e.clock.errors, []);
+});
+
 test("HUD bridge projection publishes root quickbuy settings before a late queue is available", () => {
     const e = fixture(); e.refresh();
     assert.equal(e.root.GetAttributeInt("qol_enhanced_quickbuy_count", 0), 5);

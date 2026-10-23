@@ -416,15 +416,22 @@
         return panel;
     };
 
+    const clearBridgeAttribute = (panel, name) => {
+        try {
+            if (panel.GetAttributeString(name, "") === "") return true;
+            return panel.SetAttributeString(name, "") !== false && panel.GetAttributeString(name, "") === "";
+        } catch (_) { return false; }
+    };
+
     const releaseBridgeHosts = () => {
         for (const panel of retiredQuickbuyHosts) {
             if (!isAlive(panel)) { retiredQuickbuyHosts.delete(panel); continue; }
             for (const name of quickbuyClasses) _panelHelpers.setClass(panel, name, false);
-            const cleared = QOL_UTILS.SafeSetAttribute(panel, "qol_enhanced_quickbuy_count", "");
+            const cleared = clearBridgeAttribute(panel, "qol_enhanced_quickbuy_count");
             if (cleared && quickbuyClasses.every(name => !panel.BHasClass(name))) retiredQuickbuyHosts.delete(panel);
         }
         for (const panel of retiredHealthHosts) {
-            if (!isAlive(panel) || QOL_UTILS.SafeSetAttribute(panel, "QOL_COLORED_HEALTHBAR", "")) retiredHealthHosts.delete(panel);
+            if (!isAlive(panel) || clearBridgeAttribute(panel, "QOL_COLORED_HEALTHBAR")) retiredHealthHosts.delete(panel);
         }
     };
 
