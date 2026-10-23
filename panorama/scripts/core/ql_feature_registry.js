@@ -35,7 +35,6 @@
     const contexts = new Map();
     const contextCleanups = new WeakMap();
     const disabling = new Set();
-    const enabledMap = {};
     // Explicitly retired or failed owners cannot leave custom-only CSS active.
     // Unknown/pre-boot owners remain neutral; this is not persisted enable state.
     const unavailablePresentation = new Set();
@@ -138,7 +137,6 @@
                 instance.onEnable();                                    // call BEFORE setting instances
             }
             instances[id] = instance;                                   // only on success
-            enabledMap[id] = true;
             errorStreaks[id] = 0;                                       // start tracking errors
             delete enablingInProgress[id];
             if (presentationChanged) publishPresentation(id, true);
@@ -182,7 +180,6 @@
             }
         } catch (_) { /* best-effort */ }
         delete instances[id];
-        enabledMap[id] = false;
         disabling.delete(id);
         publishPresentation(id, false);
     };
@@ -374,7 +371,6 @@
         }
 
         for (const k of Object.keys(instances)) delete instances[k];
-        for (const k of Object.keys(enabledMap)) delete enabledMap[k];
         // Project the retired session once, then return standalone/pre-boot
         // consumers to neutral policy without reapplying the stored CSS here.
         EventBus.emit("feature:presentation_changed", { featureId: null, available: false, shutdown: true });
@@ -383,7 +379,7 @@
         shuttingDown = false;
     };
 
-    const isEnabled = (featureId) => !!enabledMap[featureId];
+    const isEnabled = (featureId) => Object.prototype.hasOwnProperty.call(instances, featureId);
     const isRegistered = (featureId) => Object.prototype.hasOwnProperty.call(manifests, featureId);
     const getRegisteredIds = () => Object.keys(manifests);
     const getEnabledIds = () => Object.keys(instances);
