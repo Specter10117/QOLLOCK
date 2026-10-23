@@ -227,17 +227,15 @@
                     break;
                 }
             }
+            if (typeof req.callback === "function") {
+                try { req.callback(err || null, err ? null : data); }
+                catch (e) { _logWarn(`Storage callback failed: ${e?.message || e}`); }
+            }
             if (err) {
-                if (typeof req.callback === "function") {
-                    try { req.callback(err, null); } catch (_) {}
-                }
                 if (typeof req.reject === "function") {
                     req.reject(err);
                 }
             } else {
-                if (typeof req.callback === "function") {
-                    try { req.callback(null, data); } catch (_) {}
-                }
                 if (typeof req.resolve === "function") {
                     req.resolve(data);
                 }

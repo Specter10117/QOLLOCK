@@ -559,6 +559,67 @@ test("storage_bridge: FIFO serializes concurrent calls, ignores stale titles and
     assert.equal(new Set(messages.map(msg => msg.q)).size, messages.length);
 });
 
+test("storage_bridge: low-level callbacks retain their request receiver and run before Promise reactions", async () => {
+    const env = createTestEnvironment(), bridge = env.sandbox.QOL.core.storageBridge;
+    connectEmbeddedPage(env, new Map(), { duplicateTitles: true });
+    const callbacks = [];
+    let reacted = false;
+    const first = bridge.save("first", "one", function(error, data) {
+        callbacks.push({ receiver: this, error, data });
+    });
+    const sentId = requestId(env.getLastSetUrl());
+    first.then(() => { reacted = true; });
+    env.clock.advance(0);
+    assert.equal(callbacks.length, 1);
+    assert.equal(callbacks[0].receiver.id, sentId);
+    assert.equal(callbacks[0].error, null);
+    assert.equal(callbacks[0].data, true);
+    assert.equal(reacted, false, "the transport callback stays synchronous, independently of Promise delivery");
+    assert.equal(await first, true);
+    assert.equal(reacted, true);
+    assert.deepEqual(env.clock.errors, []);
+});
+
+for (const failure of [false, true]) {
+    test(`storage_bridge: throwing low-level callbacks stay observable and release FIFO after error=${failure}`, async () => {
+        const env = createTestEnvironment(), bridge = env.sandbox.QOL.core.storageBridge;
+        const storage = new Map(), store = storage.set.bind(storage);
+        storage.set = (key, value) => {
+            if (failure && key === "first") throw Error("modeled storage rejection");
+            return store(key, value);
+        };
+        connectEmbeddedPage(env, storage, { duplicateTitles: true });
+        const callbacks = [];
+        let reacted = false;
+        const first = bridge.save("first", "one", function(error, data) {
+            callbacks.push({ receiver: this, error, data });
+            throw Error("modeled callback failure");
+        });
+        const sentId = requestId(env.getLastSetUrl());
+        const outcome = first.then(data => { reacted = true; return { data }; }, error => { reacted = true; return { error }; });
+        const queued = bridge.save("successor", "two", () => callbacks.push({ successor: true }));
+        env.clock.advance(0);
+        assert.ok(env.logs.some(message => message.includes("modeled callback failure")));
+        assert.equal(callbacks.length, 2);
+        assert.equal(callbacks[0].receiver.id, sentId);
+        assert.equal(callbacks[1].successor, true);
+        assert.equal(reacted, false);
+        const result = await outcome;
+        if (failure) {
+            assert.match(callbacks[0].error.message, /modeled storage rejection/);
+            assert.equal(callbacks[0].data, null);
+            assert.match(result.error.message, /modeled storage rejection/);
+        } else {
+            assert.equal(callbacks[0].error, null);
+            assert.equal(callbacks[0].data, true);
+            assert.equal(result.data, true);
+        }
+        assert.equal(await queued, true);
+        assert.equal(storage.get("successor"), "two");
+        assert.deepEqual(env.clock.errors, []);
+    });
+}
+
 test("storage_bridge: a rejected initial timeout arm cannot leave a save queued for later dispatch", async () => {
     const env = createTestEnvironment(), bridge = env.sandbox.QOL.core.storageBridge;
     const schedule = env.sandbox.$.Schedule, callbacks = [];
