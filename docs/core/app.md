@@ -36,12 +36,20 @@ Runtime enable-state reconciliation uses the registry's automatic mode. It prese
 `ql_app.js` coordinates live in-game performance benchmarks requested via `QOL_DiagRequest` tokens (prefixed `bm_`):
 - **Normal Benchmark (`bm_<dur>_normal_<token>`)**: Measures the CPU overhead and polling execution metrics of the user's active configuration over `<dur>` seconds without altering any settings.
 - **Stress Benchmark (`bm_<dur>_stress_<token>`)**:
-  - Automatically captures and preserves the player's active configuration (`_benchmarkSavedUserConfig`) and schema revision prior to starting.
+  - Captures the player's active configuration and revision in a transient stress lease before applying the expanded configuration.
   - Generates a maximal configuration via `_buildMaximalConfig()`, enabling all registered features, toggles, multitoggles, and root CSS transformations on screen.
-  - Locks config polling (`_benchmarkStressActive = true`) to prevent periodic HUD synchronization passes from reverting root classes (e.g. Centered ESC Menu, Minimap transforms) or clobbering the stress testing state.
+  - While the lease is active, config polling preserves the expanded root classes (e.g. Centered ESC Menu, Minimap transforms) and feature configuration.
   - Buffers any incoming user configuration edits during the benchmark so they are cleanly applied after completion without interfering with the test.
   - Arms a safety timeout fallback timer (`durSec + 3s`) to guarantee player configuration restoration under abnormal terminations or scheduler errors.
   - Upon benchmark completion, error, timeout, or application shutdown, triggers `_restoreStressBenchmark()` to cleanly restore original user settings, reload `ConfigAdapter`, re-sync manifests, and re-apply normal HUD CSS classes.
+
+Diagnostic requests own their Scheduler benchmark handles and report callbacks;
+shutdown retires that request before restoring settings. The stress lease owns
+its safety fallback separately, so an older fallback cannot restore a replacement
+stress run. Replacing stress with another stress request retains the latest
+buffered user configuration. A normal request made while stress is active keeps
+the existing lease until its fallback restores that configuration; the settings
+UI normally serializes benchmark requests.
 
 ## HUD state observation bridge
 

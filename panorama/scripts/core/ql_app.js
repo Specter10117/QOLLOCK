@@ -42,12 +42,8 @@
     let _lastDiagForceToken = "";
     let _diagWriteNextMs = 0;
     let _lastBenchmarkReport = null;
-    let _benchmarkStressActive = false;
-    let _benchmarkStressConfig = null;
-    let _benchmarkSavedUserConfig = null;
-    let _benchmarkSavedRevision = 0;
-    let _benchmarkSavedConfigRaw = "";
-    let _benchmarkRestoreTimer = null;
+    let _stressBenchmark = null;
+    let _benchmarkRequest = null;
 
     const _buildEnableKeyMap = () => {
         const map = {};
@@ -208,8 +204,8 @@
         if (!hudPanel) hudPanel = _findHud();
         if (!hudPanel) return;
         if (!flatConfig) {
-            if (_benchmarkStressActive && _benchmarkStressConfig) {
-                flatConfig = _benchmarkStressConfig;
+            if (_stressBenchmark?.config) {
+                flatConfig = _stressBenchmark.config;
             } else {
                 const globalState = (typeof State !== "undefined" && State) ? State :
                                   ((typeof globalThis !== "undefined" && globalThis.State) ? globalThis.State : null);
@@ -218,7 +214,7 @@
             }
         }
         if (!flatConfig) return;
-        if (!_benchmarkStressActive) flatConfig = QOL.presentation?.preview?.effective(flatConfig) || flatConfig;
+        if (!_stressBenchmark) flatConfig = QOL.presentation?.preview?.effective(flatConfig) || flatConfig;
         if (QOL?.core?.hud && typeof QOL.core.hud.applyRootClasses === "function") {
             try {
                 const nowMs = _nowMs();
@@ -262,18 +258,18 @@
     };
 
     const _restoreStressBenchmark = (hudPanel, reason) => {
-        if (!_benchmarkStressActive) return;
-        _benchmarkStressActive = false;
-        _benchmarkStressConfig = null;
-        if (_benchmarkRestoreTimer) {
-            try { $.CancelScheduled(_benchmarkRestoreTimer); } catch (_) {}
-            _benchmarkRestoreTimer = null;
+        const stress = _stressBenchmark;
+        if (!stress) return;
+        const generation = _configPollGeneration;
+        _stressBenchmark = null;
+        if (stress.timer !== null) {
+            try { $.CancelScheduled(stress.timer); } catch (_) {}
+            stress.timer = null;
         }
 
-        const saved = _benchmarkSavedUserConfig;
-        _benchmarkSavedUserConfig = null;
-        const savedRev = _benchmarkSavedRevision;
-        const savedRaw = _benchmarkSavedConfigRaw;
+        const saved = stress.savedConfig;
+        const savedRev = stress.savedRevision;
+        const savedRaw = stress.savedRaw;
 
         if (saved) {
             try {
@@ -282,13 +278,16 @@
                 if (globalState) {
                     globalState.lastConfig = saved;
                 }
+                _lastRevision = savedRev;
+                _lastConfigRaw = savedRaw;
                 if (ConfigAdapter && typeof ConfigAdapter.loadFromFlat === "function") {
                     ConfigAdapter.loadFromFlat(saved, _enableKeyMap);
                 }
+                if (_stressBenchmark || generation !== _configPollGeneration) return;
                 _syncFeatureEnabledState();
+                if (_stressBenchmark || generation !== _configPollGeneration) return;
                 _syncRootClasses(hudPanel, saved);
-                _lastRevision = savedRev;
-                _lastConfigRaw = savedRaw;
+                if (_stressBenchmark || generation !== _configPollGeneration) return;
                 const restoredIds = (FeatureRegistry && typeof FeatureRegistry.getEnabledIds === "function")
                     ? FeatureRegistry.getEnabledIds() : [];
                 if (Logger) Logger.logInfo("Benchmark", `Stress benchmark restored (${reason || "normal"}): original user config restored (${restoredIds.length} manifests active)`);
@@ -375,17 +374,29 @@
         }
     };
 
+    const _stopBenchmarkRequest = () => {
+        const request = _benchmarkRequest;
+        _benchmarkRequest = null;
+        try { request?.handle?.stop?.(); }
+        catch (e) { if (Logger) Logger.logWarn("Benchmark", `Benchmark stop failed: ${e?.message || e}`); }
+    };
+
     const _startRequestedBenchmark = (hudPanel, forceToken) => {
+        _stopBenchmarkRequest();
+        const request = { handle: null };
+        _benchmarkRequest = request;
         const parts = forceToken.split("_");
         const durSec = parseFloat(parts[1]) || 10;
         const isStress = parts[2] === "stress";
 
         if (isStress) {
+            let stress = null;
             try {
                 const globalState = (typeof State !== "undefined" && State) ? State :
                                   ((typeof globalThis !== "undefined" && globalThis.State) ? globalThis.State : null);
-                if (!_benchmarkStressActive) {
-                    let savedFlatConfig = null;
+                const previous = _stressBenchmark;
+                let savedFlatConfig = previous ? previous.savedConfig : null;
+                if (!previous) {
                     if (ConfigAdapter && typeof ConfigAdapter.exportToFlat === "function") {
                         savedFlatConfig = ConfigAdapter.exportToFlat();
                     } else if (globalState?.lastConfig && Object.keys(globalState.lastConfig).length > 0) {
@@ -393,15 +404,19 @@
                     } else if (typeof QOL !== "undefined" && typeof QOL.buildDefaultConfig === "function") {
                         savedFlatConfig = QOL.buildDefaultConfig();
                     }
-
-                    _benchmarkStressActive = true;
-                    _benchmarkSavedUserConfig = savedFlatConfig;
-                    _benchmarkSavedRevision = _lastRevision;
-                    _benchmarkSavedConfigRaw = _lastConfigRaw;
+                }
+                stress = { savedConfig: savedFlatConfig,
+                    savedRevision: previous ? previous.savedRevision : _lastRevision,
+                    savedRaw: previous ? previous.savedRaw : _lastConfigRaw,
+                    config: null, timer: null };
+                _stressBenchmark = stress;
+                if (previous && previous.timer !== null) {
+                    try { $.CancelScheduled(previous.timer); } catch (_) {}
+                    previous.timer = null;
                 }
 
                 const maxConfig = _buildMaximalConfig();
-                _benchmarkStressConfig = maxConfig;
+                stress.config = maxConfig;
 
                 if (globalState) {
                     globalState.lastConfig = maxConfig;
@@ -409,14 +424,15 @@
                 if (ConfigAdapter && typeof ConfigAdapter.loadFromFlat === "function") {
                     ConfigAdapter.loadFromFlat(maxConfig, _enableKeyMap);
                 }
+                if (_stressBenchmark !== stress) return;
                 _syncFeatureEnabledState();
+                if (_stressBenchmark !== stress) return;
                 _syncRootClasses(hudPanel, maxConfig);
+                if (_stressBenchmark !== stress) return;
 
-                if (_benchmarkRestoreTimer) {
-                    try { $.CancelScheduled(_benchmarkRestoreTimer); } catch (_) {}
-                    _benchmarkRestoreTimer = null;
-                }
-                _benchmarkRestoreTimer = $.Schedule(durSec + 3.0, () => {
+                stress.timer = $.Schedule(durSec + 3.0, () => {
+                    if (_stressBenchmark !== stress) return;
+                    stress.timer = null;
                     _restoreStressBenchmark(hudPanel, "safety-timeout");
                 });
 
@@ -429,7 +445,7 @@
                 }
                 $.Msg(`[QOLLock][Benchmark] Stress setup active: ${enabledIds.length} feature manifests running, root HUD classes active for ${durSec}s`);
             } catch (e) {
-                _benchmarkStressActive = false;
+                if (_stressBenchmark === stress) _stressBenchmark = null;
                 if (Logger) Logger.logWarn("Benchmark", `Benchmark stress setup failed: ${e?.message || e}`);
             }
         } else {
@@ -441,12 +457,16 @@
             $.Msg(`[QOLLock][Benchmark] Normal benchmark started: ${enabledIds.length} active manifests for ${durSec}s`);
         }
 
+        if (_benchmarkRequest !== request) return;
         if (QOL?.core?.Scheduler?.startBenchmark) {
             try {
-                QOL.core.Scheduler.startBenchmark(durSec, (report, stats) => {
+                const handle = QOL.core.Scheduler.startBenchmark(durSec, (report, stats) => {
+                    if (_benchmarkRequest !== request) return;
                     if (isStress) {
                         _restoreStressBenchmark(hudPanel, "complete");
                     }
+                    if (_benchmarkRequest !== request) return;
+                    _benchmarkRequest = null;
                     _lastBenchmarkReport = {
                         token: forceToken,
                         report,
@@ -455,11 +475,17 @@
                     };
                     _writeDiagSnapshot(hudPanel, forceToken);
                 }, isStress ? null : { capturePanelLookups: true, panelRoot: hudPanel });
+                if (_benchmarkRequest === request) request.handle = handle;
+                else handle?.stop?.();
             } catch (bmErr) {
-                if (isStress) _restoreStressBenchmark(hudPanel, "error");
+                if (_benchmarkRequest === request) {
+                    _benchmarkRequest = null;
+                    if (isStress) _restoreStressBenchmark(hudPanel, "error");
+                }
                 if (Logger) Logger.logWarn("Benchmark", `Benchmark start failed: ${bmErr.message || bmErr}`);
             }
         } else if (Logger) {
+            _benchmarkRequest = null;
             if (isStress) _restoreStressBenchmark(hudPanel, "unavailable");
             Logger.logWarn("Benchmark", "Benchmark requested but Scheduler.startBenchmark unavailable");
         }
@@ -549,19 +575,19 @@
             }
 
             if (changed) {
-                if (_benchmarkStressActive) {
+                if (_stressBenchmark) {
                     // While stress test is running, do not clobber maximal benchmark config.
                     // Buffer incoming user config updates so they are cleanly restored at completion.
                     const newest = (typeof QOL !== "undefined" && QOL.safeParseConfig) ? QOL.safeParseConfig(raw) : null;
-                    if (newest) _benchmarkSavedUserConfig = newest;
-                    _benchmarkSavedRevision = rev;
-                    _benchmarkSavedConfigRaw = raw;
+                    if (newest) _stressBenchmark.savedConfig = newest;
+                    _stressBenchmark.savedRevision = rev;
+                    _stressBenchmark.savedRaw = raw;
                 } else {
                     _applyConfigUpdate(raw, rev, hudPanel, best.sourcePanel);
                     _nextRootClassSyncMs = nowMs + 1000;
                 }
             } else if (nowMs >= _nextRootClassSyncMs) {
-                _syncRootClasses(hudPanel, _benchmarkStressActive ? _benchmarkStressConfig : undefined);
+                _syncRootClasses(hudPanel, _stressBenchmark ? _stressBenchmark.config : undefined);
                 _nextRootClassSyncMs = nowMs + 1000;
             }
 
@@ -570,8 +596,8 @@
             const preview = QOL.presentation?.preview;
             if (preview) {
                 const canonical = globalThis.State?.lastConfig || QOL.buildDefaultConfig();
-                const layer = preview.consume(hudPanel, canonical, _benchmarkStressActive);
-                if (layer.changed && !_benchmarkStressActive) {
+                const layer = preview.consume(hudPanel, canonical, !!_stressBenchmark);
+                if (layer.changed && !_stressBenchmark) {
                     try {
                         ConfigAdapter.loadFromFlat(layer.config, _enableKeyMap);
                         _syncFeatureEnabledState();
@@ -589,7 +615,7 @@
             // A leased editor gesture needs responsive delivery; ordinary HUD
             // synchronization retains its existing cadence after release/exit.
             if (_booted && generation === _configPollGeneration) {
-                _configPollTimer = $.Schedule(!_benchmarkStressActive && QOL.presentation?.preview?.interacting(hudPanel) ? 0.05 : 0.25, poll);
+                _configPollTimer = $.Schedule(!_stressBenchmark && QOL.presentation?.preview?.interacting(hudPanel) ? 0.05 : 0.25, poll);
             }
         };
         _configPollTimer = $.Schedule(0.25, poll);
@@ -756,7 +782,8 @@
         const hud = _hudPanel;
         _stopConfigPolling();
         _booted = false;
-        if (_benchmarkStressActive) {
+        _stopBenchmarkRequest();
+        if (_stressBenchmark) {
             _restoreStressBenchmark(hud, "shutdown");
         }
         if (QOL.presentation?.preview) {
