@@ -201,6 +201,25 @@ test("item mirror retries immediately on source replacement or a new cooldown", 
     assert.equal(f.slot.cooldownText.text, "20");
 });
 
+test("item mirror reconciles rebuilt duplicates by acquisition order across semantic and class fallbacks", () => {
+    const f = fixture();
+    const match = (iconSrc, targetIconSrc = "target-a") => ({ ...f.source, ownerIcon: f.owner(), iconContainer: {},
+        itemClassName: "magicBurst", iconSrc, targetIconSrc });
+    const original = [match("red", "target-b"), match("red"), match("red"), match("blue")];
+    const previous = f.api.reconcile(original);
+    const keys = Array.from(previous, source => source.key);
+    previous.reverse(); // Native discovery order must not choose acquisition identity.
+    const semantic = match("red"), lateImage = match("gray"), otherTarget = match("red", "target-b"), extra = match("gray");
+    const next = f.api.reconcile([original[2], semantic, lateImage, otherTarget, extra]);
+    const byOwner = new Map(Array.from(next, source => [source.ownerIcon, source]));
+    assert.equal(byOwner.get(original[2].ownerIcon).key, keys[2], "panel identity wins before semantic buckets");
+    assert.equal(byOwner.get(semantic.ownerIcon).key, keys[1], "semantic fallback claims the oldest unused duplicate");
+    assert.equal(byOwner.get(lateImage.ownerIcon).key, keys[3], "class fallback skips used entries and a different target icon");
+    assert.equal(byOwner.get(otherTarget.ownerIcon).key, keys[0], "a class-rejected candidate remains available to its semantic identity");
+    assert.ok(!keys.includes(byOwner.get(extra.ownerIcon).key), "an exhausted bucket cannot claim an identity twice");
+    assert.deepEqual(Array.from(next, source => source.acquisitionOrder), [0, 1, 2, 3, 4]);
+});
+
 test("item mirror inline style fallback matches whole properties and can be reused", () => {
     const f = fixture();
     const panel = { GetAttributeString: () => "background-clip: border-box; OPACITY: 0.5; clip: radial(50% 50%, 0deg, 90deg); visibility: visible;" };

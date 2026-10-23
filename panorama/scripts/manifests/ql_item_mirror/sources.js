@@ -937,23 +937,19 @@
                 }
             }
 
-            const semanticKeys = Object.keys(semanticBuckets);
-            for (let sk = 0; sk < semanticKeys.length; sk++) {
-                const semanticBucket = semanticBuckets[semanticKeys[sk]];
-                semanticBucket.sort(function(a, b) {
-                    const ao = (a && a.src && a.src.acquisitionOrder !== undefined && a.src.acquisitionOrder !== null) ? Number(a.src.acquisitionOrder) : 999999;
-                    const bo = (b && b.src && b.src.acquisitionOrder !== undefined && b.src.acquisitionOrder !== null) ? Number(b.src.acquisitionOrder) : 999999;
-                    return ao - bo;
-                });
+            for (const buckets of [semanticBuckets, classBuckets]) {
+                for (const bucket of Object.values(buckets)) {
+                    bucket.sort((a, b) => Number(a.src.acquisitionOrder ?? 999999) - Number(b.src.acquisitionOrder ?? 999999));
+                }
             }
-            const classKeys = Object.keys(classBuckets);
-            for (let ck = 0; ck < classKeys.length; ck++) {
-                const classBucket = classBuckets[classKeys[ck]];
-                classBucket.sort(function(a, b) {
-                    const ao = (a && a.src && a.src.acquisitionOrder !== undefined && a.src.acquisitionOrder !== null) ? Number(a.src.acquisitionOrder) : 999999;
-                    const bo = (b && b.src && b.src.acquisitionOrder !== undefined && b.src.acquisitionOrder !== null) ? Number(b.src.acquisitionOrder) : 999999;
-                    return ao - bo;
-                });
+            function takePrevious(bucket, accepts = () => true) {
+                while (bucket?.length) {
+                    const candidate = bucket.shift();
+                    if (!candidate || usedPrev[candidate.idx] || !accepts(candidate.src)) continue;
+                    usedPrev[candidate.idx] = true;
+                    return candidate.src;
+                }
+                return null;
             }
 
             for (let i = 0; i < scannedMatches.length; i++) {
@@ -978,34 +974,14 @@
                 // 2) Fallback: same semantic identity (class + icon srcs), for rebuilt/reordered trees.
                 if (!existing) {
                     const semKey = _getItemMirrorSemanticKey(match);
-                    const semBucket = semanticBuckets[semKey] || null;
-                    if (semBucket) {
-                        while (semBucket.length > 0) {
-                            const semCandidate = semBucket.shift();
-                            if (!semCandidate) continue;
-                            if (usedPrev[semCandidate.idx]) continue;
-                            existing = semCandidate.src;
-                            usedPrev[semCandidate.idx] = true;
-                            break;
-                        }
-                    }
+                    existing = takePrevious(semanticBuckets[semKey]);
                 }
 
                 // 3) Last fallback: same class when icon src is unstable/late-loaded.
                 if (!existing) {
                     const clsKey = _getItemMirrorClassKey(match);
                     const clsBucket = clsKey.length > 0 ? (classBuckets[clsKey] || null) : null;
-                    if (clsBucket) {
-                        while (clsBucket.length > 0) {
-                            const clsCandidate = clsBucket.shift();
-                            if (!clsCandidate) continue;
-                            if (usedPrev[clsCandidate.idx]) continue;
-                            if (clsCandidate.src.targetIconSrc !== match.targetIconSrc) continue;
-                            existing = clsCandidate.src;
-                            usedPrev[clsCandidate.idx] = true;
-                            break;
-                        }
-                    }
+                    existing = takePrevious(clsBucket, source => source.targetIconSrc === match.targetIconSrc);
                 }
 
                 const key = existing && existing.key ? existing.key : ("item_src_" + String(_mirror.nextSourceId++));
