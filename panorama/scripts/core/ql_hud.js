@@ -21,55 +21,8 @@
     }
 
     const _panelHelpers = Q.core.panel || Q.ui.PanelHelpers || {};
-    const _coreFindHud = (typeof _panelHelpers.findHud === "function") ? _panelHelpers.findHud : null;
+    const findHud = Q.core.panel.findHud;
     const isAlive = Q.core.panel.isAlive;
-
-    let _cachedHud = null;
-
-    /**
-     * Finds the primary Deadlock #Hud panel with caching (delegates to core panel helper).
-     */
-    const findHud = (preferredRoot) => {
-        if (_coreFindHud) {
-            return _coreFindHud(preferredRoot);
-        }
-        if (!preferredRoot && isAlive(_cachedHud)) return _cachedHud;
-        _cachedHud = null;
-
-        const MAX_DEPTH = 64;
-        try {
-            const ctx = preferredRoot || $.GetContextPanel();
-            if (!isAlive(ctx)) return null;
-            if (ctx.id === "Hud" || ctx.paneltype === "CitadelHud") {
-                if (!preferredRoot) _cachedHud = ctx;
-                return ctx;
-            }
-
-            let hud = ctx.FindChildTraverse ? ctx.FindChildTraverse("Hud") : null;
-            if (isAlive(hud)) {
-                if (!preferredRoot) _cachedHud = hud;
-                return hud;
-            }
-
-            let absRoot = ctx;
-            let depth = 0;
-            while (depth < MAX_DEPTH) {
-                const parent = absRoot.GetParent ? absRoot.GetParent() : null;
-                if (!parent || !isAlive(parent)) break;
-                absRoot = parent;
-                depth++;
-            }
-            hud = absRoot.FindChildTraverse ? absRoot.FindChildTraverse("Hud") : null;
-            if (isAlive(hud)) {
-                if (!preferredRoot) _cachedHud = hud;
-                return hud;
-            }
-            if (!preferredRoot) _cachedHud = absRoot;
-            return absRoot;
-        } catch (_) {
-            return null;
-        }
-    };
 
     /**
      * Whether the player is in hideout / sandbox / hero testing mode.

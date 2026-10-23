@@ -21,6 +21,26 @@ test("HUD resolution retries after a fallback root and changes with its context"
  assert.equal(Q.core.panel.findHud(),another);
 });
 
+test("HUD discovery exports preserve late sources, context replacement and explicit roots", () => {
+ const {doc,sandbox,Q}=setup();
+ const finders=[Q.core.hud.findHud,Q.core.Hud.findHud,Q.findHud,Q.ui.PanelHelpers.findHud];
+ const loading=doc.create("Panel",{id:"LoadingRoot"});
+ sandbox.global.$.GetContextPanel=()=>loading;
+ for(const find of finders)assert.equal(find(),loading);
+ const late=doc.create("CitadelHud",{id:"Hud"});loading.addChild(late);
+ for(const find of finders)assert.equal(find(),late,"a loading fallback cannot hide a later HUD");
+ const current=doc.create("CitadelHud",{id:"Hud"});
+ sandbox.global.$.GetContextPanel=()=>current;
+ const child=doc.create("Panel",{id:"OriginalHudChild"});late.addChild(child);
+ for(const find of finders){
+  assert.equal(find(),current,"a still-living old HUD cannot override the current context");
+  assert.equal(find(child),late,"an explicit anchor selects its own HUD");
+  assert.equal(find(),current,"explicit discovery does not overwrite current-context caching");
+ }
+ child.IsValid=()=>false;
+ for(const find of finders)assert.equal(find(child),null);
+});
+
 test("panel root helpers honor explicit context and safely reject deleted native traversal", () => {
  const {doc,Q,U}=setup();
  const outer=doc.create("Panel",{id:"OtherRoot"}); const child=doc.create("Panel",{id:"Child"}); outer.addChild(child);
