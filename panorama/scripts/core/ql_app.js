@@ -375,6 +375,96 @@
         }
     };
 
+    const _startRequestedBenchmark = (hudPanel, forceToken) => {
+        const parts = forceToken.split("_");
+        const durSec = parseFloat(parts[1]) || 10;
+        const isStress = parts[2] === "stress";
+
+        if (isStress) {
+            try {
+                const globalState = (typeof State !== "undefined" && State) ? State :
+                                  ((typeof globalThis !== "undefined" && globalThis.State) ? globalThis.State : null);
+                if (!_benchmarkStressActive) {
+                    let savedFlatConfig = null;
+                    if (ConfigAdapter && typeof ConfigAdapter.exportToFlat === "function") {
+                        savedFlatConfig = ConfigAdapter.exportToFlat();
+                    } else if (globalState?.lastConfig && Object.keys(globalState.lastConfig).length > 0) {
+                        savedFlatConfig = Object.assign({}, globalState.lastConfig);
+                    } else if (typeof QOL !== "undefined" && typeof QOL.buildDefaultConfig === "function") {
+                        savedFlatConfig = QOL.buildDefaultConfig();
+                    }
+
+                    _benchmarkStressActive = true;
+                    _benchmarkSavedUserConfig = savedFlatConfig;
+                    _benchmarkSavedRevision = _lastRevision;
+                    _benchmarkSavedConfigRaw = _lastConfigRaw;
+                }
+
+                const maxConfig = _buildMaximalConfig();
+                _benchmarkStressConfig = maxConfig;
+
+                if (globalState) {
+                    globalState.lastConfig = maxConfig;
+                }
+                if (ConfigAdapter && typeof ConfigAdapter.loadFromFlat === "function") {
+                    ConfigAdapter.loadFromFlat(maxConfig, _enableKeyMap);
+                }
+                _syncFeatureEnabledState();
+                _syncRootClasses(hudPanel, maxConfig);
+
+                if (_benchmarkRestoreTimer) {
+                    try { $.CancelScheduled(_benchmarkRestoreTimer); } catch (_) {}
+                    _benchmarkRestoreTimer = null;
+                }
+                _benchmarkRestoreTimer = $.Schedule(durSec + 3.0, () => {
+                    _restoreStressBenchmark(hudPanel, "safety-timeout");
+                });
+
+                const enabledIds = (FeatureRegistry && typeof FeatureRegistry.getEnabledIds === "function")
+                    ? FeatureRegistry.getEnabledIds() : [];
+                const totalIds = (FeatureRegistry && typeof FeatureRegistry.getRegisteredIds === "function")
+                    ? FeatureRegistry.getRegisteredIds() : [];
+                if (Logger) {
+                    Logger.logInfo("Benchmark", `Stress setup started: ${enabledIds.length}/${totalIds.length} manifests active, root HUD classes applied for ${durSec}s`);
+                }
+                $.Msg(`[QOLLock][Benchmark] Stress setup active: ${enabledIds.length} feature manifests running, root HUD classes active for ${durSec}s`);
+            } catch (e) {
+                _benchmarkStressActive = false;
+                if (Logger) Logger.logWarn("Benchmark", `Benchmark stress setup failed: ${e?.message || e}`);
+            }
+        } else {
+            const enabledIds = (FeatureRegistry && typeof FeatureRegistry.getEnabledIds === "function")
+                ? FeatureRegistry.getEnabledIds() : [];
+            if (Logger) {
+                Logger.logInfo("Benchmark", `Normal benchmark started: ${enabledIds.length} manifests active (current config) for ${durSec}s`);
+            }
+            $.Msg(`[QOLLock][Benchmark] Normal benchmark started: ${enabledIds.length} active manifests for ${durSec}s`);
+        }
+
+        if (QOL?.core?.Scheduler?.startBenchmark) {
+            try {
+                QOL.core.Scheduler.startBenchmark(durSec, (report, stats) => {
+                    if (isStress) {
+                        _restoreStressBenchmark(hudPanel, "complete");
+                    }
+                    _lastBenchmarkReport = {
+                        token: forceToken,
+                        report,
+                        stats,
+                        timestamp: _nowMs()
+                    };
+                    _writeDiagSnapshot(hudPanel, forceToken);
+                }, isStress ? null : { capturePanelLookups: true, panelRoot: hudPanel });
+            } catch (bmErr) {
+                if (isStress) _restoreStressBenchmark(hudPanel, "error");
+                if (Logger) Logger.logWarn("Benchmark", `Benchmark start failed: ${bmErr.message || bmErr}`);
+            }
+        } else if (Logger) {
+            if (isStress) _restoreStressBenchmark(hudPanel, "unavailable");
+            Logger.logWarn("Benchmark", "Benchmark requested but Scheduler.startBenchmark unavailable");
+        }
+    };
+
     const _syncDiagnosticState = (hudPanel, nowMs) => {
         if (!hudPanel) return;
         let forceSync = false;
@@ -409,95 +499,7 @@
                     }
                 }
 
-                if (forceToken.startsWith("bm_")) {
-                    const parts = forceToken.split("_");
-                    const durSec = parseFloat(parts[1]) || 10;
-                    const isStress = parts[2] === "stress";
-
-                    if (isStress) {
-                        try {
-                            const globalState = (typeof State !== "undefined" && State) ? State :
-                                              ((typeof globalThis !== "undefined" && globalThis.State) ? globalThis.State : null);
-                            if (!_benchmarkStressActive) {
-                                let savedFlatConfig = null;
-                                if (ConfigAdapter && typeof ConfigAdapter.exportToFlat === "function") {
-                                    savedFlatConfig = ConfigAdapter.exportToFlat();
-                                } else if (globalState?.lastConfig && Object.keys(globalState.lastConfig).length > 0) {
-                                    savedFlatConfig = Object.assign({}, globalState.lastConfig);
-                                } else if (typeof QOL !== "undefined" && typeof QOL.buildDefaultConfig === "function") {
-                                    savedFlatConfig = QOL.buildDefaultConfig();
-                                }
-
-                                _benchmarkStressActive = true;
-                                _benchmarkSavedUserConfig = savedFlatConfig;
-                                _benchmarkSavedRevision = _lastRevision;
-                                _benchmarkSavedConfigRaw = _lastConfigRaw;
-                            }
-
-                            const maxConfig = _buildMaximalConfig();
-                            _benchmarkStressConfig = maxConfig;
-
-                            if (globalState) {
-                                globalState.lastConfig = maxConfig;
-                            }
-                            if (ConfigAdapter && typeof ConfigAdapter.loadFromFlat === "function") {
-                                ConfigAdapter.loadFromFlat(maxConfig, _enableKeyMap);
-                            }
-                            _syncFeatureEnabledState();
-                            _syncRootClasses(hudPanel, maxConfig);
-
-                            if (_benchmarkRestoreTimer) {
-                                try { $.CancelScheduled(_benchmarkRestoreTimer); } catch (_) {}
-                                _benchmarkRestoreTimer = null;
-                            }
-                            _benchmarkRestoreTimer = $.Schedule(durSec + 3.0, () => {
-                                _restoreStressBenchmark(hudPanel, "safety-timeout");
-                            });
-
-                            const enabledIds = (FeatureRegistry && typeof FeatureRegistry.getEnabledIds === "function")
-                                ? FeatureRegistry.getEnabledIds() : [];
-                            const totalIds = (FeatureRegistry && typeof FeatureRegistry.getRegisteredIds === "function")
-                                ? FeatureRegistry.getRegisteredIds() : [];
-                            if (Logger) {
-                                Logger.logInfo("Benchmark", `Stress setup started: ${enabledIds.length}/${totalIds.length} manifests active, root HUD classes applied for ${durSec}s`);
-                            }
-                            $.Msg(`[QOLLock][Benchmark] Stress setup active: ${enabledIds.length} feature manifests running, root HUD classes active for ${durSec}s`);
-                        } catch (e) {
-                            _benchmarkStressActive = false;
-                            if (Logger) Logger.logWarn("Benchmark", `Benchmark stress setup failed: ${e?.message || e}`);
-                        }
-                    } else {
-                        const enabledIds = (FeatureRegistry && typeof FeatureRegistry.getEnabledIds === "function")
-                            ? FeatureRegistry.getEnabledIds() : [];
-                        if (Logger) {
-                            Logger.logInfo("Benchmark", `Normal benchmark started: ${enabledIds.length} manifests active (current config) for ${durSec}s`);
-                        }
-                        $.Msg(`[QOLLock][Benchmark] Normal benchmark started: ${enabledIds.length} active manifests for ${durSec}s`);
-                    }
-
-                    if (QOL?.core?.Scheduler?.startBenchmark) {
-                        try {
-                            QOL.core.Scheduler.startBenchmark(durSec, (report, stats) => {
-                                if (isStress) {
-                                    _restoreStressBenchmark(hudPanel, "complete");
-                                }
-                                _lastBenchmarkReport = {
-                                    token: forceToken,
-                                    report,
-                                    stats,
-                                    timestamp: _nowMs()
-                                };
-                                _writeDiagSnapshot(hudPanel, forceToken);
-                            }, isStress ? null : { capturePanelLookups: true, panelRoot: hudPanel });
-                        } catch (bmErr) {
-                            if (isStress) _restoreStressBenchmark(hudPanel, "error");
-                            if (Logger) Logger.logWarn("Benchmark", `Benchmark start failed: ${bmErr.message || bmErr}`);
-                        }
-                    } else if (Logger) {
-                        if (isStress) _restoreStressBenchmark(hudPanel, "unavailable");
-                        Logger.logWarn("Benchmark", "Benchmark requested but Scheduler.startBenchmark unavailable");
-                    }
-                }
+                if (forceToken.startsWith("bm_")) _startRequestedBenchmark(hudPanel, forceToken);
 
                 if (forceToken.startsWith("dt_")) {
                     if (QOL && typeof QOL.dumpTreeSummary === "function") {
