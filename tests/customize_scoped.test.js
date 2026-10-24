@@ -39,11 +39,34 @@ test("Properties omit content modes and duplicate digit controls while retaining
 
 for (const minimal of [0, 1]) test(`base minimap omits inactive background opacity (minimal mode ${minimal})`, () => {
     const env = setup(), Q = env.global.QOL;
+    const add = (parent, id, classes = []) => parent.addChild(env.doc.create("Panel", { id, classes }));
+    const core = add(env.hud.root, "", ["HudCore"]);
+    const gameplay = add(core, "gameplay_hud"), clamp = add(gameplay, "", ["clamp_width"]);
+    const host = add(clamp, "minimap_persp"), viewport = add(host, "minimap_container");
+    const renderer = add(add(viewport, "HudMinimapContainer"), "hud_minimap", ["dl_midtown"]);
+    const background = add(renderer, "MinimapBackgroundTest");
+    const image = add(background, "", ["backgroundImage1"]), canvas = add(background, "canvas");
     env.global.MOD_CONFIG.MINIMAL_MINIMAP = minimal; env.global.SaveAndSync(); env.clock.advance(600);
     Q.ui.customize.start(null, { elementId: "minimap" });
     assert.ok(env.em.FindChildTraverse("QOLCustomize_MINIMAP_BASE_OPACITY"));
-    assert.equal(!!env.em.FindChildTraverse("QOLCustomize_MINIMAL_MINIMAP_OPACITY"), !!minimal);
-    activate(env, "QOLCustomizeCancel"); clean(env);
+    const opacity = env.em.FindChildTraverse("QOLCustomize_MINIMAL_MINIMAP_OPACITY");
+    const row = opacity.GetParent().GetParent();
+    assert.equal(row.visible, !!minimal);
+    activate(env, "QOLCustomize_MINIMAL_MINIMAP");
+    assert.equal(row.visible, !minimal, "mode and dependent opacity react in the same inspector");
+    activate(env, "QOLCustomizeUndo");
+    assert.equal(row.visible, !!minimal);
+    assert.equal(env.em.FindChildTraverse("QOLCustomizeAlign_top"), null);
+    assert.equal(env.em.FindChildTraverse("QOLCustomizeAlign_bottom"), null);
+    assert.equal(env.em.FindChildTraverse("QOLCustomizeAlign_middle"), null);
+    if (!minimal) activate(env, "QOLCustomize_MINIMAL_MINIMAP");
+    opacity.text = "35"; opacity._fire("oninputsubmit"); env.clock.advance(700);
+    assert.equal(image.style.opacity, "0.35", "the draft crosses settings/HUD contexts to the actual background owner");
+    assert.equal(canvas.style.opacity, undefined);
+    assert.equal(env.global.MOD_CONFIG.MINIMAL_MINIMAP, minimal, "preview preserves canonical settings");
+    activate(env, "QOLCustomizeCancel"); env.clock.advance(700);
+    assert.equal(image.style.opacity, minimal ? String(env.global.MOD_CONFIG.MINIMAL_MINIMAP_OPACITY) : undefined);
+    clean(env);
 });
 
 test("Souls row launches one editable surface; Apply preserves other panels and Cancel restores placement", () => {
@@ -293,7 +316,8 @@ test("scoped entry localizes and opens directly to the position controls", () =>
         assert.equal(entry.GetChild(0).text, caption);
         activate(env, "QOLCustomizeEntry_souls");
         const tools = env.em.FindChildTraverse("QOLCustomizeTools");
-        assert.ok(tools.FindChildTraverse("QOLCustomizePositionTitle"));
+        assert.ok(tools.FindChildTraverse("QOLCustomize_SOULS_X_OFFSET"));
+        assert.equal(tools.FindChildTraverse("QOLCustomizePositionTitle"), null);
         const labels = tools.FindChildrenWithClassTraverse("ModalInstructions");
         assert.equal(labels.some(label => /Drag to move|Drag any corner to resize/.test(label.text)), false);
         activate(env, "QOLCustomizeCancel");

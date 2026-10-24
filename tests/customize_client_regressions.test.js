@@ -174,8 +174,8 @@ for (const mode of ["base", "alt", "tab"]) test(`${mode} minimap drag keeps nati
     startDrag.end(env, frame, proxy);
     container.actualxoffset = 500; container.actualyoffset = 360;
     env.clock.advance(500);
-    activate(env, "QOLCustomizeAlign_top"); env.clock.advance(500);
-    assert.equal(store.get("ql_minimap_runtime", yKey), zoomed ? 600 : 300);
+    activate(env, "QOLCustomizeRecover"); env.clock.advance(500);
+    assert.equal(store.get("ql_minimap_runtime", yKey), zoomed ? -120 : -60, "recovery preserves an on-screen viewport");
     assert.equal(store.get("ql_minimap_runtime", xKey), zoomed ? 200 : 100);
     parent.actualuiscale_x = 2; parent.actualuiscale_y = 2;
     const scaled = G.dragValues(element, host, { [xKey]: 0, [yKey]: 0 }, { x: 100, y: 60 });

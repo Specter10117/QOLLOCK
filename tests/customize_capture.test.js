@@ -399,7 +399,7 @@ for (const resize of [false, true]) test(`${id}: ${resize ? "resize" : "move"} r
 test("same-selection capture keeps inspector identity and cancels queued alignment", () => {
     const env = setup(); env.click("QOLCustomizeSelect_souls");
     type(env, "SOULS_Y_OFFSET", "300"); env.clock.advance(600);
-    env.click("QOLCustomizeAlign_top"); env.clock.advance(50);
+    env.click("QOLCustomizeRecover"); env.clock.advance(50);
     const input = env.find("QOLCustomize_SOULS_Y_OFFSET");
     assert.equal(input.text, "300", "alignment is waiting for the accepted offset's native layout");
     const gesture = capture(env, 280, 130);

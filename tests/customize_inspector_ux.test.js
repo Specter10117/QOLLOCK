@@ -100,10 +100,11 @@ test("Reset sync and disposed inspectors cannot reapply a queued value", () => {
 
 test("exact position is immediate; presets disclose on demand and numeric wheel edits honor wire precision", () => {
     const env = setup("items");
+    assert.equal(env.host.FindChildrenWithClassTraverse("QOLCustomizeAvailability")[0].visible, false, "empty availability text must not reserve a row");
     const position = env.find("QOLCustomizePositionBody");
     assert.equal(position.visible, true);
     assert.equal(env.find("QOLCustomizePositionToggle"), null);
-    assert.equal(env.find("QOLCustomizePositionTitle").hittest, false);
+    assert.equal(env.find("QOLCustomizePositionTitle"), null);
     assert.equal(env.find("QOLCustomize_ITEMS_X_OFFSET").GetParent().GetParent().GetParent(), position);
     assert.equal(env.find("QOLCustomize_ITEMS_Y_OFFSET").GetParent().GetParent().GetParent(), position);
     assert.equal(env.find("QOLCustomizeLock"), null);
@@ -163,11 +164,11 @@ test("ammo subcomponent toggles cannot claim whole-panel visibility", () => {
 });
 
 test("inspector keeps localized labels in Russian and incomplete-language fallback", () => {
-    for (const [language, position, palette] of [[1, "Точное положение", "Палитра цветов"],
-        [13, "Exact position", "Color palette"]]) {
+    for (const [language, horizontal, palette] of [[1, "По горизонтали", "Палитра цветов"],
+        [13, "Horizontal", "Color palette"]]) {
         const env = setup("items", language);
         assert.ok(env.find("QOLCustomize_HUD_ITEMS_ENABLED").BHasClass("SettingToggleBtn"));
-        assert.equal(env.find("QOLCustomizePositionTitle").text, position);
+        assert.equal(env.find("QOLCustomize_ITEMS_X_OFFSET").GetParent().GetParent().GetChild(0).text, horizontal);
         assert.equal(env.find("QOLCustomizePositionBody").visible, true);
         assert.equal(env.find("QOLCustomizePaletteToggle_ITEMS_WASH_COLOR").GetChild(0).text, palette);
         clean(env);

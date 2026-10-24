@@ -71,7 +71,8 @@
         label(header, element.name, "ModalTitle").AddClass("QOLCustomizeTitle");
         const availability = label(parent, "");
         availability.AddClass("QOLCustomizeAvailability");
-        const visibleFields = element.fields.filter(field => !field.hidden && (!field.when || field.when(session)));
+        availability.visible = false;
+        const visibleFields = element.fields.filter(field => !field.hidden);
         const primaryToggle = visibleFields.find(field => field.visibility);
         const toggle = (host, field, title = null) => {
             const control = P.create("Button", host, "QOLCustomize_" + field.key);
@@ -121,22 +122,18 @@
         if (positions.length) {
             const posHost = P.create("Panel", main, "QOLCustomizePosition");
             posHost.AddClass("QOLCustomizePositionSection");
-            label(posHost, "Exact position", "ModalInstructions", "QOLCustomizePositionTitle")
-                .AddClass("QOLCustomizeSectionHeading");
             const posBody = P.create("Panel", posHost, "QOLCustomizePositionBody");
             posBody.AddClass("QOLCustomizeSectionBody");
             posBody.visible = true;
             positionBody = posBody;
         }
 
-        const orderedFields = visibleFields.filter(field => field.resize || Q.settings.get(field.key).role === "opacity")
-            .concat(visibleFields.filter(field => !(field.resize || Q.settings.get(field.key).role === "opacity")));
-
-        for (const field of orderedFields) {
+        for (const field of visibleFields) {
             if (field === primaryToggle) continue;
             const host = field.axis ? positionBody : main;
             const row = P.create("Panel", host, "");
             row.AddClass("QOLCustomizeField");
+            if (field.when) syncs.push(() => { row.visible = !!field.when(session); });
             label(row, field.axis ? (field.axis === "x" ? "Horizontal" : "Vertical") : field.label);
             if (field.type === "enum") {
                 row.AddClass("QOLCustomizeFieldColor");

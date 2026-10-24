@@ -52,7 +52,9 @@ test("catalog covers current visual manifest controls, with explicit compatibili
             assert.notEqual(catalog.normalize(field.key, env.global.QOL_DEFAULT_CONFIG[field.key]), null);
             if (field.hidden) continue;
             if (field.when && !field.when({ value: key => env.global.MOD_CONFIG[key] })) {
-                assert.equal(env.em.FindChildTraverse("QOLCustomize_" + field.key), null, `inactive inspector for ${field.key}`);
+                const control = env.em.FindChildTraverse("QOLCustomize_" + field.key);
+                assert.ok(control, `reactive inspector for ${field.key}`);
+                assert.equal(control.GetParent().GetParent().visible, false, `inactive inspector for ${field.key}`);
                 continue;
             }
             const suffix = field.type === "enum" ? "_" + field.options[0][0] : "";

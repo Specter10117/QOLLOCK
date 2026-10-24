@@ -25,8 +25,11 @@ rejected retirement remains retryable after disable. Created tunnel and crate
 trees retain their separate created-child lifecycle. The renderer's minimalist
 class has one native owner rather than parallel discovery and render writers.
 
-Content discovery also observes replacements of `canvas` and `map_render`
-inside an unchanged viewport. Previous living native targets release their
+Content discovery also observes replacements of `canvas`, legacy `map_render`
+and the background images inside `MinimapBackgroundTest` in an unchanged
+viewport. Minimalist opacity fades those images individually, preserving the
+native surface/underground/tunnel opacity gates and the sibling canvas/effects.
+Previous living native targets release their
 owned tint/opacity/range overrides; tunnel and crate panels belong to the
 current anchor generation. Missing native sources are retried without treating
 a live cached handle as evidence that the current map still contains it.

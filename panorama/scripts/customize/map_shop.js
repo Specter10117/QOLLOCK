@@ -28,7 +28,7 @@
         minimap("minimap", "Base Minimap", [
             ...geometry("MINIMAP_"), f("MINIMAP_SMALL_SIZE", "Size", null, { resize: true }),
             f("MINIMAP_BASE_OPACITY", "Opacity"),
-            f("MINIMAL_MINIMAP", "Minimalist", "toggle", { hidden: true }),
+            t("MINIMAL_MINIMAP", "Minimalist"),
             f("MINIMAL_MINIMAP_OPACITY", "Minimalist Opacity", null, { when: session => Number(session.value("MINIMAL_MINIMAP")) === 1 }),
             t("MINIMAP_FIXED_ICON_SIZE", "Fixed Icon Size"), f("MINIMAP_ICON_COLOR", "Icons", "palette")
         ]),

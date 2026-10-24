@@ -73,6 +73,46 @@ test("minimap decoration rebinds canvas and map_render without a viewport change
     e.clean();
 });
 
+test("minimalist opacity follows native background images without fading their canvas sibling", () => {
+    const e = fixture();
+    e.render.DeleteAsync(0); e.clock.advance(1);
+    const background = e.add(e.renderer, "MinimapBackgroundTest");
+    e.canvas.SetParent(background);
+    const images = [1, 2, 3].map(index => {
+        const image = e.add(background, "", "Image");
+        image.AddClass("backgroundImage" + index);
+        return image;
+    });
+    e.configure({ MINIMAL_MINIMAP: 1, MINIMAL_MINIMAP_OPACITY: 0.25 });
+    for (const image of images) assert.equal(image.style.opacity, "0.25");
+    assert.equal(background.style.opacity, undefined);
+    assert.equal(e.canvas.style.opacity, undefined);
+    e.renderer.AddClass("dl_midtown"); e.clock.advance(700);
+    assert.deepEqual(images.map(image => image.style.opacity), ["0.25", "0", "0"]);
+    e.renderer.AddClass("is_underground"); e.clock.advance(700);
+    assert.deepEqual(images.map(image => image.style.opacity), ["0", "0.25", "0"]);
+    e.renderer.RemoveClass("is_underground"); e.renderer.AddClass("in_tunnels"); e.clock.advance(700);
+    assert.deepEqual(images.map(image => image.style.opacity), ["0", "0", "0.25"]);
+    e.renderer.RemoveClass("in_tunnels");
+    images[0].SetParent(e.orphan);
+    const replacement = e.add(background, "", "Image"); replacement.AddClass("backgroundImage1");
+    e.clock.advance(700);
+    assert.equal(images[0].style.opacity, undefined);
+    assert.equal(replacement.style.opacity, "0.25");
+    e.configure({ MINIMAL_MINIMAP_OPACITY: 0 });
+    assert.equal(replacement.style.opacity, "0");
+    e.configure({ ENABLE_TAB_ZOOM: 1 }); e.host.AddClass("gScoreboardOpen"); e.clock.advance(700);
+    assert.equal(replacement.style.opacity, undefined);
+    e.host.RemoveClass("gScoreboardOpen"); e.clock.advance(700);
+    assert.equal(replacement.style.opacity, "0");
+    e.configure({ MINIMAL_MINIMAP: 0 });
+    assert.equal(replacement.style.opacity, undefined);
+    e.configure({ MINIMAL_MINIMAP: 1, MINIMAL_MINIMAP_OPACITY: 0.6 });
+    assert.equal(replacement.style.opacity, "0.6");
+    e.clean();
+    assert.equal(replacement.style.opacity, undefined);
+});
+
 test("minimap partial native writes retry without another settings change", () => {
     const e = fixture();
     const mapFailures = onceFailStyle(e.render, "opacity");

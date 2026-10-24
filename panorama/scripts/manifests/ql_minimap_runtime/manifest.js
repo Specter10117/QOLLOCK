@@ -61,6 +61,7 @@
             let currentRate = 0;
             let active = false, model = null, rootOwner = null;
             let anchor = null, renderer = null, canvas = null, mapRender = null;
+            let backgroundImages = [];
             let tunnel = null, crates = null, markers = null;
             let crateData = null;
             let crateCoordinates = [];
@@ -142,6 +143,13 @@
                 if (mapRender !== nextRender) releasePanel(mapRender);
                 canvas = nextCanvas;
                 mapRender = nextRender;
+                // Native backgrounds share their container with canvas/effects;
+                // fade only the images, preserving icon and effect opacity.
+                const backgrounds = P.findChild(renderer, "MinimapBackgroundTest");
+                const nextImages = P.isAlive(backgrounds) ? backgrounds.Children().filter(panel =>
+                    P.isAlive(panel) && (panel.BHasClass("backgroundImage1") || panel.BHasClass("backgroundImage2") || panel.BHasClass("backgroundImage3"))) : [];
+                for (const panel of backgroundImages) if (!nextImages.includes(panel)) releasePanel(panel);
+                backgroundImages = nextImages;
                 return found.host;
             }
 
@@ -227,6 +235,15 @@
                 const minimalist = !view.zoomed && model.minimalist;
                 nativeStyles.apply(renderer, minimalist ? { backgroundColor: "rgba(0, 0, 0, 0)" } : {}, { minimalist_minimap_active: minimalist });
                 nativeStyles.apply(mapRender, minimalist ? { opacity: String(model.minimalOpacity), brightness: "1.0", washColor: "none" } : {});
+                // hud_minimap.css selects the surface/underground/tunnel layer
+                // with opacity. Preserve those native gates while fading it.
+                const midtown = hasClass(renderer, "dl_midtown");
+                const underground = hasClass(renderer, "is_underground"), tunnels = hasClass(renderer, "in_tunnels");
+                for (const image of backgroundImages) {
+                    const hidden = midtown && (image.BHasClass("backgroundImage1") ? underground || tunnels :
+                        image.BHasClass("backgroundImage2") ? !underground : !tunnels);
+                    nativeStyles.apply(image, minimalist ? { opacity: hidden ? "0" : String(model.minimalOpacity) } : {});
+                }
                 nativeStyles.apply(canvas, model.iconColor ? { washColor: model.iconColor } : {});
                 renderRange(view.size);
                 renderTunnel(view);
@@ -272,6 +289,7 @@
                 releaseOverlays();
                 rangePanels = [];
                 anchor = renderer = canvas = mapRender = null;
+                backgroundImages = [];
                 canvasResolver.reset(); renderResolver.reset();
             }
 

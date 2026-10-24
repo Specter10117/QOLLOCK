@@ -589,6 +589,7 @@
             if (owner.selected === element && owner.inspector) {
                 const text = unavailable ? localize("Unavailable now") : "";
                 if (owner.inspector.availability.text !== text) owner.inspector.availability.text = text;
+                if (owner.inspector.availability.visible !== unavailable) owner.inspector.availability.visible = unavailable;
             }
             const canResize = !!box && owner.selected === element && !owner.applied && !owner.transaction.isLocked(element.id);
             if (item.cornerHost && item.cornerHost.visible !== canResize) item.cornerHost.visible = canResize;
@@ -854,9 +855,6 @@
             const alignment = P.create("Panel", tools, "QOLCustomizeAlignment");
             alignment.AddClass("QOLCustomizeAlignment");
             owner.alignButtons = [];
-            for (const [action, text] of [["top", "Align top"], ["bottom", "Align bottom"], ["middle", "Center vertically"]]) {
-                owner.alignButtons.push(I.button(alignment, "QOLCustomizeAlign_" + action, text, () => align(owner, action)));
-            }
             owner.alignButtons.push(I.button(alignment, "QOLCustomizeRecover", "Return to screen", () => align(owner, "recover")));
             const history = P.create("Panel", tools, "QOLCustomizeHistory");
             history.AddClass("QOLCustomizeHistory");

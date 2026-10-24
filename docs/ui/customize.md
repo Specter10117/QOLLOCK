@@ -61,7 +61,8 @@ The shop surface uses `Shop/MainPanel`, while recent purchases use the sibling
 `Shop/NavPanel/RecentPurchasesPanel` from the native shop layout. Content modes,
 filters and notification lifetime/count remain in ordinary settings; Properties
 exposes appearance and actual visibility. Base minimap exposes its overall
-opacity; the separate minimalist background opacity appears only in that mode.
+opacity and the Minimalist switch; its background opacity appears only while
+that draft mode is enabled, including after history changes.
 
 The settings-only modules in `ui/customize/` separate the session, measured geometry,
 inspector, window chrome, overlay and tab. Native HUD owners remain under their original parents.
@@ -191,23 +192,26 @@ for the selected element's visible fields from source. Reset also clears pending
 when the accepted draft already equals defaults, without creating an Undo entry.
 Hidden feature modes and
 content filters remain unchanged; ordinary settings sections retain their full
-reset metadata. Healthbar type, Minecraft health numbers and Minimap's Minimalist
-toggle stay in ordinary settings. Undo reverses one accepted edit or gesture;
+reset metadata. Healthbar type and Minecraft health numbers stay in ordinary
+settings. Minimap's Minimalist switch is also available beside its dependent
+background opacity in Properties. Undo reverses one accepted edit or gesture;
 Redo restores the edit reversed by Undo until a new edit replaces that branch.
 History actions accept valid pending entries first. Element selection, canvas
 gestures, alignment and history preserve valid pending edits and restore
 incomplete entries to their accepted draft values; malformed input cannot trap
 navigation. Save still rejects incomplete input until it is corrected.
 Toggle, enum and palette actions accept pending entries in other fields together
-with their own change. The alignment row places Bottom between Top and Center
-vertically. Quiet history controls, an outlined Reset and a separate Save/Cancel
-footer remain outside the scrolling field body.
+with their own change. Return to screen recovers offscreen content; explicit
+alignment buttons are absent. Quiet history controls, an enlarged outlined Reset
+and a separate Save/Cancel footer remain outside the scrolling field body.
 Button captions do not intercept input intended for their button.
 The inspector previews valid numeric and HEX input after a short typing pause;
 Enter and blur also accept it. Incomplete input stays in its field and does not
 overwrite the preview. Accepted typing preserves the caret until blur; history,
 reset, selection changes and closing cancel pending callbacks. Opacity and overall scales display percentages from explicit property metadata,
-while retaining their original stored units. Labels do not determine semantics. Exact position remains visible without a disclosure; color presets can
+while retaining their original stored units. Labels do not determine semantics.
+Horizontal and vertical fields appear directly without a position heading or
+disclosure; color presets can
 be expanded separately. Player Stats placement uses the same coordinates and
 canvas gestures as other surfaces; its legacy Side setting is absent from both
 the editor and ordinary gameplay controls. Visibility controls distinguish hiding a panel from
@@ -359,11 +363,11 @@ uses its native owner's horizontal axis for center snapping, so asymmetric
 card counts or conditional indicators do not shift its central clock. Its edge
 snapping and outline still use measured content bounds. Guides mark
 the normalized proposed alignment; native content may briefly trail delivery.
-Current/Max Ammo do not magnetize against their own group or each other. Explicit alignment actions use
-the measured viewport and the same offset conversion as dragging. Actions after
-typed edits wait for their preview and the measured offset/size change before
+Current/Max Ammo do not magnetize against their own group or each other. Return
+to screen uses the measured viewport and the same offset conversion as dragging.
+Recovery after typed edits waits for their preview and the measured offset/size change before
 calculating a delta; an unavailable layout times out without applying a stale
-alignment. These observation checks do not gate pointer capture after accepted typing.
+correction. These observation checks do not gate pointer capture after accepted typing.
 Observed geometry history permits Undo/Redo to restore centered scale anchors;
 native owner/context changes invalidate these observations. History, Reset and selection changes cancel a queued action. Snapping is
 session-only and independent of persistent offsets.
