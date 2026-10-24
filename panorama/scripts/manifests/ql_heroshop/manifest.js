@@ -77,17 +77,17 @@
                 }
                 main = mainResolver.resolve(shop, force);
                 owners.retain([shop, main].filter(P.isAlive));
+                return root;
             }
 
-            function render() {
+            function render(root) {
                 if (P.isAlive(shop)) owners.apply(shop, {}, Object.fromEntries(Object.entries(model.classes).filter(([, active]) => active)));
-                if (P.isAlive(main)) owners.apply(main, QOL.presentation.visibilityStyles("shop", QOL.presentation.visibilityConfig(ctx), P.findHud(shop), model.styles), { "qol-hidden": model.hidden });
+                if (P.isAlive(main)) owners.apply(main, QOL.presentation.visibilityStyles("shop", QOL.presentation.visibilityConfig(ctx), root, model.styles), { "qol-hidden": model.hidden });
             }
 
             function update(force = false) {
                 if (!enabled || !model) return;
-                discover(force);
-                render();
+                render(discover(force));
             }
 
             function refreshSettings() {

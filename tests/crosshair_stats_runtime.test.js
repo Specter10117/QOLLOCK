@@ -235,6 +235,46 @@ test("crosshair missing-row discovery waits while cached values keep updating", 
     assert.strictEqual(value(hud.root, "damageAmp").text, "+7");
 });
 
+test("crosshair resolves direct modifier cores without enumerating their descendants and retains nested values", () => {
+    const hud = createCrosshairHud();
+    const { $, QOL: Q } = hud.sandbox.global;
+    const source = $.CreatePanel("Panel", hud.root, "hudActivePlayerStats");
+    const owners = nativeOwners($, source);
+    const fire = addModifier($, owners.weapon, "fireRateContainer", {
+        number: "+10", postfix: "%", nestedValue: true, classes: ["shouldShow", "isPositive"]
+    });
+    const traverse = fire.FindChildrenWithClassTraverse.bind(fire);
+    let coreScans = 0;
+    fire.FindChildrenWithClassTraverse = name => {
+        if (name === "miniModifierCore") coreScans++;
+        return traverse(name);
+    };
+    enableActiveStats(Q); hud.clock.advance(2200);
+    assert.strictEqual(value(hud.root, "fireRate").text, "+10%");
+    assert.strictEqual(coreScans, 0);
+    assert.deepStrictEqual(hud.clock.errors, []);
+});
+
+test("crosshair skips a detached first class candidate and retains the next current modifier core", () => {
+    const hud = createCrosshairHud();
+    const { $, QOL: Q } = hud.sandbox.global;
+    const source = $.CreatePanel("Panel", hud.root, "hudActivePlayerStats");
+    const fire = addModifier($, nativeOwners($, source).weapon, "fireRateContainer", {
+        number: "+10", postfix: "%", classes: ["shouldShow", "isPositive"]
+    });
+    const retired = $.CreatePanel("Panel", null, "RetiredModifiers");
+    const detached = addModifierCore($, retired, { number: "+99", postfix: "%" });
+    const findFirst = Q.utils.FindFirstPanelByClass;
+    Q.utils.FindFirstPanelByClass = (panel, name) => panel === fire && name === "miniModifierCore"
+        ? detached : findFirst(panel, name);
+    const traverse = fire.FindChildrenWithClassTraverse.bind(fire);
+    fire.FindChildrenWithClassTraverse = name => name === "miniModifierCore"
+        ? [detached, ...traverse(name)] : traverse(name);
+    enableActiveStats(Q); hud.clock.advance(300);
+    assert.strictEqual(value(hud.root, "fireRate").text, "+10%");
+    assert.deepStrictEqual(hud.clock.errors, []);
+});
+
 test("crosshair discovers conditional rows in narrow owners and recovers from row/owner replacement", () => {
     const hud = createCrosshairHud();
     const { $, QOL: Q } = hud.sandbox.global;

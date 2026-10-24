@@ -77,6 +77,22 @@ test("shop defaults preserve native animation and layout, including simplified C
     for (const [key, value] of Object.entries(native)) assert.equal(e.main.style[key], value);
 });
 
+test("shop presentation reuses the current HUD without searching the shop for Hud", () => {
+    const e = fixture();
+    const findHud = e.Q.core.panel.findHud;
+    let nestedHudSearches = 0;
+    e.Q.core.panel.findHud = panel => {
+        if (panel === e.shop) nestedHudSearches++;
+        return findHud(panel);
+    };
+    e.enable();
+    e.configure({ SHOP_OPACITY: 0.4 });
+    e.clock.advance(2200);
+    assert.equal(e.main.style.opacity, "0.40");
+    assert.equal(nestedHudSearches, 0);
+    e.clean();
+});
+
 test("shop offsets, scale, opacity and visibility react while the shop is closed or hidden", () => {
     const e = fixture(); e.enable();
     e.shop.AddClass("qol-hidden");

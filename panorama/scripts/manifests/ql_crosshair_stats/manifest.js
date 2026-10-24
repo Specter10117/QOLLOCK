@@ -227,6 +227,8 @@
             function _firstByClass(panel, className) {
                 if (!_isAlive(panel) || !panel.FindChildrenWithClassTraverse) return null;
                 try {
+                    const first = QOL.utils.FindFirstPanelByClass(panel, className);
+                    if (!first || _belongsToSource(first, panel)) return first;
                     let matches = panel.FindChildrenWithClassTraverse(className) || [];
                     return matches.find(match => _isAlive(match) && _belongsToSource(match, panel)) || null;
                 } catch(e) { return null; }

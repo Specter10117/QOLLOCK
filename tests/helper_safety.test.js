@@ -5,6 +5,25 @@ const { createHud } = require("../scripts/simulator");
 const { audit } = require("../scripts/audit_helper_calls");
 function setup() { const env = createHud({inHideout:false}); env.assertLoaded(); return {...env, Q:env.sandbox.global.QOL, U:env.sandbox.global.QOL_UTILS}; }
 
+test("first-class lookup keeps native direct-child priority without enumerating descendants", () => {
+ const {doc,U}=setup();
+ const root=doc.create("Panel",{id:"ClassOwner"});
+ const branch=doc.create("Panel",{id:"EarlierBranch"});root.addChild(branch);
+ const nested=doc.create("Panel",{id:"Nested",classes:["target"]});branch.addChild(nested);
+ const direct=doc.create("Panel",{id:"Direct",classes:["target"]});root.addChild(direct);
+ const traverse=root.FindChildrenWithClassTraverse.bind(root);let scans=0;
+ root.FindChildrenWithClassTraverse=name=>{scans++;return traverse(name);};
+ assert.equal(U.FindFirstPanelByClass(root,"target"),direct);
+ assert.equal(scans,0,"a direct class match must not enumerate the entire subtree");
+ direct.RemoveClass("target");
+ assert.equal(U.FindFirstPanelByClass(root,"target"),nested,"descendant compatibility and native order remain intact");
+ assert.equal(U.FindFirstPanelByClass(root,"absent"),null);
+ direct.AddClass("target");
+ root.GetChild=()=>{throw Error("native child enumeration unavailable");};
+ assert.equal(U.FindFirstPanelByClass(root,"target"),direct,"failed direct enumeration can retry through native traversal");
+ assert.equal(U.FindFirstPanelByClass(null,"target"),null);
+});
+
 test("runtime helper calls resolve to existing exports, including scoped aliases", () => {
  const result=audit(); assert.ok(result.calls>1000); assert.deepEqual(result.missing,[]);
 });

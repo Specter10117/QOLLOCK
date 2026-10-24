@@ -113,6 +113,25 @@ test("keyboard keeps both native binding layouts and reacts to geometry/palette/
     env.feature.onDisable(); env.clock.advance(20); assert.equal(env.overlay(), null); assert.deepEqual(env.clock.errors, []);
 });
 
+test("keyboard derives owned key sizing roles once per generation while native style validation keeps running", () => {
+    const env = setup(); env.feature.onEnable();
+    const key = env.box().FindChildrenWithClassTraverse("SpaceKey")[0];
+    const hasClass = key.BHasClass.bind(key);
+    let sizingReads = 0;
+    key.BHasClass = name => {
+        if (["TabKey", "SpaceKey", "ShiftKey", "AltKey", "CtrlKey", "EmptyKeyWide"].includes(name)) sizingReads++;
+        return hasClass(name);
+    };
+    key.style.width = "native overwrite";
+    env.clock.advance(600);
+    assert.equal(key.style.width, "192px", "native readback still repairs overwritten geometry");
+    env.cfg.KEYBOARD_OVERLAY_SCALE = 150; env.feature.onSettingsChanged();
+    assert.equal(key.style.width, "288px", "the cached role uses current settings");
+    assert.equal(sizingReads, 0);
+    env.feature.onDisable(); env.clock.advance(20);
+    assert.deepEqual(env.clock.errors, []);
+});
+
 test("keyboard themes update in place and alternate layouts retain native actions and generation cleanup", () => {
     const env = setup(); env.feature.onEnable();
     const original = env.overlay();

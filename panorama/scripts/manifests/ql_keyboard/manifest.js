@@ -212,7 +212,11 @@
                         "class": "AllBindingsScope", hittest: "false", hittestchildren: "false" });
                     if (model.layout) generation.alternate = buildAlternateLayout(createOwned, generation.box, model.layout, model.full);
                     else buildKeyboardOverlayLayouts(createOwned, generation.box);
-                    generation.keys = created.filter(panel => panel.BHasClass("Key"));
+                    // Sizing roles belong to our constructed key layout; native
+                    // glyph roles and style readback are still checked each tick.
+                    generation.keys = created.filter(panel => panel.BHasClass("Key")).map(panel => ({
+                        panel, widthClass: Object.keys(model.widths).find(name => panel.BHasClass(name))
+                    }));
                     return true;
                 } catch (error) {
                     retire();
@@ -225,9 +229,8 @@
                 const desired = new Map();
                 desired.set(generation.overlay, QOL.presentation.visibilityStyles("keyboard", QOL.presentation.visibilityConfig(ctx), root, model.wash ? { washColor: model.wash } : {}));
                 desired.set(generation.box, model.box);
-                for (const key of generation.keys) {
-                    const width = Object.keys(model.widths).find(name => key.BHasClass(name));
-                    desired.set(key, width ? { ...model.key, width: model.widths[width] } : model.key);
+                for (const { panel, widthClass } of generation.keys) {
+                    desired.set(panel, widthClass ? { ...model.key, width: model.widths[widthClass] } : model.key);
                 }
                 if (generation.alternate) {
                     const alternate = generation.alternate, px = value => Math.round(value * model.unit) + "px";

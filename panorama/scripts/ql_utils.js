@@ -76,9 +76,20 @@
      * Find the first valid panel with the given class, traversing children.
      */
     function FindFirstPanelByClass(root, className) {
-        var panels = FindPanelsByClass(root, className);
-        for (var i = 0; i < panels.length; i++) {
-            if (IsPanelValid(panels[i])) return panels[i];
+        // Native class results visit direct children first (October 17 probe).
+        // Resolve a breadcrumb without collecting every descendant on a hit.
+        try {
+            if (root && className && typeof root.GetChildCount === "function") {
+                const count = root.GetChildCount();
+                for (let index = 0; index < count; index++) {
+                    const child = root.GetChild(index);
+                    if (IsPanelValid(child) && child.BHasClass(className)) return child;
+                }
+            }
+        } catch (_) { /* Native children can disappear; retain traversal recovery. */ }
+        const panels = FindPanelsByClass(root, className);
+        for (const panel of panels) {
+            if (IsPanelValid(panel)) return panel;
         }
         return null;
     }

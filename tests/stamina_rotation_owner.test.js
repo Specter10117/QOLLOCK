@@ -24,6 +24,36 @@ function setup() {
     return { ...env, Q, $, cfg, feature, add, ring };
 }
 
+test("stamina follows captured breadcrumbs and living replacements without whole-HUD class searches", () => {
+    const env = setup(), decoy = env.ring(env.root);
+    const mount = () => {
+        const core = env.add(env.root, "", ["HudCore"]);
+        const gameplay = env.add(core, "gameplay_hud"), alive = env.add(gameplay, "gameplay_hud_alive");
+        const crosshair = env.add(alive, "crosshair"), native = env.ring(crosshair);
+        native.wrapper.id = "dash";
+        return { core, ...native };
+    };
+    const first = mount();
+    const find = env.root.FindChildrenWithClassTraverse.bind(env.root);
+    let wholeHudScans = 0;
+    env.root.FindChildrenWithClassTraverse = name => { wholeHudScans++; return find(name); };
+    env.feature.onEnable(); env.clock.advance(1200);
+    assert.equal(first.foreground.style.borderColor, "#44e3ff");
+    assert.equal(first.container.style.transform, "rotateZ(45deg)");
+    assert.equal(decoy.foreground.style.borderColor, undefined, "the captured dash path wins over other charge containers");
+    assert.equal(wholeHudScans, 0, "an active native path cannot scan the full HUD every tick");
+    first.core.SetParent(env.add(null, "RetiredCore"));
+    const next = mount(); env.clock.advance(600);
+    assert.equal(first.foreground.style.borderColor, undefined);
+    assert.equal(first.container.style.transform, undefined);
+    assert.equal(next.foreground.style.borderColor, "#44e3ff");
+    assert.equal(wholeHudScans, 0, "living owner replacement still resolves by breadcrumbs");
+    env.feature.onDisable();
+    assert.equal(next.foreground.style.borderColor, undefined);
+    assert.equal(next.container.style.transform, undefined);
+    assert.deepEqual(env.clock.errors, []);
+});
+
 test("native stamina settings suspend polling and custom color resumes it reactively", () => {
     const env = setup(), native = env.ring(env.root);
     env.cfg.STAMINA_CHARGE_ANGLE = 45;
