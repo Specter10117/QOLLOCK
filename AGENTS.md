@@ -22,6 +22,14 @@ an audit. It distinguishes capture-based lookup traces, simulator regressions,
 static inventories and client measurements. Capture identity and limitations are
 recorded in [captures/README.md](captures/README.md).
 
+For HUD optimization, use `scripts/profile_hud.js` to locate investigation
+candidates, `scripts/trace_feature_hud.js` to inspect search roots, and
+`scripts/compare_hud_refs.js` for before/after checks with matching inputs and
+observed outputs. Commands and measurement limits are documented in
+[docs/TOOLS.md](docs/TOOLS.md) and [docs/PROFILING.md](docs/PROFILING.md).
+Repeated reads or identical writes are not proof of unnecessary work, and
+offline operation counts do not measure native frame time or FPS.
+
 ## Finding related code
 
 1. For a general concept, use semantic search when available; otherwise narrow
