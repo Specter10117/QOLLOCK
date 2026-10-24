@@ -103,6 +103,16 @@ test("profiler rejects obsolete tree-shaping options instead of silently ignorin
     assert.match(result.stderr, /unknown option: --players/i);
 });
 
+for (const args of [["--seconds"], ["--healthbar", "oops"], ["--healthbar", "Infinity"], ["--top", "oops"]]) {
+    test(`profiler refuses malformed measurement options: ${args.join(" ")}`, () => {
+        const result = spawnSync(process.execPath, [path.join(__dirname, "../scripts/profile_hud.js"),
+            ...(args.includes("--seconds") ? [] : ["--seconds", "0.01"]), ...args, "--json"],
+        { encoding: "utf8", maxBuffer: 4 * 1024 * 1024 });
+        assert.equal(result.status, 2, "invalid input must not silently select a different measurement scenario");
+        assert.match(result.stderr, /FATAL/);
+    });
+}
+
 const fixture = () => ({ domTree: { id: "CitadelHudRoot", children: [
     { id: "Hud", classes: ["connectedToGame", "joined_team"], children: [
         { id: "gameplay_hud", children: [] },
@@ -166,6 +176,36 @@ test("profile exposes owner disable during the sample instead of a silent lower-
     assert.ok(result.enabledStart.length > 0);
     assert.equal(result.enabledEnd.length, 0);
     assert.ok(result.validity.issues.some(issue => issue.includes("coverage changed")));
+});
+
+test("lookup trace rejects changed enabled coverage even when no callback throws", () => {
+    const h = createProfiledHud({ capturedTree: fixture(), warmupMs: 8000 });
+    h.clock.schedule(0.01, () => h.sandbox.eval("QOL.core.FeatureRegistry.shutdown()"));
+    const result = collectTrace(h, { seconds: 0.02 });
+    assert.ok(result.enabledStart.length > 0);
+    assert.equal(result.enabledEnd.length, 0);
+    assert.deepEqual(result.callbackErrors, []);
+    assert.ok(result.validity?.issues.some(issue => issue.includes("coverage changed")),
+        "stopped owners must not look like an error-free reduction in lookup work");
+});
+
+test("lookup trace retains swallowed panel-event failures as invalid evidence", () => {
+    const h = createProfiledHud({ capturedTree: fixture(), warmupMs: 8000 });
+    h.doc.root.SetPanelEvent("onactivate", () => { throw Error("injected event failure"); });
+    h.clock.schedule(0.01, () => h.doc.root.activate());
+    const result = collectTrace(h, { seconds: 0.02 });
+    assert.deepEqual(result.callbackErrors, [], "the model catches panel-event exceptions");
+    assert.ok(result.eventErrors?.some(error => error.message === "injected event failure"));
+    assert.ok(result.validity?.issues.some(issue => issue.includes("callback failures")));
+});
+
+test("lookup trace CLI exits unsuccessfully when startup changes enabled coverage", () => {
+    const result = spawnSync(process.execPath, [path.join(__dirname, "../scripts/trace_feature_hud.js"),
+        "--warmup", "0", "--seconds", "0.5", "--json"], { encoding: "utf8", maxBuffer: 4 * 1024 * 1024 });
+    assert.equal(result.status, 1, result.stderr);
+    const trace = JSON.parse(result.stdout);
+    assert.notDeepEqual(trace.enabledStart, trace.enabledEnd);
+    assert.ok(trace.validity.issues.some(issue => issue.includes("coverage changed")));
 });
 
 test("lookup observers obey the measurement gate and direct searches stop on first hit", () => {

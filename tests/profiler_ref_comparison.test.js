@@ -59,3 +59,16 @@ test("ref comparisons expose owner coverage changes and reject unequal inputs or
     assert.equal(broken.validInputs, false);
     for (const fragment of ["treeFingerprint", "configFingerprint", "sample", "warm-up", "callback"]) assert.ok(broken.issues.some(s => s.includes(fragment)), fragment);
 });
+
+test("matching end states cannot validate two runs that both lost enabled owners", () => {
+    const before = run(), after = run();
+    for (const result of [before, after]) {
+        result.enabledStart = ["oldOwner"];
+        result.enabledEnd = [];
+        result.observation = { expression: "null", start: { value: null }, end: { value: null } };
+    }
+    const result = assess(before, after);
+    assert.equal(result.validInputs, false, "each run must keep its own enabled coverage stable");
+    assert.ok(result.issues.some(issue => issue.includes("coverage changed")));
+    assert.ok(Object.values(result.rates).every(rate => rate.changePercent === null));
+});

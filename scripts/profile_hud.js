@@ -44,7 +44,7 @@ function arg(name, fallback) {
     const i = argv.indexOf("--" + name);
     if (i < 0) return fallback;
     const next = argv[i + 1];
-    if (next === undefined || next.startsWith("--")) return true;
+    if (next === undefined || next.startsWith("--")) throw new Error(`--${name} needs a value`);
     return next;
 }
 
@@ -52,9 +52,10 @@ function has(name) {
     return process.argv.slice(2).includes("--" + name);
 }
 
-function num(v, fallback) {
+function num(v, name) {
     const n = Number(v);
-    return Number.isFinite(n) ? n : fallback;
+    if (!Number.isFinite(n)) throw new Error(`--${name} must be finite`);
+    return n;
 }
 
 function fmt(n) {
@@ -326,8 +327,8 @@ function main() {
         if (value.startsWith("--") && !options.has(value.slice(2))) throw new Error("unknown option: " + value);
     }
     const seconds = Number(arg("seconds", 10));
-    const top = num(arg("top", 20), 20);
-    const healthbar = num(arg("healthbar", 0), 0);
+    const top = num(arg("top", 20), "top");
+    const healthbar = num(arg("healthbar", 0), "healthbar");
     const wantJson = has("json");
     const saveName = arg("save", null);
     const compareName = arg("compare", null);

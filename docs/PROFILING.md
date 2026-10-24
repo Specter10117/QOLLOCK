@@ -56,6 +56,11 @@ ID/class/direct-child events and ordered class result paths. Rates use the measu
 window only; `--warmup` selects warm-up duration in seconds. JSON remains parseable
 with `--verbose`.
 
+The lookup tracer shares the profiler's `validity` checks, including panel-event
+failures, registry error streaks at either boundary and changed enabled coverage.
+These checks cover all owners even when lookup details are filtered. Invalid
+runs retain their diagnostic counts and exit unsuccessfully.
+
 ## Profile operations
 
 ```text

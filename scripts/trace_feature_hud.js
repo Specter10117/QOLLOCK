@@ -5,6 +5,7 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const { createProfiledHud } = require("./simulator/perf/profile.js");
+const { collectProfile } = require("./profile_hud.js");
 const { loadXmlEvidence, indexEvidence, sourceStatus } = require("./capture_sources");
 
 const DEFAULT_CAPTURE = path.join(__dirname, "..", "captures", "deadlock_hud_dump.json");
@@ -55,13 +56,6 @@ function matchesLabel(label, feature) {
     return label === feature || label.replace(/^(mf:|feat:|loop:)/, "") === feature;
 }
 
-function registryState(hud) {
-    return hud.sandbox.evalJson(`({
-        enabled: QOL.core.FeatureRegistry.getEnabledIds(),
-        errors: QOL.core.FeatureRegistry.getErrorCounts()
-    })`);
-}
-
 // Child-index paths distinguish anonymous panels and duplicate IDs. Breadcrumbs
 // alone can be identical for two different search roots or results.
 function panelPath(panel) {
@@ -78,7 +72,6 @@ function collectTrace(hud, { seconds, feature = null, xmlEvidence = [] }) {
     const counters = hud.counters;
     const events = [];
     const startMs = hud.clock.now();
-    const startState = registryState(hud);
     const hooks = ["onTraverse", "onClassTraverse", "onFindChild"];
     const previous = hooks.map(key => counters[key]);
     const observe = e => {
@@ -101,8 +94,8 @@ function collectTrace(hud, { seconds, feature = null, xmlEvidence = [] }) {
         });
     };
     for (const key of hooks) counters[key] = observe;
-    let snapshot;
-    try { snapshot = hud.measure(seconds * 1000); }
+    let profile;
+    try { profile = collectProfile(hud, seconds); }
     finally { hooks.forEach((key, i) => { counters[key] = previous[i]; }); }
 
     const byFeature = new Map(), bySearch = new Map();
@@ -128,7 +121,6 @@ function collectTrace(hud, { seconds, feature = null, xmlEvidence = [] }) {
             row.missedTargets[e.target] = (row.missedTargets[e.target] || 0) + 1;
         } else row.foundTargets[e.target] = { path: e.resultBreadcrumbs, resultPath: e.resultPath, visits: e.visited };
     }
-    const endState = registryState(hud);
     const xmlIndex = indexEvidence(xmlEvidence);
     const searches = [...bySearch.values()].sort((a, b) => b.visits - a.visits).map(row => {
         const kind = row.type === "FindChildrenWithClassTraverse" ? "class" : "id";
@@ -137,18 +129,16 @@ function collectTrace(hud, { seconds, feature = null, xmlEvidence = [] }) {
         return { ...row, sourceStatus: sourceStatus(evidence), xmlEvidence: evidence };
     });
     return {
+        ...profile,
         scope: "offline simulated lookup operations; no native timings or FPS",
         selection: "label filter only; other enabled features remain running",
         seconds: (hud.clock.now() - startMs) / 1000,
         totalPanels: hud.tree.panels, meta: hud.meta, notes: hud.tree.notes,
-        enabledStart: startState.enabled, enabledEnd: endState.enabled,
-        registryErrorsStart: startState.errors, registryErrorsEnd: endState.errors,
-        callbackErrors: hud.clock.errors.map(e => ({ atMs: e.at, message: e.error.message })),
         features: [...byFeature.values()].sort((a, b) => b.visits - a.visits).map(row => ({
             ...row, callsPerSec: row.calls / seconds, visitsPerSec: row.visits / seconds,
             missesPerSec: row.misses / seconds,
         })),
-        snapshot, events,
+        events,
         searches,
     };
 }
@@ -186,6 +176,7 @@ function reportText(result, verbose) {
     out.push("", "Misses are investigation candidates, not proof of invalid IDs or memory leaks.");
     for (const error of result.callbackErrors) out.push(`CALLBACK ERROR @${error.atMs}ms: ${error.message}`);
     if (result.meta.wrapperErrors.count) out.push(`WRAPPED CALLBACK FAILURES (including warm-up/recovered): ${result.meta.wrapperErrors.count}; inspect meta.wrapperErrors.`);
+    for (const issue of result.validity.issues) out.push(`INVALID FOR OPTIMIZATION INFERENCE: ${issue}`);
     return out.join("\n");
 }
 
@@ -203,7 +194,7 @@ function main() {
             if (!opts.includeEvents) delete result.events;
             process.stdout.write(JSON.stringify(result, null, 2) + "\n");
         } else process.stdout.write(reportText(result, opts.verbose || !!opts.feature) + "\n");
-        if (result.meta.unsupportedCalls.length || result.callbackErrors.length || result.meta.wrapperErrors.count || Object.values(result.registryErrorsEnd).some(n => n > 0)) {
+        if (result.validity.issues.length) {
             process.exitCode = 1;
         }
     } catch (e) {
