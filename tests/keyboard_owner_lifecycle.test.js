@@ -5,6 +5,45 @@ const { createHud } = require("../scripts/simulator");
 const fs = require("node:fs");
 const path = require("node:path");
 
+test("keyboard themes release their key, label and mouse colors even when DownActivated remains", () => {
+    // Model only the theme class cascade, not native input or Panorama rendering.
+    const css = fs.readFileSync(path.join(__dirname, "../panorama/styles/features/ql_feat_keyboard.css"), "utf8");
+    const rules = [...css.replace(/\/\*[\s\S]*?\*\//g, "").matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+        .flatMap(([, list, body]) => list.split(",").map(selector => ({ selector: selector.trim(), body })))
+        .filter(rule => rule.selector.includes(".QOLKeyboardTheme"));
+    const colors = (theme, state, target) => {
+        const result = {}, weights = {};
+        for (const { selector, body } of rules) {
+            const parts = selector.split(/\s+/);
+            if (!selector.includes(".QOLKeyboardTheme" + theme + " ")) continue;
+            const binding = parts.findIndex(part => part.startsWith("CitadelBinding.Key"));
+            if (parts.slice(binding + 1).join(" ") !== target) continue;
+            const required = [...parts[binding].matchAll(/\.([\w-]+)/g)].map(match => match[1]);
+            if (!required.every(name => ["Key", ...state].includes(name))) continue;
+            const weight = (selector.match(/\./g) || []).length;
+            for (const [, property, value] of body.matchAll(/(background-color|border-color|color|wash-color):\s*([^;]+);/g)) {
+                if (weight >= (weights[property] ?? -1)) { result[property] = value; weights[property] = weight; }
+            }
+        }
+        assert.ok(Object.keys(result).length, "theme declarations were exercised");
+        return result;
+    };
+    for (let theme = 0; theme < 8; theme++) {
+        let highlights = false;
+        for (const target of ["", "Label", ".MouseButtonGlyph", ".KeyboardButtonGlyph"]) {
+            const idle = colors(theme, [], target);
+            const held = colors(theme, ["IsPressed"], target);
+            if (JSON.stringify(held) !== JSON.stringify(idle)) highlights = true;
+            assert.deepEqual(colors(theme, ["IsPressed", "DownActivated"], target), held);
+            assert.deepEqual(colors(theme, ["DownActivated"], target), idle,
+                `theme ${theme} ${target} releases after activation`);
+        }
+        assert.ok(highlights, `theme ${theme} highlights while held`);
+    }
+    assert.doesNotMatch(css, /\.Key\.DownActivated\s+\.KeyboardKeyGlyphContainer/,
+        "the inner glyph must also release its persistent wash");
+});
+
 test("keyboard themes use positive binding selectors and exclude spacer panels in every layout", () => {
     const css = fs.readFileSync(path.join(__dirname, "../panorama/styles/features/ql_feat_keyboard.css"), "utf8");
     const themeSelectors = css.split("\n").filter(line => line.startsWith(".keyboard_overlay_active") && line.includes(".QOLKeyboardTheme"));
