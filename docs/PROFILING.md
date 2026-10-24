@@ -208,14 +208,17 @@ invalid trees, mismatched counts, ambiguous HUD contexts and focused subtrees.
 It starts from the supplied hierarchy without injecting the synthetic build/shop
 model. QOLLOCK can still create its own panels during boot and the measured run.
 
-The separate historical HUD-Dumper v2 collector also produces `domTree` JSON,
-accepted by both offline tools. Its snapshot can contain incomplete class data:
-when class enumeration is unavailable it probes a predefined whitelist. It
-does not serialize `panel.text`. The repository's v2 capture has no text for
-its Labels and has hero-testing classes; do not treat it as a text-complete
-match fixture or interpret an absent class as native absence. Improve the
-collector and label each captured scenario before relying on value-dependent
-paths. Structure alone remains useful for narrowing search candidates.
+The tracked `captures/deadlock_hud_dump.json` is the repaired October 3 native
+Debugger hero-testing export, replacing the October 1 v2 capture. It retains
+displayed classes and literal text where available; it still has missing text,
+unavailable target flags and unverified description freshness/live HUD coverage.
+See [capture provenance](../captures/README.md). The tracer defaults to this file;
+`profile_hud.js` and `compare_hud_refs.js` require `--tree` to use it. Without that
+argument they use the XML model. See [the tool map](TOOLS.md) before choosing a run.
+
+Historical HUD-Dumper v2 JSON remains accepted by the importer/replay tools, but
+can contain whitelist-only classes and no Label text. Do not interpret a missing
+class as native absence or compare old v2 reports with the replacement hierarchy.
 
 ```
 1. In game:   Settings → Dev Panel → "Panel Tree Dump"   (in a real match)

@@ -32,9 +32,11 @@ ambiguous HUD contexts are rejected. A focused subtree supports static inspectio
 but cannot stand in for the complete HUD in either replay tool.
 
 Import preserves literal text, raw debugger rows, the forest and metadata.
-Existing files are never overwritten. New JSON snapshots/reports under `captures/`
-are local evidence; the historical tracked fixture is retained. Both replay tools
-still default to that historical fixture unless an explicit capture is selected.
+The importer never overwrites existing files. New JSON snapshots/reports under
+`captures/` are local evidence. The tracked fixture is the repaired October 3
+native Debugger hero-testing export; see [capture provenance](../captures/README.md).
+The static audit and tracer default to it. The profiler and Git-ref comparator
+use an XML model unless `--tree` is supplied; see [the tool map](TOOLS.md).
 
 ## Read fidelity before findings
 

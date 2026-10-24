@@ -15,6 +15,13 @@ Do not copy API examples from historical migration notes into runtime code.
 3. When selecting or changing a shared helper, read [docs/HELPERS.md](docs/HELPERS.md),
    its implementation, and a real caller in the same context.
 
+## Choosing diagnostic tools
+
+Use [docs/TOOLS.md](docs/TOOLS.md) to choose the tool and its input before running
+an audit. It distinguishes capture-based lookup traces, XML-model regressions,
+static inventories and client measurements. Capture identity and limitations are
+recorded in [captures/README.md](captures/README.md).
+
 ## Finding related code
 
 1. For a general concept, use semantic search when available; otherwise narrow
