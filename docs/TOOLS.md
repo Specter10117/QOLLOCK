@@ -16,6 +16,7 @@ scenario do not establish native absence.
 | Which owners repeatedly search broad subtrees or miss? | `node scripts/trace_feature_hud.js --all --seconds 20 --json` | Defaults to the same capture. Counts simulated calls and visited nodes by actual search root. |
 | Where does one owner's lookup work come from? | `node scripts/trace_feature_hud.js ql_compass --seconds 20 --json` | The feature argument filters the report; other enabled features still run. Use `--events` for individual lookup events. |
 | Which owners issue lookups, covered reads, identical writes and callbacks? | `node scripts/profile_hud.js --seconds 20 --json` | Defaults to the same capture. Reports owner/property investigation candidates and explicit partial API coverage, not native costs or proof of redundant work. `--tree <file>` selects another hierarchy. |
+| Which panels receive inline style writes, in what order and from which owners? | `node scripts/trace_styles_hud.js --seconds 20 --events --json` | Same default capture; `--capture <file>` selects another. Bounded owner/panel/property details and ordered modeled mutation outcomes. Values are requested inline values, not computed styles, visual changes or proof of a writer conflict. |
 | Did an edit reduce work with the same inputs? | `node scripts/compare_hud_refs.js --before HEAD --after working-tree --expanded --seconds 20 --json` | Defaults to the same capture. Reads local Git source sets without checkout changes. Defaults to normal config; `--expanded` selects expanded coverage. Add `--observe` with a read-only JSON expression for the feature's output; without matching observations percentages are withheld. |
 
 The tracer and profiler use expanded config unless `--defaults` is supplied.
@@ -24,6 +25,12 @@ every numeric variant; choose `--healthbar` explicitly for a profiler healthbar 
 Compare the same tree, config, warm-up, sample duration and enabled coverage.
 Read callback/registry errors and capture fidelity before interpreting counts.
 None of these tools measures native traversal time, frame times or FPS.
+
+The profiler separately counts explicit `Children`, `GetChild` and `GetChildCount`
+requests, with returned-reference counts for `Children`. Inspect owner rows and
+`meta.enumerationCoverage`; these do not contribute native-search visits or acquire
+native-cost weights. Moving a search into a JavaScript walk does not make that work
+free or fully measured.
 
 For a different state, pass `--capture <file>` to the tracer or an explicit
 positional capture path to the static audit. The profiler/comparator use `--tree`.

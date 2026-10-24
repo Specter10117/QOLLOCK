@@ -27,6 +27,9 @@ candidates, `scripts/trace_feature_hud.js` to inspect search roots, and
 `scripts/compare_hud_refs.js` for before/after checks with matching inputs and
 observed outputs. Commands and measurement limits are documented in
 [docs/TOOLS.md](docs/TOOLS.md) and [docs/PROFILING.md](docs/PROFILING.md).
+Use `scripts/trace_styles_hud.js` for per-panel inline-style writer/value traces.
+When replacing native searches with JavaScript walks, inspect the profiler's
+explicit child-enumeration counters as well as native-search visits.
 Repeated reads or identical writes are not proof of unnecessary work, and
 offline operation counts do not measure native frame time or FPS.
 

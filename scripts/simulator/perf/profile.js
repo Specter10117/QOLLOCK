@@ -37,7 +37,7 @@
 const path = require("node:path");
 const fs = require("node:fs");
 const crypto = require("node:crypto");
-const { install, counters, silently, READ_COVERAGE } = require("./instrument.js");
+const { install, counters, silently, READ_COVERAGE, ENUMERATION_COVERAGE } = require("./instrument.js");
 const { buildCapturedHud } = require("./hud_tree.js");
 
 // Install before requiring the simulator so index.js sees patched classes.
@@ -290,6 +290,7 @@ function createProfiledHud({
             wrapperErrors,
             sourceCoverage: { scripts: loadedScripts, fingerprint: sourceHash.digest("hex") },
             readCoverage: READ_COVERAGE,
+            enumerationCoverage: ENUMERATION_COVERAGE,
             callbackCoverage: "calls counts managed poll and named scheduled wrapper entries; anonymous/raw callbacks are not owner-attributed",
             configApplied, configBytes,
             configMode: enableAll ? "expanded" : "defaults",

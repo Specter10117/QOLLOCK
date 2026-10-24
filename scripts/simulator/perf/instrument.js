@@ -33,6 +33,13 @@ const READ_COVERAGE = {
     aggregation: "Owner/kind/property (class name for BHasClass), pooled across panels; no panel identity or repeated-value evidence",
     unavailable: ["native getter/setter cost and CSS normalization", "unlisted panel properties/APIs", "color computation and other pure JavaScript work", "visual changes, layout, frame times and FPS"],
 };
+const ENUMERATION_COVERAGE = {
+    requests: ["Children", "GetChild", "GetChildCount"],
+    childrenReturnedReferences: "Number of references returned by explicit Children() calls, including repeated returns of the same child",
+    getChildRequests: "Requested child slots, including out-of-range slots; no claim of native visits or allocations",
+    exclusions: "Native-search model internals use private children and are excluded; direct private access and unlisted APIs are unobserved",
+    unavailable: ["native enumeration cost", "JavaScript work after enumeration", "layout, frame times and FPS"],
+};
 
 /** Count model visits using the same search order as the plain simulator. */
 function walkCount(root, id) {
@@ -42,6 +49,23 @@ function walkCount(root, id) {
         if (node.id === id) return { found: node, visited };
     }
     return { found: null, visited };
+}
+
+// Optional detail observer. Counters retain attempted-write accounting; a trace
+// also sees a rejected modeled mutation even when production catches the error.
+function mutateStyle(panel, property, operation, previousValue, requestedValue, changed, mutate) {
+    const observe = counters.enabled && counters.onStyleWrite;
+    let failure = null, outcome = "completed";
+    try { silently(mutate); }
+    catch (error) { failure = error; outcome = "threw"; throw error; }
+    finally {
+        if (typeof observe === "function") observe({
+            panel, label: counters.label, property: String(property), operation,
+            previousValue, requestedValue, changed,
+            outcome,
+            error: outcome === "threw" ? String(failure?.message || failure) : null,
+        });
+    }
 }
 
 function install() {
@@ -115,6 +139,17 @@ function install() {
         }
         return res;
     };
+
+    // These are explicit production enumeration requests, not search visits.
+    for (const [method, key] of [["Children", "childrenRequests"], ["GetChild", "getChildRequests"], ["GetChildCount", "getChildCountRequests"]]) {
+        const original = Panel.prototype[method];
+        Panel.prototype[method] = function (...args) {
+            counters.add(key);
+            const result = original.apply(this, args);
+            if (method === "Children") counters.add("childrenReturnedReferences", result.length);
+            return result;
+        };
+    }
 
     // ── Classes ───────────────────────────────────────────────────────────
     const origHasClass = Panel.prototype.BHasClass;
@@ -217,6 +252,7 @@ function install() {
         get() {
             if (this._styleProxy) return this._styleProxy;
             const store = this._styleStore || (this._styleStore = {});
+            const panel = this;
             this._styleProxy = new Proxy(store, {
                 get(target, prop, receiver) {
                     if (typeof prop === "string") counters.recordRead("styleReads", prop);
@@ -226,9 +262,10 @@ function install() {
                 },
                 set(target, prop, value) {
                     const next = value === undefined || value === null ? "" : String(value);
-                    const changed = silently(() => target[prop] !== next);
+                    const previous = silently(() => target[prop]);
+                    const changed = previous !== next;
                     counters.recordStyleWrite(String(prop), changed);
-                    silently(() => { target[prop] = next; });
+                    mutateStyle(panel, prop, "set", previous, next, changed, () => { target[prop] = next; });
                     return true;
                 },
                 deleteProperty(target, prop) {
@@ -236,7 +273,8 @@ function install() {
                     // write: the engine recomputes the cascaded value.
                     const had = Object.prototype.hasOwnProperty.call(target, prop);
                     counters.recordStyleWrite(String(prop) + ":clear", had);
-                    silently(() => { delete target[prop]; });
+                    const previous = counters.enabled && typeof counters.onStyleWrite === "function" ? silently(() => target[prop]) : undefined;
+                    mutateStyle(panel, prop, "delete", previous, null, had, () => { delete target[prop]; });
                     return true;
                 },
             });
@@ -280,4 +318,4 @@ function silently(fn) {
     }
 }
 
-module.exports = { install, counters, silently, walkCount, READ_COVERAGE };
+module.exports = { install, counters, silently, walkCount, READ_COVERAGE, ENUMERATION_COVERAGE };

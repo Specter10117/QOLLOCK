@@ -76,8 +76,13 @@ applies explicit overrides. Healthbar selection is a numeric enum, so use
 Scheduler poll callbacks are attributed to `mf:<featureId>`. Named scheduled
 callbacks receive `loop:<name>` attribution; other work remains unattributed.
 Custom JavaScript walks through `Children()`/`GetChild()` and uninstrumented APIs
-do not contribute native-search visit counts. These are not total JavaScript work
-or native traversal steps.
+do not contribute native-search visit counts. Explicit `Children`, `GetChild` and
+`GetChildCount` requests are counted separately in owner rows and totals, with
+returned-reference counts for `Children` and requested slots (including missing
+slots) for `GetChild`. Native-search model internals are excluded from those
+counters. `meta.enumerationCoverage` records these boundaries; no native-cost
+weights are assigned. These are not total JavaScript work, native traversal steps
+or allocation measurements.
 
 Read raw counters alongside the weighted ranking:
 
@@ -132,6 +137,48 @@ unverified, and refuses different sampling windows, model/config/tree identities
 or missing/failed validity checks. Old baselines require fresh runs. It makes no
 percentage optimization claim; use the source-revision comparator with selected
 output observations below for the stronger comparison checks.
+
+## Trace inline style mutations
+
+```text
+node scripts/trace_styles_hud.js --seconds 20 --events --json
+node scripts/trace_styles_hud.js ql_compass --defaults --enable ENABLE_COMPASS=1 --seconds 5
+node --test tests/style_trace.test.js
+```
+
+This reuses the profiler's production HUD loading, capture/config identities,
+warm-up exclusion and validity checks. `--capture`, `--warmup`, `--defaults` and
+`--enable` select inputs; a positional owner filters style totals/details. Other
+features keep running; `snapshot`, validity checks and the bounded mutation
+failure history still cover all owners. `panelUid` identifies
+one modeled panel object within this replay, distinguishing duplicate IDs and
+replacements. Breadcrumbs describe its first retained write. UIDs are not stable
+native identifiers or cross-run matching keys.
+
+`styles` separates owner/panel/property mutation attempts, completed changed or
+identical requests, failed requests and deletes. `--events --json` includes an
+ordered prefix with prior model values, requested values and outcomes. Deletes
+compare property presence; undefined prior values are explicit. Completed means
+the modeled mutation returned without throwing, not native acceptance, normalized
+readback equality or visible change. Multiple writers and A/B/A requests are
+investigation evidence, not proof of a conflict or unnecessary work.
+Style observation excludes script loading and warm-up. `--warmup 0` includes
+scheduled startup application, but a boot-time enabled-coverage change still
+invalidates optimization inference; inspect the raw diagnostic events separately.
+
+`coverage` names exclusions and retention limits. Key details and optional events
+are bounded independently with omitted-event counts; totals retain all matching
+mutation requests even after either cap. Details update retained keys after the
+key cap. Observer failures invalidate the report and retain bounded messages;
+failed mutations remain visible even when production catches their exception.
+Pre-hook failures, wholesale style-object replacement and unrelated caught errors
+remain outside this observation. Fault-injection tests exercise rejected writes
+through the production native-style owner and a broken diagnostic observer.
+
+The model has no CSS cascade, computed styles, animations or native feedback.
+Class/CSS-driven changes and other JavaScript contexts are outside this trace;
+modeled `ClearPropertyFromCode` contributes only its delegated property deletes.
+Use client evidence to investigate actual style application or performance.
 
 ## Compare source revisions
 
