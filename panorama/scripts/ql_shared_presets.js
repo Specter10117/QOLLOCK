@@ -1792,12 +1792,12 @@ var QOL_COMPACT_SCHEMA_4_0_5 = QOL_COMPACT_SCHEMA_UTILS.AppendUniqueSchemaFields
     ]
 );
 
-// 4.0.6: Font style dropdowns for the current (0-1) and total (0-2) ammo numbers, and the better silenced/cursed ability toggle.
+// 4.0.6: Font style dropdowns for the current (0-2) and total (0-3) ammo numbers, and the better silenced/cursed ability toggle.
 var QOL_COMPACT_SCHEMA_4_0_6 = QOL_COMPACT_SCHEMA_UTILS.AppendUniqueSchemaFields(
     QOL_COMPACT_SCHEMA_4_0_5,
     [
-        { key: "AMMO_CURRENT_FONT_STYLE", min: 0, max: 1, step: 1 },
-        { key: "AMMO_TOTAL_FONT_STYLE", min: 0, max: 2, step: 1 },
+        { key: "AMMO_CURRENT_FONT_STYLE", min: 0, max: 2, step: 1 },
+        { key: "AMMO_TOTAL_FONT_STYLE", min: 0, max: 3, step: 1 },
         { key: "ENABLE_BETTER_DISABLED_ABILITIES", min: 0, max: 1, step: 1 }
     ]
 );

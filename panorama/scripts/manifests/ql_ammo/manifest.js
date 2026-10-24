@@ -8,8 +8,8 @@
 // CONFIG KEYS: ENABLE_AMMO_STATUS, ENABLE_HIDE_MAGAZINE, ENABLE_HIDE_AMMO_ALL,
 //              AMMO_PANEL_SCALE, AMMO_CURRENT_SCALE, AMMO_TOTAL_SCALE,
 //              AMMO_PANEL_X_OFFSET, AMMO_PANEL_Y_OFFSET, AMMO_CLIP_ANGLE,
-//              AMMO_TEXT_COLOR, AMMO_CURRENT_FONT_STYLE (0-1),
-//              AMMO_TOTAL_FONT_STYLE (0-2)
+//              AMMO_TEXT_COLOR, AMMO_CURRENT_FONT_STYLE (0-2),
+//              AMMO_TOTAL_FONT_STYLE (0-3)
 // PATTERN:     Settings-driven with a slow poll for replaced native panels.
 //              Dual-half heat rings rotate as a pair at their native base angles.
 // =============================================================================
@@ -295,6 +295,7 @@
                         vals[vi].style.fontSize = (curScale === 100) ? null : (valFont + "px");
                         vals[vi].style.width = (curScale === 100) ? null : (valWidth + "px");
                         _setLabelClass(vals[vi], "qol-ammo-current-stylized", currentStyle === 1);
+                        _setLabelClass(vals[vi], "qol-ammo-current-old", currentStyle === 2);
                         _applyTextColor(vals[vi], textColor);
                     }
                     var maxs = ap.FindChildrenWithClassTraverse("weapon_ammo_max") || [];
@@ -305,6 +306,7 @@
                         maxs[mi].style.marginLeft = (totScale === 100) ? null : (maxMl + "px");
                         _setLabelClass(maxs[mi], "qol-ammo-total-stylized", totalStyle === 1);
                         _setLabelClass(maxs[mi], "qol-ammo-total-stylized-alt", totalStyle === 2);
+                        _setLabelClass(maxs[mi], "qol-ammo-total-old", totalStyle === 3);
                         _applyTextColor(maxs[mi], textColor);
                     }
                     var infs = ap.FindChildrenWithClassTraverse("weapon_ammo_infinite") || [];

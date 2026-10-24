@@ -166,3 +166,32 @@
 	margin-left: 2px;
 	width: 50px;
 }
+
+/* Current ammo: Old (color omitted, same as default, to keep low-ammo / bonus-clip colors) */
+.weapon_ammo.qol-ammo-current-old
+{
+	font-size: 16px;
+	font-weight: bold;
+	font-family: "Radiance";
+	color: rgba(255, 255, 255, 0.8);
+	text-align: right;
+	vertical-align: bottom;
+	horizontal-align: left;
+	width: 32px;
+	transition-property: color, text-shadow;
+	transition-duration: 0.124s;
+}
+
+/* Max ammo: Old */
+.weapon_ammo_max.qol-ammo-total-old
+{
+	font-size: 16px;
+	font-weight: normal;
+	font-family: "Radiance";
+	color: rgba(255, 255, 255, 0.1);
+	vertical-align: bottom;
+	horizontal-align: left;
+	text-align: left;
+	margin-left: 2px;
+	width: 50px;
+}

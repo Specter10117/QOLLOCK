@@ -180,6 +180,7 @@
     "Total Font": "Total Font",
     "Stylized Ammo": "Stylized Ammo",
     "Stylized Alternative": "Stylized Alternative",
+    "Old": "Old",
     "Use the stylized font for the current ammo number. By Specty": "Use the stylized font for the current ammo number. By Specty",
     "Use the stylized font for the max (total) ammo number. By Specty": "Use the stylized font for the max (total) ammo number. By Specty",
     "Custom": "Custom",
