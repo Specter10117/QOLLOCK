@@ -40,6 +40,35 @@ function rejectCursor(panel) {
     return { recover() { reject = false; }, calls: () => calls };
 }
 
+test("accent resolves unchanged configuration once while native targets remain reactive", () => {
+    const env = setup(), { panel, frame } = env.health();
+    const accent = env.Q.healthbar.accent.create({ id: "ql_healthbar" });
+    const cfg = { PLAYER_HEALTHBAR_ACCENT_COLOR: env.Q.utils.EncodeHexColor("#123ABC") };
+    const resolve = env.Q.core.panel.resolvePaletteColor;
+    let resolutions = 0;
+    env.Q.core.panel.resolvePaletteColor = value => { resolutions++; return resolve(value); };
+    accent.update(env.root, cfg, panel); env.clock.advance(20);
+    accent.update(env.root, cfg, panel);
+    assert.equal(resolutions, 1);
+    assert.equal(frame.style.washColor, "#123ABC");
+    frame.style.washColor = "native";
+    accent.update(env.root, cfg, panel);
+    assert.equal(frame.style.washColor, "#123ABC");
+    const backer = env.add(panel, "LateBacker"); backer.AddClass("healthBacker");
+    accent.update(env.root, cfg, panel); env.clock.advance(20);
+    assert.equal(backer.style.washColor, "#123ABC");
+    assert.equal(resolutions, 1);
+    cfg.PLAYER_HEALTHBAR_ACCENT_COLOR = env.Q.utils.EncodeHexColor("#000000");
+    accent.update(env.root, cfg, panel); env.clock.advance(20);
+    assert.equal(frame.style.washColor, "#000000");
+    cfg.PLAYER_HEALTHBAR_ACCENT_COLOR = 0;
+    accent.update(env.root, cfg, panel);
+    assert.equal(frame.style.washColor, undefined);
+    assert.equal(backer.style.washColor, undefined);
+    accent.release();
+    assert.deepEqual(env.clock.errors, []);
+});
+
 test("accent retries rejected native wash retirement after disable, then stops writes", () => {
     const env = setup(), { frame } = env.health();
     const feature = env.feature("ql_healthbar", { HEALTHBAR_TYPE: 0, PLAYER_HEALTHBAR_ACCENT_COLOR: 3 });

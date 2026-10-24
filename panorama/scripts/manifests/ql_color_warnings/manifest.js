@@ -13,6 +13,11 @@
             base: U.COLORED_HEALTHBAR_COLOR_WHITE, mid: U.COLORED_HEALTHBAR_COLOR_ORANGE,
             pulse: U.COLORED_HEALTHBAR_COLOR_RED, dark: U.COLORED_HEALTHBAR_COLOR_DARK_RED }
     };
+    for (const channel of Object.values(channels)) {
+        channel.base = U.ToRgbString(channel.base);
+        channel.mid = U.ToRgbString(channel.mid);
+    }
+    const yellow = U.ToRgbString(U.COLORED_HEALTHBAR_COLOR_YELLOW);
     const thresholds = [U.COLORED_HEALTHBAR_LOW_HP_THRESHOLD, U.COLORED_HEALTHBAR_MID_HP_THRESHOLD, U.COLORED_HEALTHBAR_HIGH_HP_THRESHOLD];
     const readModel = cfg => Object.fromEntries(Object.entries(channels).map(([name, channel]) => {
         const warnings = channel.warnings.map(key => U.IsCfgEnabled(cfg, key));
@@ -29,9 +34,9 @@
             reset() { value = 0; direction = 1; },
             color(channel, model, percent) {
                 if (model.warnings[0] && percent <= thresholds[0]) return U.ToRgbString(U.BlendRgb(channel.pulse, channel.dark, value));
-                if (model.warnings[1] && percent <= thresholds[1]) return U.ToRgbString(channel.mid);
-                if (model.warnings[2] && percent <= thresholds[2]) return U.ToRgbString(U.COLORED_HEALTHBAR_COLOR_YELLOW);
-                return U.ToRgbString(channel.base);
+                if (model.warnings[1] && percent <= thresholds[1]) return channel.mid;
+                if (model.warnings[2] && percent <= thresholds[2]) return yellow;
+                return channel.base;
             }
         };
     };

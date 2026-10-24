@@ -132,6 +132,26 @@ test("native style ownership preserves unowned properties and native classes and
     assert.equal(panel.BHasClass("native_feedback"), true); assert.equal(panel.BHasClass("QOLTestHidden"), false);
 });
 
+for (const property of ["color", "washColor", "borderColor", "backgroundColor"]) test(`unchanged ${property} validates native readback once and still recovers from native overwrites`, () => {
+    const env = setup(), panel = env.add("NativeColor"), owner = env.P.createNativeStyleOwner();
+    let reads = 0, writes = 0;
+    panel.style = new Proxy(panel.style, {
+        get(target, key) { if (key === property) reads++; return target[key]; },
+        set(target, key, value) { if (key === property) writes++; target[key] = String(value).toUpperCase(); return true; }
+    });
+    owner.apply(panel, { [property]: "#abcdef" });
+    reads = writes = 0;
+    assert.equal(owner.apply(panel, { [property]: "#abcdef" }), true);
+    assert.equal(reads, 1, "unchanged presentation needs one native validation, not a second snapshot");
+    assert.equal(writes, 0);
+    panel.style[property] = "#000000";
+    owner.apply(panel, { [property]: "#abcdef" });
+    assert.equal(panel.style[property], "#ABCDEF");
+    owner.clear();
+    assert.equal(panel.style[property], undefined);
+    assert.deepEqual(env.clock.errors, []);
+});
+
 test("native style ownership retries rejected writes and each failed clear without losing retired panels", () => {
     const env = setup(), old = env.add("OldNative"), current = env.add("CurrentNative");
     const scope = env.P.createNativeStyleOwner({ resetValues: { x: "0px", washColor: "transparent" } });

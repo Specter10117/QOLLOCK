@@ -24,6 +24,50 @@ function setup() {
     return { ...env, Q, $, cfg, feature, add, ring };
 }
 
+test("native stamina settings suspend polling and custom color resumes it reactively", () => {
+    const env = setup(), native = env.ring(env.root);
+    env.cfg.STAMINA_CHARGE_ANGLE = 45;
+    env.cfg.STAMINA_CHARGE_COLOR = 0;
+    const pending = env.clock.pendingCount();
+    env.feature.onEnable();
+    assert.equal(env.clock.pendingCount(), pending, "native presentation has no feature poll");
+    env.cfg.STAMINA_CHARGE_COLOR = env.Q.utils.EncodeHexColor("#000000");
+    env.feature.onSettingsChanged();
+    assert.equal(native.foreground.style.borderColor, "#000000");
+    assert.equal(env.clock.pendingCount(), pending + 1);
+    for (const state of ["charging", "draining", "disabled", "drained"]) {
+        native.charge.AddClass(state); env.clock.advance(600);
+        assert.equal(native.foreground.style.borderColor, undefined, state + " keeps its native feedback");
+        assert.equal(native.drained.style.borderColor, "#000000");
+        native.charge.RemoveClass(state); env.clock.advance(600);
+        assert.equal(native.foreground.style.borderColor, "#000000");
+    }
+    env.cfg.STAMINA_CHARGE_COLOR = 0; env.feature.onSettingsChanged();
+    assert.equal(native.foreground.style.borderColor, undefined);
+    assert.equal(native.drained.style.borderColor, undefined);
+    assert.equal(env.clock.pendingCount(), pending);
+    env.feature.onDisable();
+    assert.deepEqual(env.clock.errors, []);
+});
+
+test("missing stamina sources back off and recover when native charges appear", () => {
+    const env = setup();
+    const find = env.root.FindChildrenWithClassTraverse.bind(env.root);
+    let searches = 0;
+    env.root.FindChildrenWithClassTraverse = name => {
+        if (name === "ability_element_charges") searches++;
+        return find(name);
+    };
+    env.feature.onEnable(); env.clock.advance(5000);
+    assert.ok(searches <= 4, `missing stamina triggered ${searches} broad scans`);
+    const native = env.ring(env.root);
+    env.clock.advance(2000);
+    assert.equal(native.foreground.style.borderColor, "#44e3ff");
+    assert.equal(native.container.style.transform, "rotateZ(45deg)");
+    env.feature.onDisable();
+    assert.deepEqual(env.clock.errors, []);
+});
+
 test("Default preset releases native stamina border tint through the settings-to-HUD bridge", () => {
     const env = loadSettings(), g = env.global, { QOL: Q, $ } = env.hud.sandbox.global;
     const wrapper = $.CreatePanel("Citadel_AbilityHUDElement_Dash", env.hud.root, "dash");

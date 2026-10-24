@@ -165,7 +165,7 @@
                 const mouseSize = Math.max(1, Math.round(20 * scale)) + "px";
                 return { full, layout, layoutKey: layout ? layout + ":" + full : "0", unit: 40 * scale,
                     themeClasses: Object.fromEntries(Array.from({ length: 8 }, (_, i) => ["QOLKeyboardTheme" + i, i === theme])),
-                    wash: U.ResolveWashColorFromPalette(U.ReadKeyboardOverlayWashColorIndex(cfg)),
+                    wash: P.resolvePaletteColor(cfg.KEYBOARD_OVERLAY_WASH_COLOR),
                     box: { uiScale: "100%", marginLeft: (full ? 70 : 150) + "px", marginBottom: "300px",
                         x: x + "px", y: -y + "px", width: "fit-children" },
                     widths: { TabKey: size(53), SpaceKey: size(full ? 133 : 192), ShiftKey: size(80),

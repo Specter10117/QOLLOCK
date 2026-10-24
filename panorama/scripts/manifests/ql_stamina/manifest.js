@@ -27,9 +27,11 @@
             const colored = P.createNativeStyleOwner();
             const rotations = P.createNativeStyleOwner({ preserveStyles: ["transform"] });
             let panel = null, root = null, model = null, loop = null, active = false;
+            let nextSearchMs = 0;
             function release() {
                 colored.clear(); rotations.clear();
                 panel = null;
+                nextSearchMs = 0;
             }
             function renderColor() {
                 const targets = new Set();
@@ -37,24 +39,29 @@
                     for (const target of QOL_UTILS.FindPanelsByClass(panel, "charge_fg")) {
                         const charge = target.GetParent();
                         if (P.hasClassToken(charge, "has_charge") &&
-                            !["charging", "draining", "disabled", "drained"].some(state => P.hasClassToken(charge, state))) targets.add(target);
+                            !P.hasClassToken(charge, "charging") && !P.hasClassToken(charge, "draining") &&
+                            !P.hasClassToken(charge, "disabled") && !P.hasClassToken(charge, "drained")) targets.add(target);
                     }
                     for (const target of QOL_UTILS.FindPanelsByClass(panel, "charge_drained")) targets.add(target);
                 }
                 colored.retain(targets);
                 for (const target of targets) {
-                    colored.apply(target, { borderColor: model.color });
+                    colored.apply(target, model.colorStyles);
                 }
             }
             function update() {
                 if (!active) return;
+                if (!model.active) { release(); return; }
                 const currentRoot = P.findHud($.GetContextPanel());
                 if (currentRoot !== root) { release(); root = currentRoot; }
-                if (!model.active || !P.isAlive(root) || (root.id !== "Hud" && root.paneltype !== "CitadelHud")) { release(); return; }
+                if (!P.isAlive(root) || (root.id !== "Hud" && root.paneltype !== "CitadelHud")) { release(); return; }
+                const now = QOL_UTILS.PerfNowMs();
+                if (!panel && now < nextSearchMs) return;
                 const current = findCharges(root);
                 if (current !== panel) {
                     release(); panel = current;
                 }
+                if (!current) nextSearchMs = now + 1500;
                 rotations.retain(model.rotation && P.isAlive(panel) ? [panel] : []);
                 if (!P.isAlive(panel)) return;
                 if (model.rotation) {
@@ -71,11 +78,14 @@
                 const stored = Number.isFinite(raw) ? raw : QOL_DEFAULT_CONFIG.STAMINA_CHARGE_ANGLE;
                 const rotation = QOL_UTILS.ShortestDegreesDelta(0, Q.presentation.toDisplayValue("STAMINA_CHARGE_ANGLE", stored));
                 const color = P.resolvePaletteColor(cfg.STAMINA_CHARGE_COLOR);
-                model = { active: !!rotation || !!color, color, rotation };
+                model = { active: !!rotation || !!color, color, rotation, colorStyles: color ? { borderColor: color } : {} };
+                nextSearchMs = 0;
                 update();
+                if (model.active && !loop) loop = Q.core.Scheduler.createPollLoop(update, 0.5, ctx.id);
+                else if (!model.active && loop) { loop.stop(); loop = null; }
             }
             return {
-                onEnable() { active = true; refreshSettings(); loop = Q.core.Scheduler.createPollLoop(update, 0.5, ctx.id); },
+                onEnable() { active = true; refreshSettings(); },
                 onSettingsChanged: refreshSettings,
                 onDisable() { active = false; if (loop) loop.stop(); loop = null; release(); root = model = null; }
             };

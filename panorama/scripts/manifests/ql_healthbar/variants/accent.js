@@ -8,6 +8,7 @@
 
     H.registerVariant("accent", function(ctx) {
         let targets = [], signature = null, pending = null, generation = 0, active = false;
+        let colorValue, colorStyles = null;
         const owner = P.createNativeStyleOwner();
         const featureId = ctx && ctx.id || "ql_healthbar";
 
@@ -37,7 +38,13 @@
         }
 
         function update(root, cfg, health) {
-            const color = P.resolvePaletteColor(readIndex(cfg));
+            const value = cfg && cfg.PLAYER_HEALTHBAR_ACCENT_COLOR;
+            if (!colorStyles || value !== colorValue) {
+                colorValue = value;
+                const color = P.resolvePaletteColor(value);
+                colorStyles = color ? { washColor: color } : {};
+            }
+            const color = colorStyles.washColor;
             if (!color) {
                 if (active || pending !== null || targets.length) release();
                 return;
@@ -45,7 +52,7 @@
             const current = discover(health);
             const same = current.length === targets.length && current.every((panel, index) => panel === targets[index]);
             if (same && signature === color) {
-                if (color) for (const panel of current) owner.apply(panel, { washColor: color });
+                for (const panel of current) owner.apply(panel, colorStyles);
                 return;
             }
             cancel();
@@ -57,12 +64,13 @@
             // Preserve the existing native wash refresh delay. It belongs to this
             // generation and is cancelled on replacement, settings change or disable.
             const token = generation;
+            const styles = colorStyles;
             pending = QOL.core.Scheduler.scheduleOnce(() => {
                 pending = null;
                 if (token !== generation) return;
                 let complete = true;
                 for (const panel of current) {
-                    if (!owner.apply(panel, { washColor: color })) complete = false;
+                    if (!owner.apply(panel, styles)) complete = false;
                 }
                 if (complete) signature = color;
             }, 0.01, featureId);

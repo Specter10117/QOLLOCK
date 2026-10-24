@@ -348,9 +348,10 @@
                 if (property === "position") for (const key of positionKeys) claim(panel, key);
                 else claim(panel, styleKey(property));
             }
-            record.signature = syncStyles(panel, styles, previous).sig;
+            const result = syncStyles(panel, styles, previous);
+            record.signature = result.sig;
             if (record.signature === null) complete = false;
-            else {
+            else if (result.changed) {
                 record.readback.clear();
                 try {
                     for (const property of properties) record.readback.set(property, panel.style[property]);

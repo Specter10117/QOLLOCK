@@ -65,6 +65,30 @@ test("warning channels keep their existing palette and release only their owned 
     assert.deepEqual(env.clock.errors, []);
 });
 
+test("steady warning colors avoid RGB formatting while threshold changes and pulses remain live", () => {
+    const env = setup({ ENABLE_COLOR_WARNING_75: 1, ENABLE_TOPBAR_ENEMY_HP_WARNING_65: 1 });
+    const self = selfHealth(env), enemy = topbarHealth(env);
+    env.feature.onEnable();
+    const format = env.Q.utils.ToRgbString;
+    let formats = 0;
+    env.Q.utils.ToRgbString = rgb => { formats++; return format(rgb); };
+    env.clock.advance(1000);
+    assert.equal(formats, 0, "fixed colors are prepared once instead of formatted for every panel and tick");
+    self.currentLabel.text = "900"; enemy.parent.value = 900;
+    env.clock.advance(300);
+    assert.equal(self.fill.style.washColor, "rgb(255, 255, 255)");
+    assert.equal(enemy.fill.style.backgroundColor, "rgb(255, 86, 86)");
+    env.Q.core.ConfigStore.set("ql_color_warnings", "ENABLE_TOPBAR_ENEMY_HP_WARNING_25", true);
+    enemy.parent.value = 200;
+    env.feature.onSettingsChanged();
+    const initial = enemy.fill.style.backgroundColor;
+    env.clock.advance(300);
+    assert.notEqual(enemy.fill.style.backgroundColor, initial);
+    assert.ok(formats > 0, "only live pulse interpolation needs RGB formatting");
+    env.feature.onDisable();
+    assert.deepEqual(env.clock.errors, []);
+});
+
 test("switching off self warnings clears its styles while the enemy observer remains enabled", () => {
     const env = setup({ ENABLE_COLOR_WARNING_75: 1, ENABLE_ENEMY_COLORED_HEALTHBAR: 1 });
     const self = selfHealth(env), enemy = topbarHealth(env);
