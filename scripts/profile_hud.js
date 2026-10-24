@@ -25,7 +25,7 @@
 //   state and relative weights remain unverified (see counters.js WEIGHTS).
 //
 //   So: "feature A does 40x the tree walks of feature B" is a fact.
-//   "This change cut total cost 60%" is a fact about the same tree.
+//   Weighted cost is a historical heuristic, not measured performance.
 //   "This costs 3ms per frame in-game" is NOT something this tool can tell you —
 //   it has no engine timings. Verify wins in-game with the perf overlay.
 // =============================================================================
@@ -75,6 +75,37 @@ function rate(count, seconds) {
     return count / seconds;
 }
 
+function collectProfile(h, seconds) {
+    const registryState = () => h.sandbox.evalJson(`({
+        enabled: QOL.core.FeatureRegistry.getEnabledIds(),
+        errors: QOL.core.FeatureRegistry.getErrorCounts()
+    })`);
+    const start = registryState();
+    const snapshot = h.measure(seconds * 1000);
+    const end = registryState();
+    const callbackErrors = h.clock.errors.map(e => ({ atMs: e.at, message: e.error.message }));
+    const eventErrors = h.doc.eventErrors.map(e => ({ panel: e.panel, name: e.name, message: e.error.message }));
+    const issues = [];
+    if (callbackErrors.length || h.wrapperErrors.count || eventErrors.length) issues.push("callback failures observed (including warm-up)");
+    if (Object.values(start.errors).some(n => n > 0) || Object.values(end.errors).some(n => n > 0)) issues.push("registry error streak at sample boundary");
+    if (h.meta.unsupportedCalls.length) issues.push("unsupported simulator calls");
+    if (JSON.stringify([...start.enabled].sort()) !== JSON.stringify([...end.enabled].sort())) issues.push("enabled feature coverage changed during sample");
+    return {
+        meta: h.meta, tree: { panels: h.tree.panels, notes: h.tree.notes }, snapshot,
+        enabledStart: start.enabled, enabledEnd: end.enabled,
+        registryErrorsStart: start.errors, registryErrorsEnd: end.errors,
+        callbackErrors, eventErrors,
+        validity: { issues, scope: "Observed counts only; error-free runs do not establish output equivalence or native performance. Enabled coverage is sampled at boundaries." },
+        investigations: {
+            scope: "Candidates for source/client investigation, not defects or proof of unnecessary work. Read keys pool all panels by owner/kind/property; no same-panel repetition or cache opportunity is established. Only documented instrumented operations are counted.",
+            repeatedReads: snapshot.reads.filter(r => r.count > 1),
+            identicalStyleAssignments: snapshot.redundantStyleProps,
+            identicalClassAssignments: snapshot.rows.filter(r => r.classWritesRedundant > 0).map(r => ({ label: r.label, count: r.classWritesRedundant })),
+            repeatedLookupMisses: snapshot.misses.filter(r => r.count > 1),
+        },
+    };
+}
+
 function report(snap, meta, tree, opts) {
     const secs = snap.seconds;
     const out = [];
@@ -90,6 +121,9 @@ function report(snap, meta, tree, opts) {
     out.push(`sample          : ${secs}s of virtual game time (after ${meta.warmupMs / 1000}s warm-up)`);
     out.push(`config          : ${meta.configMode} (${fmt(meta.configBytes)} bytes stored); not every feature/variant is exercised`);
     out.push(`attribution     : scheduler ${meta.wrappedScheduler ? "wrapped" : "NOT WRAPPED"}`);
+    out.push(`runtime sources : ${meta.sourceCoverage.scripts.length} active HUD scripts; sha256 ${meta.sourceCoverage.fingerprint}`);
+    out.push(`read coverage   : style[string], BHasClass, ${meta.readCoverage.propertyReads.join(", ")}`);
+    out.push(`unmeasured      : ${meta.readCoverage.unavailable.join("; ")}`);
     if (tree.notes.length > 0) {
         out.push("");
         out.push("tree construction notes (affects fidelity — read these):");
@@ -108,7 +142,12 @@ function report(snap, meta, tree, opts) {
         ["style writes — value CHANGED", total.styleWritesChanged, "native layout cost unmeasured"],
         ["style writes — value IDENTICAL", total.styleWritesRedundant, "redundant model assignments"],
         ["class writes — CHANGED", total.classWritesChanged, "native style cost unmeasured"],
-        ["class writes — no-op", total.classWritesRedundant, "redundant model assignments"],
+        ["class writes — same membership", total.classWritesRedundant, "native setter behavior unmeasured"],
+        ["style property reads", total.styleReads, "string-key getters only; native cost unmeasured"],
+        ["class reads", total.classReads, "BHasClass only; excludes setter internals"],
+        ["panel property reads", total.propertyReads, "listed properties only; see meta.readCoverage"],
+        ["attributed callback entries", total.calls, "managed polls and named scheduled wrappers only"],
+        ["scheduled callbacks fired", snap.scheduledCallbacks, "all virtual-clock callbacks; not the same as wrapper entries"],
         ["attribute reads", total.attrReads, `${fmt(rate(total.attrReadBytes, secs))} bytes/s`],
         ["attribute writes", total.attrWrites, `${fmt(rate(total.attrWriteBytes, secs))} bytes/s`],
         ["label text writes — CHANGED", total.textWritesChanged, "native layout cost unmeasured"],
@@ -121,21 +160,27 @@ function report(snap, meta, tree, opts) {
         out.push(`  ${label.padEnd(52)} ${value.padStart(10)}  ${note}`);
     }
     out.push("");
-    out.push(`  COMPOSITE COST  ${fmt(total.costPerSec).padStart(12)} units/s   (weighted; see counters.js WEIGHTS)`);
+    out.push(`  HISTORICAL HEURISTIC  ${fmt(total.costPerSec).padStart(12)} units/s   (arbitrary weights; reads/callbacks have no assigned weight)`);
 
     out.push("");
     out.push("-".repeat(100));
-    out.push(`BY FEATURE — top ${opts.top} of ${snap.rows.length}, ranked by composite cost`);
+    out.push(`BY OWNER — top ${opts.top} of ${snap.rows.length}, historical heuristic ordering; inspect raw counts`);
     out.push("-".repeat(100));
     out.push([
         "feature".padEnd(34),
         "cost/s".padStart(9),
         "share".padStart(6),
         "nodes/s".padStart(9),
+        "find/s".padStart(7),
         "miss/s".padStart(7),
+        "styleR".padStart(7),
+        "classR".padStart(7),
+        "propR".padStart(7),
+        "cb/s".padStart(7),
         "style±".padStart(7),
         "style=".padStart(7),
         "class±".padStart(7),
+        "class=".padStart(7),
         "text±".padStart(6),
         "new".padStart(5),
     ].join(" "));
@@ -145,16 +190,31 @@ function report(snap, meta, tree, opts) {
             fmt(r.costPerSec).padStart(9),
             pct(r.costUnits, total.costUnits),
             fmt(rate(r.traverseNodes + r.classTraverseNodes, secs)).padStart(9),
+            fmt(rate(r.traverseCalls + r.classTraverseCalls, secs)).padStart(7),
             fmt(rate(r.traverseMisses, secs)).padStart(7),
+            fmt(rate(r.styleReads, secs)).padStart(7),
+            fmt(rate(r.classReads, secs)).padStart(7),
+            fmt(rate(r.propertyReads, secs)).padStart(7),
+            fmt(rate(r.calls, secs)).padStart(7),
             fmt(rate(r.styleWritesChanged, secs)).padStart(7),
             fmt(rate(r.styleWritesRedundant, secs)).padStart(7),
             fmt(rate(r.classWritesChanged, secs)).padStart(7),
+            fmt(rate(r.classWritesRedundant, secs)).padStart(7),
             fmt(rate(r.textWritesChanged, secs)).padStart(6),
             fmt(rate(r.panelCreates, secs)).padStart(5),
         ].join(" "));
     }
     out.push("");
-    out.push("  style± = value changed   style= = same value rewritten (waste)   new = panels created");
+    out.push("  All columns are rates/s. R = covered reads; cb = wrapper entries; ±/= = changed/identical model assignment; new = panels created.");
+    out.push("  Identical assignments and repeated reads may be required for ownership/native feedback; counts do not prove waste.");
+
+    out.push("", "REPEATED READ CANDIDATES — raw request counts, not redundant reads or native cost");
+    out.push("  Owner/kind/property aggregates pool all panels; no same-panel repetition or cache opportunity is established.");
+    for (const r of snap.reads.filter(r => r.count > 1).slice(0, opts.top)) {
+        out.push(`  ${r.label.padEnd(34)} ${r.kind.padEnd(14)} ${r.property.padEnd(28)} ${fmt(rate(r.count, secs)).padStart(9)}/s`);
+    }
+    if (!snap.reads.some(r => r.count > 1)) out.push("  No repeated covered read keys in this sample.");
+    if (snap.readDetailCoverage.omittedEvents) out.push(`  Detail limit reached: ${snap.readDetailCoverage.omittedEvents} read events omitted from property breakdown; aggregate counts retained.`);
 
     if (snap.misses.length > 0) {
         out.push("");
@@ -190,23 +250,26 @@ function report(snap, meta, tree, opts) {
 function compareReport(cur, prev, opts) {
     const out = [];
     out.push("=".repeat(100));
-    out.push("COMPARISON vs SAVED RUN");
+    out.push("RAW COUNT DIFFERENCES vs SAVED RUN — output equivalence unverified; no performance conclusion");
     out.push("=".repeat(100));
 
     const delta = (a, b) => {
         if (!b) return a > 0 ? "  new  " : "   =   ";
-        const d = 100 * (a - b) / b;
-        if (Math.abs(d) < 0.05) return "   =   ";
-        return (d > 0 ? "+" : "") + d.toFixed(1) + "%";
+        const d = a - b;
+        return (d > 0 ? "+" : "") + fmt(d);
     };
 
     const keys = [
-        ["composite cost/s", "costPerSec"],
+        ["historical heuristic/s", "costPerSec"],
         ["tree nodes/s", "traverseNodes"],
         ["misses/s", "traverseMisses"],
         ["style changed/s", "styleWritesChanged"],
         ["style redundant/s", "styleWritesRedundant"],
         ["class changed/s", "classWritesChanged"],
+        ["style reads/s", "styleReads"],
+        ["class reads/s", "classReads"],
+        ["property reads/s", "propertyReads"],
+        ["callback entries/s", "calls"],
         ["attr reads/s", "attrReads"],
         ["attr bytes/s", "attrReadBytes"],
         ["text changed/s", "textWritesChanged"],
@@ -220,7 +283,7 @@ function compareReport(cur, prev, opts) {
     }
 
     out.push("");
-    out.push("  per-feature cost/s change (worst regressions and best wins):");
+    out.push("  per-owner historical heuristic differences (arbitrary weights, not timings):");
     const prevByLabel = new Map(prev.rows.map((r) => [r.label, r]));
     const diffs = cur.rows.map((r) => {
         const p = prevByLabel.get(r.label);
@@ -321,32 +384,15 @@ function main() {
         process.exit(2);
     }
 
-    const registryState = () => h.sandbox.evalJson(`({
-        enabled: QOL.core.FeatureRegistry.getEnabledIds(),
-        errors: QOL.core.FeatureRegistry.getErrorCounts()
-    })`);
-    const startState = registryState();
-    const snap = h.measure(seconds * 1000);
-    const endState = registryState();
-
-    if (snap.total.costUnits === 0) {
-        process.stderr.write("[profiler] FATAL: zero operations recorded — the mod did nothing.\n");
-        process.stderr.write(h.diagnose() + "\n");
-        process.exit(2);
-    }
-
-    const payload = {
-        meta: h.meta, tree: { panels: h.tree.panels, notes: h.tree.notes }, snapshot: snap,
-        enabledStart: startState.enabled, enabledEnd: endState.enabled,
-        registryErrorsStart: startState.errors, registryErrorsEnd: endState.errors,
-        callbackErrors: h.clock.errors.map(e => ({ atMs: e.at, message: e.error.message })),
-    };
+    const payload = collectProfile(h, seconds);
+    const snap = payload.snapshot;
 
     if (wantJson) {
         process.stdout.write(JSON.stringify(payload, null, 2) + "\n");
     } else {
         process.stdout.write(report(snap, h.meta, h.tree, { top }) + "\n");
-        process.stdout.write(`enabled coverage: ${startState.enabled.length} -> ${endState.enabled.length}\n`);
+        process.stdout.write(`enabled coverage at boundaries: ${payload.enabledStart.length} -> ${payload.enabledEnd.length}\n`);
+        for (const issue of payload.validity.issues) process.stdout.write(`INVALID FOR OPTIMIZATION INFERENCE: ${issue}\n`);
     }
 
     if (compareName) {
@@ -357,6 +403,10 @@ function main() {
         }
         const prev = JSON.parse(fs.readFileSync(p, "utf8"));
         const issues = comparisonIssues(payload, prev);
+        if (payload.snapshot.seconds !== prev.snapshot?.seconds) issues.push("different sample duration");
+        for (const run of [payload, prev]) {
+            if (!run.validity || run.validity.issues.length) issues.push("missing or failed run validity checks");
+        }
         if (issues.length) {
             process.stderr.write("[profiler] comparison refused: " + issues.join("; ") + ". Use equivalent inputs and an error-free baseline.\n");
             process.exitCode = 2;
@@ -387,11 +437,13 @@ function main() {
             process.stderr.write(`  @${e.at}ms ${e.error.message}\n`);
         }
     }
-    if (Object.values(endState.errors).some(n => n > 0)) {
-        process.stderr.write("[profiler] WARNING: nonzero final registry error streaks; inspect JSON coverage.\n");
+    if (payload.validity.issues.length) {
+        process.stderr.write("[profiler] WARNING: " + payload.validity.issues.join("; ") + "; inspect JSON failure/coverage details.\n");
         process.exitCode = 1;
     }
 }
+
+module.exports = { collectProfile, report, compareReport };
 
 if (require.main === module) {
     try { main(); } catch (error) { process.stderr.write("[profiler] FATAL: " + error.message + "\n"); process.exitCode = 2; }

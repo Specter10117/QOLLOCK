@@ -84,16 +84,54 @@ Read raw counters alongside the weighted ranking:
 - `nodes/s`: visits counted in supported searches on this replay hierarchy.
 - `miss/s`: ID lookups with no match in the supplied scenario.
 - `style±` / `style=`: changed and identical style assignments in the simulator.
-- Class/text/attribute reads and writes, attribute bytes and created/deleted panels:
-  modeled operations, with native cost unmeasured.
-- `cost/s`: estimated weights from `scripts/simulator/perf/counters.js`, not
-  measured milliseconds. A ranking sensitive to weights needs raw-count analysis.
+- `styleR`, `classR`, `propR`: string-key style gets, `BHasClass` requests and the
+  panel properties listed in `meta.readCoverage`. Getting `panel.style` alone,
+  setter equality checks and internal class checks in setters are excluded.
+  Other properties/APIs and pure JavaScript work, including color computation,
+  are not covered. These count requests, not native getter cost.
+- `cb/s`: managed poll/named scheduled wrapper entries. `scheduledCallbacks` is
+  the separate count of all virtual-clock callbacks fired in the measured window.
+  Neither is a count of useful/idle callbacks. Absence of counted writes does not
+  establish absence of visual changes or useful work.
+- Class/text/attribute writes, string-attribute reads/bytes and created/deleted
+  panels are modeled operations, with native cost unmeasured.
+- `cost/s`: historical arbitrary weights from `scripts/simulator/perf/counters.js`,
+  not measured milliseconds. New read/callback counters have no assigned weight;
+  a read-heavy owner can therefore rank low. Inspect raw counts and read details.
+
+`REPEATED READ CANDIDATES` and JSON `investigations` expose source/client
+investigation leads. Read details pool all panels by owner/kind/property (class
+name for `BHasClass`); repeated keys do not establish repeated reads of the same
+panel, equal values, unnecessary work or a cache opportunity. Required native
+feedback/ownership validation can read repeatedly without writing. Identical
+assignments likewise do not prove an unnecessary native setter. The read-detail
+cap and omitted-event count are reported in `snapshot.readDetailCoverage`;
+aggregate counts remain complete for the covered operations. Setup, warm-up and
+outside-window observation are excluded from operation counts.
+
+`meta.sourceCoverage` records the actual loaded HUD script paths and their source
+fingerprint. Capture/config/model fingerprints, read coverage and unavailable
+measurements remain separate; a static capture supplies neither computed CSS nor
+changing native gameplay state. These are partial observations, not an exhaustive
+account of native/property reads.
 
 `MODEL LOOKUP MISSES` lists investigation candidates. Narrow each search using
 verified ownership evidence and preserve late/replaced-source discovery. A lower
 count after a callback crashed or an owner was disabled is not an optimization.
 Read enabled coverage, unsupported calls, callback errors and registry streaks.
-Registry streaks reset after successful ticks and are not a session error history.
+`meta.wrapperErrors` retains bounded details and the full count of exceptions
+escaping attributed callbacks, including warm-up and subsequently recovered
+Scheduler errors; registry streaks alone reset after successful ticks. Failures
+caught inside feature code remain outside this history. The profiler reports
+`validity.issues` and exits unsuccessfully for observed failures or changed enabled
+coverage at sample boundaries. It does not observe every intervening lifecycle
+transition. Zero covered operations do not prove the mod did nothing.
+
+Saved-run `--compare` prints raw differences with output equivalence explicitly
+unverified, and refuses different sampling windows, model/config/tree identities
+or missing/failed validity checks. Old baselines require fresh runs. It makes no
+percentage optimization claim; use the source-revision comparator with selected
+output observations below for the stronger comparison checks.
 
 ## Compare source revisions
 

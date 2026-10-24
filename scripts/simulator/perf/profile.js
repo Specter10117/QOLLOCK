@@ -37,7 +37,7 @@
 const path = require("node:path");
 const fs = require("node:fs");
 const crypto = require("node:crypto");
-const { install, counters, silently } = require("./instrument.js");
+const { install, counters, silently, READ_COVERAGE } = require("./instrument.js");
 const { buildCapturedHud } = require("./hud_tree.js");
 
 // Install before requiring the simulator so index.js sees patched classes.
@@ -108,6 +108,7 @@ function wrapPollLoops(sandbox) {
                 var wrapped = function () {
                     __profEnter(label);
                     try { return callback.apply(this, arguments); }
+                    catch (error) { __profError(label, error); throw error; }
                     finally { __profExit(); }
                 };
                 __profNoteLoop(label, rateSec);
@@ -133,6 +134,7 @@ function wrapScheduledLoops(sandbox) {
                 var wrapped = function () {
                     __profEnter(label);
                     try { return cb.apply(this, arguments); }
+                    catch (error) { __profError(label, error); throw error; }
                     finally { __profExit(); }
                 };
                 return orig.call($, delaySec, wrapped);
@@ -169,8 +171,18 @@ function createProfiledHud({
     if (beforeLoad) beforeLoad(sandbox);
 
     // Attribution hooks the wrappers call from inside the VM.
-    sandbox.global.__profEnter = (label) => counters.enter(label);
+    sandbox.global.__profEnter = (label) => {
+        counters.enter(label);
+        counters.add("calls");
+    };
     sandbox.global.__profExit = () => counters.exit();
+    // Record before Scheduler catches/reset streaks can hide a recovered error.
+    // Retain bounded details while preserving the complete failure count.
+    const wrapperErrors = { count: 0, events: [] };
+    sandbox.global.__profError = (label, error) => {
+        wrapperErrors.count++;
+        if (wrapperErrors.events.length < 100) wrapperErrors.events.push({ label, atMs: clock.now(), message: String(error?.message || error) });
+    };
     const pollRates = new Map();
     sandbox.global.__profNoteLoop = (label, rate) => {
         pollRates.set(label, Number(rate) || 0.2);
@@ -201,10 +213,16 @@ function createProfiledHud({
         const list = scripts.missing.map((m) => `${m.src} (hud.xml:${m.line})`).join(", ");
         throw new Error(`[profiler] hud.xml references missing scripts: ${list}`);
     }
+    const sourceHash = crypto.createHash("sha256");
+    const loadedSources = scripts.scripts.map(s => ({ ...s, source: s.source === undefined ? fs.readFileSync(s.absPath, "utf8") : s.source }));
+    const loadedScripts = loadedSources.map(s => {
+        const relative = path.relative(layout.REPO_ROOT, s.absPath).split(path.sep).join("/");
+        sourceHash.update(JSON.stringify([relative, s.source]));
+        return relative;
+    });
     silently(() => {
-        for (const s of scripts.scripts) {
-            if (s.source === undefined) sandbox.load(s.absPath);
-            else sandbox.loadSource(s.source, s.absPath);
+        for (const s of loadedSources) {
+            sandbox.loadSource(s.source, s.absPath);
             if (s.absPath.includes("ql_scheduler")) {
                 wrapPollLoops(sandbox);
             }
@@ -265,9 +283,14 @@ function createProfiledHud({
         tree,
         counters,
         pollRates,
+        wrapperErrors,
         inputConfig,
         meta: {
             modelFingerprint, unsupportedCalls: sandbox.unsupportedCalls,
+            wrapperErrors,
+            sourceCoverage: { scripts: loadedScripts, fingerprint: sourceHash.digest("hex") },
+            readCoverage: READ_COVERAGE,
+            callbackCoverage: "calls counts managed poll and named scheduled wrapper entries; anonymous/raw callbacks are not owner-attributed",
             configApplied, configBytes,
             configMode: enableAll ? "expanded" : "defaults",
             configOverrides: { ...configOverrides },
@@ -283,11 +306,13 @@ function createProfiledHud({
 
         /** Count for `ms` of virtual time and return a snapshot. */
         measure(ms) {
+            if (!Number.isFinite(ms) || ms <= 0) throw new Error("measurement duration must be positive and finite");
+            const firedBefore = clock.stats.fired;
             counters.reset();
             counters.enabled = true;
             try { clock.advance(ms); }
             finally { counters.enabled = false; }
-            return counters.snapshot(ms / 1000);
+            return { ...counters.snapshot(ms / 1000), scheduledCallbacks: clock.stats.fired - firedBefore };
         },
 
         diagnose() {

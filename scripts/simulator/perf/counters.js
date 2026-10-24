@@ -32,6 +32,9 @@ const OP_KEYS = [
     "traverseMisses",
     "classTraverseCalls",
     "classTraverseNodes",
+    "styleReads",
+    "classReads",
+    "propertyReads",
     "styleWritesChanged",
     "styleWritesRedundant",
     "classWritesChanged",
@@ -47,6 +50,7 @@ const OP_KEYS = [
 ];
 
 const UNATTRIBUTED = "<unattributed>";
+const READ_DETAIL_LIMIT = 2048;
 
 function blankBucket() {
     const b = { label: "", calls: 0 };
@@ -59,16 +63,12 @@ class Counters {
         this.enabled = false;
         this.buckets = new Map();       // label -> bucket
         this._stack = [];
-        /**
-         * Traversals that missed, keyed by the id searched for, with the node
-         * count they burned. A miss is the single most valuable thing this
-         * harness can surface: it means the mod is walking the entire HUD tree
-         * to find a panel that is not there, every single tick. Usually the fix
-         * is "cache the negative result" or "stop looking when not in a match".
-         */
+        // A miss describes this replay scope/state, not native absence.
         this.missesById = new Map();    // id -> {count, nodes, labels:Set}
         /** Style properties written redundantly, keyed "label|prop". */
         this.redundantStyleProps = new Map();
+        this.readDetails = new Map();
+        this.omittedReadDetails = 0;
     }
 
     reset() {
@@ -76,6 +76,8 @@ class Counters {
         this._stack.length = 0;
         this.missesById.clear();
         this.redundantStyleProps.clear();
+        this.readDetails.clear();
+        this.omittedReadDetails = 0;
     }
 
     /** Current attribution label. */
@@ -160,6 +162,17 @@ class Counters {
         this.redundantStyleProps.set(key, (this.redundantStyleProps.get(key) || 0) + 1);
     }
 
+    recordRead(kind, property) {
+        if (!this.enabled) return;
+        this.add(kind);
+        const key = JSON.stringify([this.label, kind, property]);
+        const detail = this.readDetails.get(key);
+        if (detail) detail.count++;
+        else if (this.readDetails.size < READ_DETAIL_LIMIT) {
+            this.readDetails.set(key, { label: this.label, kind, property, count: 1 });
+        } else this.omittedReadDetails++;
+    }
+
     /** Composite cost for one bucket, in "visited node" units. See WEIGHTS. */
     static costOf(b) {
         return (
@@ -210,9 +223,11 @@ class Counters {
             rows,
             misses,
             redundantStyleProps: redundant,
+            reads: [...this.readDetails.values()].map(r => ({ ...r })).sort((a, b) => b.count - a.count),
+            readDetailCoverage: { limit: READ_DETAIL_LIMIT, omittedEvents: this.omittedReadDetails },
             weights: WEIGHTS,
         };
     }
 }
 
-module.exports = { Counters, WEIGHTS, OP_KEYS, UNATTRIBUTED };
+module.exports = { Counters, WEIGHTS, OP_KEYS, UNATTRIBUTED, READ_DETAIL_LIMIT };

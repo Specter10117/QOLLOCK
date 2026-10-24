@@ -185,6 +185,7 @@ function reportText(result, verbose) {
     }
     out.push("", "Misses are investigation candidates, not proof of invalid IDs or memory leaks.");
     for (const error of result.callbackErrors) out.push(`CALLBACK ERROR @${error.atMs}ms: ${error.message}`);
+    if (result.meta.wrapperErrors.count) out.push(`WRAPPED CALLBACK FAILURES (including warm-up/recovered): ${result.meta.wrapperErrors.count}; inspect meta.wrapperErrors.`);
     return out.join("\n");
 }
 
@@ -202,7 +203,7 @@ function main() {
             if (!opts.includeEvents) delete result.events;
             process.stdout.write(JSON.stringify(result, null, 2) + "\n");
         } else process.stdout.write(reportText(result, opts.verbose || !!opts.feature) + "\n");
-        if (result.meta.unsupportedCalls.length || result.callbackErrors.length || Object.values(result.registryErrorsEnd).some(n => n > 0)) {
+        if (result.meta.unsupportedCalls.length || result.callbackErrors.length || result.meta.wrapperErrors.count || Object.values(result.registryErrorsEnd).some(n => n > 0)) {
             process.exitCode = 1;
         }
     } catch (e) {

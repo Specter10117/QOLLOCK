@@ -12,8 +12,72 @@ const { install, counters, silently } = require("../scripts/simulator/perf/instr
 const { buildCapturedHud } = require("../scripts/simulator/perf/hud_tree");
 const { createProfiledHud, makeMaximalConfig } = require("../scripts/simulator/perf/profile");
 const { parseArgs, matchesLabel, collectTrace } = require("../scripts/trace_feature_hud");
+const { Counters, READ_DETAIL_LIMIT } = require("../scripts/simulator/perf/counters");
+const { collectProfile, report } = require("../scripts/profile_hud");
+const { comparisonIssues } = require("../scripts/capture_tree");
 
 install();
+
+function counted(fn) {
+    counters.reset();
+    counters.enabled = true;
+    try { fn(); } finally { counters.enabled = false; }
+    return counters.snapshot(1);
+}
+
+test("read accounting excludes warm-up, observations and setter internals with exact owner attribution", () => {
+    const doc = new Document(new Clock()), panel = doc.root;
+    panel.style.color = "red";
+    panel.BHasClass("probe"); panel.text; panel.visible;
+    const snap = counted(() => {
+        counters.around("first", () => {
+            const style = panel.style;
+            assert.equal(style.color, "red");
+            style.color = "red";
+            style.color = "blue";
+            delete style.color;
+            assert.equal(panel.BHasClass("probe"), false);
+            panel.SetHasClass("probe", true);
+            panel.SetHasClass("probe", true);
+            panel.ToggleClass("probe");
+            assert.equal(panel.text, "");
+            assert.equal(panel.visible, true);
+            assert.equal(panel.actuallayoutwidth, 0);
+        });
+        counters.around("second", () => {
+            assert.equal(panel.style.color, undefined);
+            assert.equal(panel.BHasClass("probe"), false);
+        });
+        silently(() => { panel.style.color; panel.BHasClass("probe"); panel.text; });
+    });
+    assert.equal(snap.total.styleReads, 2);
+    assert.equal(snap.total.classReads, 2, "SetHasClass/ToggleClass internals are not BHasClass requests");
+    assert.equal(snap.total.propertyReads, 3);
+    const first = snap.rows.find(r => r.label === "first");
+    assert.equal(first.styleWritesChanged, 2, "changed assignment and clear");
+    assert.equal(first.styleWritesRedundant, 1);
+    assert.equal(first.classWritesChanged, 2);
+    assert.equal(first.classWritesRedundant, 1);
+    assert.deepEqual(snap.reads.filter(r => r.label === "second"), [
+        { label: "second", kind: "styleReads", property: "color", count: 1 },
+        { label: "second", kind: "classReads", property: "probe", count: 1 },
+    ]);
+    JSON.stringify(doc.root.style); doc.root.BHasClass("probe"); doc.root.text;
+    assert.deepEqual(counters.snapshot(1), snap, "outside-window inspection cannot charge production");
+});
+
+test("read detail limit retains exact aggregates and reports omitted events", () => {
+    const c = new Counters(); c.enabled = true;
+    for (let i = 0; i <= READ_DETAIL_LIMIT; i++) c.recordRead("styleReads", String(i));
+    c.recordRead("styleReads", "0");
+    const snap = c.snapshot(1);
+    assert.equal(snap.total.styleReads, READ_DETAIL_LIMIT + 2);
+    assert.equal(snap.reads.length, READ_DETAIL_LIMIT);
+    assert.equal(snap.reads[0].count, 2);
+    assert.equal(snap.readDetailCoverage.omittedEvents, 1);
+    assert.equal(snap.total.costUnits, 0, "new reads must not acquire invented native-cost weights");
+    c.reset(); assert.equal(c.snapshot(1).readDetailCoverage.omittedEvents, 0);
+});
 
 for (const [script, args] of [
     ["profile_hud.js", []],
@@ -45,6 +109,64 @@ const fixture = () => ({ domTree: { id: "CitadelHudRoot", children: [
         { id: "hudActivePlayerStats", children: [] },
     ] },
 ] } });
+
+test("production native owner normalization/readback stays visible without counting setter comparisons", () => {
+    const h = createProfiledHud({ capturedTree: fixture(), warmupMs: 0 });
+    const panel = h.doc.root;
+    panel.style = new Proxy(panel.style, { set(target, key, value) { target[key] = String(value).toUpperCase(); return true; } });
+    const owner = h.sandbox.global.QOL.core.panel.createNativeStyleOwner();
+    assert.equal(owner.apply(panel, { color: "#abcdef" }), true);
+    const stable = counted(() => counters.around("owner", () => owner.apply(panel, { color: "#abcdef" })));
+    assert.equal(stable.total.styleReads, 1, "required native validation is counted exactly once");
+    assert.equal(stable.total.styleWritesChanged + stable.total.styleWritesRedundant, 0);
+    panel.style.color = "#000000";
+    const feedback = counted(() => counters.around("owner", () => owner.apply(panel, { color: "#abcdef" })));
+    assert.equal(feedback.total.styleReads, 2, "validation plus normalized readback after repair");
+    assert.equal(feedback.total.styleWritesChanged, 1);
+    assert.equal(panel.style.color, "#ABCDEF");
+    assert.deepEqual(h.clock.errors, []);
+});
+
+test("profile retains recovered managed callback failures and does not call read-only callbacks useless", () => {
+    const h = createProfiledHud({ capturedTree: fixture(), warmupMs: 0 });
+    h.sandbox.eval(`
+        Math.random = () => 0;
+        globalThis.probeTicks = 0;
+        QOL.core.Scheduler.createPollLoop(() => {
+            probeTicks++;
+            $.GetContextPanel().BHasClass("probe");
+            if (probeTicks === 1) throw Error("recovered probe failure");
+        }, 0.01, "probe");
+    `);
+    h.clock.advance(25);
+    const result = collectProfile(h, 0.02);
+    const row = result.snapshot.rows.find(r => r.label === "mf:probe");
+    assert.equal(row.calls, 2);
+    assert.equal(row.classReads, 2);
+    assert.equal(row.styleWritesChanged + row.styleWritesRedundant, 0);
+    assert.equal(result.snapshot.scheduledCallbacks >= row.calls, true);
+    assert.deepEqual(result.callbackErrors, [], "production Scheduler catches the throw");
+    assert.equal(result.meta.wrapperErrors.count, 1, "warm-up failure survives subsequent successful ticks");
+    assert.equal(result.meta.wrapperErrors.events[0].label, "mf:probe");
+    assert.ok(result.validity.issues.some(issue => issue.includes("callback failures")));
+    assert.ok(comparisonIssues(result, result).some(issue => issue.includes("wrapped callback failures")), "ref comparator shares the recovered-error refusal");
+    assert.ok(result.investigations.repeatedReads.some(r => r.label === "mf:probe" && r.count === 2));
+    const text = report(result.snapshot, result.meta, h.tree, { top: 20 });
+    assert.match(text, /not redundant reads or native cost/);
+    assert.doesNotMatch(text, /\(waste\)|no visual change|useless|no-op callback/);
+    assert.match(result.meta.sourceCoverage.fingerprint, /^[a-f0-9]{64}$/);
+    assert.ok(result.meta.sourceCoverage.scripts.some(file => file.endsWith("ql_app.js")));
+    assert.throws(() => h.measure(0), /positive and finite/);
+});
+
+test("profile exposes owner disable during the sample instead of a silent lower-work result", () => {
+    const h = createProfiledHud({ capturedTree: fixture(), warmupMs: 8000 });
+    h.clock.schedule(0.01, () => h.sandbox.eval("QOL.core.FeatureRegistry.shutdown()"));
+    const result = collectProfile(h, 0.02);
+    assert.ok(result.enabledStart.length > 0);
+    assert.equal(result.enabledEnd.length, 0);
+    assert.ok(result.validity.issues.some(issue => issue.includes("coverage changed")));
+});
 
 test("lookup observers obey the measurement gate and direct searches stop on first hit", () => {
     const doc = new Document(new Clock());

@@ -115,6 +115,7 @@ function comparisonIssues(current, previous) {
     if (!a.captureFidelity?.fingerprint || a.captureFidelity.fingerprint !== b.captureFidelity?.fingerprint) issues.push("different or unknown captured hierarchy/state");
     for (const run of [current, previous]) {
         if (run.meta?.unsupportedCalls?.length) issues.push("run contains unsupported simulator calls");
+        if (run.meta?.wrapperErrors?.count) issues.push("run contains wrapped callback failures (including recovered errors)");
         if (run.callbackErrors?.length || Object.values(run.registryErrorsEnd || {}).some(n => n > 0)) issues.push("run contains callback/registry errors");
     }
     if (JSON.stringify([...(current.enabledEnd || [])].sort()) !== JSON.stringify([...(previous.enabledEnd || [])].sort())) issues.push("different enabled feature coverage");
