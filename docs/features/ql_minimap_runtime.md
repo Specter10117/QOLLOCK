@@ -35,6 +35,10 @@ Settings are derived in lifecycle hooks; the active poll samples native view
 state without rebuilding the configuration model. Stopped settings/event hooks
 cannot recreate presentation or polling. Current HUD replacement releases the
 previous presentation, and temporary loading roots cannot own map overlays.
+Alt/Tab offsets retain their existing one-sided margin units: center alignment
+moves the viewport by half the margin change. Customize accounts for that ratio
+in dragging, frame previews, alignment, resize anchoring and slider travel;
+saved offsets and the Base minimap's edge-aligned units remain unchanged.
 Crate and tunnel trees use complete created-child ownership, including markers
 moved outside their container. Crate data replacement reuses unchanged indices
 and retires removed branches. Partial construction or style writes stay hidden

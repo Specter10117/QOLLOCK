@@ -125,6 +125,68 @@ test("minimap and shop corners edit existing size/scale fields without moving th
     }
 });
 
+for (const mode of ["base", "alt", "tab"]) test(`${mode} minimap drag keeps native margins and the frame at pointer intent`, () => {
+    const env = setup(), Q = env.global.QOL, G = Q.ui.customizeGeometry;
+    const core = add(env, env.hud.root, "", ["HudCore"]);
+    const gameplay = add(env, core, "gameplay_hud");
+    const parent = rect(add(env, gameplay, "", ["clamp_width"]), 1920, 1080);
+    const host = add(env, parent, "minimap_persp");
+    const container = rect(add(env, host, "minimap_container"), 400, 400, 400, 300);
+    const zoomed = mode !== "base", suffix = mode.toUpperCase();
+    if (zoomed) {
+        env.global.MOD_CONFIG["ENABLE_" + suffix + "_ZOOM"] = 1;
+        host.AddClass(mode === "alt" ? "gDetailView" : "gScoreboardOpen");
+    }
+    const id = zoomed ? "minimap" + (mode === "alt" ? "Alt" : "Tab") : "minimap";
+    const xKey = zoomed ? "ZOOM_X_OFFSET_" + suffix : "MINIMAP_X_OFFSET";
+    const yKey = zoomed ? "ZOOM_Y_OFFSET_" + suffix : "MINIMAP_Y_OFFSET";
+    env.global.SaveAndSync(); env.clock.advance(1500);
+    Q.ui.customize.start(null, { elementId: id });
+    rect(env.em.FindChildTraverse("QOLCustomizeEditor"), 1920, 1080);
+    activate(env, "QOLCustomizeToggleSnap");
+    const frame = env.em.FindChildTraverse("QOLCustomizeFrame_" + id);
+    const outline = frame.Children().find(child => child.BHasClass("QOLCustomizeOutline"));
+    const beforeX = parseFloat(frame.style.x) + parseFloat(outline.style.x);
+    const beforeY = parseFloat(frame.style.y) + parseFloat(outline.style.y);
+    const proxy = startDrag(env, frame);
+    proxy.actualxoffset += 100; proxy.actualyoffset += 60;
+    env.clock.advance(500);
+    const store = env.hud.sandbox.global.QOL.core.ConfigStore;
+    assert.equal(store.get("ql_minimap_runtime", xKey), zoomed ? 200 : 100);
+    assert.equal(store.get("ql_minimap_runtime", yKey), zoomed ? -120 : -60);
+    assert.equal(parseFloat(frame.style.x) + parseFloat(outline.style.x), beforeX + 100);
+    assert.equal(parseFloat(frame.style.y) + parseFloat(outline.style.y), beforeY + 60);
+    // Model only Panorama's centered-margin equation, not its layout engine.
+    if (zoomed) {
+        assert.equal((parseFloat(host.style.marginLeft) - parseFloat(host.style.marginRight)) / 2, 100);
+        assert.equal((parseFloat(host.style.marginTop) - parseFloat(host.style.marginBottom)) / 2, 60);
+    } else {
+        assert.equal(parseFloat(host.style.marginRight), -70);
+        assert.equal(parseFloat(host.style.marginBottom), -30);
+    }
+    const element = Q.presentation.elements.find(item => item.id === id);
+    const field = element.fields.find(item => item.axis === "x");
+    const sliderBounds = G.positionSliderBounds(field, { target: host, host: frame.GetParent(),
+        values: { [xKey]: 0 }, bounds: { x: 400, y: 300, width: 400, height: 400 },
+        view: { x: 0, y: 0, width: 1920, height: 1080 } });
+    assert.equal(sliderBounds.min, zoomed ? -800 : -400);
+    assert.equal(sliderBounds.max, zoomed ? 2240 : 1120);
+    startDrag.end(env, frame, proxy);
+    container.actualxoffset = 500; container.actualyoffset = 360;
+    env.clock.advance(500);
+    activate(env, "QOLCustomizeAlign_top"); env.clock.advance(500);
+    assert.equal(store.get("ql_minimap_runtime", yKey), zoomed ? 600 : 300);
+    assert.equal(store.get("ql_minimap_runtime", xKey), zoomed ? 200 : 100);
+    parent.actualuiscale_x = 2; parent.actualuiscale_y = 2;
+    const scaled = G.dragValues(element, host, { [xKey]: 0, [yKey]: 0 }, { x: 100, y: 60 });
+    assert.equal(scaled[xKey], zoomed ? 100 : 50);
+    assert.equal(scaled[yKey], zoomed ? -60 : -30);
+    activate(env, "QOLCustomizeCancel"); env.clock.advance(1200);
+    assert.equal(store.get("ql_minimap_runtime", xKey), 0);
+    assert.equal(store.get("ql_minimap_runtime", yKey), 0);
+    clean(env);
+});
+
 test("layout ratio supplies coordinate density when native actualuiscale properties are absent", () => {
     const env = setup();
     const g = env.global.QOL.ui.customizeGeometry;

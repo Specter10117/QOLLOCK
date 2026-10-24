@@ -19,8 +19,9 @@
         available: (hud, config) => activeMapMode(hud, config) === state });
     const zoomFields = mode => [
         toggle("ENABLE_" + mode + "_ZOOM"), f("MINIMAP_LARGE_SIZE_" + mode, "Size", null, { resize: true }),
-        f("ZOOM_X_OFFSET_" + mode, "Horizontal Offset", null, { axis: "x" }),
-        f("ZOOM_Y_OFFSET_" + mode, "Vertical Offset", null, { axis: "y", direction: -1 }),
+        // Center alignment halves one-sided margins; preserve persisted units.
+        f("ZOOM_X_OFFSET_" + mode, "Horizontal Offset", null, { axis: "x", movementRatio: 0.5 }),
+        f("ZOOM_Y_OFFSET_" + mode, "Vertical Offset", null, { axis: "y", direction: -1, movementRatio: 0.5 }),
         f(mode + "_ZOOM_OPACITY", "Opacity"), t(mode + "_ZOOM_DRAW_OVER_UI", "Draw Over UI")
     ];
     C.register([

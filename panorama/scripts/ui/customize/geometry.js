@@ -250,6 +250,9 @@
         }
         return dragValues(element, target, currentValues, delta);
     }
+    const positionUnitPixels = (field, parent) => (field.unit === "%"
+        ? Number(parent?.[field.axis === "x" ? "actuallayoutwidth" : "actuallayoutheight"]) / 100
+        : scale(parent, field.axis)) * (field.movementRatio ?? 1);
     function dragValues(element, target, startValues, delta) {
         const parent = target.GetParent();
         const values = {};
@@ -257,18 +260,10 @@
             if (!field.axis) continue;
             const axis = field.axis;
             const dir = field.direction || 1;
-            if (field.unit === "%") {
-                const dim = Number(axis === "x" ? parent?.actuallayoutwidth : parent?.actuallayoutheight);
-                if (!(dim > 0)) continue;
-                // Both reported parent dimensions and cursor deltas are physical
-                // pixels; dividing by parent UI scale again halves the movement.
-                const deltaPct = (delta[axis] / dim) * 100;
-                values[field.key] = Q.presentation.normalize(field.key,
-                    Number(startValues[field.key]) + deltaPct * dir);
-            } else {
-                values[field.key] = Q.presentation.normalize(field.key,
-                    Number(startValues[field.key]) + delta[axis] / scale(parent, axis) * dir);
-            }
+            const pixels = positionUnitPixels(field, parent);
+            if (!(pixels > 0)) continue;
+            values[field.key] = Q.presentation.normalize(field.key,
+                Number(startValues[field.key]) + delta[axis] / pixels * dir);
         }
         return values;
     }
@@ -279,7 +274,7 @@
         const size = axis === "x" ? "width" : "height";
         if (!alive(parent) || !bounds || !view || !(view[size] > 0)) return null;
         const density = scale(host, axis);
-        const divisor = field.unit === "%" ? Number(parent["actuallayout" + size]) / 100 : scale(parent, axis);
+        const divisor = positionUnitPixels(field, parent);
         if (!(divisor > 0)) return null;
         const endpoints = [view[axis] - bounds[axis], view[axis] + view[size] - bounds[axis] - bounds[size]]
             .map(delta => Number(values[field.key]) + delta * density / divisor * (field.direction || 1));
@@ -287,6 +282,6 @@
         const min = Math.max(limits.min, Math.min(...endpoints)), max = Math.min(limits.max, Math.max(...endpoints));
         return Number.isFinite(min) && Number.isFinite(max) && min <= max ? { min, max } : null;
     }
-    Q.ui.customizeGeometry = { scale, absolute, windowPoint, windowDelta, cursorPoint, box, frameBox, dragValues, resizeValues, scaleBoundsMatch, anchorValues, isShown,
+    Q.ui.customizeGeometry = { scale, absolute, windowPoint, windowDelta, cursorPoint, box, frameBox, positionUnitPixels, dragValues, resizeValues, scaleBoundsMatch, anchorValues, isShown,
         viewport, canvasDelta, screenDelta, hitBox, inputBox, points, snap, alignDelta, positionSliderBounds };
 })();

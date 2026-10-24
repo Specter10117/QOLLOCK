@@ -189,8 +189,7 @@
             const change = owner.transaction.value(field.key) - values[field.key];
             if (!change) continue;
             const parent = target.GetParent();
-            const dimension = field.axis === "x" ? "actuallayoutwidth" : "actuallayoutheight";
-            const pixels = field.unit === "%" ? change * Number(parent[dimension]) / 100 : change * G.scale(parent, field.axis);
+            const pixels = change * G.positionUnitPixels(field, parent);
             const expected = bounds[field.axis] + pixels * (field.direction || 1) / G.scale(owner.overlay, field.axis);
             const flow = field.axis === "x" ? flowDelta(owner, pending.element, pending.before) : 0;
             if (flow === null || !Number.isFinite(expected) || Math.abs(measured[field.axis] - expected - flow) > 2) return false;
@@ -346,8 +345,7 @@
             const field = drag.element.fields.find(item => item.axis === axis);
             if (!field) { accepted[axis] = 0; continue; }
             const change = (drag.values[field.key] - drag.startValues[field.key]) * (field.direction || 1);
-            const size = axis === "x" ? "actuallayoutwidth" : "actuallayoutheight";
-            accepted[axis] = field.unit === "%" ? change * Number(drag.parent[size]) / 100 : change * G.scale(drag.parent, axis);
+            accepted[axis] = change * G.positionUnitPixels(field, drag.parent);
         }
         const offset = G.canvasDelta(accepted, owner.overlay);
         bounds.x += offset.x;
