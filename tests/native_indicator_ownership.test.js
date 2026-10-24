@@ -30,6 +30,24 @@ function nativeTarget(env, parent = env.doc.root) {
     return { root, instance, unscaled, hint, scaled, scaledHint, shape };
 }
 
+test("target geometry discovers only the customized channel and releases it independently", () => {
+    const env = setup("ql_target_shapes", { UNIT_TARGET_SIZE: 200 }), target = nativeTarget(env);
+    target.hint.style.uiScale = "73%";
+    const enumerate = env.root.FindChildrenWithClassTraverse;
+    let hintScans = 0;
+    env.root.FindChildrenWithClassTraverse = name => { if (name === "unit_target_instance") hintScans++; return enumerate.call(env.root, name); };
+    env.feature.onEnable(); env.clock.advance(1200);
+    assert.equal(target.shape.style.uiScale, "200%");
+    assert.equal(target.hint.style.uiScale, "73%", "shape sizing must not override native hint geometry");
+    assert.equal(hintScans, 0, "unchanged hint settings need no hint-source discovery");
+    env.cfg.UNIT_TARGET_SIZE = 150; env.cfg.UNIT_TARGET_HINT_SIZE = 140;
+    env.feature.onSettingsChanged();
+    assert.equal(target.shape.style.uiScale, undefined);
+    assert.equal(target.hint.style.uiScale, "140%");
+    env.feature.onDisable(); assert.equal(target.hint.style.uiScale, undefined);
+    assert.deepEqual(env.clock.errors, []);
+});
+
 test("small-number filtering leaves cumulative opacity to its own setting instead of a label poll", () => {
     const env = setup("ql_damage_numbers", { ENABLE_HIDE_SMALL_NUMBERS: 1, DAMAGE_NUMBER_OPACITY: 0.5 });
     const source = env.add(env.root, "HudEventIndicatorsPanel");

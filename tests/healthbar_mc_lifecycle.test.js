@@ -107,3 +107,19 @@ test("Minecraft can release active animations repeatedly and rebuild the same-si
     e.mc.release(); e.clock.advance(1000);
     assert.deepEqual(e.clock.errors, []);
 });
+
+test("Minecraft searches for its late canvas inside the health owner instead of the entire HUD", () => {
+    const e = fixture(), canvas = e.heartsRoot.GetParent(), health = canvas.GetParent();
+    e.mc.release(); canvas.SetParent(e.add(null, "RetiredCanvas"));
+    const traverse = e.root.FindChildTraverse;
+    let broadMisses = 0;
+    e.root.FindChildTraverse = id => { if (id === "MinecraftHeartsRoot") broadMisses++; return traverse.call(e.root, id); };
+    for (let i = 0; i < 20; i++) { e.clock.advance(50); e.mc.update(e.root, {}, e.clock.now(), true); }
+    assert.equal(broadMisses, 0, "a QOLLOCK canvas belongs to the native health component");
+    assert.equal(e.mc.inspect().active, false);
+    canvas.SetParent(health);
+    e.clock.advance(450); e.mc.update(e.root, {}, e.clock.now(), true);
+    assert.equal(e.mc.inspect().active, true, "late/replaced source recovery remains bounded");
+    e.mc.release(); e.clock.advance(1000);
+    assert.deepEqual(e.clock.errors, []);
+});

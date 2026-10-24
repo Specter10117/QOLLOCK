@@ -89,3 +89,22 @@ test("pregame evidence contains native read failures and ignores an old reveal i
     assert.equal(env.probe.readHeroFromPregame(env.root), "hero_frank"); env.root.RemoveClass("GameStatePreGame");
     assert.equal(env.probe.readHeroFromPregame(env.root), ""); assert.deepEqual(env.clock.errors, []);
 });
+
+test("FG bounds absent dash discovery while current hero classes and late sources remain live", () => {
+    const env = fixture(), reader = env.Q.core.heroProbe.createReader();
+    env.dash.RemoveClass("citadel_ability_dash");
+    const enumerate = env.crosshair.FindChildrenWithClassTraverse;
+    let searches = 0;
+    env.crosshair.FindChildrenWithClassTraverse = name => { searches++; return enumerate.call(env.crosshair, name); };
+    for (let i = 0; i < 20; i++) { assert.equal(reader.readHeroFromCrosshair(env.root), ""); env.clock.advance(50); }
+    assert.ok(searches <= 5, `absent dash sources triggered ${searches} scans in one second`);
+    env.dash.AddClass("citadel_ability_dash");
+    env.clock.advance(250);
+    assert.equal(reader.readHeroFromCrosshair(env.root), "hero_atlas");
+    env.dash.RemoveClass("hero_atlas"); env.dash.AddClass("hero_frank");
+    assert.equal(reader.readHeroFromCrosshair(env.root), "hero_frank", "resolved classes retain the active update cadence");
+    env.dash.RemoveClass("citadel_ability_dash");
+    assert.equal(reader.readHeroFromCrosshair(env.root), "");
+    env.dash.AddClass("citadel_ability_dash"); reader.reset();
+    assert.equal(reader.readHeroFromCrosshair(env.root), "hero_frank", "disable/re-enable clears the missing-source deadline");
+});

@@ -208,3 +208,27 @@ test("native health-bar discovery backs off while sources are missing", () => {
     env.feature.onDisable();
     assert.deepEqual(env.clock.errors, []);
 });
+
+test("top-bar warnings discover within the current TopBar and retire a living old roster", () => {
+    const env = setup({ ENABLE_ENEMY_COLORED_HEALTHBAR: 1 });
+    const core = env.$.CreatePanel("Panel", env.root, ""); core.AddClass("HudCore");
+    const top = env.$.CreatePanel("Panel", core, "TopBar");
+    const unrelated = topbarHealth(env), original = topbarHealth(env);
+    original.slot.SetParent(top);
+    const enumerate = env.root.FindChildrenWithClassTraverse;
+    let wholeHudScans = 0;
+    env.root.FindChildrenWithClassTraverse = name => { wholeHudScans++; return enumerate.call(env.root, name); };
+    env.feature.onEnable(); env.clock.advance(1500);
+    assert.equal(original.fill.style.backgroundColor, "rgb(255, 86, 86)");
+    assert.equal(unrelated.fill.style.backgroundColor, undefined, "another component's health fill is not a roster slot");
+    assert.equal(wholeHudScans, 0, "known TopBar ownership avoids HUD-wide class enumeration");
+    top.SetParent(env.$.CreatePanel("Panel", null, "RetiredTopBar"));
+    const next = env.$.CreatePanel("Panel", core, "TopBar"), replacement = topbarHealth(env);
+    replacement.slot.SetParent(next);
+    env.clock.advance(300);
+    assert.equal(original.fill.style.backgroundColor, undefined);
+    assert.equal(replacement.fill.style.backgroundColor, "rgb(255, 86, 86)");
+    env.feature.onDisable();
+    assert.equal(replacement.fill.style.backgroundColor, undefined);
+    assert.deepEqual(env.clock.errors, []);
+});

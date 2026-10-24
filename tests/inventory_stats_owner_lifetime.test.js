@@ -78,3 +78,20 @@ test("inventory leaf membership follows moved icons, late graph replacement and 
     assert.equal(graph.style.opacity, undefined); assert.equal(icon.style.opacity, undefined);
     assert.equal(first.section.style.opacity, "0.7"); env.feature.onDisable();
 });
+
+test("default item opacity releases old leaf overrides without continuing child discovery", () => {
+    const env = setup("ql_items", { ITEMS_OPACITY: 0.4 }), native = env.native(env.root);
+    env.feature.onEnable(); assert.equal(native.icon.style.opacity, "0.40");
+    let searches = 0;
+    const traverse = native.panel.FindChildTraverse, classes = native.panel.FindChildrenWithClassTraverse;
+    native.panel.FindChildTraverse = id => { searches++; return traverse.call(native.panel, id); };
+    native.panel.FindChildrenWithClassTraverse = name => { searches++; return classes.call(native.panel, name); };
+    env.cfg.ITEMS_OPACITY = 1; env.feature.onSettingsChanged(); env.clock.advance(2500);
+    assert.equal(native.icon.style.opacity, undefined);
+    assert.equal(searches, 0, "default opacity owns no leaf styles and needs no recurring leaf searches");
+    const late = env.add(native.panel, "", ["mod_icon_single_container"]);
+    env.cfg.ITEMS_OPACITY = 0.6; env.feature.onSettingsChanged();
+    assert.equal(late.style.opacity, "0.60");
+    env.feature.onDisable(); assert.equal(late.style.opacity, undefined);
+    assert.deepEqual(env.clock.errors, []);
+});

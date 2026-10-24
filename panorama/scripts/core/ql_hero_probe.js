@@ -88,7 +88,11 @@
         const pregameSource = cache.createIdResolver("Pregame", { ownerPath: [{ className: "HudTakeovers" }] });
         const abilitiesSource = cache.createIdResolver("HeroAbilities");
         const topBarSource = cache.createIdResolver("TopBar", { ownerPath: [{ className: "HudCore" }] });
-        function reset() { crosshairSource.reset(); pregameSource.reset(); abilitiesSource.reset(); topBarSource.reset(); }
+        let dashRoot = null, dashSources = [], dashChildCount = -1, nextDashSearchMs = 0;
+        function reset() {
+            crosshairSource.reset(); pregameSource.reset(); abilitiesSource.reset(); topBarSource.reset();
+            dashRoot = null; dashSources = []; dashChildCount = -1; nextDashSearchMs = 0;
+        }
         function readHeroFromTopBar(root) {
             const top = topBarSource.resolve(currentHud(root));
             if (!P.isAlive(top)) return "";
@@ -117,7 +121,14 @@
             // A pawn transition can leave two live dash indicators. Every recognized
             // class must agree instead of selecting the first alias/panel match.
             try {
-                const candidates = [crosshair, ...(crosshair.FindChildrenWithClassTraverse("citadel_ability_dash") || [])];
+                const now = Date.now(), childCount = crosshair.GetChildCount();
+                // Retry only an absent compatibility class at a bounded cadence.
+                // Live sources still rescan every update to detect conflicting pawns.
+                if (crosshair !== dashRoot || childCount !== dashChildCount || dashSources.length || now >= nextDashSearchMs) {
+                    dashSources = crosshair.FindChildrenWithClassTraverse("citadel_ability_dash") || [];
+                    dashRoot = crosshair; dashChildCount = childCount; nextDashSearchMs = now + 250;
+                }
+                const candidates = [crosshair, ...dashSources];
                 let found = "";
                 for (const panel of candidates) {
                     if (!P.isAlive(panel)) continue;

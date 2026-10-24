@@ -550,6 +550,26 @@ test("compass speed regression, quantization and calibration survive the module 
     e.clean();
 });
 
+test("compass skips local-player enumeration when the preferred active cone already resolves heading", () => {
+    const e = fixture(), cone = localPlayer(e, e.renderer, 70);
+    cone.player.AddClass("active"); cone.player.AddClass("client_cone_fov");
+    const fallback = localPlayer(e, e.renderer, 20);
+    const enumerate = e.viewport.FindChildrenWithClassTraverse;
+    let fallbackScans = 0;
+    e.viewport.FindChildrenWithClassTraverse = name => {
+        if (name === "localplayer") fallbackScans++;
+        return enumerate.call(e.viewport, name);
+    };
+    const { feature } = directCompass(e); feature.onEnable(); e.clock.advance(1000);
+    assert.equal(e.root.FindChildTraverse("QOLCompassDegree").text, "70°");
+    assert.equal(fallbackScans, 0, "an unused fallback must not enumerate the minimap");
+    cone.player.SetParent(e.orphan); e.clock.advance(300);
+    assert.equal(e.root.FindChildTraverse("QOLCompassDegree").text, "20°");
+    assert.ok(fallbackScans > 0, "fallback remains available after preferred source loss");
+    assert.equal(fallback.player.IsValid(), true);
+    feature.onDisable(); e.clean();
+});
+
 test("compass layout and tick writes retry and follow a replaced overlay parent", () => {
     const e = fixture();
     localPlayer(e, e.renderer, 120);

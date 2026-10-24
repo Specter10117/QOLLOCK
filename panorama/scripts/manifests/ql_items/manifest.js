@@ -54,9 +54,9 @@
             function discoverChildren() {
                 const sources = new Map();
                 const opacity = model.enabled && model.opacity !== "1.00" ? model.opacity : null;
+                if (opacity === null) return sources;
                 const graph = panelAPI.findTraverse(panel, "BarGraphContainer");
                 if (graph) sources.set(graph, opacity);
-                for (const section of QOL.utils.FindPanelsByClass(panel, "ModSection")) sources.set(section, null);
                 for (const icon of QOL.utils.FindPanelsByClass(panel, "mod_icon_single_container")) sources.set(icon, opacity);
                 return sources;
             }

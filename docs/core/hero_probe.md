@@ -34,6 +34,11 @@ remain uncached and are read at every active FG update. No scheduling is owned b
 the reader. The root read methods remain compatibility delegates to one lazily
 created context reader; feature instances use their own resettable reader.
 
+An absent dash-class result retries within 250 ms; crosshair replacement or a
+changed direct-child count bypasses that deadline. Resolved dash sources are
+enumerated every update so conflicting pawn evidence remains immediate. Reset
+clears the missing-result deadline as well as native handles.
+
 Unconsumed signature confirmation, loose panel/command scans and shop/build
 navigation are removed with their root aliases and shared `State` writes. These
 were retired loader implementations, separate from historical config decoding.

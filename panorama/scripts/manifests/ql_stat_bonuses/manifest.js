@@ -21,6 +21,35 @@
         { key: "maxHealth", ids: ["StatContainer_MaxHealth", "StatContainer_BaseHealth", "StatContainer_ArmorPower"],
             labelId: "QOLStatBonusesMaxHealth", prefix: "Max Health: " }
     ];
+    const statIds = new Set(STAT_DEFS.flatMap(def => def.ids));
+    function discoverStatSources(root) {
+        const result = new Map();
+        // Native ID priority inspects siblings before each nested branch
+        // (October 17 probe). Share that pass across the stat alternatives.
+        try {
+            const parents = [root];
+            let visited = 0;
+            while (parents.length && result.size < statIds.size) {
+                const children = parents.pop().Children() || [];
+                for (const child of children) {
+                    if (++visited > 32768) throw new Error("Stat discovery budget exceeded");
+                    if (P.isAlive(child) && statIds.has(child.id) && !result.has(child.id)) result.set(child.id, child);
+                }
+                for (let index = children.length - 1; index >= 0; index--) {
+                    if (P.isAlive(children[index])) parents.push(children[index]);
+                }
+            }
+        } catch (_) {
+            // An interrupted pass cannot establish absence or first-match
+            // priority. Retain native lookup recovery on races/large trees.
+            result.clear();
+            for (const id of statIds) {
+                const panel = P.findTraverse(root, id);
+                if (panel) result.set(id, panel);
+            }
+        }
+        return result;
+    }
     const token = text => {
         const match = typeof text === "string" ? text.match(/([+\-]?\d+(?:\.\d+)?%?)/) : null;
         return match ? match[1] : "";
@@ -142,6 +171,7 @@
             let running = false, loop = null, rootOwner = null, model = null, overlay = null, signature = null, statsOwner = null;
             let nextTooltipScanMs = 0, lastShopOpen = null;
             const labels = new Map(), sources = new Map(), goldenValues = new Map();
+            let discoveredSources = null;
 
             function readModel() {
                 const cfg = QOL.presentation.captureVisibility(ctx, ctx.config.view());
@@ -153,6 +183,7 @@
             }
 
             function release(resetSources = true) {
+                discoveredSources = null;
                 tree.clear();
                 overlay = null; signature = null; labels.clear();
                 if (resetSources) {
@@ -202,8 +233,9 @@
                 const previous = record.panel;
                 record.panel = null;
                 if (!statsOwner || (!previous && now < record.nextSearchMs)) return null;
+                if (!discoveredSources) discoveredSources = discoverStatSources(statsOwner);
                 for (const id of def.ids) {
-                    record.panel = P.findTraverse(statsOwner, id);
+                    record.panel = discoveredSources.get(id) || null;
                     if (record.panel) break;
                 }
                 record.delay = record.panel ? 0 : Math.min(record.delay ? record.delay * 2 : 500, 3000);
@@ -247,6 +279,7 @@
                 }
                 resolveStatsOwner(root);
                 harvestTooltip(root, now);
+                discoveredSources = null;
                 for (const def of STAT_DEFS) {
                     const source = resolveSource(def, now);
                     const explicit = breakdownValue(P.findTraverse(source, BREAKDOWN_ID));

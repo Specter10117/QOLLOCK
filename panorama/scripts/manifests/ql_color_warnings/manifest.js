@@ -51,7 +51,9 @@
         };
     };
     const createSelfWarnings = () => {
-        const containerResolver = Q.panelCache.createIdResolver("health_and_abilities_container");
+        const containerResolver = Q.panelCache.createIdResolver("health_and_abilities_container", {
+            ownerPath: [{ className: "HudCore" }, "gameplay_hud"]
+        });
         const ids = ["HealthRegenAndTotal", "currentHealthLabel", "current_health", "totalHealthLabel", "max_health",
             "hud_health_bars_stacked", "hud_health_bars", "health_bars_container", "health_bar"];
         const resolvers = Object.fromEntries(ids.map(id => [id, Q.panelCache.createIdResolver(id)]));
@@ -113,6 +115,7 @@
         return false;
     };
     const createTopbarWarnings = () => {
+        const topbarResolver = Q.panelCache.createIdResolver("TopBar", { ownerPath: [{ className: "HudCore" }] });
         const presentation = createPresentation();
         const pulses = { enemy: createPulse(), ally: createPulse() };
         let rootOwner = null, entries = [], nextScanMs = 0;
@@ -122,15 +125,17 @@
             rootOwner = null;
             entries = [];
             nextScanMs = 0;
+            topbarResolver.reset();
         };
         const isCurrent = (entry, root) => P.isAlive(entry.parent) && entry.parent.id === "HeroHealth" &&
             P.isAlive(entry.owner) && entry.owner.id === "HealthBar" && P.findChild(entry.parent, "HeroHealth_Left") === entry.fill &&
             entry.fill.BHasClass("ProgressBarLeft") && entry.parent.GetParent() === entry.owner && belongsTo(entry.owner, root);
         const discover = (root, now, force) => {
-            if (rootOwner !== root) { release(); rootOwner = root; }
-            if (!force && now < nextScanMs && entries.every(entry => isCurrent(entry, root))) return;
+            const scope = topbarResolver.resolve(P.findHud(root)) || root;
+            if (rootOwner !== scope) { release(); rootOwner = scope; }
+            if (!force && now < nextScanMs && entries.every(entry => isCurrent(entry, scope))) return;
             entries = [];
-            for (const fill of U.FindPanelsByClass(root, "ProgressBarLeft")) {
+            for (const fill of U.FindPanelsByClass(scope, "ProgressBarLeft")) {
                 if (!P.isAlive(fill) || fill.id !== "HeroHealth_Left") continue;
                 const parent = fill.GetParent(), owner = P.isAlive(parent) ? parent.GetParent() : null;
                 if (!P.isAlive(parent) || parent.id !== "HeroHealth" || !P.isAlive(owner) || owner.id !== "HealthBar") continue;
@@ -150,7 +155,7 @@
                 discover(root, now, force);
                 const values = { enemy: [], ally: [] };
                 for (const entry of entries) {
-                    if (!isCurrent(entry, root)) continue;
+                    if (!isCurrent(entry, rootOwner)) continue;
                     const enemy = U.HasClassInHierarchy(entry.fill, "enemy"), ally = U.HasClassInHierarchy(entry.fill, "friend");
                     if (enemy === ally) continue;
                     const name = enemy ? "enemy" : "ally", percent = readPercent(entry);

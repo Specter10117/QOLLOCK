@@ -99,3 +99,43 @@ test("stat bonus misses retry and a live same-ID source replacement supersedes t
     assert.equal(old.IsValid(), true);
     assert.deepEqual(hud.clock.errors, []);
 });
+
+test("stat bonus alternatives share a discovery pass instead of traversing once per missing ID", () => {
+    const env = fixture("ql_stat_bonuses", { ENABLE_STAT_BONUSES: 1 });
+    const owner = env.add(env.core, "CitadelHudHeroShop");
+    const traverse = owner.FindChildTraverse;
+    let individualMisses = 0;
+    owner.FindChildTraverse = id => {
+        if (id.startsWith("StatContainer_")) individualMisses++;
+        return traverse.call(owner, id);
+    };
+    env.feature.onEnable(); env.hud.clock.advance(1000);
+    assert.equal(individualMisses, 0, "one absent variant cannot trigger another whole-owner walk");
+    const row = env.add(owner, "StatContainer_BaseHealth");
+    env.add(row, "ModifiedLabel", [], "Label").text = "350";
+    env.add(row, "BaseLabel", [], "Label").text = "100";
+    env.hud.clock.advance(3500);
+    assert.equal(env.hud.root.FindChildTraverse("QOLStatBonusesMaxHealth").text, "Max Health: 250");
+    env.feature.onDisable(); assert.deepEqual(env.hud.clock.errors, []);
+});
+
+test("stat batch discovery keeps native duplicate priority and recovers from interrupted child enumeration", () => {
+    const env = fixture("ql_stat_bonuses", { ENABLE_STAT_BONUSES: 1 });
+    const owner = env.add(env.core, "CitadelHudHeroShop"), branch = env.add(owner, "EarlierBranch");
+    const health = (parent, value) => {
+        const row = env.add(parent, "StatContainer_MaxHealth");
+        env.add(row, "ModifiedLabel", [], "Label").text = String(value);
+        env.add(row, "BaseLabel", [], "Label").text = "100";
+        return row;
+    };
+    health(branch, 200);
+    const direct = health(owner, 400);
+    env.feature.onEnable();
+    const read = () => env.hud.root.FindChildTraverse("QOLStatBonusesMaxHealth").text;
+    assert.equal(read(), "Max Health: 300", "a direct sibling wins over an earlier nested duplicate");
+    direct.SetParent(env.add(null, "RetiredStat")); health(owner, 500);
+    owner.Children = () => { throw Error("modeled native child enumeration race"); };
+    env.hud.clock.advance(250);
+    assert.equal(read(), "Max Health: 400", "partial enumeration cannot freeze or publish a false miss");
+    env.feature.onDisable(); assert.deepEqual(env.hud.clock.errors, []);
+});

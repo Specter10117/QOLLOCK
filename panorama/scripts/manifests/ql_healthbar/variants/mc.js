@@ -66,9 +66,11 @@
         }
         let runtimeRoot = null, contextRoot = null, sourceGeneration = [], sources = null, generation = 0;
         const featureId = ctx && ctx.id || 'ql_healthbar';
+        const healthResolver = QOL.panelCache.createIdResolver('health_and_abilities_container', {
+            retryMs: 400, ownerPath: [{ id: 'Hud', optional: true }, { className: 'HudCore' }, 'gameplay_hud']
+        });
         const rootResolver = QOL.panelCache.createIdResolver('MinecraftHeartsRoot', {
-            retryMs: 400, ownerPath: [{ id: 'Hud', optional: true }, { className: 'HudCore' },
-                'gameplay_hud', 'health_and_abilities_container', 'QOLHealthbarGeometry']
+            retryMs: 400, ownerPath: ['QOLHealthbarGeometry']
         });
         const IsPanelValid = P.isAlive;
         function belongs(panel, root) {
@@ -117,7 +119,7 @@
         // ── Minecraft Healthbar ──
 
         function readSources(root) {
-            const heartsRoot = rootResolver.resolve(root);
+            const heartsRoot = rootResolver.resolve(healthResolver.resolve(root) || root);
             const canvas = P.isAlive(heartsRoot) ? heartsRoot.GetParent() : null;
             if (!P.isAlive(canvas)) return null;
             const heartsBox = P.findChild(heartsRoot, "MinecraftHeartsContainer");
@@ -182,6 +184,7 @@
             foodOwners.clear();
             imageSignatures.clear();
             goldResolver.reset();
+            healthResolver.reset();
             rootResolver.reset();
             for (const [owner, properties] of ownedStyles) {
                 for (const property of properties) P.clearStyleProperty(owner, property);
@@ -198,7 +201,7 @@
             if (IsPanelValid(runtimeRoot) && belongs(runtimeRoot, contextRoot) &&
                 !QOL.core.hud.isInHideout(contextRoot) &&
                 sourceGeneration.every(panel => !panel || belongs(panel, runtimeRoot)) &&
-                sources && rootResolver.resolve(contextRoot) === sources.heartsRoot) return true;
+                sources && rootResolver.resolve(healthResolver.resolve(contextRoot) || contextRoot) === sources.heartsRoot) return true;
             McResetRuntime();
             return false;
         }

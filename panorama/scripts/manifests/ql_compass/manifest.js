@@ -370,8 +370,8 @@
                 const cooldown = aggressiveScan ? MINIMAP_LOCAL_PLAYER_SCAN_COOLDOWN_FAST_MS : MINIMAP_LOCAL_PLAYER_SCAN_COOLDOWN_MS;
                 if (!_minimapLocalPlayerPanel && nowMs < _localPlayerPanelNextScanMs) return null;
                 const cones = minimapScope?.FindChildrenWithClassTraverse?.("client_cone_fov") || [];
-                const locals = minimapScope?.FindChildrenWithClassTraverse?.("localplayer") || [];
-                const next = cones.find(panel => matches(panel) && panel.BHasClass("active")) || locals.find(matches) || null;
+                const next = cones.find(panel => matches(panel) && panel.BHasClass("active")) ||
+                    (minimapScope?.FindChildrenWithClassTraverse?.("localplayer") || []).find(matches) || null;
                 if (_minimapLocalPlayerPanel !== next) resetSamples();
                 _minimapLocalPlayerPanel = next;
                 _localPlayerPanelScanBackoffMs = next ? 0 : _nextScanBackoff(_localPlayerPanelScanBackoffMs, cooldown);

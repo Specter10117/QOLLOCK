@@ -75,9 +75,10 @@
             function readModel() {
                 const cfg = ctx.config.view();
                 const styles = styleTexts(cfg);
-                const active = QOL.utils.IsCfgEnabled(cfg, "ENABLE_RED_DIAMOND") ||
-                    Object.keys(defaults).some(key => styles[key] !== defaults[key]);
-                return { active, styles,
+                const shapeActive = QOL.utils.IsCfgEnabled(cfg, "ENABLE_RED_DIAMOND") ||
+                    styles.scaleText !== defaults.scaleText || styles.opacityText !== defaults.opacityText;
+                const hintActive = styles.hintScaleText !== defaults.hintScaleText;
+                return { active: shapeActive || hintActive, shapeActive, hintActive, styles,
                     shapeStyles: { preTransformScale2d: "1.00, 1.00", uiScale: Math.round(Number(styles.scaleText) * 100) + "%", opacity: styles.opacityText },
                     hintStyles: { preTransformScale2d: "1.00, 1.00", uiScale: Math.round(Number(styles.hintScaleText) * 100) + "%" }
                 };
@@ -132,15 +133,15 @@
                         nextBroadDiscovery = 0;
                     }
                     if (now >= nextBroadDiscovery) {
-                        broadShapes = new Map(QOL.utils.FindPanelsByClass(root, "target_shape").map(panel => [panel, null]));
-                        broadHints = hintSources(root);
+                        broadShapes = new Map(model.shapeActive ? QOL.utils.FindPanelsByClass(root, "target_shape").map(panel => [panel, null]) : []);
+                        broadHints = model.hintActive ? hintSources(root) : new Map();
                         nextBroadDiscovery = now + (scope ? 3000 : 500);
                     }
                     const currentShapes = new Map(broadShapes);
                     const currentHints = new Map(broadHints);
                     if (scope) {
-                        for (const panel of QOL.utils.FindPanelsByClass(scope, "target_shape")) currentShapes.set(panel, null);
-                        for (const [panel, source] of hintSources(scope)) currentHints.set(panel, source);
+                        if (model.shapeActive) for (const panel of QOL.utils.FindPanelsByClass(scope, "target_shape")) currentShapes.set(panel, null);
+                        if (model.hintActive) for (const [panel, source] of hintSources(scope)) currentHints.set(panel, source);
                     }
                     reconcile(shapes, currentShapes);
                     reconcile(hints, currentHints);
@@ -154,7 +155,7 @@
             function refreshSettings() {
                 if (!active) return;
                 model = readModel();
-                nextDiscovery = 0;
+                nextDiscovery = nextBroadDiscovery = 0;
                 QOL.core.hud.refreshRootClasses($.GetContextPanel());
                 update();
             }
