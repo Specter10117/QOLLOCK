@@ -23,6 +23,8 @@
     "Compact": "Compact",
     "Grid": "Grid",
     "Fountain Size": "Fountain Size",
+    "Font Size": "Font Size",
+    "Scale the Damage Fountain effect. 100% keeps its original size.": "Scale the Damage Fountain effect. 100% keeps its original size.",
     "Small": "Small",
     "Large": "Large",
     "Choose the Damage Fountain animation size.": "Choose the Damage Fountain animation size.",

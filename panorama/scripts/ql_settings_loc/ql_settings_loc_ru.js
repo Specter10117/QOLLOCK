@@ -23,6 +23,8 @@
     "Compact": "Компактная",
     "Grid": "Сетка",
     "Fountain Size": "Размер фонтана",
+    "Font Size": "Размер шрифта",
+    "Scale the Damage Fountain effect. 100% keeps its original size.": "Масштаб эффекта фонтана урона. 100% сохраняет исходный размер.",
     "Small": "Маленький",
     "Large": "Большой",
     "Choose the Damage Fountain animation size.": "Выберите размер анимации Damage Fountain.",

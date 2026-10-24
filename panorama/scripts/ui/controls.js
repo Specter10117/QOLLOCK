@@ -42,6 +42,7 @@
         opacity:            { min: 0,   max: 1,    step: 0.05 },
         opacity_perf:       { min: 0.3, max: 1,    step: 0.05 },
         scale_0_5_1_5:      { min: 0.5, max: 1.5,  step: 0.05 },
+        scale_0_5_3_0:      { min: 0.5, max: 3.0,  step: 0.01 },
         scale_0_5_2_0:      { min: 0.5, max: 2.0,  step: 0.05 },
         size_10_60:         { min: 10,  max: 60,   step: 1 },
         size_16_60:         { min: 16,  max: 60,   step: 1 },

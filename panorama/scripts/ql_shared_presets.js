@@ -835,7 +835,7 @@ var QOL_SETTINGS_FIELDS = [
     {"key":"ENABLE_NICKNAMES","min":0,"max":1,"step":1,"kind":"toggle","role":"toggle","unit":"","displayFactor":1,"owners":["ql_nicknames"]},
     {"key":"MINIMAL_MINIMAP_OPACITY","min":0,"max":1,"step":0.01,"kind":"number","role":"opacity","unit":"%","displayFactor":100,"owners":["ql_minimap_runtime"]},
     {"key":"ENABLE_DAMAGE_FOUNTAIN","min":0,"max":1,"step":1,"kind":"toggle","role":"toggle","unit":"","displayFactor":1,"owners":["ql_damage_numbers"]},
-    {"key":"DAMAGE_FOUNTAIN_SIZE","min":0,"max":2,"step":1,"kind":"number","role":"enum","unit":"","displayFactor":1,"owners":["ql_damage_numbers"]},
+    {"key":"DAMAGE_FOUNTAIN_SIZE","kind":"number","role":"scale","unit":"%","displayFactor":100,"owners":["ql_damage_numbers"]},
     {"key":"PLAYER_HEALTHBAR_X_OFFSET","min":-QOL_SETTING_LIMITS.coordinate,"max":QOL_SETTING_LIMITS.coordinate,"step":1,"kind":"number","role":"position","unit":"px","displayFactor":1,"owners":["ql_healthbar"]},
     {"key":"PLAYER_HEALTHBAR_Y_OFFSET","min":-QOL_SETTING_LIMITS.coordinate,"max":QOL_SETTING_LIMITS.coordinate,"step":1,"kind":"number","role":"position","unit":"px","displayFactor":1,"owners":["ql_healthbar"]},
     {"key":"PLAYER_HEALTHBAR_SCALE","kind":"number","role":"scale","unit":"%","displayFactor":1,"owners":["ql_healthbar"]},

@@ -6,6 +6,23 @@ const path = require("node:path");
 const { parseCssImports } = require("../scripts/check_native_css_imports");
 const read = file => fs.readFileSync(path.join(__dirname, "../panorama/styles", file), "utf8");
 
+test("Fountain slider scales the event wrapper while preserving inner animation scale", () => {
+    const css = read("qol_damage_fountain_full.css").replace(/\/\*[\s\S]*?\*\//g, "");
+    const rules = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)];
+    for (let percent = 50; percent <= 300; percent++) {
+        if (percent === 100) continue;
+        const selector = ".damage_fountain_active.damage_fountain_scale_" + percent + " .WindowRoot";
+        const rule = rules.find(([, selectors]) => selectors.trim() === selector);
+        assert.ok(rule, selector);
+        assert.equal(/ui-scale:\s*([^;]+);/.exec(rule[2])[1], percent + "%");
+    }
+    const baseline = rules.find(([, selectors]) => selectors.split(",").some(selector =>
+        selector.trim() === ".damage_fountain_active .distance_near.fountain1 .HudIndicatorContainer"));
+    assert.ok(baseline);
+    assert.match(baseline[2], /ui-scale:\s*68%;/);
+    assert.doesNotMatch(css, /damage_fountain_(?:small|medium|large)_active/);
+});
+
 test("native event indicators load their baseline before QOLLOCK fountain keyframes and visibility rules", () => {
     assert.ok(fs.existsSync(path.join(__dirname, "../panorama/styles/hud_event_indicator.css")),
         "the native indicator layout must receive its own stylesheet extension");

@@ -169,20 +169,22 @@ test("retired damage-number ownership releases all central filters without chang
     assert.deepEqual(e.clock.errors, []);
 });
 
-test("Damage Fountain size reacts immediately and its variants release with the owner", () => {
-    const e = fixture({ ENABLE_DAMAGE_FOUNTAIN: 1, DAMAGE_FOUNTAIN_SIZE: 0 });
+test("Damage Fountain scale reacts across the slider range and releases with its owner", () => {
+    const e = fixture({ ENABLE_DAMAGE_FOUNTAIN: 1, DAMAGE_FOUNTAIN_SIZE: 0.5 });
     e.registry.boot(); e.refresh();
     const select = size => { e.Q.core.ConfigAdapter.loadFromFlat({ DAMAGE_FOUNTAIN_SIZE: size }); e.refresh(); };
-    const expect = (small, large) => {
-        assert.equal(e.root.BHasClass("damage_fountain_small_active"), small);
-        assert.equal(e.root.BHasClass("damage_fountain_large_active"), large);
+    const expect = percent => {
+        for (let value = 50; value <= 300; value++) {
+            assert.equal(e.root.BHasClass("damage_fountain_scale_" + value), value !== 100 && value === percent);
+        }
     };
-    expect(true, false);
-    select(2); expect(false, true);
-    select(1); expect(false, false);
-    select(0); expect(true, false);
-    e.registry.disable("ql_damage_numbers"); e.refresh(); expect(false, false);
-    assert.equal(e.Q.core.ConfigAdapter.exportToFlat().DAMAGE_FOUNTAIN_SIZE, 0);
-    e.registry.enable("ql_damage_numbers"); e.refresh(); expect(true, false);
+    expect(50);
+    for (let percent = 50; percent <= 300; percent++) { select(percent / 100); expect(percent); }
+    select(1.35); expect(135);
+    e.Q.core.ConfigAdapter.loadFromFlat({ ENABLE_DAMAGE_FOUNTAIN: 0 }); e.refresh(); expect(null);
+    e.Q.core.ConfigAdapter.loadFromFlat({ ENABLE_DAMAGE_FOUNTAIN: 1 }); e.refresh(); expect(135);
+    e.registry.disable("ql_damage_numbers"); e.refresh(); expect(null);
+    assert.equal(e.Q.core.ConfigAdapter.exportToFlat().DAMAGE_FOUNTAIN_SIZE, 1.35);
+    e.registry.enable("ql_damage_numbers"); e.refresh(); expect(135);
     assert.deepEqual(e.clock.errors, []);
 });

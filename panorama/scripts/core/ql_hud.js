@@ -843,9 +843,6 @@
                 ["cumulative_dmg_disabled", cfg?.ENABLE_CUMULATIVE_DMG === 0],
                 ["clean_damage_indicators_active", Number(cfg?.ENABLE_CLEAN_DAMAGE_INDICATORS) === 1],
                 ["damage_fountain_active", cfg?.ENABLE_DAMAGE_FOUNTAIN === 1],
-                ["damage_fountain_medium_active", cfg?.ENABLE_DAMAGE_FOUNTAIN === 1 && QOL.settings.readNumber("DAMAGE_FOUNTAIN_SIZE", cfg?.DAMAGE_FOUNTAIN_SIZE) === 1],
-                ["damage_fountain_small_active", cfg?.ENABLE_DAMAGE_FOUNTAIN === 1 && Number(cfg?.DAMAGE_FOUNTAIN_SIZE) === 0],
-                ["damage_fountain_large_active", cfg?.ENABLE_DAMAGE_FOUNTAIN === 1 && Number(cfg?.DAMAGE_FOUNTAIN_SIZE) === 2],
                 ["hide_small_numbers_active", cfg?.ENABLE_HIDE_SMALL_NUMBERS === 1],
                 ["hide_trooper_damage_active", cfg?.ENABLE_HIDE_TROOPER_DAMAGE === 1],
                 ["shop_stats_disabled", cfg?.ENABLE_SHOP_STATS === 0],
@@ -862,6 +859,14 @@
 
             for (const [cls, active] of staticRules) {
                 setPanelClassCached(root, rc, cls, active);
+            }
+
+            // CSS scales each native event wrapper immediately, including newly
+            // spawned indicators; inner distance scales and keyframes stay intact.
+            const fountainPercent = cfg?.ENABLE_DAMAGE_FOUNTAIN === 1
+                ? Math.round(QOL.settings.readNumber("DAMAGE_FOUNTAIN_SIZE", cfg?.DAMAGE_FOUNTAIN_SIZE) * 100) : 100;
+            for (let percent = 50; percent <= 300; percent++) {
+                if (percent !== 100) setPanelClassCached(root, rc, "damage_fountain_scale_" + percent, fountainPercent === percent);
             }
 
             state.coreRootStaticSig = rc.pending.size ? "" : staticSig;

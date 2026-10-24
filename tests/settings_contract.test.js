@@ -39,23 +39,34 @@ test("catalog runtime owners match actual manifest declarations including multi-
     }
 });
 
-test("Fountain dropdown publishes and JSON import retains its selected size", () => {
+test("independent damage font and Fountain sliders publish and share intermediate sizes", () => {
     const env = load(), g = env.global;
     g.QOL.ui.window.setOpen(true); env.clock.advance(500);
     g.QOL.ui.gameplayTabs.renderCrosshairTab(env.list);
-    const dropdown = env.em.FindChildTraverse("DAMAGE_FOUNTAIN_SIZE_dropdown");
-    assert.ok(dropdown);
-    for (const size of [0, 2, 1]) {
-        dropdown.SetSelected("DAMAGE_FOUNTAIN_SIZE_opt_" + size);
-        dropdown._fire("oninputsubmit"); env.clock.advance(1200);
+    const row = env.em.FindChildrenWithClassTraverse("SettingRow_DAMAGE_FOUNTAIN_SIZE")[0];
+    const input = row.FindChildrenWithClassTraverse("ValueInput")[0];
+    const slider = row.FindChildrenWithClassTraverse("HorizontalSlider")[0];
+    assert.ok(slider);
+    const font = env.em.FindChildrenWithClassTraverse("SettingRow_HUD_INDICATOR_SIZE")[0]
+        .FindChildrenWithClassTraverse("ValueInput")[0];
+    font.text = "32"; font._fire("oninputsubmit");
+    for (const size of [0.5, 1.27, 3, 1]) {
+        slider.value = size * 100;
+        slider._fire("onvaluechanged"); env.clock.advance(1200);
+        assert.equal(input.text, size * 100 + "%");
         assert.equal(g.MOD_CONFIG.DAMAGE_FOUNTAIN_SIZE, size);
+        assert.equal(g.MOD_CONFIG.HUD_INDICATOR_SIZE, 32);
         assert.equal(env.hud.sandbox.global.QOL.core.ConfigAdapter.exportToFlat().DAMAGE_FOUNTAIN_SIZE, size);
         const raw = g.QOL.persistence.serializeSettings(g.MOD_CONFIG);
         const parsed = env.hud.sandbox.global.QOL.core.codec.deserializeSettings(raw);
         assert.equal(parsed.DAMAGE_FOUNTAIN_SIZE, size);
     }
+    input.text = "135%"; input._fire("oninputsubmit");
+    assert.equal(g.MOD_CONFIG.DAMAGE_FOUNTAIN_SIZE, 1.35);
+    input.text = "broken"; input._fire("oninputsubmit");
+    assert.equal(g.MOD_CONFIG.DAMAGE_FOUNTAIN_SIZE, 1.35);
     assert.equal(g.QOL.settings.normalize("DAMAGE_FOUNTAIN_SIZE", "broken"), null);
-    assert.equal(g.QOL.settings.readNumber("DAMAGE_FOUNTAIN_SIZE", 99), 2);
+    assert.equal(g.QOL.settings.readNumber("DAMAGE_FOUNTAIN_SIZE", 99), 3);
 });
 
 test("keyboard dropdowns preserve legacy Full Keys and publish/share all themes and layouts", () => {
