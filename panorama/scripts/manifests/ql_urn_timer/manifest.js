@@ -20,7 +20,11 @@
             const P = QOL.core.panel;
             const tree = P.createOwnedTree();
             const time = QOL.core.time;
-            const makeResolver = id => QOL.panelCache.createIdResolver(id, { retryMs: 2000, refreshMs: 2000 });
+            const makeResolver = id => QOL.panelCache.createIdResolver(id, {
+                retryMs: 2000, refreshMs: 2000,
+                ownerPath: id === "hud_minimap" ? [{ id: "Hud", optional: true }, { className: "HudCore" },
+                    "gameplay_hud", { className: "clamp_width" }, "minimap_persp", "minimap_container", "HudMinimapContainer"] : []
+            });
             const mapResolvers = MAP_IDS.map(makeResolver);
             const topResolver = makeResolver("TopBar");
             const legacyTopResolver = makeResolver("CitadelHudTopBar");

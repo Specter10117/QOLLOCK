@@ -81,6 +81,41 @@ test("urn retries missing minimap and restores replaced timer and hideout transi
     assert.equal(hud.clock.errors.length, 0);
 });
 
+test("urn discovers the native minimap through its owner and follows a living replacement", () => {
+    const { hud, $, tick, instance } = fixture("ql_urn_timer", { ENABLE_URN_TIMER: 1 });
+    const core = $.CreatePanel("Panel", hud.root, ""); core.AddClass("HudCore");
+    const top = $.CreatePanel("Panel", core, "TopBar");
+    $.CreatePanel("Label", top, "GameTime").text = "12:00";
+    const gameplay = $.CreatePanel("Panel", core, "gameplay_hud");
+    const clamp = $.CreatePanel("Panel", gameplay, ""); clamp.AddClass("clamp_width");
+    const host = $.CreatePanel("Panel", clamp, "minimap_persp");
+    const viewport = $.CreatePanel("Panel", host, "minimap_container");
+    const native = $.CreatePanel("Panel", viewport, "HudMinimapContainer");
+    const map = $.CreatePanel("Panel", native, "hud_minimap");
+    const warning = $.CreatePanel("Panel", map, "");
+    for (const name of ["map_button", "capture_point", "koth_warning"]) warning.AddClass(name);
+    const find = hud.root.FindChildTraverse.bind(hud.root);
+    let searches = 0;
+    hud.root.FindChildTraverse = id => { if (id === "hud_minimap") searches++; return find(id); };
+    for (let i = 0; i < 4; i++) { tick(); hud.clock.advance(2100); }
+    assert.equal(find("RiftTimer").BHasClass("rift_warning"), true);
+    assert.equal(searches, 0, "periodic minimap refresh must not scan the whole HUD with a verified owner");
+
+    native.id = "RetiredMinimapContainer";
+    const replacement = $.CreatePanel("Panel", viewport, "HudMinimapContainer");
+    const nextMap = $.CreatePanel("Panel", replacement, "hud_minimap");
+    const active = $.CreatePanel("Panel", nextMap, "");
+    for (const name of ["map_button", "capture_point", "active"]) active.AddClass(name);
+    tick();
+    assert.equal(map.IsValid(), true, "the previous map remains alive with its old warning state");
+    assert.equal(find("RiftTimer").BHasClass("rift_active"), true);
+    assert.equal(find("RiftTimerLabel").text, "ACTIVE");
+    assert.equal(searches, 0);
+    instance.onDisable(); hud.clock.advance(1);
+    assert.equal(find("RiftTimer"), null);
+    assert.deepEqual(hud.clock.errors, []);
+});
+
 test("urn retries a missing timer parent without requiring a clock text change", () => {
     const { hud, $, tick } = fixture("ql_urn_timer", { ENABLE_URN_TIMER: 1 });
     $.CreatePanel("Label", hud.root, "GameTime").text = "12:00";
