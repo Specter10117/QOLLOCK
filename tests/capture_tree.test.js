@@ -56,7 +56,6 @@ test("captured replay replaces preexisting modeled panels and keeps native text 
     assert.equal(label.checked, undefined, "missing checkbox state must not imply selected");
     assert.ok(label.BHasClass("native-health"));
     const hud = createProfiledHud({ capturedTree: nativeCapture(), warmupMs: 0 });
-    assert.equal(hud.game, null, "native commands must not run the synthetic build model");
     assert.equal(hud.doc.root.FindChildTraverse("ShopModsSelectedBuild"), null);
     assert.deepEqual(hud.doc.root.Children().slice(0, 3).map(p => p.id), ["same", "same", "Other"]);
     assert.equal(hud.tree.panels, 5, "capture count excludes panels legitimately created by QOLLOCK after load");

@@ -15,8 +15,8 @@ scenario do not establish native absence.
 | Which active HUD ID/class dependencies occur in the capture? | `node scripts/audit_lookups_vs_capture.js --json` | Defaults to `captures/deadlock_hud_dump.json`. Static inventory, not execution or caller reachability. |
 | Which owners repeatedly search broad subtrees or miss? | `node scripts/trace_feature_hud.js --all --seconds 20 --json` | Defaults to the same capture. Counts simulated calls and visited nodes by actual search root. |
 | Where does one owner's lookup work come from? | `node scripts/trace_feature_hud.js ql_compass --seconds 20 --json` | The feature argument filters the report; other enabled features still run. Use `--events` for individual lookup events. |
-| What are total operations and redundant writes? | `node scripts/profile_hud.js --tree captures/deadlock_hud_dump.json --seconds 20 --json` | **Always supply `--tree` for a captured HUD.** Without it this tool builds a synthetic tree from XML. |
-| Did an edit reduce work with the same inputs? | `node scripts/compare_hud_refs.js --before HEAD --after working-tree --tree captures/deadlock_hud_dump.json --expanded --seconds 20 --json` | Reads local Git source sets without checkout changes. Without `--tree`, uses the XML model. Defaults to normal config; `--expanded` selects expanded coverage. |
+| What are total operations and redundant writes? | `node scripts/profile_hud.js --seconds 20 --json` | Defaults to the same capture. `--tree <file>` selects another hierarchy. No XML composition or synthetic native panels. |
+| Did an edit reduce work with the same inputs? | `node scripts/compare_hud_refs.js --before HEAD --after working-tree --expanded --seconds 20 --json` | Defaults to the same capture. Reads local Git source sets without checkout changes. Defaults to normal config; `--expanded` selects expanded coverage. Add `--observe` with a read-only JSON expression for the feature's output; without matching observations percentages are withheld. |
 
 The tracer and profiler use expanded config unless `--defaults` is supplied.
 Use `--enable KEY=VALUE` for specific settings. Expanded coverage does not exercise
@@ -37,17 +37,13 @@ and [profiling](PROFILING.md) for operation accounting and comparison limits.
 | Did the change break offline checks? | `npm test` | Smoke, styles, Node regressions, compact schema, API checks and lint. Run before every commit. |
 | Do schedules accumulate across transitions? | `node scripts/audit_runtime_lifecycle.js --cycles 3` | Production HUD/quickbuy scripts in controlled fixtures; modeled lifetime, not native teardown. |
 | Is a shared helper name actually exported? | `node scripts/audit_helper_calls.js` | Statically resolvable calls against loaded HUD exports; not native API signatures. |
-| Which literal lookup IDs lack source evidence? | `node scripts/audit_panel_ids.js --json` | XML/creation inventory requiring extracted native resources. Missing evidence is a candidate, not a failed existence check. |
+| Does an unobserved dependency have native XML evidence? | `node scripts/audit_lookups_vs_capture.js --vanilla <panorama-dir> --json` | Adds current extracted XML evidence to the active-HUD ID/class audit. Missing evidence is a candidate, not a failed existence check. |
 | What changed after a game update? | `node scripts/audit_game_update.js snapshot --vanilla <panorama-dir>` | Take `snapshot` before updating the extract, then rerun with `check` in place of `snapshot`; see [game update audit](GAME_UPDATE_AUDIT.md). |
 | Are runtime hooks reporting source problems in the client? | Dev test collector | Read-only feature hooks; see [testing](TESTING.md). Skips and observations are not rendering verification. |
 | What does managed polling cost in the client? | Dev -> Benchmark (Current Config) | Callback timing and temporary lookup instrumentation; scope and overhead are documented in [testing](TESTING.md). |
 
-`scripts/audit_lookups_hotpath.js` is a legacy heuristic over the local aggregate
-`scripts/simulator/perf/runs/captured_tree.json`. It scans literal calls and guesses
-hotness from source text. It does not use the tracked hierarchy or execute current
-polls; use the capture audit and tracer above for current lookup investigations.
-
-The XML model remains useful for controlled regression fixtures. Its composition
-does not establish the live C++ tree. Use maintainer compile/repack and targeted
-client scenarios for layout, source lifetime and gameplay; compare repeatable
-client frame-time captures separately for performance claims.
+Use controlled simulator fixtures for logic/lifecycle regressions. Whole-HUD
+profiling uses a validated supplied hierarchy; missing/invalid capture inputs fail
+instead of falling back to an XML composition. Use maintainer compile/repack and
+targeted client scenarios for layout, source lifetime and gameplay; compare
+repeatable client frame-time captures separately for performance claims.

@@ -8,34 +8,21 @@
 //   node scripts/profile_hud.js --save baseline     # write perf/runs/baseline.json
 //   node scripts/profile_hud.js --compare baseline  # diff against a saved run
 //   node scripts/profile_hud.js --seconds 30        # longer sample (default 10)
-//   node scripts/profile_hud.js --players 12        # teamfight size (default 12)
 //   node scripts/profile_hud.js --healthbar 5       # 0 default 1 minimalist 2 fg
 //                                                  # 3 klutz 4 budhud 5 minecraft
 //   node scripts/profile_hud.js --json              # machine-readable
 //   node scripts/profile_hud.js --top 25            # rows to show (default 20)
 //   node scripts/profile_hud.js --enable SHOW_RANK,SHOW_RANK_TOPBAR
 //
-// --enable exists because "everything on" is narrower than it sounds. The maximal
-// config only forces keys matching ENABLE_* / SUPPORT_* / HUD_*_ENABLED (see
-// simulator/perf/profile.js makeMaximalConfig), and 129 of the 335 config keys are
-// 0/1 toggles that match none of those patterns. Those features are silently OFF in
-// every default run — SHOW_RANK and SHOW_RANK_TOPBAR among them, which is why a
-// live FPS complaint about the rank badges profiled as costing nothing at all.
-// Pass them explicitly. --healthbar below is the same gap with its own flag.
-//
-// --healthbar matters more than it looks. HEALTHBAR_TYPE is a numeric enum, not an
-// ENABLE_* toggle, so the default "everything on" config leaves it at 0 and NONE of
-// the five healthbar variants run. Profiling the Minecraft variant (5) in
-// particular exercises a few hundred lines of per-heart panel work that is
-// invisible at the default. Compare like with like: a run saved at one healthbar
-// setting is not a baseline for a run at another.
+// Expanded config selects prefix-matched toggles, not every variant. Use --enable
+// for other settings and --healthbar for a numeric healthbar variant. Compare the
+// same capture, configuration and warm-up window.
 //
 // WHAT THE NUMBERS MEAN — read this before quoting any of them.
 //
 //   Counts are EXACT for the simulated tree: the harness intercepts every
-//   engine-facing call the mod makes. What is estimated is the tree itself (see
-//   simulator/perf/hud_tree.js) and the relative weights that combine ops into a
-//   single `cost` column (see simulator/perf/counters.js WEIGHTS).
+//   supported operation observed in the replay. Native lifecycle, missing capture
+//   state and relative weights remain unverified (see counters.js WEIGHTS).
 //
 //   So: "feature A does 40x the tree walks of feature B" is a fact.
 //   "This change cut total cost 60%" is a fact about the same tree.
@@ -96,12 +83,10 @@ function report(snap, meta, tree, opts) {
     out.push("=".repeat(100));
     out.push("QOLLOCK OFFLINE OPERATION PROFILE (no native timings or FPS)");
     out.push("=".repeat(100));
-    out.push(`scenario        : ${meta.treeSource === "captured"
-        ? `CAPTURED hierarchy from ${meta.capturedFrom} (static snapshot)`
-        : `${meta.players} players (teamfight), ${meta.damageNumbers} floating damage panels`}`);
+    out.push(`scenario        : CAPTURED hierarchy from ${meta.capturedFrom} (static snapshot)`);
     out.push(`healthbar       : HEALTHBAR_TYPE=${meta.healthbarType} ` +
              `(${["default", "minimalist", "fg", "klutz", "budhud", "minecraft"][meta.healthbarType] || "?"})`);
-    out.push(`HUD tree        : ${tree.panels} panels (${meta.treeSource === "captured" ? "captured from the game" : "modelled from layout XML — see docs/PROFILING.md"})`);
+    out.push(`HUD tree        : ${tree.panels} panels (supplied hierarchy; native state is not replayed)`);
     out.push(`sample          : ${secs}s of virtual game time (after ${meta.warmupMs / 1000}s warm-up)`);
     out.push(`config          : ${meta.configMode} (${fmt(meta.configBytes)} bytes stored); not every feature/variant is exercised`);
     out.push(`attribution     : scheduler ${meta.wrappedScheduler ? "wrapped" : "NOT WRAPPED"}`);
@@ -265,8 +250,11 @@ function compareReport(cur, prev, opts) {
 }
 
 function main() {
+    const options = new Set(["seconds", "top", "healthbar", "json", "save", "compare", "enable", "tree", "defaults"]);
+    for (const value of process.argv.slice(2)) {
+        if (value.startsWith("--") && !options.has(value.slice(2))) throw new Error("unknown option: " + value);
+    }
     const seconds = Number(arg("seconds", 10));
-    const players = num(arg("players", 12), 12);
     const top = num(arg("top", 20), 20);
     const healthbar = num(arg("healthbar", 0), 0);
     const wantJson = has("json");
@@ -320,7 +308,6 @@ function main() {
     }
 
     const h = createProfiledHud({
-        players,
         warmupMs: 8000,
         configOverrides: overrides,
         capturedTree,

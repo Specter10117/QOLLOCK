@@ -24,8 +24,8 @@ freshness are unverified. There are 97 Label/TextEntry descriptions without text
 and target visible/enabled flags are unavailable. Inspector visibility is not
 target visibility. These limitations remain in replay reports.
 
-The static capture audit and lookup tracer default to this file. The operation
-profiler and Git-ref comparator require `--tree captures/deadlock_hud_dump.json`;
-without that argument they use a synthetic XML model. See [the tool map](../docs/TOOLS.md).
+The static capture audit, lookup tracer, operation profiler and Git-ref comparator
+default to this file. The profiler/comparator accept `--tree` to select another
+capture; there is no synthetic XML fallback. See [the tool map](../docs/TOOLS.md).
 Old reports against the October 1 fixture cannot serve as before/after baselines
 for this hierarchy. Additional local captures and reports remain untracked.

@@ -556,7 +556,7 @@ race a scheduled callback, and asynchronous deletion is not instantaneous.
 | Actual panel ancestry, identity, class state and readable labels | Maintainer's in-game Panorama Debugger |
 
 Much of the live tree is C++-generated. Failure to find an ID in XML or in
-`scripts/audit_panel_ids.js` is **not proof of absence**. When blocked, ask for a
+`scripts/audit_lookups_vs_capture.js` is **not proof of absence**. When blocked, ask for a
 specific debugger capture: scenario, target panel, parent chain, relevant child
 IDs/classes and values. Do not assume the maintainer has a writable JS console
 or that a browser automation endpoint exists.
@@ -676,10 +676,10 @@ install/replace hooks as part of an unrelated code/documentation change.
 node scripts/profile_hud.js --seconds 20 --save before
 node scripts/profile_hud.js --seconds 20 --compare before
 node scripts/profile_hud.js --seconds 20 --healthbar 5
-node scripts/audit_panel_ids.js
+node scripts/audit_lookups_vs_capture.js --json
 ```
 
-Compare identical trees, player counts, feature configuration and warm-up
+Compare identical captures, feature configuration and warm-up
 conditions. Default profiling does not exercise every healthbar variant;
 `--healthbar 5` selects Minecraft but does not remove model fidelity limits.
 A full-tree miss can cost more than a hit. Avoid repeated unsuccessful probes,

@@ -8,7 +8,7 @@ in-game evidence.
 
 Most Deadlock panels are created dynamically by C++ game code. Layout XML often
 contains only the surrounding containers. A missing XML declaration or a miss in
-`scripts/audit_panel_ids.js` does not prove that a panel cannot exist.
+`scripts/audit_lookups_vs_capture.js` does not prove that a panel cannot exist.
 
 Use the extracted game files and maintainer's Panorama Debugger. Request the
 specific scenario, parent chain, child IDs/classes and label values you need.

@@ -60,8 +60,10 @@ test("native API shape does not expose an invented class getter or selector resu
 });
 
 test("saved profile comparisons reject old/different simulator semantics and caught unsupported calls", () => {
-    const run={meta:{modelFingerprint:"model-a",treeSource:"modelled",treeFingerprint:"tree",configMode:"defaults",configFingerprint:"config",warmupMs:1000},enabledEnd:[]};
+    const run={meta:{modelFingerprint:"model-a",treeSource:"captured",treeFingerprint:"tree",captureFidelity:{fingerprint:"capture"},configMode:"defaults",configFingerprint:"config",warmupMs:1000},enabledEnd:[]};
     assert.deepEqual(comparisonIssues(run,run),[]);
+    const retired={...run,meta:{...run.meta,treeSource:"modelled"}};delete retired.meta.captureFidelity;
+    assert.ok(comparisonIssues(retired,retired).some(issue=>issue.includes("captured hierarchy")));
     const missing={...run,meta:{...run.meta}};delete missing.meta.modelFingerprint;
     assert.ok(comparisonIssues(run,missing).some(issue=>issue.includes("modelFingerprint")));
     assert.ok(comparisonIssues(run,{...run,meta:{...run.meta,modelFingerprint:"model-b"}}).some(issue=>issue.includes("modelFingerprint")));

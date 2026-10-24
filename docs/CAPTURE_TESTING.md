@@ -35,8 +35,8 @@ Import preserves literal text, raw debugger rows, the forest and metadata.
 The importer never overwrites existing files. New JSON snapshots/reports under
 `captures/` are local evidence. The tracked fixture is the repaired October 3
 native Debugger hero-testing export; see [capture provenance](../captures/README.md).
-The static audit and tracer default to it. The profiler and Git-ref comparator
-use an XML model unless `--tree` is supplied; see [the tool map](TOOLS.md).
+The static audit, tracer, profiler and Git-ref comparator default to it. Supply
+an explicit capture to select another scenario; see [the tool map](TOOLS.md).
 
 ## Read fidelity before findings
 

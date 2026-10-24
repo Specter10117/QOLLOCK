@@ -18,7 +18,7 @@ Do not copy API examples from historical migration notes into runtime code.
 ## Choosing diagnostic tools
 
 Use [docs/TOOLS.md](docs/TOOLS.md) to choose the tool and its input before running
-an audit. It distinguishes capture-based lookup traces, XML-model regressions,
+an audit. It distinguishes capture-based lookup traces, simulator regressions,
 static inventories and client measurements. Capture identity and limitations are
 recorded in [captures/README.md](captures/README.md).
 

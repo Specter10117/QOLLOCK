@@ -418,7 +418,6 @@ re-entry separately: one clean startup does not cover lifecycle regressions.
 node scripts/profile_hud.js --seconds 20               # per-feature cost report
 node scripts/profile_hud.js --seconds 20 --save before # then make a change
 node scripts/profile_hud.js --seconds 20 --compare before
-node scripts/audit_panel_ids.js                        # candidate ids absent from scanned sources
 node scripts/import_tree_dump.js <dump>                # import a tree summary or full dump
 node scripts/trace_feature_hud.js --all --seconds 10   # offline lookup events on a captured hierarchy
 node scripts/audit_lookups_vs_capture.js <capture.json> --json # active HUD ID/class dependencies
@@ -429,10 +428,10 @@ These tools count operations and expose JavaScript exceptions under the supplied
 model. They cannot establish which calls the live engine makes or the cost of a
 rendered frame. An id absent from XML/JavaScript can still be created by C++.
 
-The profiler composition regression uses a temporary native-layout fixture to
-verify current override precedence, fallback after XML retirement and explicit
-missing-source notes. It does not depend on a developer's local game extract;
-actual XML composition still needs that extract for native layouts.
+The profiler, tracer and Git-ref comparator default to the tracked October 3
+native Debugger capture. They do not compose an XML HUD or inject synthetic
+native panels. Regression fixtures still exercise controlled logical states;
+the default-command regressions also verify selection of the tracked capture.
 
 The preferred full hierarchy source is the standalone HUD-Dumper native Debugger
 export. See [capture testing](CAPTURE_TESTING.md) for importing its receiver JSON,
@@ -443,8 +442,8 @@ are not part of that HUD audit.
 
 `scripts/import_tree_dump.js` also supports captures from `panorama/scripts/tools/qol_dump_tree.js`. The Dev
 button currently captures aggregate counts, not a complete panel hierarchy.
-The aggregate can size a synthetic stress scenario but cannot be passed to
-`profile_hud.js --tree`, which requires a full per-panel hierarchy. The historical
+The aggregate supports ID inventory but cannot be passed to `profile_hud.js --tree`,
+which requires a full per-panel hierarchy. The historical
 large-tree budget test was removed; current profiler regressions use self-contained
 fixtures without local run files. They verify accounting and capture import,
 not rendering or FPS. Do not turn a modelled green result into a client claim.

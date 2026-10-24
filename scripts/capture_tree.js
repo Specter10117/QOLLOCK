@@ -112,11 +112,7 @@ function comparisonIssues(current, previous) {
     for (const key of ["modelFingerprint", "treeSource", "treeFingerprint", "configMode", "configFingerprint", "warmupMs"]) {
         if (a[key] === undefined || b[key] === undefined || a[key] !== b[key]) issues.push("different or unknown " + key);
     }
-    if (a.treeSource === "captured") {
-        if (!a.captureFidelity?.fingerprint || a.captureFidelity.fingerprint !== b.captureFidelity?.fingerprint) issues.push("different or unknown captured hierarchy/state");
-    } else {
-        for (const key of ["players", "damageNumbers"]) if (a[key] !== b[key]) issues.push("different " + key);
-    }
+    if (!a.captureFidelity?.fingerprint || a.captureFidelity.fingerprint !== b.captureFidelity?.fingerprint) issues.push("different or unknown captured hierarchy/state");
     for (const run of [current, previous]) {
         if (run.meta?.unsupportedCalls?.length) issues.push("run contains unsupported simulator calls");
         if (run.callbackErrors?.length || Object.values(run.registryErrorsEnd || {}).some(n => n > 0)) issues.push("run contains callback/registry errors");

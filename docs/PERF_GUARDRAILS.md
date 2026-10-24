@@ -68,12 +68,12 @@ constraints, not claims that every existing feature already satisfies them.
 ```text
 node scripts/profile_hud.js --seconds 20 --save before
 node scripts/profile_hud.js --seconds 20 --compare before
-node scripts/audit_panel_ids.js
+node scripts/audit_lookups_vs_capture.js --json
 ```
 
-Compare the same tree, player count, feature configuration and warm-up. Retain raw
+Compare the same capture, feature configuration and warm-up. Retain raw
 operation counts and collected callback errors; weighted cost is an estimate, not
-milliseconds or FPS. Audit-panel-ID misses are investigation candidates: C++ and
+milliseconds or FPS. Unobserved dependencies are investigation candidates: C++ and
 dynamic IDs can create panels absent from scanned XML/JS sources.
 
 There is no current `tests/perf_guards.test.js` gate. Use the current commands in

@@ -2,83 +2,15 @@
 // =============================================================================
 // Attributed operation counters for the Panorama simulator.
 // =============================================================================
-// WHY THIS EXISTS
+// Counts supported replay operations by the active owner label. Native setter,
+// traversal, allocation and rendering costs are unmeasured. Identical writes are
+// classified by simulated value equality, not by assumed native invalidation.
 //
-// We cannot measure real GPU/C++ frame time from Node. What we CAN measure
-// exactly is the thing that drives it: how much work the mod asks the engine to
-// do, and who asks for it. Every finding in a Panorama perf investigation
-// reduces to one of a handful of engine operations, and each has a known cost
-// shape:
-//
-//   traverseNodes   — nodes visited by FindChildTraverse /
-//                     FindChildrenWithClassTraverse. This is the headline
-//                     number. Each is a C++ virtual call plus a string compare
-//                     on the panel id, and a MISS visits the ENTIRE subtree.
-//                     A miss on the HUD root is thousands of nodes.
-//   styleWrites     — assignments to panel.style.*. In Panorama a style write
-//                     marks the panel dirty and queues a re-layout of its
-//                     subtree EVEN IF THE VALUE IS UNCHANGED. We therefore
-//                     split these into `changed` and `redundant`; redundant
-//                     writes are pure waste and the easiest win in the codebase.
-//   classWrites     — AddClass/RemoveClass/SetHasClass. A class change on a
-//                     panel forces style re-matching for it and its subtree.
-//                     Also split changed/redundant.
-//   attrReads/Writes— GetAttributeString/SetAttributeString, tracked with BYTES.
-//                     The mod stores its whole serialized config in a panel
-//                     attribute; reading a multi-KB string 20x/sec is a real
-//                     cost that no call-count metric would expose.
-//   textWrites      — label text assignment (changed/redundant). A changed text
-//                     re-measures the font and re-lays out; a redundant one is
-//                     free to avoid.
-//   panelCreates /
-//   panelDeletes    — runtime panel churn. Allocating C++ panels mid-teamfight
-//                     is the most expensive single thing on this list per op.
-//
-// ATTRIBUTION
-//
-// Every op is charged to whatever label is currently on the stack (see
-// `enter`/`exit`). The profiler wraps each old-system feature's update() and
-// each manifest poll-loop callback, so the report reads "this feature did N
-// tree-node visits per second", which is directly actionable. Ops that happen
-// outside any wrapper land in "<unattributed>" — boot code, engine callbacks,
-// and the core loop's own body.
-//
-// COST UNITS
-//
-// `costUnits` is a single composite number so we can say "this change made it
-// 40% cheaper" and diff two runs. The weights are ESTIMATES, documented in
-// WEIGHTS below, expressed in "one visited tree node" units. They are not
-// measured against the engine and must not be presented as milliseconds. Their
-// only job is to keep the ranking stable and honest: raw counters are always
-// reported alongside, and any conclusion that flips when you nudge a weight is
-// a conclusion you should draw from the raw counters instead.
-// =============================================================================
+// WEIGHTS are historical ranking estimates, not timings or engine contracts.
+// Inspect raw counters alongside weighted totals; do not infer FPS from them.
 
 "use strict";
 
-/**
- * Relative cost of each op, in units of "one node visited during a tree walk".
- *
- * Rationale for each, so these can be argued with rather than trusted:
- *  - traverseNode 1: the baseline. A pointer deref + id string compare.
- *  - styleWriteChanged 25: dirties layout for the panel's subtree. Much more
- *    expensive than a tree-node visit but not catastrophic on its own.
- *  - styleWriteRedundant 20: nearly the same cost, because Panorama does not
- *    compare the old value before marking dirty. Slightly lower only because
- *    some property setters early-out on identical strings.
- *  - classWriteChanged 30: style re-match is more expensive than a layout dirty.
- *  - classWriteRedundant 2: SetHasClass with an unchanged value is cheap — the
- *    engine's class set is a hash lookup and it does not re-match on a no-op.
- *    (This is why "redundant class toggle" is a much weaker finding than
- *    "redundant style write", and the weights say so.)
- *  - attrRead/Write 5 + 0.02/byte: attribute maps are string-keyed hash lookups;
- *    the per-byte term captures the multi-KB config blob.
- *  - textWriteChanged 40: re-measures text with the font metrics, then re-lays
- *    out. One of the most expensive per-op items.
- *  - textWriteRedundant 2: the engine early-outs on an identical string.
- *  - panelCreate 400 / panelDelete 200: C++ object construction, style
- *    matching, and a layout pass for the new subtree.
- */
 const WEIGHTS = {
     traverseNode: 1,
     styleWriteChanged: 25,
