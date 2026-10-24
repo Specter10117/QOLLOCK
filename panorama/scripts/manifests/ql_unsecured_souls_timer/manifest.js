@@ -56,7 +56,10 @@
                 retryMs: SEARCH_MS, ownerPath: [{ id: "Hud", optional: true }, { className: "HudCore" }]
             });
             const modernResolver = QOL.panelCache.createIdResolver("HudUnsecuredLabel", { retryMs: SEARCH_MS });
-            const goldResolver = QOL.panelCache.createIdResolver("gold_and_ap_container", { retryMs: SEARCH_MS });
+            const goldResolver = QOL.panelCache.createIdResolver("gold_and_ap_container", {
+                retryMs: SEARCH_MS,
+                ownerPath: [{ id: "Hud", optional: true }, { className: "HudCore" }, "StatsAndModsContainer", "LowerLeft"]
+            });
             const amountResolver = QOL.panelCache.createIdResolver("hudDeathGoldLabel", { retryMs: SEARCH_MS });
             const rootAmountResolver = QOL.panelCache.createIdResolver("hudDeathGoldLabel", { retryMs: SEARCH_MS });
             let running = false, loop = null, rootOwner = null, model = null, overlay = null, stateLabel = null;

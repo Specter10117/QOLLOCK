@@ -389,6 +389,45 @@ test("unsecured mirrors rebind still-live native sources and reset the timer est
     env.clean();
 });
 
+test("unsecured source discovery follows the native gold owner without full HUD refresh searches", () => {
+    const env = fixture();
+    const { hud, Q, core, add, label, config, find } = env;
+    const stats = add(core, "StatsAndModsContainer");
+    const lower = add(stats, "LowerLeft");
+    const makeGold = (parent, value) => {
+        const gold = add(parent, "gold_and_ap_container");
+        const container = add(gold, "", ["hudDeathGoldContainer"]);
+        label(container, "hudDeathGoldLabel", value, ["death_penalty_gold"]);
+        return gold;
+    };
+    const first = makeGold(lower, "1000");
+    let broadGoldSearches = 0;
+    const traverse = hud.root.FindChildTraverse;
+    hud.root.FindChildTraverse = function (id) {
+        if (id === "gold_and_ap_container") broadGoldSearches++;
+        return traverse.call(this, id);
+    };
+    config({ ENABLE_UNSECURED_SOUL_TIMER: 1, ENABLE_BETTER_UNSECURED: 1 });
+    hud.clock.advance(6200);
+    assert.equal(find("QOLBetterUnsecuredMirrorLabel").text, "1000");
+    assert.equal(find("QOLUnsecuredSoulsState").text, "29s");
+    assert.equal(broadGoldSearches, 0, "verified native owners need no whole-HUD periodic rediscovery");
+
+    lower.id = "RetiredLowerLeft";
+    const replacementLower = add(stats, "LowerLeft");
+    makeGold(replacementLower, "500");
+    hud.clock.advance(2200);
+    assert.equal(first.IsValid(), true, "retired native source remains alive");
+    assert.equal(find("QOLBetterUnsecuredMirrorLabel").text, "500");
+    assert.equal(find("QOLUnsecuredSoulsState").text, "20s");
+    assert.equal(broadGoldSearches, 0);
+    for (const id of ["ql_unsecured_souls_timer", "ql_better_unsecured_hud"]) Q.core.FeatureRegistry.disable(id);
+    hud.clock.advance(20);
+    assert.equal(find("QOLBetterUnsecuredOverlay"), null);
+    assert.equal(find("QOLUnsecuredSoulsOverlay"), null);
+    env.clean();
+});
+
 test("zip boost replaces living hints and status containers with the current gameplay sources", () => {
     const env = fixture();
     const { hud, $, gameplay, add, label, config, find } = env;
