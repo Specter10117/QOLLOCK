@@ -15,98 +15,68 @@ function setup() {
     });
     const add = (parent, id, type = "Panel") => $.CreatePanel(type, parent, id);
     const native = root => {
-        const gun = add(root, "gun_data"), panel = add(gun, "ammo_panel");
+        const weapon = add(root, "gun", "Citadel_AbilityHUDElement_Gun"); weapon.AddClass("clip_style_chunks");
+        const gun = add(weapon, "gun_data"), panel = add(gun, "ammo_panel");
         const current = add(panel, "CurrentAmmo", "Label"); current.AddClass("weapon_ammo"); current.text = "6";
         const maximum = add(panel, "MaxAmmo", "Label"); maximum.AddClass("weapon_ammo_max"); maximum.text = " / 8";
         current.style.transform = "rotateZ(9deg)";
-        return { gun, panel, current, maximum };
+        return { weapon, gun, panel, current, maximum };
     };
     return { ...env, Q, $, cfg, feature, add, native, reads: () => reads };
 }
 
-test("ammo uses per-round masks through 40 rounds and native continuous fill for larger clips", () => {
+test("magazine toggle drives native updates only on settings changes and restores the vanilla gate", () => {
     const env = setup(), source = env.native(env.root), clip = env.add(source.gun, "clip_status");
     const progress = env.add(clip, "clip_progress_bar", "CircularProgressBar");
-    const background = env.add(clip, "clip_bg_progress_bar", "CircularProgressBar");
-    const bonus = env.add(clip, "clip_bonus_progress_bar", "CircularProgressBar");
-    Object.defineProperty(source.current, "text", { get() { throw Error("ammo fill must stay native, without current-ammo polling"); } });
-    env.cfg.ENABLE_AMMO_STATUS = 1; source.maximum.text = " / 40";
-    progress.style.clip = "radial( 50% 50%, 0deg, 45deg )";
-    env.feature.onEnable();
-    const mask = 'url("s2r://panorama/images/custom/ammo_ticks/40.vsvg")';
-    for (const target of [progress, background, bonus]) assert.equal(target.style.opacityMask, mask);
-    assert.equal(progress.style.clip, "radial( 50% 50%, 0deg, 45deg )");
-    assert.equal(clip.GetChildCount(), 3, "the visualizer uses existing native rings without generated panels");
-    for (const maximum of [41, 66, 200, 500]) {
-        source.maximum.text = " / " + maximum; env.clock.advance(700);
-        for (const target of [progress, background, bonus]) assert.equal(target.style.opacityMask, undefined, "large magazines retain continuous fill");
-        assert.equal(progress.style.borderColor, "#ffffff", "dense magazines use a white solid arc by default");
-        assert.equal(clip.BHasClass("qol-ammo-native-arc"), true);
-        assert.equal(clip.GetChildCount(), 3);
+    const bullet = env.add(clip, "clip_bullet"); bullet.AddClass("bullet_present");
+    const commands = [];
+    env.sandbox.onEvent("CitadelConCommand", command => commands.push(command));
+    Object.defineProperty(source.current, "text", { get() { throw Error("native C++ owns current ammo"); } });
+    progress.style.clip = "radial( 50% 50%, 135deg, 90deg )";
+    env.cfg.ENABLE_AMMO_STATUS = 1; env.feature.onEnable();
+    assert.deepEqual(commands, ["citadel_crosshair_enable_clip_status 1"]);
+    for (const capacity of [12, 30, 40, 41, 66, 200]) {
+        source.maximum.text = " / " + capacity; env.clock.advance(700);
+        assert.equal(progress.style.opacityMask, undefined);
+        assert.equal(progress.style.borderColor, undefined);
+        assert.equal(bullet.style.borderColor, undefined);
+        assert.equal(clip.GetChildCount(), 2, "only native panels render the magazine");
     }
-    source.maximum.text = " / 8"; env.clock.advance(700);
-    assert.equal(progress.style.opacityMask, 'url("s2r://panorama/images/custom/ammo_ticks/8.vsvg")');
-    progress.style.clip = "radial( 50% 50%, 0deg, 22.5deg )"; env.clock.advance(700);
-    assert.equal(progress.style.clip, "radial( 50% 50%, 0deg, 22.5deg )", "native shot/reload feedback remains untouched");
-    env.feature.onDisable();
-    for (const target of [progress, background, bonus]) assert.equal(target.style.opacityMask, undefined);
-    assert.equal(clip.BHasClass("qol-ammo-native-arc"), false);
-    assert.deepEqual(env.clock.errors, []);
-});
-
-test("66-round magazines keep a white continuous arc across capacity changes and re-enable", () => {
-    const env = setup(), source = env.native(env.root), clip = env.add(source.gun, "clip_status");
-    const progress = env.add(clip, "clip_progress_bar", "CircularProgressBar");
-    const background = env.add(clip, "clip_bg_progress_bar", "CircularProgressBar");
-    const bonus = env.add(clip, "clip_bonus_progress_bar", "CircularProgressBar");
-    Object.defineProperty(source.current, "text", { get() { throw Error("native fill owns current ammo"); } });
-    env.cfg.ENABLE_AMMO_STATUS = 1;
-    source.maximum.text = " / 66";
-    progress.style.clip = "radial( 50% 50%, 0deg, 45deg )";
-    env.feature.onEnable();
-    for (const target of [progress, background, bonus]) assert.equal(target.style.opacityMask, undefined);
-    assert.equal(progress.style.borderColor, "#ffffff");
-    source.maximum.text = " / 8"; env.clock.advance(700);
-    assert.equal(progress.style.opacityMask, 'url("s2r://panorama/images/custom/ammo_ticks/8.vsvg")');
-    assert.equal(progress.style.borderColor, undefined, "small magazines return default tint to native feedback");
-    source.maximum.text = " / 66"; env.clock.advance(700);
-    assert.equal(progress.style.opacityMask, undefined);
-    assert.equal(progress.style.borderColor, "#ffffff");
     env.cfg.AMMO_TEXT_COLOR = 3; env.feature.onSettingsChanged();
-    assert.equal(progress.style.borderColor, env.Q.core.panel.resolvePaletteColor(3));
-    env.cfg.AMMO_TEXT_COLOR = 0; env.feature.onSettingsChanged();
-    assert.equal(progress.style.borderColor, "#ffffff");
+    assert.deepEqual(commands, ["citadel_crosshair_enable_clip_status 1"], "unrelated edits and discovery do not resend commands");
+    assert.equal(progress.style.borderColor, undefined, "the palette only owns ammo digits");
     env.cfg.ENABLE_AMMO_STATUS = 0; env.feature.onSettingsChanged();
-    assert.equal(progress.style.borderColor, undefined, "turning the visualizer off releases its white override");
-    env.cfg.ENABLE_AMMO_STATUS = 1; env.feature.onSettingsChanged();
-    assert.equal(progress.style.borderColor, "#ffffff");
+    assert.deepEqual(commands, ["citadel_crosshair_enable_clip_status 1", "citadel_crosshair_enable_clip_status 0"]);
     env.feature.onDisable();
-    for (const target of [progress, background, bonus]) assert.equal(target.style.opacityMask, undefined);
-    assert.equal(progress.style.borderColor, undefined);
-    env.feature.onEnable();
-    for (const target of [progress, background, bonus]) assert.equal(target.style.opacityMask, undefined);
-    assert.equal(progress.style.borderColor, "#ffffff");
-    assert.equal(progress.style.clip, "radial( 50% 50%, 0deg, 45deg )");
-    assert.equal(clip.GetChildCount(), 3, "the visualizer reuses existing native arcs");
-    env.feature.onDisable();
+    assert.equal(commands.length, 2);
+    env.cfg.ENABLE_AMMO_STATUS = 1; env.feature.onEnable(); env.feature.onDisable();
+    assert.deepEqual(commands.slice(2), ["citadel_crosshair_enable_clip_status 1", "citadel_crosshair_enable_clip_status 0"]);
+    const count = commands.length;
+    env.feature.onSettingsChanged(); env.clock.advance(1000);
+    assert.equal(commands.length, count, "stopped hooks cannot re-enable the native renderer");
+    assert.equal(progress.style.clip, "radial( 50% 50%, 135deg, 90deg )");
     assert.deepEqual(env.clock.errors, []);
 });
 
-test("enabled standard magazine faces down at zero and releases its visual orientation", () => {
+test("standard magazine rotation preserves the native downward arc at zero", () => {
     const env = setup(), source = env.native(env.root), clip = env.add(source.gun, "clip_status");
+    const background = env.add(clip, "clip_bg_progress_bar", "CircularProgressBar");
+    // Native C++ uses offset 180 - half the 90 degree span, not CSS's static 0..90.
+    background.style.clip = "radial( 50% 50%, 135deg, 90deg )";
     env.cfg.ENABLE_AMMO_STATUS = 1;
     env.feature.onEnable();
-    assert.equal(clip.style.transform, "rotateZ(135deg)", "native 0..90 degree arc is centered downward");
-    clip.style.transform = "rotateZ(0deg)"; env.clock.advance(700);
-    assert.equal(clip.style.transform, "rotateZ(135deg)", "native feedback cannot lose the selected orientation");
+    assert.equal(clip.style.transform, undefined, "zero must not rotate the already downward native arc");
     env.cfg.AMMO_CLIP_ANGLE = 45; env.feature.onSettingsChanged();
-    assert.equal(clip.style.transform, "rotateZ(90deg)");
+    assert.equal(clip.style.transform, "rotateZ(-45deg)");
+    clip.style.transform = "rotateZ(0deg)"; env.clock.advance(700);
+    assert.equal(clip.style.transform, "rotateZ(-45deg)", "native feedback cannot lose the selected rotation");
     env.cfg.ENABLE_AMMO_STATUS = 0; env.feature.onSettingsChanged();
-    assert.equal(clip.style.transform, "rotateZ(-45deg)", "independent angle-only customization retains its native baseline");
+    assert.equal(clip.style.transform, "rotateZ(-45deg)");
     env.cfg.AMMO_CLIP_ANGLE = 0; env.feature.onSettingsChanged();
     assert.equal(clip.style.transform, undefined);
     env.cfg.ENABLE_AMMO_STATUS = 1; env.feature.onSettingsChanged();
-    assert.equal(clip.style.transform, "rotateZ(135deg)");
+    assert.equal(clip.style.transform, undefined);
+    assert.equal(background.style.clip, "radial( 50% 50%, 135deg, 90deg )");
     env.feature.onDisable();
     assert.equal(clip.style.transform, undefined);
     assert.deepEqual(env.clock.errors, []);
@@ -228,40 +198,4 @@ test("Ammo mirrored rotation returns each CSS baseline and retains a rejected re
     assert.equal(left.style.transform, undefined); assert.equal(right.style.transform, "rotateZ(180deg)");
     env.feature.onDisable(); reject = false; env.clock.advance(700);
     assert.equal(right.style.transform, undefined); assert.deepEqual(env.clock.errors, []);
-});
-
-test("ammo mask and tint follow native feedback and release a living replaced progress source", () => {
-    const env = setup(), source = env.native(env.root), clip = env.add(source.gun, "clip_status");
-    const progress = env.add(clip, "clip_progress_bar", "CircularProgressBar");
-    env.cfg.ENABLE_AMMO_STATUS = 1; env.cfg.AMMO_TEXT_COLOR = 1; env.feature.onEnable();
-    const mask = progress.style.opacityMask, color = progress.style.borderColor;
-    assert.ok(mask && color);
-    progress.style.opacityMask = "none"; progress.style.borderColor = "#000000";
-    env.clock.advance(700);
-    assert.equal(progress.style.opacityMask, mask); assert.equal(progress.style.borderColor, color);
-    progress.SetParent(env.add(env.root, "RetiredNativeProgress"));
-    const replacement = env.add(clip, "clip_progress_bar", "CircularProgressBar");
-    env.clock.advance(700);
-    assert.equal(progress.style.opacityMask, undefined); assert.equal(progress.style.borderColor, undefined);
-    assert.equal(replacement.style.opacityMask, mask); assert.equal(replacement.style.borderColor, color);
-    env.cfg.AMMO_TEXT_COLOR = 0; env.feature.onSettingsChanged();
-    assert.equal(replacement.style.borderColor, undefined, "default tint releases native low-ammo and bonus color policy");
-    env.feature.onDisable(); assert.equal(replacement.style.opacityMask, undefined);
-    assert.deepEqual(env.clock.errors, []);
-});
-
-test("ammo mask retirement retries after disable without reading settings or overwriting native fill", () => {
-    const env = setup(), source = env.native(env.root), clip = env.add(source.gun, "clip_status");
-    const progress = env.add(clip, "clip_progress_bar", "CircularProgressBar");
-    progress.style.clip = "radial( 50% 50%, 0deg, 67.5deg )";
-    env.cfg.ENABLE_AMMO_STATUS = 1; env.feature.onEnable();
-    const clear = progress.ClearPropertyFromCode.bind(progress); let reject = true;
-    progress.ClearPropertyFromCode = property => property === "opacity-mask" && reject ? false : clear(property);
-    env.feature.onDisable();
-    assert.ok(progress.style.opacityMask); const reads = env.reads();
-    reject = false; env.clock.advance(700);
-    assert.equal(progress.style.opacityMask, undefined); assert.equal(env.reads(), reads);
-    assert.equal(progress.style.clip, "radial( 50% 50%, 0deg, 67.5deg )");
-    assert.equal(clip.BHasClass("qol-ammo-native-arc"), false);
-    assert.deepEqual(env.clock.errors, []);
 });

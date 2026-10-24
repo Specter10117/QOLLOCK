@@ -290,16 +290,16 @@ The Ammo frame measures the union of these surfaces rather than the gun wrapper.
 Native ring rotation and its feature classes use the common native-style owner,
 with the extracted standard and mirrored CSS baselines on retirement. Native
 overwrite invalidates its cached write, and rejected retirement retries after
-disable. The enabled standard magazine points down at rotation zero; angle-only
-customization retains the native baseline when the visualizer is off. Small
-magazines use capacity-specific SVG masks on the native progress, background and
-bonus arcs; each division represents one round. Dense magazines release the mask
-and use a continuous white native arc unless a palette color is selected. The game owns shot/reload
-fill, low-ammo and bonus feedback; JavaScript only discovers sources and selects
-the mask from capacity. No per-round panels or current-ammo polling are created.
-Mirrored heat layouts retain their native arc presentation. Default tint releases
-the small-magazine foreground border color back to the native stylesheet. Mask/tint ownership
-follows living source replacement and retries rejected retirement after disable.
+disable. Standard rotation zero releases the container transform: the native
+crosshair offset already centers the live arc, unlike the static CSS clip.
+The magazine toggle dispatches the native `citadel_crosshair_enable_clip_status`
+command only on enable/settings transitions; turning it off, disabling the
+feature or applying Default restores the vanilla disabled value. It deliberately
+controls that game preference rather than preserving a separate prior value.
+Native C++ chooses the segmented or continuous renderer and owns shot/reload
+fill, bonus, low-ammo and infinite-ammo feedback. There are no custom masks,
+per-round panels, capacity thresholds or current-ammo polling. The palette owns
+ammo digits only. Mirrored heat layouts retain their native arc presentation.
 Digit font retirement explicitly writes its native layout baseline before
 releasing the code property. The Tokamak layout uses its own font baseline and
 content widths when scaling; it does not acquire the standard layout's fixed

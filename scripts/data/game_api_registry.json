@@ -11543,6 +11543,19 @@
       "isRelease": false,
       "help": ""
     },
+    "citadel_crosshair_enable_clip_status": {
+      "name": "citadel_crosshair_enable_clip_status",
+      "isCommand": false,
+      "defaultValue": "false",
+      "flags": [
+        "cl",
+        "release"
+      ],
+      "isCheat": false,
+      "isClient": true,
+      "isRelease": true,
+      "help": ""
+    },
     "citadel_crosshair_hit_marker_duration": {
       "name": "citadel_crosshair_hit_marker_duration",
       "isCommand": false,

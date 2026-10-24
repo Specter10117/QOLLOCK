@@ -1,40 +1,9 @@
 /* QOLLOCK overrides for ability_hud_elements/element_gun.css; loaded after the native baseline. */
 
-#clip_status
-{
-	visibility: visible;
-}
-
 #clip_status.qol-ammo-visual-enabled,
 #clip_status_mirrored.qol-ammo-visual-enabled
 {
-	visibility: visible !important;
-}
-
-/*
- * Valve separately collapses the foreground that displays the remaining
- * rounds unless the native clip_style_progress_bar class is present. The
- * QOL setting owns its visibility directly so the count remains visible when
- * that native presentation class is absent or replaced with a hero layout.
- */
-#clip_status.qol-ammo-visual-enabled #clip_progress_bar,
-#clip_status_mirrored.qol-ammo-visual-enabled #clip_progress_bar
-{
-	visibility: visible !important;
-}
-
-.has_bonus_clip #clip_status.qol-ammo-visual-enabled #clip_bonus_progress_bar,
-.has_bonus_clip #clip_status_mirrored.qol-ammo-visual-enabled #clip_bonus_progress_bar
-{
-	visibility: visible !important;
-}
-
-/* C++ owns native radial fill; the feature only selects its opacity mask.
- * Suppress native per-bullet children while that same arc is presented.
- */
-#clip_status.qol-ammo-native-arc #clip_bullet
-{
-    visibility: collapse !important;
+	visibility: visible;
 }
 
 /*
@@ -43,7 +12,7 @@
  * `reloading` are set (.attack_delayed.reloading #clip_status). During a
  * per-bullet (shotgun) reload `reloading` stays on but `attack_delayed`
  * cycles once per shell, so between shells the base collapse lifts and our
- * `#clip_status { visibility: visible }` override pops the ring back — the
+ * enabled-container visibility rule pops the ring back — the
  * rotated ring flickers in and out. Collapsing on `reloading` alone (which is
  * continuous across the whole reload) keeps it steadily hidden, matching the
  * vanilla "ring hidden while reloading" behaviour.

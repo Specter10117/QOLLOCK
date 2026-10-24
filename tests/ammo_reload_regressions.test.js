@@ -4,6 +4,7 @@ const { readStyleSource } = require("./helpers/style_source");
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const { createHud } = require("../scripts/simulator");
+const loadSettings = require("./load_settings_environment");
 
 function addClipHalf($, root, id) {
     const half = $.CreatePanel("Panel", root, id);
@@ -11,6 +12,21 @@ function addClipHalf($, root, id) {
         $.CreatePanel("CircularProgressBar", half, ringId);
     return half;
 }
+
+test("Default preset disables native magazine updates through the settings-to-HUD bridge", () => {
+    const env = loadSettings(), commands = [];
+    const { $ } = env.hud.sandbox.global;
+    env.hud.sandbox.onEvent("CitadelConCommand", command => commands.push(command));
+    const clip = addClipHalf($, env.hud.root, "clip_status");
+    Object.assign(env.global.MOD_CONFIG, { ENABLE_AMMO_STATUS: 1, AMMO_CLIP_ANGLE: 45 });
+    env.global.SaveAndSync(); env.clock.advance(1000);
+    assert.deepEqual(commands, ["citadel_crosshair_enable_clip_status 1"]);
+    assert.equal(clip.style.transform, "rotateZ(-45deg)");
+    assert.equal(env.global.ApplyPresetByName("Default"), true); env.clock.advance(1000);
+    assert.deepEqual(commands, ["citadel_crosshair_enable_clip_status 1", "citadel_crosshair_enable_clip_status 0"]);
+    assert.equal(clip.style.transform, undefined);
+    assert.deepEqual(env.clock.errors, []);
+});
 
 test("magazine rotation keeps both native half-rings together across hero layouts", () => {
     const hud = createHud({ inHideout: true });
@@ -54,57 +70,45 @@ test("magazine rotation keeps both native half-rings together across hero layout
     assert.deepEqual(hud.clock.errors, []);
 });
 
-test("visual ammo state follows dynamically replaced native clip panels", () => {
+test("native magazine enable follows settings while replaced clip panels retain native fill", () => {
     const css = readStyleSource("panorama/styles/ability_hud_elements/element_gun.css");
-    assert.match(css, /#clip_status\.qol-ammo-visual-enabled[^}]*visibility:\s*visible\s*!important;/s);
-    assert.match(css, /#clip_status\.qol-ammo-visual-enabled #clip_progress_bar[^}]*visibility:\s*visible\s*!important;/s);
-    assert.match(css, /\.has_bonus_clip #clip_status\.qol-ammo-visual-enabled #clip_bonus_progress_bar[^}]*visibility:\s*visible\s*!important;/s);
-    assert.match(css, /#clip_status\.qol-ammo-native-arc #clip_bullet[^}]*visibility:\s*collapse\s*!important;/s);
+    assert.match(css, /#clip_status\.qol-ammo-visual-enabled[^}]*visibility:\s*visible;/s);
     assert.match(css, /#clip_status\.qol-ammo-visual-disabled[^}]*visibility:\s*collapse;/s);
 
     const hud = createHud({ inHideout: true });
     hud.assertLoaded();
     const { $, QOL: Q } = hud.sandbox.global;
+    const commands = [];
+    hud.sandbox.onEvent("CitadelConCommand", command => commands.push(command));
     const decoyOwner = $.CreatePanel("Panel", hud.root, "HiddenGunTemplate");
     const decoy = addClipHalf($, decoyOwner, "clip_status");
     const gunData = $.CreatePanel("Panel", hud.root, "gun_data");
     const first = addClipHalf($, gunData, "clip_status");
     const ammoPanel = $.CreatePanel("Panel", gunData, "ammo_panel");
     const currentAmmo = $.CreatePanel("Label", ammoPanel, "CurrentAmmo");
-    currentAmmo.AddClass("weapon_ammo");
-    currentAmmo.text = "6";
-    const maxAmmo = $.CreatePanel("Label", ammoPanel, "MaxAmmo");
-    maxAmmo.AddClass("weapon_ammo_max");
-    maxAmmo.text = " / 8";
+    currentAmmo.AddClass("weapon_ammo"); currentAmmo.text = "6";
     Q.core.ConfigStore.set("ql_ammo", "ENABLE_AMMO_STATUS", true);
+    assert.deepEqual(commands, ["citadel_crosshair_enable_clip_status 1"]);
     assert.equal(first.BHasClass("qol-ammo-visual-enabled"), true);
-    assert.equal(first.BHasClass("qol-ammo-visual-disabled"), false);
-    assert.equal(decoy.BHasClass("qol-ammo-visual-enabled"), false, "hidden duplicate must not win clip resolution");
-    assert.equal(first.BHasClass("qol-ammo-native-arc"), true);
+    assert.equal(decoy.BHasClass("qol-ammo-visual-enabled"), false, "a hidden duplicate is not the live clip owner");
     const progress = first.FindChild("clip_progress_bar");
-    assert.equal(progress.style.opacityMask, 'url("s2r://panorama/images/custom/ammo_ticks/8.vsvg")');
-    assert.equal(first.GetChildCount(), 3, "no generated per-bullet panels");
+    progress.style.clip = "radial( 50% 50%, 135deg, 56.25deg )";
     Q.core.ConfigStore.set("ql_ammo", "AMMO_TEXT_COLOR", 3);
-    assert.equal(progress.style.borderColor, Q.core.panel.resolvePaletteColor(3));
-    currentAmmo.text = "5";
-    progress.style.clip = "radial( 50% 50%, 0deg, 56.25deg )";
     hud.clock.advance(600);
-    assert.equal(progress.style.clip, "radial( 50% 50%, 0deg, 56.25deg )");
-
-    first.DeleteAsync(0);
-    hud.clock.advance(1);
+    assert.equal(progress.style.clip, "radial( 50% 50%, 135deg, 56.25deg )");
+    assert.equal(progress.style.borderColor, undefined);
+    assert.equal(progress.style.opacityMask, undefined);
+    first.DeleteAsync(0); hud.clock.advance(1);
     const replacement = addClipHalf($, gunData, "clip_status");
     hud.clock.advance(600);
     assert.equal(replacement.BHasClass("qol-ammo-visual-enabled"), true);
-    assert.equal(replacement.FindChild("clip_progress_bar").style.opacityMask, 'url("s2r://panorama/images/custom/ammo_ticks/8.vsvg")', "replacement receives the selected mask");
-
+    assert.equal(replacement.GetChildCount(), 3, "the game retains ownership of every rendered child");
+    assert.equal(commands.length, 1, "source replacement must not resend the game command");
     Q.core.ConfigStore.set("ql_ammo", "AMMO_TEXT_COLOR", 0);
     Q.core.ConfigStore.set("ql_ammo", "ENABLE_AMMO_STATUS", false);
-    hud.clock.advance(1);
+    assert.deepEqual(commands, ["citadel_crosshair_enable_clip_status 1", "citadel_crosshair_enable_clip_status 0"]);
     assert.equal(replacement.BHasClass("qol-ammo-visual-enabled"), false);
-    assert.equal(replacement.BHasClass("qol-ammo-visual-disabled"), false, "disabled feature releases its owned classes");
-    assert.equal(replacement.FindChild("clip_progress_bar").style.opacityMask, undefined, "disable releases the native mask");
-    assert.equal(replacement.BHasClass("qol-ammo-native-arc"), false);
+    assert.equal(replacement.BHasClass("qol-ammo-visual-disabled"), false, "disable releases owned classes");
     assert.deepEqual(hud.clock.errors, []);
 });
 

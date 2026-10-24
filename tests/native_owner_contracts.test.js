@@ -510,7 +510,7 @@ test("ammo preserves untouched native digit properties and restores owned RGB af
     env.cfg.AMMO_TEXT_COLOR = rgb;
     env.feature.onSettingsChanged();
     assert.equal(current.style.color, "#123ABC");
-    assert.equal(progress.style.borderColor, "#123ABC");
+    assert.equal(progress.style.borderColor, undefined, "native magazine feedback colors remain game-owned");
     current.style.color = "#000000";
     env.clock.advance(700);
     assert.equal(current.style.color, "#123ABC", "native ammo-state feedback cannot discard the user color");

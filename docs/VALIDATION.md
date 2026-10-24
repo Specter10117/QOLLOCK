@@ -28,6 +28,13 @@ native `citadel_ui_color_picker.xml` supplies the panel and child IDs. This
 source evidence and the offline callback tests do not verify native input or
 rendering in QOLLOCK; the maintainer must check them after compile/repack.
 
+`citadel_crosshair_enable_clip_status` was added on 2026-10-24 from
+GameTracking's `DumpSource2/convars.txt`: a client release convar with a false
+default. Native `hud_hero_testing.xml` and `hud_escape_menu.xml` dispatch
+`CitadelConCommand` with one command string. The maintainer also confirmed in
+client that enabling this convar starts the native magazine renderer; offline
+tests cover QOLLOCK's toggle/default command lifecycle, not native rendering.
+
 ## Regression tests and CI
 
 `node --test tests/game_api_validator.test.js` checks known/unknown calls, comments, multiline calls, dynamic warnings, the scoped compatibility exception, and real CLI exit statuses. CLI fixtures use an isolated temporary registry/directory and do not require `G:` or `D:` game data.

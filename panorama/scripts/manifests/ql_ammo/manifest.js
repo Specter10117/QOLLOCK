@@ -1,4 +1,4 @@
-// OWNS: Ammo digits/geometry/color, native arc masks and magazine container rotation.
+// OWNS: Ammo digits/geometry/color, native magazine enable and container rotation.
 // Native ring/bullet transforms are engine-owned and must remain intact.
 // DOES NOT OWN: Reload cooldown, crosshair stats or native weapon/ammo state.
 // Sources: hud.xml, element_gun.xml, element_tokamak_custom_semi_circles.xml/css and debugger gun ancestry.
@@ -56,42 +56,17 @@
                 panelAPI.createNativeStyleOwner({ resetValues: { position: "0px 0px 0px", fontSize: fontSize + "px" } })]));
             const clipStyles = new Map([0, 90, 180].map(baseline => [baseline,
                 panelAPI.createNativeStyleOwner({ resetValues: { transform: "rotateZ(" + baseline + "deg)" } })]));
-            const visualStyles = panelAPI.createNativeStyleOwner();
             let panel = null;
             let model = null;
             let loop = null;
             let active = false;
-            // Above this density use the existing continuous native arc. Only
-            // capacity selects a mask; C++ still owns every shot/reload update.
-            const maxTickCount = 40;
+            let nativeVisual = null;
 
-            function renderVisuals(sources) {
-                const standard = model.visualEnabled && sources.size === 1 && panelAPI.isAlive(panel);
-                let mask = "";
-                let dense = false;
-                if (standard) {
-                    const maximumLabel = QOL.utils.FindPanelsByClass(panel, "weapon_ammo_max")[0];
-                    const maximum = Number(String(maximumLabel?.text ?? "").match(/\d+/)?.[0]);
-                    if (Number.isInteger(maximum) && maximum >= 1 && maximum <= maxTickCount) {
-                        mask = 'url("s2r://panorama/images/custom/ammo_ticks/' + maximum + '.vsvg")';
-                    }
-                    dense = Number.isInteger(maximum) && maximum > maxTickCount;
-                }
-                const retained = [];
-                for (const clip of sources.keys()) {
-                    visualStyles.apply(clip, {}, { "qol-ammo-native-arc": standard });
-                    retained.push(clip);
-                    for (const id of ["clip_progress_bar", "clip_bg_progress_bar", "clip_bonus_progress_bar"]) {
-                        const target = panelAPI.findChild(clip, id);
-                        if (!target) continue;
-                        const styles = standard && mask ? { opacityMask: mask } : {};
-                        const color = model.currentStyles.color || (dense ? "#ffffff" : "");
-                        if (standard && id === "clip_progress_bar" && color) styles.borderColor = color;
-                        visualStyles.apply(target, styles);
-                        retained.push(target);
-                    }
-                }
-                visualStyles.retain(retained);
+            function setNativeVisual(enabled) {
+                if (nativeVisual === enabled) return;
+                if (enabled) $.DispatchEvent("CitadelConCommand", "citadel_crosshair_enable_clip_status 1");
+                else $.DispatchEvent("CitadelConCommand", "citadel_crosshair_enable_clip_status 0");
+                nativeVisual = enabled;
             }
 
             function readModel() {
@@ -185,9 +160,9 @@
                     sources.set(clip, { angle: 90 - model.angle, baseline: 90 });
                     sources.set(mirrored, { angle: 180 - model.angle, baseline: 180 });
                 } else {
-                    // Native 0..90 degrees occupies the upper-right quadrant.
-                    // Center the enabled magazine below the reticle at setting zero.
-                    sources.set(clip, { angle: (model.visualEnabled ? 135 : 0) - model.angle, baseline: 0 });
+                    // C++ centers the live arc using the native crosshair offset;
+                    // CSS's static 0..90 clip is not its live orientation.
+                    sources.set(clip, { angle: -model.angle, baseline: 0 });
                 }
                 return sources;
             }
@@ -215,7 +190,6 @@
                 }
                 const clipSources = discoverClips(root);
                 renderClips(clipSources, root);
-                renderVisuals(clipSources);
                 const textSources = panel ? discoverTexts() : new Map();
                 renderTexts(textSources);
                 geometry.retain([panel, ...clipSources.keys()]);
@@ -227,6 +201,7 @@
             function refreshSettings() {
                 if (!active) return;
                 model = readModel();
+                setNativeVisual(model.visualEnabled);
                 ammoResolver.reset();
                 clipResolver.reset();
                 update();
@@ -245,12 +220,13 @@
                     if (loop) { loop.stop(); loop = null; }
                     QOL.core.Scheduler.cancelAllForFeature(ctx.id);
                     releaseMain();
-                    visualStyles.clear();
                     for (const owner of clipStyles.values()) owner.clear();
                     geometry.clear();
                     panel = model = null;
                     ammoResolver.reset();
                     clipResolver.reset();
+                    if (nativeVisual !== null) setNativeVisual(false);
+                    nativeVisual = null;
                 }
             }, update);
         },
