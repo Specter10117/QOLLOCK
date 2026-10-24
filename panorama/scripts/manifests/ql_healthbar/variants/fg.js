@@ -114,7 +114,7 @@
         // The pregame reveal identifies the hero before the crosshair appears.
         // In hero testing it also wins over a crosshair left from the last pawn.
         const pregameHero = probe.readHeroFromPregame(root);
-        const nextHero = pregameHero || probe.readHeroFromCrosshair(root);
+        const nextHero = pregameHero || probe.readHeroFromCrosshair(root) || probe.readHeroFromTopBar(root);
         if (!nextHero || !Object.prototype.hasOwnProperty.call(heroIcons, nextHero)) {
             if (portrait.visible) portrait.visible = false;
             hero = '';

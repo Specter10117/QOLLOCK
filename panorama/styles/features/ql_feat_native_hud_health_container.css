@@ -182,6 +182,11 @@
 	margin-top: 0px;
 }
 
+.fg_healthbar_active:not(.minimalist_healthbar_active) #HealthBarContent #hud_modifier_icons
+{
+	visibility: collapse;
+}
+
 .fg_healthbar_active:not(.minimalist_healthbar_active) #HealthRegenAndTotal
 {
 	width: 100%;

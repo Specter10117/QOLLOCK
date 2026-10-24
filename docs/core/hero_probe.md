@@ -1,7 +1,7 @@
 # `panorama/scripts/core/ql_hero_probe.js`
 
 ## Purpose
-Provides read-only native pregame/crosshair hero evidence for the FG portrait.
+Provides read-only native pregame/crosshair/top-bar hero evidence for the FG portrait.
 It owns no configuration, confirmation history, schedules or shop/build actions.
 
 ## Dependencies
@@ -10,9 +10,10 @@ It owns no configuration, confirmation history, schedules or shop/build actions.
 - `panorama/scripts/ql_panelcache.js` (`QOL.panelCache`, available when readers are created)
 
 ## Key Interface (`QOL.core.heroProbe`)
-- `createReader()`: Creates an instance-owned reader with the two read methods below and `reset()`. FG owns one reader per variant instance and resets it on release.
+- `createReader()`: Creates an instance-owned reader with the three read methods below and `reset()`. FG owns one reader per variant instance and resets it on release.
 - `readHeroFromCrosshair(root)`: Discovers `#crosshair` -> `.citadel_ability_dash` and reads the active player pawn's `hero_<codename>` CSS class. Returns empty when evidence is absent, conflicting, or unreadable.
 - `readHeroFromPregame(root)`: Reads the `ShowingHero hero_<codename>` classes on `#Pregame #HeroAbilities` while the HUD is in pregame or hero testing. Returns empty for missing or conflicting classes.
+- `readHeroFromTopBar(root)`: Reader-only fallback using the current roster's `HeroBadge.heroid`. It selects a unique `SpectatorTarget`, otherwise a unique `LocalPlayer`, and rejects empty cards and unknown IDs. IDs come from native `scripts/heroes.vdata`.
 
 ## Engine reality and FG use
 
@@ -37,7 +38,12 @@ Unconsumed signature confirmation, loose panel/command scans and shop/build
 navigation are removed with their root aliases and shared `State` writes. These
 were retired loader implementations, separate from historical config decoding.
 
-FG prefers the native pregame reveal while it is active, then uses the crosshair.
+FG prefers the native pregame reveal while it is active, then uses the crosshair
+and finally the top-bar badge. Current native captures have no hero classes on
+the dash element. Weapon reticle classes are not a general replacement: some
+are absent and others are shared by different heroes. The top-bar reader walks
+only the native team rosters and resolves the badge within the selected card,
+without scanning unrelated HUD panels or caching player/hero selection.
 The pregame panel is confirmed in the Panorama Debugger during hero testing with
 `ShowingHero hero_frank`; it is ignored in normal gameplay so an old reveal
 cannot override a live pawn. Missing or ambiguous evidence hides the portrait.

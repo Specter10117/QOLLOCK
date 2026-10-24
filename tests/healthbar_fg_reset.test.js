@@ -206,6 +206,43 @@ test("FG cleans up on anchor loss, replacement and disable", () => {
     assert.deepEqual(env.clock.errors, []);
 });
 
+test("FG reads current top-bar badges after native dash hero classes disappear", () => {
+    const env = loadSettingsEnvironment();
+    const { border, dash, add, imageCalls } = fixture(env);
+    dash.RemoveClass("hero_atlas");
+    const top = add(env.hud.root, "TopBar");
+    const teams = add(top, "TeamsContainer");
+    const roster = add(add(add(teams, "TeamFriendly"), "PlayerContents"), "PlayersContainer");
+    const player = add(roster, "TopBarPlayer0", "LocalPlayer");
+    const badge = add(player, "HeroBadge");
+    badge.heroid = 6;
+    const update = () => env.hud.sandbox.global.QOL.healthbar.fg.update(env.hud.root, { HEALTHBAR_TYPE: 2 });
+    update();
+    const owned = border.FindChildTraverse("QOLFGPortrait");
+    assert.equal(owned.visible, true);
+    assert.equal(imageCalls.at(-1).src, "s2r://panorama/images/heroes/bull_sm_psd.vtex");
+    badge.heroid = 79;
+    update();
+    assert.equal(imageCalls.at(-1).src, "s2r://panorama/images/heroes/familiar_sm_psd.vtex");
+    player.RemoveClass("LocalPlayer");
+    update();
+    assert.equal(owned.visible, false, "old live badge cannot identify a different pawn");
+    player.AddClass("LocalPlayer");
+    const target = add(roster, "TopBarPlayer1", "SpectatorTarget");
+    const targetBadge = add(target, "HeroBadge");
+    targetBadge.heroid = 60;
+    update();
+    assert.equal(imageCalls.at(-1).src, "s2r://panorama/images/heroes/magician_sm_psd.vtex");
+    targetBadge.heroid = 999;
+    update();
+    assert.equal(owned.visible, false, "unknown spectator must not fall back to the local hero");
+    target.SetParent(add(env.hud.root, "RetiredTopBar"));
+    badge.heroid = 3;
+    update();
+    assert.equal(imageCalls.at(-1).src, "s2r://panorama/images/heroes/hornet_sm_png.vtex");
+    assert.deepEqual(env.clock.errors, []);
+});
+
 test("both clear helpers pass native CSS property names", () => {
     const { hud, doc } = loadSettingsEnvironment();
     const p = doc.create("Panel", { id: "StrictNativeStyle" });

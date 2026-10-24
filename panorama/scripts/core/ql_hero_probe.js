@@ -1,75 +1,78 @@
-// OWNS: Read-only native pregame/crosshair hero evidence for the FG portrait.
+// OWNS: Read-only native pregame/crosshair/top-bar hero evidence for the FG portrait.
 // DOES NOT OWN: Entity identity, shop/build actions, config, history or schedules.
 // Sources retain verified native IDs/classes; conflicting or unreadable evidence is empty.
 (() => {
     "use strict";
     const P = QOL.core.panel;
+    // Native m_HeroID values from scripts/heroes.vdata; zero is a retained
+    // class-only alias without a current native ID.
     const aliases = {
-        airheart: 1,
+        airheart: 0,
         inferno: 1,
-        gigawatt: 1,
-        hornet: 1,
-        ghost: 1,
-        atlas: 1,
-        wraith: 1,
-        forge: 1,
-        chrono: 1,
-        dynamo: 1,
-        kelvin: 1,
-        haze: 1,
-        astro: 1,
-        bebop: 1,
-        nano: 1,
-        orion: 1,
-        krill: 1,
-        shiv: 1,
-        tengu: 1,
-        kali: 1,
-        warden: 1,
-        yamato: 1,
-        lash: 1,
-        viscous: 1,
-        gunslinger: 1,
-        yakuza: 1,
-        genericperson: 1,
-        tokamak: 1,
-        wrecker: 1,
-        rutger: 1,
-        synth: 1,
-        thumper: 1,
-        mirage: 1,
-        slork: 1,
-        cadence: 1,
-        targetdummy: 1,
-        bomber: 1,
-        shieldguy: 1,
-        viper: 1,
-        vandal: 1,
-        magician: 1,
-        trapper: 1,
-        operative: 1,
-        vampirebat: 1,
-        drifter: 1,
-        priest: 1,
-        frank: 1,
-        bookworm: 1,
-        boho: 1,
-        doorman: 1,
-        skyrunner: 1,
-        swan: 1,
-        punkgoat: 1,
-        fortuna: 1,
-        necro: 1,
-        fencer: 1,
-        druid: 1,
-        graf: 1,
-        opera: 1,
-        familiar: 1,
-        werewolf: 1,
-        unicorn: 1
+        gigawatt: 2,
+        hornet: 3,
+        ghost: 4,
+        atlas: 6,
+        wraith: 7,
+        forge: 8,
+        chrono: 10,
+        dynamo: 11,
+        kelvin: 12,
+        haze: 13,
+        astro: 14,
+        bebop: 15,
+        nano: 16,
+        orion: 17,
+        krill: 18,
+        shiv: 19,
+        tengu: 20,
+        kali: 21,
+        warden: 25,
+        yamato: 27,
+        lash: 31,
+        viscous: 35,
+        gunslinger: 38,
+        yakuza: 39,
+        genericperson: 46,
+        tokamak: 0,
+        wrecker: 48,
+        rutger: 49,
+        synth: 50,
+        thumper: 51,
+        mirage: 52,
+        slork: 53,
+        cadence: 54,
+        targetdummy: 55,
+        bomber: 56,
+        shieldguy: 57,
+        viper: 58,
+        vandal: 59,
+        magician: 60,
+        trapper: 61,
+        operative: 62,
+        vampirebat: 63,
+        drifter: 64,
+        priest: 65,
+        frank: 66,
+        bookworm: 67,
+        boho: 68,
+        doorman: 69,
+        skyrunner: 70,
+        swan: 71,
+        punkgoat: 72,
+        fortuna: 75,
+        necro: 76,
+        fencer: 77,
+        druid: 73,
+        graf: 74,
+        opera: 82,
+        familiar: 79,
+        werewolf: 80,
+        unicorn: 81
     };
 
     const heroAliases = Object.keys(aliases);
+    const heroesById = new Map(heroAliases.filter(alias => aliases[alias] > 0).map(alias => [aliases[alias], "hero_" + alias]));
     function currentHud(root) {
         if (root && !P.isAlive(root)) return null;
         const hud = P.findHud(root || $.GetContextPanel());
@@ -84,7 +87,30 @@
         });
         const pregameSource = cache.createIdResolver("Pregame", { ownerPath: [{ className: "HudTakeovers" }] });
         const abilitiesSource = cache.createIdResolver("HeroAbilities");
-        function reset() { crosshairSource.reset(); pregameSource.reset(); abilitiesSource.reset(); }
+        const topBarSource = cache.createIdResolver("TopBar", { ownerPath: [{ className: "HudCore" }] });
+        function reset() { crosshairSource.reset(); pregameSource.reset(); abilitiesSource.reset(); topBarSource.reset(); }
+        function readHeroFromTopBar(root) {
+            const top = topBarSource.resolve(currentHud(root));
+            if (!P.isAlive(top)) return "";
+            // Native top-bar CSS identifies the viewed pawn. Do not cache the
+            // selected card: both spectating and hero testing can replace it.
+            const teams = P.findChild(top, "TeamsContainer");
+            if (!P.isAlive(teams)) return "";
+            const targets = [], locals = [];
+            for (const team of teams.Children()) {
+                const roster = P.findChild(P.findChild(team, "PlayerContents"), "PlayersContainer");
+                if (!P.isAlive(roster)) continue;
+                for (const player of roster.Children()) {
+                    if (!P.isAlive(player)) continue;
+                    if (player.BHasClass("SpectatorTarget")) targets.push(player);
+                    if (player.BHasClass("LocalPlayer")) locals.push(player);
+                }
+            }
+            const players = targets.length ? targets : locals;
+            if (players.length !== 1 || !P.isAlive(players[0]) || players[0].BHasClass("Empty")) return "";
+            const badge = P.findTraverse(players[0], "HeroBadge");
+            return P.isAlive(badge) ? heroesById.get(Number(badge.heroid)) || "" : "";
+        }
         function readHeroFromCrosshair(root) {
             const crosshair = crosshairSource.resolve(currentHud(root));
             if (!P.isAlive(crosshair)) return "";
@@ -124,7 +150,7 @@
                 return found;
             } catch (_) { return ""; }
         }
-        return { readHeroFromCrosshair, readHeroFromPregame, reset };
+        return { readHeroFromCrosshair, readHeroFromPregame, readHeroFromTopBar, reset };
     }
     // The core script precedes panelCache in the HUD includes. Compatibility
     // readers allocate only on first use after HUD boot.

@@ -44,13 +44,18 @@ Stopped dispatcher hooks cannot resume presentation.
 
 Fighting Game (FG) creates its own portrait under the current health bar.
 Native gold and level portraits are unreliable identity sources. FG uses the
-verified pregame hero signal when applicable, then live crosshair evidence;
-missing or conflicting evidence hides the portrait. A replaced source panel
+verified pregame hero signal when applicable, then live crosshair evidence and
+the current top-bar badge as a fallback. The native dash no longer supplies hero
+classes in current captures. The badge is scoped to the spectator target, or
+the local player when no spectator target exists; missing, empty, conflicting
+or unknown badge evidence hides the portrait. A replaced source panel
 must reset image and style signatures. Hideout can still display FG in hero
 testing. Shared native healthbar position, scale, opacity and accent settings
 also apply there, while animated variant work that needs match health data stops.
 Replaced native frame panels must receive the current accent even when its value
-is unchanged.
+is unchanged. FG and Klutz hide native health division lines. FG also hides the
+health-container modifier icons; the native crosshair statuses keep their own
+presentation.
 
 Minecraft Hearts has a different layout and animation path from the native
 bar. Do not generalize geometry or performance results from mode 0 to it.

@@ -662,6 +662,12 @@
 	wash-color: #580000;
 }
 
+.fg_healthbar_active:not(.minimalist_healthbar_active) #healthLines,
+.klutz_healthbar_active #healthLines
+{
+	visibility: collapse;
+}
+
 .fg_healthbar_active:not(.minimalist_healthbar_active) .bars_container
 {
 	margin-top: 0px;

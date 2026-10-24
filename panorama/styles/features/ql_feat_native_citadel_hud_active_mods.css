@@ -3,5 +3,6 @@
 .minecraft_healthbar_active #abilitiesContainer
 {
 	vertical-align: bottom;
-	margin-bottom: 6px;
+	margin-bottom: 9px;
+	margin-left: 20px;
 }
