@@ -399,3 +399,34 @@ test(`Max Ammo Reset restores the resolved font from a saved size (${mirrored ? 
     assert.deepEqual(env.doc.eventErrors, []);
     assert.deepEqual(env.clock.errors, []);
 });
+
+for (const scoped of [false, true])
+test(`Ammo ${scoped ? "section" : "full editor"}: three selections, drag reset and isolated child reset`, () => {
+    const env = setup(), Q = env.global.QOL;
+    Q.ui.customize.start(null, scoped ? { elementId: "ammo" } : {});
+    const find = id => env.em.FindChildTraverse(id);
+    if (scoped) assert.equal(find("QOLCustomizeFrame_items"), null);
+    for (const [id, target, key] of [["ammoCurrent", env.current, "AMMO_CURRENT_X_OFFSET"], ["ammoMax", env.max, "AMMO_MAX_X_OFFSET"]]) {
+        const frame = find("QOLCustomizeFrame_" + id);
+        assert.ok(frame, id);
+        frame._fire("onactivate");
+        const proxy = startDrag(env, frame);
+        assert.ok(proxy);
+        proxy.actualxoffset += 40;
+        startDrag.end(env, frame, proxy); env.clock.advance(500);
+        assert.equal(find("QOLCustomize_" + key).text, "40");
+        assert.equal(target.style.position, "40px 0px 0px");
+    }
+    activate(env, "QOLCustomizeReset"); env.clock.advance(600);
+    assert.equal(env.max.style.position, undefined);
+    assert.equal(env.current.style.position, "40px 0px 0px", "child Reset preserves its sibling");
+    activate(env, "QOLCustomizeSelect_ammo");
+    activate(env, "QOLCustomizeReset"); env.clock.advance(600);
+    assert.equal(env.current.style.position, undefined, "family Reset includes hidden child offsets");
+    activate(env, "QOLCustomizeUndo"); env.clock.advance(600);
+    assert.equal(env.current.style.position, "40px 0px 0px");
+    activate(env, "QOLCustomizeRedo"); env.clock.advance(600);
+    assert.equal(env.current.style.position, undefined);
+    activate(env, "QOLCustomizeCancel");
+    assert.deepEqual(env.doc.eventErrors, []); assert.deepEqual(env.clock.errors, []);
+});

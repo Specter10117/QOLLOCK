@@ -4,6 +4,8 @@
     const Q = globalThis.QOL;
     const P = Q.core.panel;
     let nextToken = 0;
+    const scopedElements = element => element.id === "ammo"
+        ? [element, ...Q.presentation.elements.filter(item => item.parentId === element.id)] : [element];
 
     function resolveHud(root) {
         const named = root?.id === "Hud" ? root : P.findTraverse(root, "Hud");
@@ -30,7 +32,7 @@
         const future = [];
         const locks = new Set();
         let editGroup = null;
-        const editableElements = element ? [element] : Q.presentation.elements;
+        const editableElements = element ? scopedElements(element) : Q.presentation.elements;
         const allowedElements = new Set(editableElements.map(item => item.id));
         const allowedKeys = new Set();
         const geometryKeys = new Set();
@@ -160,9 +162,11 @@
             if (!allowedElements.has(element.id)) return false;
             const values = {};
             const config = Q.mergeConfig(Object.assign({}, baseline, draft));
-            // Hidden feature modes/filters belong to the ordinary settings.
-            // The legacy Ammo alias follows its visible canonical field in edit.
-            for (const field of element.fields) if (!field.hidden && (!field.when || field.when({ value: key => config[key] }))) values[field.key] = QOL_DEFAULT_CONFIG[field.key];
+            // Hidden modes/filters stay with ordinary settings. Ammo's family
+            // reset also includes its independent digit geometry, not the alias.
+            const fields = [...element.fields.filter(field => !field.hidden),
+                ...scopedElements(element).slice(1).flatMap(item => item.fields)];
+            for (const field of fields) if (!field.when || field.when({ value: key => config[key] })) values[field.key] = QOL_DEFAULT_CONFIG[field.key];
             return edit(values, null, false);
         }
         function close() {
@@ -193,5 +197,5 @@
             acknowledged: () => Q.presentation.preview.ack(hud) === token && Q.presentation.preview.settled(hud)
         };
     }
-    Q.ui.customizeSession = { create, resolveHud };
+    Q.ui.customizeSession = { create, resolveHud, scopedElements };
 })();

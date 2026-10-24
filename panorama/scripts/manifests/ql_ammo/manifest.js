@@ -103,8 +103,8 @@
                         ...(yOffset ? { y: -yOffset + "px" } : {})
                     },
                     panelStyles: {
-                        ...(xOffset ? { marginLeft: xOffset + "px" } : {}),
-                        ...(yOffset ? { marginTop: -yOffset + "px" } : {}),
+                        ...(xOffset ? { marginLeft: xOffset + "px", marginRight: -xOffset + "px" } : {}),
+                        ...(yOffset ? { marginTop: -yOffset + "px", marginBottom: yOffset + "px" } : {}),
                         ...(groupScale !== 100 ? { uiScale: groupScale + "%" } : {})
                     }
                 };

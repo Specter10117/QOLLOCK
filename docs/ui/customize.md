@@ -5,7 +5,9 @@ does not introduce a second configuration format or a gameplay renderer.
 
 Gameplay section headers also expose Customize for their declared surface. These
 entries call the same editor with `start(onStop, {elementId})`. A scoped session
-creates only that element's frame and inspector and hides the full catalog. Its
+creates only that element's frame and inspector and hides the full catalog.
+Ammo opens its family frame plus Current and Max Ammo, with a catalog limited
+to those three selections. Its
 key whitelist rejects edits and resets belonging to other elements. Unknown IDs
 fail before opening or changing HUD state.
 AP and Active Items have no empty standalone subsection in the ordinary HUD
@@ -310,7 +312,9 @@ native positions inside Ammo. They retain their existing font-size settings and
 inherit the group's shared styling. Max's native label includes the separator;
 moving it does not rewrite engine-owned text. Parent movement edits only group
 offsets. Digit offsets and font sizes appear in their independent inspectors;
-the group inspector retains overall geometry and shared appearance.
+the group inspector retains overall geometry and shared appearance. Reset on
+Ammo also resets both digits' offsets and font sizes; Reset on Current or Max
+only resets that digit. This applies in both the section entry and full editor.
 Independent font controls allow shrinking as well as enlarging. The legacy
 font alias and historical compact schemas retain their compatibility path;
 new values outside the published range use the settings envelope.

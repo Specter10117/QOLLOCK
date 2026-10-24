@@ -18,10 +18,10 @@ test("every scoped surface resets visible fields, preserves hidden options, and 
         }
         assert.equal(session.edit(patch), true, element.id);
         const before = JSON.stringify(session.snapshot());
-        const hidden = element.fields.filter(field => field.hidden && field.key !== "AMMO_PANEL_SCALE")
+        const hidden = element.fields.filter(field => field.hidden && field.key !== "AMMO_PANEL_SCALE" && element.id !== "ammo")
             .map(field => [field.key, session.value(field.key)]);
         assert.equal(session.reset(element), true, element.id);
-        for (const field of element.fields.filter(field => !field.hidden))
+        for (const field of element.fields.filter(field => !field.hidden || (element.id === "ammo" && field.key !== "AMMO_PANEL_SCALE")))
             assert.equal(session.value(field.key), g.QOL_DEFAULT_CONFIG[field.key], `${element.id}/${field.key}`);
         for (const [key, value] of hidden) assert.equal(session.value(key), value, `preserve ${element.id}/${key}`);
         const reset = JSON.stringify(session.snapshot());

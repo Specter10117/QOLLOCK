@@ -254,9 +254,9 @@ test("all gameplay entry buttons open their declared element and full Customize 
             activate(env, "QOLCustomizeEntry_" + id);
             assert.equal(Q.ui.customize.isRunning(), true, id);
             const frames = env.em.FindChildrenWithClassTraverse("QOLCustomizeFrame");
-            assert.equal(frames.length, 1, id);
-            assert.equal(frames[0].id, "QOLCustomizeFrame_" + id);
-            assert.equal(env.em.FindChildTraverse("QOLCustomizeCatalog").visible, false);
+            assert.equal(frames.length, id === "ammo" ? 3 : 1, id);
+            assert.ok(frames.some(frame => frame.id === "QOLCustomizeFrame_" + id));
+            assert.equal(env.em.FindChildTraverse("QOLCustomizeCatalog").visible, id === "ammo");
             activate(env, "QOLCustomizeCancel"); env.clock.advance(300);
         }
     }
@@ -347,4 +347,22 @@ test("section resets include moved values, nested active items and newly added s
         if (id === "bottomBar") assert.equal(g.MOD_CONFIG.SOULS_SCALE, 151, "unrelated section is preserved");
     }
     clean(env);
+});
+
+test("Ammo scope permits both digit owners and rejects unrelated settings atomically", () => {
+    const env = setup(), Q = env.global.QOL;
+    const ammo = Q.presentation.elements.find(element => element.id === "ammo");
+    const items = Q.presentation.elements.find(element => element.id === "items");
+    const session = Q.ui.customizeSession.create(env.doc.root, env.hud.root, env.em.FindChildTraverse("SettingsWindow"), ammo);
+    assert.equal(session.selection("ammoCurrent"), true);
+    assert.equal(session.selection("ammoMax"), true);
+    assert.equal(session.edit({ AMMO_CURRENT_X_OFFSET: 70, ITEMS_X_OFFSET: 90 }), false);
+    assert.deepEqual(Object.keys(session.snapshot()), []);
+    assert.equal(session.reset(items), false);
+    assert.equal(session.edit({ AMMO_CURRENT_X_OFFSET: 70, AMMO_MAX_Y_OFFSET: -25, AMMO_TOTAL_SCALE: 150 }), true);
+    assert.equal(session.reset(ammo), true);
+    assert.equal(session.value("AMMO_CURRENT_X_OFFSET"), 0);
+    assert.equal(session.value("AMMO_MAX_Y_OFFSET"), 0);
+    assert.equal(session.value("AMMO_TOTAL_SCALE"), 100);
+    session.close(); clean(env);
 });

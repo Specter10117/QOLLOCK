@@ -679,7 +679,7 @@
         const overlay = P.create("Panel", context, "QOLCustomizeEditor");
         if (!P.isAlive(overlay)) return false;
         const owner = { context, hud, window, overlay, transaction: Q.ui.customizeSession.create(root, hud, window, element),
-            elements: element ? [element] : Q.presentation.elements.filter(item => Q.presentation.hasFrame(item) && item.fields.length && !item.context),
+            elements: element ? Q.ui.customizeSession.scopedElements(element) : Q.presentation.elements.filter(item => Q.presentation.hasFrame(item) && item.fields.length && !item.context),
             hidden: [], active: [], frames: new Map(), headings: [], query: "", showAll: !hud, selectionPinned: false,
             timer: null, dragTimer: null, settleTimer: null, activationTimer: null, drag: null, inspector: null, onStop, applied: false, saving: false, snapEnabled: true };
         current = owner;
@@ -718,7 +718,7 @@
                 owner.panelsHidden = !owner.panelsHidden;
                 overlay.SetHasClass("PanelsHidden", owner.panelsHidden);
                 owner.tools.visible = !owner.panelsHidden;
-                owner.catalog.visible = !element && !owner.panelsHidden;
+                owner.catalog.visible = (!element || owner.elements.length > 1) && !owner.panelsHidden;
                 panels.GetChild(0).text = localize(owner.panelsHidden ? "Show panels" : "Hide panels");
             });
             const frames = I.button(viewActions, "QOLCustomizeToggleFrames", "Show frames", () => {
@@ -766,7 +766,7 @@
             owner.catalog = catalog;
             catalog.AddClass("QOLCustomizeCatalog");
             catalog.AddClass("QOLUnifiedModalSurface");
-            catalog.visible = !element;
+            catalog.visible = !element || owner.elements.length > 1;
             owner.chrome.header(catalog, "QOLCustomizeDragCatalog", "HUD Elements");
             I.label(catalog, "Search elements");
             const search = P.create("TextEntry", catalog, "QOLCustomizeSearch");

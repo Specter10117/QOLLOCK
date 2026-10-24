@@ -37,8 +37,10 @@ test("ammo group geometry follows sibling rings without changing crosshair or na
     assert.equal(ammo.style.uiScale, "160%");
     assert.equal(first.panel.style.uiScale, "160%");
     assert.equal(ammo.style.marginLeft, "37px");
+    assert.equal(ammo.style.marginRight, "-37px", "paired margins preserve the centered owner's available width");
     assert.equal(first.panel.style.x, "37px");
     assert.equal(ammo.style.marginTop, "-26px");
+    assert.equal(ammo.style.marginBottom, "26px", "digits must move by the same full offset as the ring");
     assert.equal(first.panel.style.y, "-26px");
     assert.equal(ammo.style.x, "50%");
     assert.equal(ammo.style.y, "85px");
@@ -60,7 +62,9 @@ test("ammo group geometry follows sibling rings without changing crosshair or na
     hud.clock.advance(600);
     assert.equal(ammo.style.uiScale, undefined);
     assert.equal(ammo.style.marginLeft, undefined);
+    assert.equal(ammo.style.marginRight, undefined);
     assert.equal(ammo.style.marginTop, undefined);
+    assert.equal(ammo.style.marginBottom, undefined);
     assert.equal(ammo.style.x, "50%");
     assert.equal(ammo.style.y, "85px");
     assert.equal(ammo.style.opacity, "0.6");
