@@ -47,13 +47,12 @@
             const ammoResolver = QOL.panelCache.createIdResolver("ammo_panel", { retryMs: 500, ownerPath: gunPath });
             const clipResolver = QOL.panelCache.createIdResolver("clip_status", { retryMs: 500, ownerPath: gunPath });
             const geometry = panelAPI.createNativeStyleOwner({ resetValues: { x: "0px", y: "0px" }, releasePosition: true });
-            // Digits participate in native flow layout. Treat their code
-            // position as one CSS property, including a complete neutral write
-            // on retirement; clearing x/y aliases can leave their layout moved.
+            // Native ammo_panel flows right: position is ignored for its digits.
+            // Balanced margins move a label without displacing its siblings.
             // Neutralize the resolved font before releasing its code property.
             // The standard and Tokamak native layouts use different baselines.
             const textStyles = new Map([16, 18].map(fontSize => [fontSize,
-                panelAPI.createNativeStyleOwner({ resetValues: { position: "0px 0px 0px", fontSize: fontSize + "px" } })]));
+                panelAPI.createNativeStyleOwner({ resetValues: { marginLeft: "0px", marginRight: "0px", marginTop: "0px", marginBottom: "0px", fontSize: fontSize + "px" } })]));
             const clipStyles = new Map([0, 90, 180].map(baseline => [baseline,
                 panelAPI.createNativeStyleOwner({ resetValues: { transform: "rotateZ(" + baseline + "deg)" } })]));
             let panel = null;
@@ -93,7 +92,7 @@
                 const textPosition = prefix => {
                     const x = number(prefix + "X_OFFSET");
                     const y = number(prefix + "Y_OFFSET");
-                    return x || y ? { position: x + "px " + -y + "px 0px" } : {};
+                    return { x, y };
                 };
                 return { visualEnabled: Number(cfg.ENABLE_AMMO_STATUS) === 1, angle: number("AMMO_CLIP_ANGLE"), current, total, currentStyles, totalStyles, infiniteStyles,
                     currentPosition: textPosition("AMMO_CURRENT_"), maxPosition: textPosition("AMMO_MAX_"),
@@ -127,10 +126,19 @@
                         delete styles.width;
                         delete styles.marginLeft;
                     }
+                    if (position.x) {
+                        const gap = Number.parseFloat(styles.marginLeft ?? (className === "weapon_ammo_max" && fontSize === 16 ? 2 : 0));
+                        styles.marginLeft = gap + position.x + "px";
+                        styles.marginRight = -position.x + "px";
+                    }
+                    if (position.y) {
+                        styles.marginTop = -position.y + "px";
+                        styles.marginBottom = position.y + "px";
+                    }
                     for (const target of QOL.utils.FindPanelsByClass(panel, className)) {
                         // Keep native multi-class precedence: a later role may
                         // replace shared properties, without dropping earlier ones.
-                        sources.set(target, { styles: Object.assign({}, sources.get(target)?.styles, styles), position, fontSize });
+                        sources.set(target, { styles: Object.assign({}, sources.get(target)?.styles, styles), fontSize });
                     }
                 }
                 return sources;
@@ -138,9 +146,9 @@
 
             function renderTexts(sources) {
                 const retained = new Map([...textStyles.keys()].map(fontSize => [fontSize, []]));
-                for (const [target, { styles: plan, position, fontSize }] of sources) {
+                for (const [target, { styles: plan, fontSize }] of sources) {
                     const styles = Object.fromEntries(Object.entries(plan).filter(([, value]) => value !== null));
-                    textStyles.get(fontSize).apply(target, Object.assign(styles, position));
+                    textStyles.get(fontSize).apply(target, styles);
                     retained.get(fontSize).push(target);
                 }
                 for (const [fontSize, owner] of textStyles) owner.retain(retained.get(fontSize));

@@ -1185,7 +1185,7 @@
     "Turkish": "Turkish",
     "Cleared in {seconds}s.": "Cleared in {seconds}s.",
     "Color is shared with Bottom Bar.": "Color is shared with Bottom Bar.",
-    "Magnets": "Magnets",
+    "Snapping": "Snapping",
     "Properties": "Properties",
     "Align left": "Align left",
     "Center horizontally": "Center horizontally",

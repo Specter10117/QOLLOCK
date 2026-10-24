@@ -24,6 +24,24 @@ const submit = (env, key, value) => {
     input.text = String(value); input._fire("oninputsubmit"); env.clock.advance(1200);
 };
 
+test("digit movement uses balanced margins inside native sibling flow", () => {
+    const env = setup();
+    for (const [id, prefix, target, left] of [["ammoCurrent", "AMMO_CURRENT_", env.current, "17px"],
+        ["ammoMax", "AMMO_MAX_", env.max, "19px"]]) {
+        env.global.QOL.ui.customize.start(null, { elementId: id });
+        submit(env, prefix + "X_OFFSET", 17);
+        submit(env, prefix + "Y_OFFSET", 13);
+        assert.equal(target.style.marginLeft, left);
+        assert.equal(target.style.marginRight, "-17px", "horizontal flow footprint stays unchanged");
+        assert.equal(target.style.marginTop, "-13px");
+        assert.equal(target.style.marginBottom, "13px", "vertical footprint stays unchanged");
+        assert.equal(target.style.position, undefined, "native flow does not honor position offsets");
+        activate(env, "QOLCustomizeCancel"); env.clock.advance(1200);
+        for (const property of ["marginLeft", "marginRight", "marginTop", "marginBottom"]) assert.equal(target.style[property], undefined);
+    }
+    assert.deepEqual(env.clock.errors, []);
+});
+
 // Capture no longer waits for a native font/offset acknowledgement. Alignment
 // still uses those measurements; a held/motionless drag leaves the draft alone.
 function captureWithoutMotion(env, frame) {
@@ -51,7 +69,7 @@ test(`${id}: Tokamak native font/width policy remains usable through scale, move
     Object.assign(target, { actuallayoutwidth: 81, actuallayoutheight: 33 }); env.clock.advance(500);
     const moved = startDrag(env, frame); moved.actualxoffset += 40;
     startDrag.end(env, frame, moved); env.clock.advance(500);
-    assert.equal(target.style.position, "40px 0px 0px");
+    assert.equal(target.style.marginRight, "-40px");
     target.actualxoffset = 40; env.clock.advance(500);
     const handle = env.em.FindChildTraverse("QOLCustomizeResize_" + id);
     const resized = startDrag(env, handle);
@@ -236,7 +254,7 @@ test("scoped label preview preserves native text and shared geometry, reapplies 
     const env = setup(), g = env.global, store = env.hud.sandbox.global.QOL.core.ConfigStore;
     assert.equal(g.QOL.ui.customize.start(null, { elementId: "ammoCurrent" }), true);
     submit(env, "AMMO_CURRENT_X_OFFSET", 17); submit(env, "AMMO_CURRENT_Y_OFFSET", -13);
-    assert.equal(env.current.style.position, "17px 13px 0px");
+    assert.equal(env.current.style.marginLeft, "17px"); assert.equal(env.current.style.marginTop, "13px");
     assert.equal(env.current.text, "12"); assert.equal(env.max.text, " / 30");
     assert.equal(env.max.style.x, undefined); assert.equal(env.ammo.style.marginLeft, undefined);
     assert.equal(store.get("ql_ammo", "AMMO_CURRENT_X_OFFSET"), 17);
@@ -245,16 +263,16 @@ test("scoped label preview preserves native text and shared geometry, reapplies 
     old.SetParent(env.add(env.hud.root, "RetiredDigits"));
     const replacement = env.add(env.ammo, "", ["weapon_ammo"], "Label"); replacement.text = "11";
     env.clock.advance(1200);
-    assert.equal(old.style.position, undefined); assert.equal(replacement.style.position, "17px 13px 0px");
+    assert.equal(old.style.marginLeft, undefined); assert.equal(replacement.style.marginLeft, "17px"); assert.equal(replacement.style.marginTop, "13px");
     activate(env, "QOLCustomizeCancel"); env.clock.advance(1200);
-    assert.equal(replacement.style.position, undefined);
+    assert.equal(replacement.style.marginRight, undefined);
     assert.equal(store.get("ql_ammo", "AMMO_CURRENT_X_OFFSET"), 0);
     assert.equal(g.QOL.ui.customize.start(null, { elementId: "ammoMax" }), true);
     submit(env, "AMMO_MAX_X_OFFSET", -21); submit(env, "AMMO_MAX_Y_OFFSET", 23);
-    assert.equal(env.max.style.position, "-21px -23px 0px");
+    assert.equal(env.max.style.marginLeft, "-19px"); assert.equal(env.max.style.marginTop, "-23px");
     assert.equal(env.max.text, " / 30", "separator remains engine-owned Max text");
     activate(env, "QOLCustomizeReset"); env.clock.advance(1200);
-    assert.equal(env.max.style.position, undefined);
+    assert.equal(env.max.style.marginRight, undefined);
     activate(env, "QOLCustomizeCancel");
     assert.deepEqual(env.doc.eventErrors, []); assert.deepEqual(env.clock.errors, []);
 });
@@ -280,25 +298,24 @@ test("label offsets apply and round-trip through the current envelope without ch
 });
 
 for (const [id, prefix, label] of [["ammoCurrent", "AMMO_CURRENT_", "current"], ["ammoMax", "AMMO_MAX_", "max"]])
-test(`${id}: Reset/Undo/presets exercise the coordinate retirement protocol in a simulated flow position`, () => {
+test(`${id}: Reset/Undo/presets exercise the margin retirement protocol in native sibling flow`, () => {
     const env = setup();
     const physical = { x: 0, y: 0 };
     const target = env[label];
     target.style = new Proxy(target.style, {
         set(target, key, value) {
             target[key] = value;
-            if ((key === "x" || key === "y") && value !== "0px") physical[key] = parseFloat(value);
-            if (key === "position") {
-                const components = String(value).split(/\s+/).map(parseFloat);
-                physical.x = components[0]; physical.y = components[1];
-            }
+            // Right/bottom are the balancing halves, independent of the
+            // native Max gap and text-size marginLeft policy.
+            if (key === "marginRight") physical.x = -parseFloat(value) || 0;
+            if (key === "marginBottom") physical.y = -parseFloat(value) || 0;
             return true;
         }
     });
     const clear = target.ClearPropertyFromCode.bind(target);
     target.ClearPropertyFromCode = key => {
-        // Deliberately retain this model's position after clearing the record.
-        // This checks explicit neutral writes; it does not model native relayout.
+        // Retain modeled flow displacement after clearing a code record.
+        // Retirement must explicitly neutralize it before release.
         return clear(key);
     };
     const g = env.global;
@@ -309,7 +326,7 @@ test(`${id}: Reset/Undo/presets exercise the coordinate retirement protocol in a
     assert.deepEqual(physical, { x: 0, y: -50 }, "resetting one component preserves the other");
     activate(env, "QOLCustomizeReset"); env.clock.advance(1200);
     assert.deepEqual(physical, { x: 0, y: 0 });
-    assert.equal(target.style.position, undefined);
+    assert.equal(target.style.marginRight, undefined);
     assert.equal(env.max.text, " / 30");
     activate(env, "QOLCustomizeUndo"); env.clock.advance(1200);
     assert.equal(physical.y, -50);
@@ -328,7 +345,7 @@ test(`${id}: Reset/Undo/presets exercise the coordinate retirement protocol in a
         assert.equal(g.MOD_CONFIG[prefix + "X_OFFSET"], 0);
         assert.equal(g.MOD_CONFIG[prefix + "Y_OFFSET"], 0);
         assert.deepEqual(physical, { x: 0, y: 0 });
-        assert.equal(target.style.position, undefined);
+        assert.equal(target.style.marginRight, undefined);
     }
     assert.deepEqual(env.clock.errors, []);
 });
@@ -415,18 +432,18 @@ test(`Ammo ${scoped ? "section" : "full editor"}: three selections, drag reset a
         proxy.actualxoffset += 40;
         startDrag.end(env, frame, proxy); env.clock.advance(500);
         assert.equal(find("QOLCustomize_" + key).text, "40");
-        assert.equal(target.style.position, "40px 0px 0px");
+        assert.equal(target.style.marginRight, "-40px");
     }
     activate(env, "QOLCustomizeReset"); env.clock.advance(600);
-    assert.equal(env.max.style.position, undefined);
-    assert.equal(env.current.style.position, "40px 0px 0px", "child Reset preserves its sibling");
+    assert.equal(env.max.style.marginRight, undefined);
+    assert.equal(env.current.style.marginLeft, "40px", "child Reset preserves its sibling");
     activate(env, "QOLCustomizeSelect_ammo");
     activate(env, "QOLCustomizeReset"); env.clock.advance(600);
-    assert.equal(env.current.style.position, undefined, "family Reset includes hidden child offsets");
+    assert.equal(env.current.style.marginRight, undefined, "family Reset includes hidden child offsets");
     activate(env, "QOLCustomizeUndo"); env.clock.advance(600);
-    assert.equal(env.current.style.position, "40px 0px 0px");
+    assert.equal(env.current.style.marginLeft, "40px");
     activate(env, "QOLCustomizeRedo"); env.clock.advance(600);
-    assert.equal(env.current.style.position, undefined);
+    assert.equal(env.current.style.marginRight, undefined);
     activate(env, "QOLCustomizeCancel");
     assert.deepEqual(env.doc.eventErrors, []); assert.deepEqual(env.clock.errors, []);
 });

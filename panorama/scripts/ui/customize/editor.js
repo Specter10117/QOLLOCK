@@ -728,7 +728,7 @@
                 frames.GetChild(0).text = localize(owner.showFrames ? "Hide frames" : "Show frames");
                 refreshFrames(owner);
             });
-            const snap = I.button(viewActions, "QOLCustomizeToggleSnap", "Magnets", () => {
+            const snap = I.button(viewActions, "QOLCustomizeToggleSnap", "Snapping", () => {
                 if (current !== owner) return;
                 owner.snapEnabled = owner.snapEnabled === false ? true : false;
                 I.setActive(snap, owner.snapEnabled !== false);

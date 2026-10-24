@@ -354,7 +354,10 @@ These controls never set visibility or replace a feature's content. Custom
 opacity overrides the selected panel's opacity; native CSS opacity transitions
 on that same panel require client verification, while the default releases them.
 
-Magnets align viewport/neighbor edges and centers in canvas units. Guides mark
+Snapping aligns viewport/neighbor edges and centers in canvas units. Top Bar
+uses its native owner's horizontal axis for center snapping, so asymmetric
+card counts or conditional indicators do not shift its central clock. Its edge
+snapping and outline still use measured content bounds. Guides mark
 the normalized proposed alignment; native content may briefly trail delivery.
 Current/Max Ammo do not magnetize against their own group or each other. Explicit alignment actions use
 the measured viewport and the same offset conversion as dragging. Actions after
@@ -362,7 +365,7 @@ typed edits wait for their preview and the measured offset/size change before
 calculating a delta; an unavailable layout times out without applying a stale
 alignment. These observation checks do not gate pointer capture after accepted typing.
 Observed geometry history permits Undo/Redo to restore centered scale anchors;
-native owner/context changes invalidate these observations. History, Reset and selection changes cancel a queued action. Magnets are
+native owner/context changes invalidate these observations. History, Reset and selection changes cancel a queued action. Snapping is
 session-only and independent of persistent offsets.
 
 Position values use a shared coordinate sanity domain, independent of screen
@@ -455,12 +458,11 @@ ID/state CSS rules as the generic `qol-hidden` class could. Enabling, replacemen
 and teardown release that override so native conditional visibility applies.
 Souls and healthbar offsets explicitly return layout coordinates to zero before
 releasing native `position`; a cleared JS x/y record alone is not a layout check.
-Independent Ammo digits write both coordinates as a single `position` value,
-including zero for a released component. Retirement explicitly writes the full
-neutral position before clearing that exact CSS property; the gun stylesheet
-provides the zero-position fallback inside native sibling flow. Reset, Cancel,
-presets and disable use this path. Clearing style records alone is not treated
-as native coordinate restoration. AP/stamina offsets retire composite `position`
+Independent Ammo digits use balanced opposing margins because native sibling
+flow ignores `position`. Horizontal movement preserves the native or resized
+Max Ammo gap, and neither axis changes the sibling's flow footprint. Retirement
+neutralizes and releases owned margins; Reset, Cancel, presets and disable use
+this path. AP/stamina offsets retire composite `position`
 once neither axis remains customized, preserving any still-customized axis.
 
 Apply commits pending valid input through MarkConfigDirty/FlushPendingSave, then

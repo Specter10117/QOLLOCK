@@ -122,7 +122,7 @@ test("ammo waits for real HUD evidence and releases a still-living retired HUD",
     assert.equal(first.current.style.fontSize, undefined);
     assert.equal(first.current.style.x, undefined);
     assert.equal(current.current.style.fontSize, "24px");
-    assert.equal(current.current.style.position, "20px 0px 0px");
+    assert.equal(current.current.style.marginRight, "-20px");
     env.feature.onDisable();
     assert.deepEqual(env.clock.errors, []);
 });
@@ -146,26 +146,25 @@ test("digit reset retains rejected font retirement after the observation loop st
     assert.deepEqual(env.clock.errors, []);
 });
 
-test("digit position retirement retries a rejected neutral write after Ammo stops", () => {
+test("digit margin retirement retries a rejected neutral write after Ammo stops", () => {
     const env = setup(), source = env.native(env.root), panel = source.current;
     const physical = { x: 0, y: 0 };
     let reject = false;
     panel.style = new Proxy(panel.style, { set(target, key, value) {
-        if (key === "position") {
-            if (reject && value === "0px 0px 0px") throw Error("native position unavailable");
-            const components = String(value).split(/\s+/).map(parseFloat);
-            physical.x = components[0]; physical.y = components[1];
+        if (key === "marginRight") {
+            if (reject && value === "0px") throw Error("native margin unavailable");
+            physical.x = -parseFloat(value) || 0;
         }
         target[key] = value; return true;
     } });
     env.feature.onEnable();
     assert.deepEqual(physical, { x: 20, y: 0 });
     reject = true; env.feature.onDisable();
-    assert.equal(panel.style.position, "20px 0px 0px");
+    assert.equal(panel.style.marginRight, "-20px");
     const reads = env.reads();
     reject = false; env.clock.advance(700);
     assert.deepEqual(physical, { x: 0, y: 0 });
-    assert.equal(panel.style.position, undefined);
+    assert.equal(panel.style.marginRight, undefined);
     assert.equal(env.reads(), reads, "cleanup cannot revive settings observation");
     assert.deepEqual(env.clock.errors, []);
 });

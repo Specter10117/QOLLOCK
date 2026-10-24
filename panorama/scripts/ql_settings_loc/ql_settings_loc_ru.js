@@ -1185,7 +1185,7 @@
     "Turkish": "Турецкий",
     "Cleared in {seconds}s.": "Пройдено за {seconds} с.",
     "Color is shared with Bottom Bar.": "Цвет общий с нижней панелью.",
-    "Magnets": "Магниты",
+    "Snapping": "Привязка",
     "Properties": "Параметры",
     "Align left": "По левому краю",
     "Center horizontally": "По центру X",

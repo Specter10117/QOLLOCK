@@ -111,7 +111,7 @@
     }
     const points = (bounds, axis) => {
         const size = axis === "x" ? bounds.width : bounds.height;
-        return [bounds[axis], bounds[axis] + size / 2, bounds[axis] + size];
+        return [bounds[axis], bounds[axis] + size * (axis === "x" ? bounds.centerRatioX ?? 0.5 : 0.5), bounds[axis] + size];
     };
     // Pure canvas math. Consumers decide whether native layout has acknowledged
     // the resulting draft before displaying a guide.
@@ -188,7 +188,12 @@
                 if (["ObjectivesMap", "RejuvenatorCharges", "StretBrawlContainer", "KothCashInMeter"].includes(child.id) ||
                     ["GameClock", "TeamNetworth", "KillsAndAbilityPointsContainer"].some(cls => child.BHasClass(cls))) panels.push(child);
             }
-            return union(panels, host);
+            const bounds = union(panels, host);
+            const owner = box(target, host);
+            // Card counts and conditional indicators can be asymmetric. Keep
+            // content edges, but align the native bar's central axis to center.
+            if (bounds && owner) bounds.centerRatioX = (owner.x + owner.width / 2 - bounds.x) / bounds.width;
+            return bounds;
         }
         if (["hudActivePlayerStats", "hudPlayerStats"].includes(target.id)) {
             const block = P.findChild(target, "HudStatBlock");

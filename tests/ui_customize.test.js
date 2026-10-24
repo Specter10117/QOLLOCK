@@ -504,6 +504,31 @@ test("top bar measures visible card content, excluding screen-height owners and 
     activate(env, "QOLCustomizeCancel"); clean(env);
 });
 
+test("top bar centers on its native axis when visible cards are asymmetric", () => {
+    const env = setup(), top = target(env, "topBar");
+    Object.assign(top, { actualxoffset: 260, actualyoffset: 0, actuallayoutwidth: 1400, actuallayoutheight: 1080 });
+    const clock = env.doc.create("Panel", { classes: ["GameClock"] }); top.addChild(clock);
+    Object.assign(clock, { actualxoffset: 675, actuallayoutwidth: 50, actuallayoutheight: 40 });
+    const teams = top.addChild(env.doc.create("Panel", { id: "TeamsContainer" }));
+    const team = teams.addChild(env.doc.create("Panel", { id: "TeamFriendly" }));
+    const content = team.addChild(env.doc.create("Panel", { id: "PlayerContents" }));
+    const players = content.addChild(env.doc.create("Panel", { id: "PlayersContainer" }));
+    const player = players.addChild(env.doc.create("Panel"));
+    const card = player.addChild(env.doc.create("Panel", { id: "PlayerDetailsContainer" }));
+    Object.assign(card, { actuallayoutwidth: 88, actuallayoutheight: 180 });
+    env.global.QOL.ui.customize.start();
+    const overlay = env.em.FindChildTraverse("QOLCustomizeEditor");
+    Object.assign(overlay, { actuallayoutwidth: 1920, actuallayoutheight: 1080 });
+    const G = env.global.QOL.ui.customizeGeometry;
+    const element = env.global.QOL.presentation.elements.find(item => item.id === "topBar");
+    const bounds = G.frameBox(element, top, overlay), view = G.viewport(overlay);
+    assert.equal(bounds.width, 725, "the frame still follows actual content edges");
+    assert.equal(G.alignDelta(bounds, view, "center").x, 0, "clock/native axis is already centered");
+    assert.equal(G.snap(bounds, { x: 5, y: 100 }, view, [], ["x"]).delta.x, 0);
+    assert.equal(G.alignDelta(bounds, view, "left").x, -260, "edge alignment retains content bounds");
+    activate(env, "QOLCustomizeCancel"); clean(env);
+});
+
 for (const density of [1, 2]) test(`corner resize uses uniform scale at UI density ${density}, with one undo and guarded locks`, () => {
     const env = setup();
     const panel = target(env, "bottomBar");
