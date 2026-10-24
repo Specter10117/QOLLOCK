@@ -36,7 +36,7 @@ for (const basic of [0, 1]) test(`disabled Item Cooldowns have no frame, catalog
     assert.equal(entry.visible, true);
     assert.equal(entry.BHasClass("Unavailable"), true);
     entry._fire("onactivate");
-    assert.equal(env.find("QOLCustomizeRecover").enabled, false);
+    assert.equal(!!env.find("QOLCustomizeRecover"), false);
     assert.equal(env.find("QOLCustomizeResize_cooldownsTopLeft").visible, false);
     const event = {}; startDrag.begin(env, frame, event);
     assert.equal(event.displayPanel, undefined);

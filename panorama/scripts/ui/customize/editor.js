@@ -196,26 +196,6 @@
         }
         return true;
     }
-    function align(owner, action, accepted = false) {
-        if (current !== owner || owner.applied || owner.drag || !owner.selected || owner.transaction.isLocked(owner.selected.id)) return;
-        const observed = owner.frames.get(owner.selected.id)?.observed;
-        if (!acceptNavigation(owner)) return;
-        const pending = { element: owner.selected, action, deadline: Date.now() + 2500,
-            before: observed || null };
-        if (!accepted && (Object.keys(owner.transaction.snapshot()).length || observed || geometryGeneration(owner, owner.selected)) && !alignmentReady(owner, pending)) {
-            owner.pendingAlignment = pending;
-            refreshFrames(owner);
-            return;
-        }
-        const target = resolve(owner, owner.selected);
-        if (!P.isAlive(target) || !G.isShown(target)) return;
-        const delta = G.alignDelta(G.frameBox(owner.selected, target, owner.overlay), G.viewport(owner.overlay), action);
-        if (!delta) return;
-        const values = {};
-        for (const field of owner.selected.fields) values[field.key] = owner.transaction.value(field.key);
-        owner.transaction.edit(G.dragValues(owner.selected, target, values, G.screenDelta(delta, owner.overlay)));
-        refreshFields(owner);
-    }
     function showGuides(owner, drag) {
         const bounds = drag.previewBox;
         for (const axis of ["x", "y"]) {
@@ -235,7 +215,6 @@
     }
     function historyAction(owner, redo) {
         if (current !== owner || owner.applied || owner.drag) return;
-        owner.pendingAlignment = null;
         if (!acceptNavigation(owner)) return;
         if (redo) owner.transaction.redo(); else owner.transaction.undo();
         refreshFields(owner);
@@ -244,7 +223,6 @@
         if (current !== owner || owner.drag || owner.applied || !owner.transaction.canEditElement(element.id)) return false;
         if (!acceptNavigation(owner)) return false;
         if (!owner.transaction.selection(element.id)) return false;
-        owner.pendingAlignment = null;
         // A new grab of the same surface must keep its live inspector/pickers.
         // Selection metadata is still renewed, but no panel tree is replaced.
         if (owner.selected === element && owner.inspector) {
@@ -602,9 +580,6 @@
         }
         refreshCatalog(owner);
         owner.inspector?.refreshRanges();
-        const movable = !!owner.selected && !!owner.hud && !owner.applied && !owner.drag && !owner.pendingAlignment && !owner.transaction.isLocked(owner.selected.id) &&
-            Q.presentation.canDrag(owner.selected) && !!owner.frames.get(owner.selected.id)?.available;
-        for (const button of owner.alignButtons || []) button.enabled = movable;
     }
     function refreshCatalog(owner) {
         let count = 0;
@@ -627,13 +602,6 @@
             refreshHistory(owner);
             refreshFrames(owner);
             owner.chrome.refresh();
-            if (owner.pendingAlignment && alignmentReady(owner, owner.pendingAlignment)) {
-                const pending = owner.pendingAlignment;
-                owner.pendingAlignment = null;
-                if (owner.selected === pending.element) align(owner, pending.action, true);
-            } else if (owner.pendingAlignment && Date.now() >= owner.pendingAlignment.deadline) {
-                owner.pendingAlignment = null;
-            }
             const status = localize(owner.feedback || (!owner.hud ? "Edit settings here; live HUD frames appear in a match or sandbox." :
                 !owner.frames.get(owner.selected?.id)?.available ? "This element is not visible in the current HUD." :
                 owner.transaction.acknowledged() ? "HUD settings updated" : "Updating HUD..."));
@@ -852,20 +820,14 @@
             owner.paletteDock = P.create("Panel", tools, "QOLCustomizePaletteDock");
             owner.paletteDock.AddClass("QOLCustomizePaletteDock");
             owner.paletteDock.visible = false;
-            const alignment = P.create("Panel", tools, "QOLCustomizeAlignment");
-            alignment.AddClass("QOLCustomizeAlignment");
-            owner.alignButtons = [];
-            owner.alignButtons.push(I.button(alignment, "QOLCustomizeRecover", "Return to screen", () => align(owner, "recover")));
+            const resetRow = P.create("Panel", tools, "QOLCustomizeResetRow");
+            resetRow.AddClass("QOLCustomizeResetRow");
             const history = P.create("Panel", tools, "QOLCustomizeHistory");
             history.AddClass("QOLCustomizeHistory");
             owner.undo = I.button(history, "QOLCustomizeUndo", "Undo", () => historyAction(owner, false));
             owner.redo = I.button(history, "QOLCustomizeRedo", "Redo", () => historyAction(owner, true));
-            const historySpace = P.create("Panel", history, "");
-            historySpace.AddClass("QOLCustomizeHistorySpace");
-            historySpace.hittest = false;
-            owner.reset = I.button(history, "QOLCustomizeReset", "Reset", () => {
+            owner.reset = I.button(resetRow, "QOLCustomizeReset", "Reset", () => {
                 if (current !== owner || owner.applied || owner.drag || !owner.selected) return;
-                owner.pendingAlignment = null;
                 owner.transaction.reset(owner.selected);
                 // Reset also retires unfinished input when the accepted draft
                 // already matches defaults and needs no history entry.

@@ -89,7 +89,7 @@ starting draft. Same-release activation cannot select a different surface.
 Proxies and outlines are deleted on drop, cancellation and exit, including
 proxies reparented outside the editor subtree. Capture does not wait for preview
 acknowledgments or native layout after selection, input, Reset or history.
-Alignment and native observation retain their separate acknowledgment checks.
+Native observation retains its separate acknowledgment checks.
 
 Idle frames are transparent. Hover and selection show an outline without a
 content tint. Frames belong to independent movable/resizable surfaces and
@@ -197,13 +197,14 @@ settings. Minimap's Minimalist switch is also available beside its dependent
 background opacity in Properties. Undo reverses one accepted edit or gesture;
 Redo restores the edit reversed by Undo until a new edit replaces that branch.
 History actions accept valid pending entries first. Element selection, canvas
-gestures, alignment and history preserve valid pending edits and restore
+gestures and history preserve valid pending edits and restore
 incomplete entries to their accepted draft values; malformed input cannot trap
 navigation. Save still rejects incomplete input until it is corrected.
 Toggle, enum and palette actions accept pending entries in other fields together
-with their own change. Return to screen recovers offscreen content; explicit
-alignment buttons are absent. Quiet history controls, an enlarged outlined Reset
-and a separate Save/Cancel footer remain outside the scrolling field body.
+with their own change. A full-width outlined Reset sits above the quiet Undo/Redo
+row and the separate Save/Cancel footer, outside the scrolling field body.
+Alignment and Return to screen buttons are absent; offscreen placement can be
+edited numerically or restored to defaults with Reset.
 Button captions do not intercept input intended for their button.
 The inspector previews valid numeric and HEX input after a short typing pause;
 Enter and blur also accept it. Incomplete input stays in its field and does not
@@ -274,7 +275,7 @@ undo entry through a one-shot session capability. Any intervening edit, Reset,
 Undo/Redo, new gesture, expired session or replaced/changed native context cancels
 it; waiting never holds a canvas gesture open. The same correction cannot
 accumulate over stale native coordinates.
-Session-only generations and measured geometry history support alignment and
+Session-only generations and measured geometry history support observation and
 observation across accepted input, Reset and Undo/Redo. Returning to an earlier
 geometry key does not establish that its native layout has returned. Offset-only
 returns permit content dimensions to change; size returns check the relevant
@@ -363,13 +364,10 @@ uses its native owner's horizontal axis for center snapping, so asymmetric
 card counts or conditional indicators do not shift its central clock. Its edge
 snapping and outline still use measured content bounds. Guides mark
 the normalized proposed alignment; native content may briefly trail delivery.
-Current/Max Ammo do not magnetize against their own group or each other. Return
-to screen uses the measured viewport and the same offset conversion as dragging.
-Recovery after typed edits waits for their preview and the measured offset/size change before
-calculating a delta; an unavailable layout times out without applying a stale
-correction. These observation checks do not gate pointer capture after accepted typing.
+Current/Max Ammo do not magnetize against their own group or each other.
+Native observation checks do not gate pointer capture after accepted typing.
 Observed geometry history permits Undo/Redo to restore centered scale anchors;
-native owner/context changes invalidate these observations. History, Reset and selection changes cancel a queued action. Snapping is
+native owner/context changes invalidate these observations. Snapping is
 session-only and independent of persistent offsets.
 
 Position values use a shared coordinate sanity domain, independent of screen
@@ -381,9 +379,8 @@ Position-slider travel is derived from measured viewport/content geometry in
 the moving owner parent's units. Exact input may remain outside that travel.
 Resize/density changes update the thumb range without creating an edit or
 rewriting the accepted input. Missing or pending measurements disable position
-sliders while exact editing remains available. Return to screen uses the same
-measured correction and acknowledgment path as alignment, participates in Undo,
-and never changes canonical settings until Save.
+sliders while exact editing remains available. Reset restores existing defaults,
+participates in Undo, and never changes canonical settings until Save.
 
 Dragging requires declared offsets. Cooldown offsets retain their percentage
 units and convert against the measured parent's physical dimensions; missing
@@ -543,7 +540,7 @@ The surface audit retains these capability boundaries:
 
 | Surface family | Contract |
 | --- | --- |
-| Independent HUD surfaces | Declared parent coordinate units, measured slider travel, exact input, explicit recovery and owner-controlled state suppression. |
+| Independent HUD surfaces | Declared parent coordinate units, measured slider travel, exact input, reset to defaults and owner-controlled state suppression. |
 | Minimap states | Separate geometry, fixed-icon/whole-map mode and special overlays; one shared state-suppression pair. |
 | Healthbar variants | Shared placement/scale/opacity and state suppression; variant content and animations stay native or variant-owned. |
 | Ammo digits | Independent text geometry; shared group scale, opacity and state suppression. |

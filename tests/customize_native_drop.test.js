@@ -94,7 +94,9 @@ for (const [id, key, feature] of [["souls", "HUD_SOULS_ENABLED", "ql_souls"], ["
         click("QOLCustomizeReset");
         assert.equal(panel.style.visibility, undefined);
         assert.equal(hud.sandbox.global.QOL.core.ConfigStore.get(feature, offset), 0);
-        assert.equal(env.em.FindChildTraverse("QOLCustomizeReset").GetParent(), env.em.FindChildTraverse("QOLCustomizeUndo").GetParent(), "reset stays outside the scrolling inspector");
+        const resetRow = env.em.FindChildTraverse("QOLCustomizeReset").GetParent();
+        assert.equal(resetRow.id, "QOLCustomizeResetRow");
+        assert.equal(resetRow.GetParent().id, "QOLCustomizeTools", "reset stays outside the scrolling inspector");
         const pending = env.em.FindChildTraverse("QOLCustomize_" + offset);
         pending.text = "500";
         click("QOLCustomizeCancel");

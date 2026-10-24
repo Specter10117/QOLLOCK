@@ -178,23 +178,6 @@ for (const replacement of [false, true]) test(`Reset permits motionless capture 
     clean(env);
 });
 
-test("screen recovery cannot bypass Reset return ACK merely because its draft became empty", () => {
-    const env = setup("souls", 160, 60, 200, -100);
-    env.global.QOL.ui.customize.start(null, { elementId: "souls" });
-    rect(env.find("QOLCustomizeEditor"), 1920, 1080);
-    const input = env.find("QOLCustomize_SOULS_Y_OFFSET");
-    input.text = "-300"; input._fire("oninputsubmit"); env.clock.advance(600);
-    env.panel.actualyoffset = 200;
-    click(env, "QOLCustomizeReset");
-    click(env, "QOLCustomizeRecover");
-    assert.equal(input.text, "0", "recovery is queued while the return payload is pending");
-    env.clock.advance(600);
-    assert.equal(input.text, "0", "current ACK still requires returned native position");
-    env.panel.actualyoffset = -100; env.clock.advance(500);
-    assert.equal(input.text, "-100", "recovery uses the returned offscreen baseline rather than stale y200");
-    clean(env);
-});
-
 test("magnets use canvas units at different UI densities and match viewport/neighbor edges and centers", () => {
     const env = setup();
     const geometry = env.global.QOL.ui.customizeGeometry;
@@ -296,8 +279,8 @@ test("guides follow the held outline, magnets toggle final movement, and Undo re
     clean(env);
 });
 
-test("screen recovery edits real offsets and preserves the other axis without alignment buttons", () => {
-    for (const [axis, x, y, expected] of [["Y", 200, -100, -100], ["Y", 200, 1100, 80], ["X", -100, 100, 100]]) {
+test("Reset replaces screen recovery and restores offscreen elements through undoable defaults", () => {
+    for (const [axis, x, y] of [["Y", 200, -100], ["Y", 200, 1100], ["X", -100, 100]]) {
         const env = setup("souls", 160, 60, x, y);
         env.global.QOL.ui.customize.start(null, { elementId: "souls" });
         rect(env.find("QOLCustomizeEditor"), 1920, 1080);
@@ -305,43 +288,18 @@ test("screen recovery edits real offsets and preserves the other axis without al
         assert.equal(env.find("QOLCustomizeAlign_center"), null);
         assert.equal(env.find("QOLCustomizeAlign_right"), null);
         for (const action of ["top", "middle", "bottom"]) assert.equal(env.find("QOLCustomizeAlign_" + action), null);
-        click(env, "QOLCustomizeRecover"); env.clock.advance(700);
+        assert.equal(!!env.find("QOLCustomizeRecover"), false);
+        const initial = axis === "X" ? x : y;
+        env.find("QOLCustomize_SOULS_" + axis + "_OFFSET").text = String(initial);
+        env.find("QOLCustomize_SOULS_" + axis + "_OFFSET")._fire("oninputsubmit");
+        click(env, "QOLCustomizeReset"); env.clock.advance(700);
         const store = env.hud.sandbox.global.QOL.core.ConfigStore;
-        assert.equal(store.get("ql_souls", "SOULS_" + axis + "_OFFSET"), expected, axis);
+        assert.equal(store.get("ql_souls", "SOULS_" + axis + "_OFFSET"), 0, axis);
         assert.equal(store.get("ql_souls", "SOULS_" + (axis === "X" ? "Y" : "X") + "_OFFSET"), 0);
         click(env, "QOLCustomizeUndo"); env.clock.advance(700);
-        assert.equal(store.get("ql_souls", "SOULS_" + axis + "_OFFSET"), 0);
+        assert.equal(store.get("ql_souls", "SOULS_" + axis + "_OFFSET"), initial);
         clean(env);
     }
-});
-
-test("screen recovery waits for prior typed layout rather than adding a stale delta", () => {
-    const env = setup();
-    env.global.QOL.ui.customize.start(null, { elementId: "souls" });
-    rect(env.find("QOLCustomizeEditor"), 1920, 1080);
-    const input = env.find("QOLCustomize_SOULS_Y_OFFSET");
-    input.text = "300"; // Commit through the alignment action itself.
-    click(env, "QOLCustomizeRecover");
-    env.clock.advance(600);
-    assert.equal(env.hud.sandbox.global.QOL.core.ConfigStore.get("ql_souls", "SOULS_Y_OFFSET"), 300, "ACK must not align from the old native position");
-    env.panel.actualyoffset = -200; env.clock.advance(400);
-    assert.equal(env.hud.sandbox.global.QOL.core.ConfigStore.get("ql_souls", "SOULS_Y_OFFSET"), 100);
-    clean(env);
-});
-
-test("accepted typing permits immediate capture while screen recovery still waits for native coordinates", () => {
-    const env = setup();
-    env.global.QOL.ui.customize.start(null, { elementId: "souls" });
-    rect(env.find("QOLCustomizeEditor"), 1920, 1080);
-    const input = env.find("QOLCustomize_SOULS_Y_OFFSET");
-    input.text = "300"; input._fire("oninputsubmit"); env.clock.advance(600);
-    captureWithoutMotion(env, env.find("QOLCustomizeFrame_souls"));
-    click(env, "QOLCustomizeRecover"); env.clock.advance(400);
-    const store = env.hud.sandbox.global.QOL.core.ConfigStore;
-    assert.equal(store.get("ql_souls", "SOULS_Y_OFFSET"), 300);
-    env.panel.actualyoffset = -200; env.clock.advance(400);
-    assert.equal(store.get("ql_souls", "SOULS_Y_OFFSET"), 100);
-    clean(env);
 });
 
 test("Bottom Bar accepts rounded native scale dimensions and remains movable after resizing", () => {

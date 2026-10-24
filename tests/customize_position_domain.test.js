@@ -74,7 +74,7 @@ test("range refresh never overwrites off-screen exact input or creates edits; ab
     assert.deepEqual(env.doc.eventErrors, []); assert.deepEqual(env.clock.errors, []);
 });
 
-test("Return to screen applies the measured correction through the real editor and Cancel restores the saved position", () => {
+test("Reset restores offscreen coordinates to defaults and Cancel restores the saved position", () => {
     const env = load(), g = env.global, Q = g.QOL;
     Q.ui.window.setOpen(true); env.clock.advance(500);
     const element = Q.presentation.elements.find(e => e.id === "souls");
@@ -92,10 +92,12 @@ test("Return to screen applies the measured correction through the real editor a
     const overlay = env.em.FindChildTraverse("QOLCustomizeEditor");
     Object.assign(overlay, { actuallayoutwidth: 1920, actuallayoutheight: 1080, actualuiscale_x: 1, actualuiscale_y: 1 });
     env.clock.advance(300);
-    const recovery = env.em.FindChildTraverse("QOLCustomizeRecover"); assert.equal(recovery.enabled, true);
-    click(env, "QOLCustomizeRecover"); env.clock.advance(700);
-    assert.equal(env.hud.sandbox.global.QOL.core.ConfigStore.get("ql_souls", "SOULS_X_OFFSET"), 1820);
-    assert.equal(panel.style.x, "1820px");
+    assert.equal(!!env.em.FindChildTraverse("QOLCustomizeRecover"), false);
+    const reset = env.em.FindChildTraverse("QOLCustomizeReset");
+    assert.equal(reset.GetParent().id, "QOLCustomizeResetRow");
+    click(env, "QOLCustomizeReset"); env.clock.advance(700);
+    assert.equal(env.hud.sandbox.global.QOL.core.ConfigStore.get("ql_souls", "SOULS_X_OFFSET"), 0);
+    assert.equal(panel.style.x, undefined);
     assert.equal(env.hud.sandbox.global.State.lastConfig.SOULS_X_OFFSET, 5000, "preview leaves canonical snapshot unchanged");
     assert.equal(g.MOD_CONFIG.SOULS_X_OFFSET, 5000);
     click(env, "QOLCustomizeCancel"); env.clock.advance(700);
