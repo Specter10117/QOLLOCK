@@ -447,6 +447,30 @@ test("compass owns every moved tick/readout child and contains inactive settings
     assert.equal(e.gameplay.FindChild("QOLCompassRoot"), null); assert.equal(source.image.style.preTransformRotate2d, "40deg"); e.clean();
 });
 
+test("compass reconciles its tick siblings in one snapshot and repairs a moved tick", () => {
+    const e = fixture(), source = localPlayer(e, e.renderer, 40), { feature } = directCompass(e);
+    feature.onEnable();
+    const compass = e.gameplay.FindChild("QOLCompassRoot");
+    const ticks = compass.FindChildTraverse("QOLCompassTicks");
+    let siblingSearches = 0;
+    const findChild = ticks.FindChild;
+    ticks.FindChild = function (id) { siblingSearches++; return findChild.call(this, id); };
+    const old = findChild.call(ticks, "QOLCompassTick8");
+    const oldX = old.style.x;
+    old.SetParent(e.orphan);
+    source.image.style.preTransformRotate2d = "90deg";
+    e.clock.advance(150);
+    const replacement = findChild.call(ticks, "QOLCompassTick8");
+    assert.ok(replacement);
+    assert.notEqual(replacement, old);
+    assert.equal(old.IsValid(), false);
+    assert.equal(replacement.BHasClass("QOLCompassTick"), true);
+    assert.notEqual(replacement.style.x, oldX, "replacement receives current heading geometry");
+    assert.equal(compass.FindChildTraverse("QOLCompassDegree").text, "90°");
+    assert.equal(siblingSearches, 0, "tick reconciliation must not scan the same sibling list once per tick");
+    feature.onDisable(); e.clock.advance(150); e.clean();
+});
+
 test("compass rapid re-enable waits for both queued trees without reviving their former panels", () => {
     const e = fixture(); localPlayer(e, e.renderer, 45); const { feature, create } = directCompass(e);
     feature.onEnable(); const compass = e.gameplay.FindChild("QOLCompassRoot"), speed = e.gameplay.FindChild("QOLSpeedRoot");

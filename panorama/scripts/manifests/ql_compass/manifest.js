@@ -31,6 +31,7 @@
     const COMPASS_TICK_STEP_DEG = 22.5;
     const COMPASS_TICK_SPACING_PX = 12.5;
     const COMPASS_TICK_COUNT = 17;
+    const COMPASS_TICK_ENTRIES = Array.from({ length: COMPASS_TICK_COUNT }, (_, index) => ({ id: "QOLCompassTick" + index }));
     const COMPASS_SPEED_SCALE = 2.12;
     const COMPASS_SPEED_QUANT = 2;
     const COMPASS_SPEED_SAMPLE_MS = 40;
@@ -337,12 +338,14 @@
                 _compassDegree = ensure(_compassReadout, "Label", "QOLCompassDegree", _compassDegree);
                 _speedRoot = ensure(parent, "Panel", "QOLSpeedRoot", _speedRoot);
                 _speedLabel = ensure(_speedRoot, "Label", "QOLSpeedLabel", _speedLabel);
-                const ticks = [];
-                for (let i = 0; i < COMPASS_TICK_COUNT; i++) {
-                    const tick = ensure(_compassTicksContainer, "Panel", "QOLCompassTick" + i, _compassTicks[i]);
+                const ticks = overlays.children(_compassTicksContainer, "Panel", COMPASS_TICK_ENTRIES);
+                ticks.forEach((tick, index) => {
+                    if (tick !== _compassTicks[index]) {
+                        layoutStyles.delete(_compassTicks[index]);
+                        _lastRenderedHeadingDeg = null;
+                    }
                     P.setClass(tick, "QOLCompassTick", true);
-                    ticks.push(tick);
-                }
+                });
                 _compassTicks = ticks;
                 if (![_compassRoot, _compassBox, _compassTicksContainer, _compassNeedle, _compassFadeLeft,
                     _compassFadeRight, _compassReadout, _compassDegree, _speedRoot, _speedLabel, ...ticks].every(_isAlive)) {
