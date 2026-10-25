@@ -5,6 +5,7 @@
     "use strict";
     const Q = QOL, P = Q.core.panel;
     let resolvers = null, observation = null, observationLoop = null;
+    let parsedText = null, parsedSeconds = 0;
     const listeners = [];
 
     function formatSeconds(seconds) {
@@ -40,7 +41,14 @@
         const label = cache.clock.resolve(bar) || (bar !== source ? cache.fallback.resolve(source) : null);
         let seconds = 0;
         if (P.isAlive(label)) {
-            try { seconds = parseClockSeconds(label.text); } catch (_) {}
+            try {
+                const text = label.text;
+                if (text !== parsedText) {
+                    const value = parseClockSeconds(text);
+                    parsedText = text; parsedSeconds = value;
+                }
+                seconds = parsedSeconds;
+            } catch (_) {}
         }
         return { source, bar, label, seconds };
     }

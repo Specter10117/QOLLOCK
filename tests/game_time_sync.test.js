@@ -122,6 +122,37 @@ test("native clock follows verified living owner and label replacements without 
     assert.deepEqual(env.clock.errors, []);
 });
 
+test("clock observations reuse parsed text while reading live values and following source changes", () => {
+    const env = createHud({ inHideout: false }); env.assertLoaded();
+    const { QOL: Q, $ } = env.sandbox.global;
+    Q.core.App.shutdown();
+    const first = nativeClock(env, env.root, "7:42");
+    let text = "7:42", reads = 0, reject = false;
+    Object.defineProperty(first.label, "text", { configurable: true, get() {
+        reads++; if (reject) throw Error("native text unavailable"); return text;
+    } });
+    // Observe real regex execution, preserving String.match results. Source
+    // discovery and the native text getter remain on every read.
+    env.sandbox.eval("globalThis.clockParses = 0; const originalMatch = String.prototype.match; String.prototype.match = function (pattern) { if (pattern.source.includes('d{1,2}')) clockParses++; return originalMatch.call(this, pattern); };");
+    for (let i = 0; i < 20; i++) assert.equal(Q.core.time.readGameTime(), 462);
+    assert.equal(reads, 20);
+    assert.equal(env.sandbox.eval("clockParses"), 1, "unchanged native clock text requires one parse");
+    text = "7:43";
+    assert.equal(Q.core.time.readGameTime(), 463);
+    assert.equal(env.sandbox.eval("clockParses"), 2);
+    reject = true; assert.equal(Q.core.time.readGameTime(), 0, "a failed native read cannot return the last parsed time");
+    reject = false; assert.equal(Q.core.time.readGameTime(), 463);
+    first.core.SetParent($.CreatePanel("Panel", null, "RetiredClock"));
+    const next = nativeClock(env, env.root, "7:43");
+    assert.equal(Q.core.time.readGameTime(), 463);
+    assert.equal(first.label.IsValid(), true);
+    assert.equal(env.sandbox.eval("clockParses"), 2, "equal text remains pure input even on a new native source");
+    next.label.text = "0:00"; assert.equal(Q.core.time.readGameTime(), 0);
+    next.label.text = "unresolved clock"; assert.equal(Q.core.time.readGameTime(), 0);
+    next.label.text = "1:02"; assert.equal(Q.core.time.readGameTime(), 62);
+    assert.deepEqual(env.clock.errors, []);
+});
+
 test("native clock upgrades a construction fallback when the preferred clock arrives", () => {
     const env = createHud({ inHideout: false }); env.assertLoaded(); const Q = env.sandbox.global.QOL, $ = env.sandbox.global.$;
     Q.core.App.shutdown(); const fallback = $.CreatePanel("Label", env.root, "GameTime"); fallback.text = "1:00";
