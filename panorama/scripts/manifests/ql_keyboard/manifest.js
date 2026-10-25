@@ -217,11 +217,25 @@
                     generation.keys = created.filter(panel => panel.BHasClass("Key")).map(panel => ({
                         panel, widthClass: Object.keys(model.widths).find(name => panel.BHasClass(name))
                     }));
+                    refreshAlternateGeometry();
                     return true;
                 } catch (error) {
                     retire();
                     throw error;
                 }
+            }
+
+            function refreshAlternateGeometry() {
+                const alternate = generation?.alternate;
+                if (!alternate || alternate.geometry?.unit === model.unit) return;
+                const px = value => Math.round(value * model.unit) + "px";
+                alternate.geometry = {
+                    unit: model.unit,
+                    layout: { width: px(alternate.width), height: px(alternate.height), flowChildren: "none" },
+                    keys: alternate.keys.map(({ x, y, w, h }) => ({
+                        x: px(x + 0.05), y: px(y + 0.05), width: px(w - 0.1), height: px(h - 0.1), margin: "0px"
+                    }))
+                };
             }
 
             function render() {
@@ -233,11 +247,9 @@
                     desired.set(panel, widthClass ? { ...model.key, width: model.widths[widthClass] } : model.key);
                 }
                 if (generation.alternate) {
-                    const alternate = generation.alternate, px = value => Math.round(value * model.unit) + "px";
-                    desired.set(alternate.panel, { width: px(alternate.width), height: px(alternate.height), flowChildren: "none" });
-                    for (const { panel, x, y, w, h } of alternate.keys) desired.set(panel, {
-                        x: px(x + 0.05), y: px(y + 0.05), width: px(w - 0.1), height: px(h - 0.1), margin: "0px"
-                    });
+                    const alternate = generation.alternate;
+                    desired.set(alternate.panel, alternate.geometry.layout);
+                    alternate.keys.forEach(({ panel }, index) => desired.set(panel, alternate.geometry.keys[index]));
                 }
                 // Native KeyboardLetter/ModifierCombinerLabel are Label types, not a "Label" class.
                 // CitadelBinding creates/replaces their glyph tree after our own construction.
@@ -266,7 +278,13 @@
                 }
             }
 
-            function refresh() { model = readModel(); if (enabled) update(); }
+            function refresh() {
+                model = readModel();
+                if (enabled) {
+                    if (generation?.layoutKey === model.layoutKey) refreshAlternateGeometry();
+                    update();
+                }
+            }
             return QOL.presentation.bindVisibility(ctx, {
                 onEnable() { enabled = true; refresh(); loop = QOL.core.Scheduler.createPollLoop(update, 0.2, ctx.id); },
                 onSettingsChanged: refresh,

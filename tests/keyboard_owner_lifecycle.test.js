@@ -162,6 +162,40 @@ test("keyboard themes update in place and alternate layouts retain native action
     assert.equal(env.overlay(), null); assert.deepEqual(env.clock.errors, []);
 });
 
+test("alternate keyboard geometry is derived once per scale while live glyphs and native feedback remain observed", () => {
+    const env = setup({ KEYBOARD_OVERLAY_LAYOUT: 1, ENABLE_FULL_KEYBOARD_LAYOUT: false, KEYBOARD_OVERLAY_SCALE: 100 });
+    env.feature.onEnable();
+    const compact = env.box().FindChildrenWithClassTraverse("KeyboardLayoutAlternate")[0];
+    const binding = compact.FindChildrenWithClassTraverse("Key").find(panel => env.bindingActions.get(panel) === "MoveForward");
+    assert.equal(binding.style.x, "42px"); assert.equal(binding.style.width, "36px");
+    // Count actual rounding calls after the initial derivation, without replacing
+    // their results or suppressing any production poll/native-style validation.
+    env.sandbox.eval("globalThis.keyboardRounds = 0; const originalRound = Math.round; Math.round = value => { keyboardRounds++; return originalRound(value); };");
+    const label = env.add(binding, "KeyboardLetter", [], "Label");
+    binding.style.x = "native overwrite";
+    env.clock.advance(600);
+    assert.equal(binding.style.x, "42px");
+    assert.equal(label.style.fontSize, "16px", "late native glyphs are still discovered");
+    assert.equal(env.sandbox.eval("keyboardRounds"), 0, "unchanged alternate geometry needs no repeated coordinate rounding");
+
+    env.cfg.KEYBOARD_OVERLAY_SCALE = 150; env.feature.onSettingsChanged();
+    assert.equal(env.box().FindChildrenWithClassTraverse("KeyboardLayoutAlternate")[0], compact);
+    assert.equal(compact.style.width, "180px");
+    assert.equal(binding.style.x, "63px"); assert.equal(binding.style.width, "54px");
+    assert.equal(label.style.fontSize, "24px");
+    env.sandbox.eval("keyboardRounds = 0;"); env.clock.advance(600);
+    assert.equal(env.sandbox.eval("keyboardRounds"), 0);
+
+    env.cfg.KEYBOARD_OVERLAY_LAYOUT = 2; env.feature.onSettingsChanged(); env.clock.advance(250);
+    const grid = env.box().FindChildrenWithClassTraverse("KeyboardLayoutAlternate")[0];
+    assert.notEqual(grid, compact);
+    assert.equal(compact.IsValid(), false);
+    assert.equal(grid.style.width, "360px"); assert.equal(grid.style.height, "120px");
+    env.sandbox.eval("keyboardRounds = 0;"); env.clock.advance(600);
+    assert.equal(env.sandbox.eval("keyboardRounds"), 0, "replacement generations derive their own geometry once");
+    env.feature.onDisable(); env.clock.advance(20); assert.deepEqual(env.clock.errors, []);
+});
+
 test("keyboard scopes its shop visibility exception to the selected Customize sample and clears it on expiry", () => {
     const env = setup(); env.feature.onEnable();
     const { Q, root, clock } = env, preview = Q.presentation.preview;
