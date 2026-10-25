@@ -58,6 +58,6 @@ test("all relative scales retain the common upper boundary through current JSON 
     const fields = g.QOL.settingsFields.filter(field => ["scale", "axisScale", "fontScale"].includes(field.role));
     for (const field of fields) cfg[field.key] = 300 / field.displayFactor;
     const imported = g.QOL.ui.modal.tryApplyImportStringWithDiagnostics(g.QOL.ui.configTab.getCurrentExportSettingsString(cfg));
-    assert.equal(imported.ok, true); assert.equal(imported.source, "json");
+    assert.equal(imported.ok, true); assert.equal(imported.source, "settingsCode");
     for (const field of fields) assert.equal(imported.candidateConfig[field.key], cfg[field.key], field.key);
 });

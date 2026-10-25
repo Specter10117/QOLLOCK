@@ -5,6 +5,7 @@
     var _root = (typeof globalThis !== "undefined") ? globalThis : (typeof window !== "undefined") ? window : {};
     if (!_root.SETTINGS_LOCALE_TEXT) _root.SETTINGS_LOCALE_TEXT = {};
     _root.SETTINGS_LOCALE_TEXT["en"] = {
+    "Unsupported settings code. Update QOLLOCK and try again.": "Unsupported settings code. Update QOLLOCK and try again.",
     "Show rank badges on the top bar and escape menu player list.": "Show rank badges on the top bar and escape menu player list.",
     "Show rank badges on top bar player panels (requires Show Player Ranks).": "Show rank badges on top bar player panels (requires Show Player Ranks).",
     "Keyboard Theme": "Keyboard Theme",

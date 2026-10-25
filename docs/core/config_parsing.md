@@ -17,14 +17,16 @@ Bridge operations serialize the accepted result into a canonical envelope before
 
 The current release and schema numbers remain unchanged until the maintainer
 authorizes a version change. `QOL_SETTINGS_FIELDS` describes current control
-ranges independently of historical compact layouts. Every new export uses the full JSON storage envelope inside the existing
-Base64Url token. Both sharing contexts use the same writer and reader. Unicode
-is preserved with JSON escapes through the byte-oriented Base64 codec.
+ranges independently of historical compact layouts. New clipboard exports use
+the autonomous lossless settings-code writer, while storage continues using the
+full JSON envelope. Both runtime contexts load the same exchange module.
+See [settings codes](settings_codes.md) for the frozen ID/reference dictionary,
+format discrimination, integrity and compatibility rules.
 `ql_legacy_compact.js` owns frozen historical tables and binary decoding only;
 its development encoder lives in `scripts/legacy_compact_encoder.js` and is not
 included by runtime XML. Current settings metadata is declared independently.
-Older clients without envelope-token support cannot import new exports. Old
-binary codes and existing envelopes remain readable.
+Older clients cannot import new `-C` tokens. Old binary codes and existing
+envelope tokens remain readable.
 
 ## Legacy parsing and compatibility
 

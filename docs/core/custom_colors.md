@@ -10,11 +10,11 @@ The tag distinguishes literal black from native/default. Invalid HEX input is
 rejected; it must not replace a previous value.
 
 Historical compact schemas retain their original bounds, order and palette
-meanings. All new exports use the full JSON storage envelope inside
-the existing Base64Url token; they do not assign a new compact schema version.
-Both HUD and settings decoders recognize this envelope. Older clients without
-envelope-token support cannot import these exports. Storage continues to carry
-the tagged numeric values.
+meanings. New clipboard exports use [lossless settings codes](settings_codes.md)
+and preserve tagged colors without the historical palette bounds. Both runtime
+contexts read these codes as well as old binary and JSON envelope tokens.
+Storage continues to use JSON with the tagged numeric values. Historical schema
+versions remain unchanged; older clients cannot read the new `-C` tokens.
 
 The ordinary palette rows preserve an existing custom value when synchronizing.
 Choosing a swatch replaces it with that palette index; choosing Default uses the

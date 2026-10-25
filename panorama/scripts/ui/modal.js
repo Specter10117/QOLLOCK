@@ -14,7 +14,7 @@
         : (typeof QOL !== "undefined" ? QOL : (globalThis.QOL = {}));
     Q.ui = Q.ui || {};
 
-    const EXPORT_TOKEN_REGEX = /\[QOL-([0-9]+-[0-9]+-[0-9]+)\]:?([A-Za-z0-9_-]+)/i;
+    const EXPORT_TOKEN_REGEX = /\[QOL-([0-9]+-[0-9]+-[0-9]+)(-C)?\]:?([A-Za-z0-9_-]+)/i;
 
     const NORMALIZERS = [
         "NormalizeNeutralCampFlags",
@@ -505,15 +505,21 @@
             return result;
         }
 
-        const encodedPayload = String(tokenMatch[2] || "");
+        const isSettingsCode = !!tokenMatch[2];
+        const encodedPayload = String(tokenMatch[3] || "");
         if (!encodedPayload) return result;
 
         try {
             const payload = Q.persistence.fromBase64Url(encodedPayload);
+            if (isSettingsCode && (!Q.settingsCode?.isPayload(payload) ||
+                !/^\[QOL-[0-9]+-[0-9]+-[0-9]+-C\]:[A-Za-z0-9_-]+$/i.test(normalized) ||
+                Q.persistence.toBase64Url(payload) !== encodedPayload)) return result;
+            if (!isSettingsCode && Q.settingsCode?.isPayload(payload)) return result;
             result.parsedConfig = Q.persistence.deserializeSettings(payload, schemaSemver);
-            result.source = payload.charAt(0) === "{" ? "json" : "legacyCompact";
-            result.schemaVersion = schemaSemver;
-        } catch {
+            result.source = payload.charAt(0) === "{" ? "json" : Q.settingsCode?.isPayload(payload) ? "settingsCode" : "legacyCompact";
+            result.schemaVersion = isSettingsCode ? globalThis.QOL_SCHEMA_SEMVER : schemaSemver;
+        } catch (error) {
+            result.requiresUpdate = error.code === "unsupported-settings-code";
             return result;
         }
 

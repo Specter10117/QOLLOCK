@@ -23,6 +23,9 @@
 		<include src="s2r://panorama/scripts/ql_shared_presets.vjs_c" />
 		<include src="s2r://panorama/scripts/ql_settings_contract.vjs_c" />
 		<include src="s2r://panorama/scripts/ql_legacy_compact.vjs_c" />
+		<!-- ==== QOLLOCK lossless settings exchange ==== -->
+		<include src="s2r://panorama/scripts/ql_settings_code.vjs_c" />
+		<!-- ==== End QOLLOCK lossless settings exchange ==== -->
 		<include src="s2r://panorama/scripts/ql_bridge.vjs_c" />
 		<include src="s2r://panorama/scripts/ql_config.vjs_c" />
 		<!-- ==== QOLLOCK customization capabilities and transient preview ==== -->

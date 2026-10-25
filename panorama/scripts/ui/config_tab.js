@@ -28,12 +28,13 @@
         const semver = globalThis.QOL_SCHEMA_SEMVER ||
             Q.VERSION ||
             "4.0.0";
-        return `[QOL-${String(semver).replace(/\./g, "-")}]:`;
+        const formatMarker = Q.persistence?.serializeSettingsCode ? "-C" : "";
+        return `[QOL-${String(semver).replace(/\./g, "-")}${formatMarker}]:`;
     };
 
     const getCurrentExportSettingsString = (config) => {
         const conf = config || globalThis.MOD_CONFIG || {};
-        const payload = Q.persistence?.serializeSettings?.(conf) ||
+        const payload = Q.persistence?.serializeSettingsCode?.(conf) || Q.persistence?.serializeSettings?.(conf) ||
             (typeof globalThis.SerializeSettings === "function" ? globalThis.SerializeSettings(conf) : "");
         const encoded = Q.persistence?.toBase64Url?.(payload) ||
             (typeof globalThis.ToBase64Url === "function" ? globalThis.ToBase64Url(payload) : "");
@@ -43,7 +44,7 @@
     const formatExportSettingsDisplayString = (rawExport) => {
         if (!rawExport) return "";
         const normalized = String(rawExport).replace(/\s+/g, "");
-        const prefixMatch = normalized.match(/^\[QOL-\d+-\d+-\d+\]:/i);
+        const prefixMatch = normalized.match(/^\[QOL-\d+-\d+-\d+(?:-C)?\]:/i);
         const prefixLen = prefixMatch ? prefixMatch[0].length : 0;
         const payloadLen = normalized.length - prefixLen;
         if (payloadLen <= 24) return normalized;
@@ -56,7 +57,7 @@
     const formatImportSettingsDisplayString = (rawImport) => {
         if (!rawImport) return "";
         const normalized = String(rawImport).replace(/\s+/g, "");
-        if (!/^\[QOL-\d+-\d+-\d+\]:/i.test(normalized)) {
+        if (!/^\[QOL-\d+-\d+-\d+(?:-C)?\]:/i.test(normalized)) {
             return rawImport;
         }
         return formatExportSettingsDisplayString(normalized);
@@ -386,6 +387,11 @@
                     const parseImportFn = Q.ui.modal?.tryApplyImportStringWithDiagnostics ||
                         globalThis.TryApplyImportStringWithDiagnostics;
                     const importResult = parseImportFn ? parseImportFn(raw) : null;
+                    if (importResult?.requiresUpdate) {
+                        const error = new Error("Unsupported settings code");
+                        error.requiresUpdate = true;
+                        throw error;
+                    }
                     if (!importResult || importResult.ok !== true || !importResult.parsedConfig || !importResult.candidateConfig) {
                         throw new Error("Invalid import string");
                     }
@@ -460,14 +466,16 @@
                             }
                         },
                     });
-                } catch {
+                } catch (error) {
                     if (isAlive(importHeader)) {
                         importHeader.text = localize("ERROR: Invalid String", true);
                         if (importHeader.style) importHeader.style.color = "#ff4d4d";
                     }
                     applyBtn.RemoveClass("SuccessState");
                     applyBtn.AddClass("FailureState");
-                    setLocalizedConfigFeedbackMessage("Invalid import string.", "error", 2600);
+                    setLocalizedConfigFeedbackMessage(error.requiresUpdate
+                        ? "Unsupported settings code. Update QOLLOCK and try again."
+                        : "Invalid import string.", "error", 2600);
                     if (typeof $.Schedule === "function") {
                         $.Schedule(0.35, () => {
                             if (isAlive(applyBtn)) applyBtn.RemoveClass("FailureState");

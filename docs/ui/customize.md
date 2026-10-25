@@ -53,8 +53,9 @@ instead of transferring it to a different gameplay tree.
 
 `ql_customize_data.js` and the data modules in `scripts/customize/` are shared by
 HUD and settings. They define scoped owner paths, existing editable fields and
-normalization against current settings metadata. Historical compact schemas are import-only; every new export uses the full JSON
-envelope. The catalog includes native
+normalization against current settings metadata. Historical compact schemas are
+import-only; new clipboard exports use [lossless settings codes](../core/settings_codes.md)
+while storage keeps the JSON envelope. The catalog includes native
 HUD families, overlays, map/shop states and additions in other script contexts.
 
 The shop surface uses `Shop/MainPanel`, while recent purchases use the sibling

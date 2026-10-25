@@ -5,6 +5,7 @@
     var _root = (typeof globalThis !== "undefined") ? globalThis : (typeof window !== "undefined") ? window : {};
     if (!_root.SETTINGS_LOCALE_TEXT) _root.SETTINGS_LOCALE_TEXT = {};
     _root.SETTINGS_LOCALE_TEXT["ru"] = {
+    "Unsupported settings code. Update QOLLOCK and try again.": "Этот код настроек не поддерживается. Обновите QOLLOCK и попробуйте снова.",
     "Show rank badges on the top bar and escape menu player list.": "Показывать значки ранга в верхней панели и списке игроков меню паузы.",
     "Show rank badges on top bar player panels (requires Show Player Ranks).": "Показывать значки ранга в верхней панели (требуется «Ранги игроков»).",
     "Keyboard Theme": "Тема клавиатуры",

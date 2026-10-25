@@ -131,7 +131,8 @@ are compatibility guards, not evidence that browser APIs are available in HUD.
 | `panorama/scripts/ql_shared_presets.js` | Default values, presets, independent current settings catalog, JSON codec and shared constants |
 | `panorama/scripts/ql_settings_contract.js` | Shared setting types, numeric normalization, units and display conversion |
 | `panorama/scripts/ql_legacy_compact.js` | Frozen compact tables and binary import decoder; never a source of current settings metadata |
-| `panorama/scripts/core/ql_codec.js` | Pure JSON settings writer and JSON/legacy import reader adapters; no UI actions, loader queues or runtime State |
+| `panorama/scripts/core/ql_codec.js` | Pure JSON storage/lossless sharing writer and compatibility reader adapters; no UI actions, loader queues or runtime State |
+| `panorama/scripts/ql_settings_code.js` | Lossless clipboard writer/reader and append-only ID/reference dictionary; independent of current defaults and historical compact layouts |
 | `panorama/scripts/core/ql_persistence.js` | Live config publication, revisions/edit stamps and root selection |
 | `panorama/scripts/core/ql_storage_bridge.js` | Embedded HTML/localStorage protocol and asynchronous save/load coordination |
 | `panorama/scripts/ql_bridge.js` | Named cross-context channel descriptors and panel-attribute access |
@@ -289,17 +290,18 @@ settings controls or serialized schemas.
 5. Handle changes in every owning runtime and dependent feature. Preserve
    disable/reset behavior and root-class ownership. Do not add a second poller
    for configuration that already arrives through `onSettingsChanged`.
-6. Add independent current control metadata to `QOL_SETTINGS_FIELDS`. New
-   exports always use the full JSON envelope. Historical compact layouts are
-   frozen import-only data; preserve their meaning and migrations. No setting
-   addition requires a binary layout change. Version changes still require
-   explicit maintainer authorization.
+6. Add independent current control metadata to `QOL_SETTINGS_FIELDS` and append
+   a permanent ID/reference entry to the settings-code dictionary. Never change
+   previous entries when defaults or ranges change. Storage keeps the JSON
+   envelope; clipboard sharing uses lossless settings codes. Historical compact
+   layouts remain frozen import-only data. See [settings codes](docs/core/settings_codes.md).
+   Version changes still require explicit maintainer authorization.
 7. Check reset, preset application, settings -> HUD propagation and a complete
    export/import round-trip, including boundaries and invalid input. Retain
    existing regression coverage that exercises the affected contract.
 
 Procedural sliders in `ui/controls.js` commit on the current settings catalog
-step grid within the intersection of UI/catalog bounds. JSON exports preserve
+step grid within the intersection of UI/catalog bounds. Storage and sharing preserve
 accepted precision. Inspect actual renderers and runtime consumers; their native
 presentation semantics are separate from serialization.
 

@@ -1,5 +1,5 @@
 // ql_settings_persistence.js — Config serialization utilities (base64 encoding,
-// JSON export, legacy import and settings-aware config apply)
+// JSON storage, lossless exchange, legacy import and settings-aware config apply)
 // OWNS: Settings-code encoding/decoding and import diagnostics/UI preference preservation.
 // DOES NOT OWN: Shared normalization, live panel publication or durable CEF storage.
 (function() {
@@ -159,6 +159,7 @@ function ApplyParsedConfigWithDiagnostics(parsed, schemaVersion) {
         fromBase64Url: FromBase64Url,
         // Settings sharing
         serializeSettings: SerializeSettings,
+        serializeSettingsCode: config => QOL_CODEC.SerializeSettingsCode(config),
         deserializeSettings: DeserializeSettings,
         applyParsedConfig: ApplyParsedConfig,
         applyParsedConfigWithDiagnostics: ApplyParsedConfigWithDiagnostics,

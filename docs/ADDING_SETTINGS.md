@@ -42,8 +42,11 @@ separate contracts. None automatically creates the others.
    second poller just to observe a setting already delivered through the hook.
 7. **Preserve storage compatibility.** Add independent current control metadata
    to `QOL_SETTINGS_FIELDS`: type, role, units, display conversion, precision and
-   runtime owners. `QOL.settings` supplies common validation and conversions. All new exports use the full JSON envelope; adding
-   a setting requires no compact layout change. Frozen historical compact tables
+   runtime owners. `QOL.settings` supplies common validation and conversions.
+   Append a permanent ID/reference entry in `ql_settings_code.js`; never reorder,
+   remove or edit previous entries, including when defaults change or a setting
+   retires. See [settings codes](core/settings_codes.md). Storage stays JSON.
+   Frozen historical compact tables
    and their reader belong to `ql_legacy_compact.js`. Preserve their field order,
    bounds, steps and migrations. Package/schema versions still require explicit
    maintainer authorization.
@@ -78,7 +81,7 @@ before hooks run.
   `isEnabled`. Inspect the predicate and shared-key routing.
 - Procedural sliders commit on the current settings step grid where a field exists,
   within intersected UI/schema bounds. Invalid typed input preserves the prior
-  value. The current catalog owns accepted precision; JSON sharing preserves it.
+   value. The current catalog owns accepted precision; settings codes preserve it.
 - ConfigStore slider rounding is not compact-codec step snapping. Verify the
   renderer and actual consumer rather than assuming every numeric path matches.
 - Performance tiers are UI metadata, not measured frame-time guarantees. Do not
