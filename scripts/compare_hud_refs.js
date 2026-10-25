@@ -33,6 +33,7 @@ function measure(hud, seconds, identity) {
         source: identity, meta: hud.meta, tree: { panels: hud.tree.panels, notes: hud.tree.notes }, snapshot,
         enabledStart: start.enabled, enabledEnd: end.enabled,
         registryErrorsStart: start.errors, registryErrorsEnd: end.errors,
+        eventErrors: hud.doc.eventErrors.map(e => ({ panel: e.panel, name: e.name, message: e.error.message })),
         callbackErrors: hud.clock.errors.map(e => ({ atMs: e.at, message: e.error.message }))
     };
 }

@@ -116,7 +116,7 @@ function comparisonIssues(current, previous) {
     for (const run of [current, previous]) {
         if (run.meta?.unsupportedCalls?.length) issues.push("run contains unsupported simulator calls");
         if (run.meta?.wrapperErrors?.count) issues.push("run contains wrapped callback failures (including recovered errors)");
-        if (run.callbackErrors?.length || Object.values(run.registryErrorsEnd || {}).some(n => n > 0)) issues.push("run contains callback/registry errors");
+        if (run.callbackErrors?.length || run.eventErrors?.length || Object.values(run.registryErrorsEnd || {}).some(n => n > 0)) issues.push("run contains callback/registry errors");
         if (Array.isArray(run.enabledStart) && Array.isArray(run.enabledEnd) &&
             JSON.stringify([...run.enabledStart].sort()) !== JSON.stringify([...run.enabledEnd].sort())) {
             issues.push("enabled feature coverage changed during sample");
