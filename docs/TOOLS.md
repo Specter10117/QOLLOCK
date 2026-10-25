@@ -42,6 +42,7 @@ and [profiling](PROFILING.md) for operation accounting and comparison limits.
 | Question | Tool | Scope |
 | --- | --- | --- |
 | Did the change break offline checks? | `npm test` | Smoke, styles, Node regressions, compact schema, API checks and lint. Run before every commit. |
+| Do reminder dispatches resolve to the intended sound sources? | `node --test tests/audio_event_contract.test.js` | Production HUD and Audio-button paths against source event definitions and shipped WAV existence; custom slots check routing only. Does not verify compilation, native playback or loudness. |
 | Do schedules accumulate across transitions? | `node scripts/audit_runtime_lifecycle.js --cycles 3` | Production HUD/quickbuy scripts in controlled fixtures; modeled lifetime, not native teardown. |
 | Is a shared helper name actually exported? | `node scripts/audit_helper_calls.js` | Statically resolvable calls against loaded HUD exports; not native API signatures. |
 | Does an unobserved dependency have native XML evidence? | `node scripts/audit_lookups_vs_capture.js --vanilla <panorama-dir> --json` | Adds current extracted XML evidence to the active-HUD ID/class audit. Missing evidence is a candidate, not a failed existence check. |

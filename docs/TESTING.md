@@ -330,6 +330,20 @@ export/reload. A Buff Delay of 15 seconds already worked on that path before the
 release fixes. The confirmed zero-to-30 fallback was a separate bug; its fix
 does not establish the cause of a player's 15-to-30 report.
 
+`node --test tests/audio_event_contract.test.js` additionally connects production
+HUD dispatches and rendered Audio preview buttons to the reminder definitions in
+`soundevents/world_ambient_emitters.vsndevts`. It exercises every integer volume
+from 0 through 100, all selectable voices, each bridge/tier variant, the eleven
+distinct DL4D reminders and the minimap reminder. Independent expected event and
+resource names catch misrouting as well as missing definitions, wrong WAV paths
+and mute/positive-gain errors. Shipped WAV sources must exist; custom announcer
+slots are checked for event/path routing only, because their packs are supplied
+separately. The reader covers flat QOLLOCK reminder records and rejects unsupported
+record shapes; it is not a KV3 compiler. This regression runs in `npm test` and
+does not compile or inspect packaged resources, decode audio, measure loudness,
+verify native playback or establish that a custom pack is installed. After a
+maintainer repack, audible playback and custom-pack loading remain client checks.
+
 Slider tests cover accepted UI values through the production export/import path
 using the current settings-code codec. Historical compact import has separate
 compatibility regressions. The
