@@ -17,7 +17,6 @@ function fixture({ missing = false } = {}) {
     Q.core.FeatureRegistry.disable("ql_heroshop");
     const add = (parent, id, type = "Panel") => $.CreatePanel(type, parent, id);
     const orphan = add(env.root, "RetiredShopGeneration");
-    env.game.shopPanel.SetParent(orphan);
     const core = add(env.root, ""); core.AddClass("HudCore");
     const mount = () => {
         const shop = add(core, "CitadelHudHeroShop", "CitadelHudHeroShop");

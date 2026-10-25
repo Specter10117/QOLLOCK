@@ -960,6 +960,26 @@ test("storage_bridge: a pending restore cannot cross a HUD replacement with matc
     assert.equal(env.clock.errors.length, 0);
 });
 
+test("storage_bridge: Clear prevents an older Load from restoring the deleted settings", async () => {
+    const env = createTestEnvironment(), bridge = env.sandbox.QOL.core.storageBridge;
+    const storage = new Map([["qollock_settings", env.sandbox.WrapConfigForStorage({ BRIDGE_BUFF_START: 30 })]]);
+    connectEmbeddedPage(env, storage);
+    const fresh = publishEdit(env, 15);
+    const beforeConfig = JSON.stringify(env.sandbox.MOD_CONFIG);
+    const loading = bridge.loadSettings();
+    const clearing = bridge.clearSettings();
+    env.clock.advance(0);
+    const result = await loading;
+    assert.equal(result.applied, false);
+    assert.equal(result.skipped, "newer-edits");
+    assert.equal((await clearing).ok, true);
+    assert.equal(storage.has("qollock_settings"), false);
+    assert.equal(env.rootPanel.GetAttributeString("Deadlock_Mod_Settings_v1", ""), fresh);
+    assert.equal(JSON.stringify(env.sandbox.MOD_CONFIG), beforeConfig);
+    assert.equal(env.sandbox.State.lastConfig, null);
+    assert.deepEqual(env.clock.errors, []);
+});
+
 test("storage_bridge: a later Save invalidates an older Load even when all native writes are rejected", async () => {
     const env = createTestEnvironment(), bridge = env.sandbox.QOL.core.storageBridge;
     env.fireTitleEvent(bridge.getPanel(), "QOL_BRIDGE_READY:frag1");

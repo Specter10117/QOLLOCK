@@ -23,9 +23,8 @@ function fixture(env) {
     const portrait = add(gold, "LevelAmount");
     add(portrait, "HeroImage");
     add(gold, "After");
-    const crosshair = hud.root.FindChildTraverse("crosshair");
-    const dash = crosshair.FindChildrenWithClassTraverse("citadel_ability_dash")[0];
-    dash.RemoveClass("hero_werewolf");
+    const crosshair = add(hud.root, "crosshair");
+    const dash = add(crosshair, "", "citadel_ability_dash");
     dash.AddClass("hero_atlas");
     const imageCalls = [];
     const api = hud.sandbox.global.$;

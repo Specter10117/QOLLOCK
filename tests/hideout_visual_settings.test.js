@@ -224,7 +224,7 @@ for (const scenario of [
         const hud = createHud({ inHideout: true });
         hud.assertLoaded();
         const { $, QOL: Q } = hud.sandbox.global;
-        const parent = scenario.shop ? hud.game.shopPanel :
+        const parent = scenario.shop ? $.CreatePanel("Panel", hud.root, "CitadelHudHeroShop") :
             scenario.parentId ? $.CreatePanel("Panel", hud.root, scenario.parentId) : hud.root;
         const first = $.CreatePanel("Panel", parent, scenario.id);
         if (scenario.panelClass) first.AddClass(scenario.panelClass);
@@ -256,7 +256,7 @@ test("shop layout follows replacement MainPanel with unchanged settings", () => 
     const hud = createHud({ inHideout: true });
     hud.assertLoaded();
     const { $, QOL: Q } = hud.sandbox.global;
-    const shop = hud.game.shopPanel;
+    const shop = $.CreatePanel("Panel", hud.root, "CitadelHudHeroShop");
     const first = $.CreatePanel("Panel", shop, "MainPanel");
     Q.core.ConfigStore.set("ql_heroshop", "SHOP_OFFSET_X", 100);
     assert.equal(Q.core.FeatureRegistry.isEnabled("ql_heroshop"), true);

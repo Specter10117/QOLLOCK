@@ -470,16 +470,19 @@ variants are only partially covered.
 | `panel.js`, `search.js` | Panel object model + `Document`; shared search rules check each parent's direct children before recursing, following the recorded native probe. Classes, attributes and `maxchars`-aware `SetText` remain modeled behavior. |
 | `layout.js` | Reads script load order from `hud.xml`, stripping comments so cut-over includes stay out. |
 | `sandbox.js` | The `vm` context: `$` API, event dispatch, deterministic `Math.random`. |
-| `game/builds.js` | `BuildsModel` — build state and the tree mutations the C++ client is believed to make. **This is the guessing part.** Fine for counting operations; not evidence about the client. |
+| `index.js` | Boots the production HUD include graph without a native game model. Each regression supplies its own required panels and API responses. |
 | `perf/` | Operation counters, in-match tree, profiled-HUD entry point. |
 
 ## Ground truth is the Panorama debugger
 
 For anything about panel existence, class names, or whether a label's text is
 readable, the answer comes from the in-game debugger, not from a model. Facts
-captured that way are cited inline where they are used — e.g.
-`manifests/ql_build_storage/manifest.js` documents each class it waits on
-(`BuildsLoading`, `Selected`, `gEditingBuilds`) with where it was observed.
+captured that way are cited inline where they are used. The former hero-build
+storage model is removed; CEF persistence regressions live in
+`tests/storage_bridge.test.js` and execute the embedded page fixture in a separate
+realm. They model transport and storage failures, not the actual CEF process or
+native restart durability. Shop presentation and build-ID regressions still cover
+their active production owners independently of persistence.
 
 The current workflow relies on the maintainer's debugger for tree inspection,
 not on an assumed writable JavaScript console or browser automation endpoint.

@@ -72,7 +72,7 @@ function fills(tree, className) { return tree.hearts.FindChildrenWithClassTraver
 test("Minecraft food reads signed native stamina arcs and prefers dash over ability charges", () => {
     const env = fixture();
     for (const food of env.tree.food.Children()) food.SetImage = image => { food._image = image; };
-    const crosshair = env.game.crosshairPanel;
+    const crosshair = env.add(env.gameplay, "crosshair");
     const charges = (type, angle) => {
         const element = env.add(crosshair, "", ["ability_element_charges"], type);
         const container = env.add(element, "charges_container");
