@@ -138,8 +138,14 @@ test("urn retries a missing timer parent without requiring a clock text change",
 
 test("unsecured timer stays active in hideout and hero testing and follows source loss", () => {
     const { hud, $, tick, instance } = fixture("ql_unsecured_souls_timer", { ENABLE_UNSECURED_SOUL_TIMER: 1 }, true);
-    $.CreatePanel("Panel", hud.root, "gameplay_hud");
-    const source = $.CreatePanel("Label", hud.root, "HudUnsecuredLabel");
+    const core = $.CreatePanel("Panel", hud.root, ""); core.AddClass("HudCore");
+    $.CreatePanel("Panel", core, "gameplay_hud");
+    let owner = core;
+    for (const id of ["StatsAndModsContainer", "LowerLeft", "gold_and_ap_container", "hudGoldContainer"]) {
+        owner = $.CreatePanel("Panel", owner, id);
+    }
+    const container = $.CreatePanel("Panel", owner, ""); container.AddClass("hudDeathGoldContainer");
+    const source = $.CreatePanel("Label", container, "hudDeathGoldLabel");
     source.text = "500";
     tick();
     const overlay = hud.root.FindChildTraverse("QOLUnsecuredSoulsOverlay");
@@ -157,7 +163,7 @@ test("unsecured timer stays active in hideout and hero testing and follows sourc
     hud.clock.advance(1);
     tick();
     assert.equal(label.text, "--");
-    const replacement = $.CreatePanel("Label", hud.root, "HudUnsecuredLabel");
+    const replacement = $.CreatePanel("Label", container, "hudDeathGoldLabel");
     replacement.text = "0";
     hud.clock.advance(1100);
     tick();

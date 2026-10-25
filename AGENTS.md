@@ -27,6 +27,15 @@ candidates, `scripts/trace_feature_hud.js` to inspect search roots, and
 `scripts/compare_hud_refs.js` for before/after checks with matching inputs and
 observed outputs. Commands and measurement limits are documented in
 [docs/TOOLS.md](docs/TOOLS.md) and [docs/PROFILING.md](docs/PROFILING.md).
+Use verified direct-child breadcrumbs for runtime HUD discovery by default.
+Eliminate full-HUD searches in the normal path; treat them as a rare exception,
+not an automatic fallback after a breadcrumb miss. Check current extracted XML
+and native Debugger evidence before choosing a path. Keep ID/class searches
+inside the narrowest verified owner, and follow late or replaced panels through
+that owner. A broader compatibility search needs specific native evidence and a
+documented reason; old code or a simulator fixture alone does not justify it.
+Do not replace a global search with a JavaScript walk over the same whole tree
+or merely lengthen its retry interval and call that the completed optimization.
 Use `scripts/trace_styles_hud.js` for per-panel inline-style writer/value traces.
 When replacing native searches with JavaScript walks, inspect the profiler's
 explicit child-enumeration counters as well as native-search visits.

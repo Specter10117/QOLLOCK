@@ -24,14 +24,13 @@ function fixture(owner) {
         const core = add(root, ""); core.AddClass("HudCore");
         const gameplay = add(core, "gameplay_hud"), top = add(core, "TopBar"); label(top, "GameTime", "0:00");
         const hint = add(gameplay, "citadel_ability_zipline_boost_"); hint.AddClass("active"); add(gameplay, "StatusEffects");
-        const modern = label(gameplay, "HudUnsecuredLabel", "500");
-        const stats = add(core, "StatsAndModsContainer"), gold = add(stats, "gold_and_ap_container");
-        const container = add(gold, ""); container.AddClass("hudDeathGoldContainer");
+        const stats = add(core, "StatsAndModsContainer"), lower = add(stats, "LowerLeft"), gold = add(lower, "gold_and_ap_container");
+        const container = add(add(gold, "hudGoldContainer"), ""); container.AddClass("hudDeathGoldContainer");
         const amount = label(container, "hudDeathGoldLabel", "500"); amount.AddClass("death_penalty_gold");
         label(container, "hudUnsecuredLabel", "Native caption");
         const statOwner = add(core, "HeroStatsDisplay"), health = add(statOwner, "StatContainer_MaxHealth");
         const modified = label(health, "ModifiedLabel", "300"); label(health, "BaseLabel", "100");
-        return { core, gameplay, hint, modern, amount, modified };
+        return { core, gameplay, hint, amount, modified };
     };
     const find = id => env.doc.root.FindChildTraverse(id);
     const overlay = () => find(owner.overlay);
@@ -56,7 +55,7 @@ for (const owner of owners) {
         env.clock.advance(500);
         for (const panel of previous) assert.equal(panel.IsValid(), false, panel.id);
         assert.ok(env.find(owner.child)); assert.equal(env.reads(), 1);
-        assert.equal(native.amount.text, "500"); assert.equal(native.modern.text, "500"); assert.equal(native.modified.text, "300");
+        assert.equal(native.amount.text, "500"); assert.equal(native.modified.text, "300");
         const moved = env.find(owner.child); moved.SetParent(detached); env.stop(); assert.equal(moved.IsValid(), false);
         env.feature.onSettingsChanged(); env.clock.advance(1000); assert.equal(env.overlay(), null);
         assert.equal(env.Q.core.Scheduler.getWorkSnapshot().some(record => record.id === owner.id), false);

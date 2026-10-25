@@ -305,7 +305,10 @@ test("unsecured timer samples across its minimum interval, resets on gains/sourc
     const env = fixture();
     const { Q, hud, core, gameplay, add, label, config, find } = env;
     const top = add(core, "TopBar"); label(top, "GameTime", "0:00");
-    const source = label(gameplay, "HudUnsecuredLabel", "1000");
+    const stats = add(core, "StatsAndModsContainer"), lower = add(stats, "LowerLeft");
+    const gold = add(lower, "gold_and_ap_container"), body = add(gold, "hudGoldContainer");
+    const container = add(body, "", ["hudDeathGoldContainer"]);
+    const source = label(container, "hudDeathGoldLabel", "1000", ["death_penalty_gold"]);
     config({ ENABLE_UNSECURED_SOUL_TIMER: 1, UNSECURED_SOUL_TIMER_SCALE: 200,
         UNSECURED_SOUL_TIMER_X_OFFSET: -1999, UNSECURED_SOUL_TIMER_Y_OFFSET: -1501 });
     hud.clock.advance(1);
@@ -320,7 +323,7 @@ test("unsecured timer samples across its minimum interval, resets on gains/sourc
     source.text = "1200"; hud.clock.advance(200);
     assert.equal(state.text, "31s", "a gain releases the old decay-rate estimate");
     source.DeleteAsync(0); hud.clock.advance(1);
-    const replacement = label(gameplay, "HudUnsecuredLabel", "500"); hud.clock.advance(200);
+    const replacement = label(container, "hudDeathGoldLabel", "500", ["death_penalty_gold"]); hud.clock.advance(200);
     assert.equal(state.text, "20s", "the new source cannot inherit a1200→500 decay sample");
     hud.root.AddClass("InHideout"); hud.clock.advance(200);
     assert.equal(overlay.BHasClass("qol-hidden"), false);
@@ -368,23 +371,22 @@ test("unsecured mirrors rebind still-live native sources and reset the timer est
     const { hud, $, core, gameplay, add, label, config, find } = env;
     const top = add(core, "TopBar"); label(top, "GameTime", "0:00");
     const stats = add(core, "StatsAndModsContainer");
-    const gold = add(stats, "gold_and_ap_container");
-    const oldContainer = add(gold, "", ["hudDeathGoldContainer"]);
+    const lower = add(stats, "LowerLeft"), gold = add(lower, "gold_and_ap_container");
+    const body = add(gold, "hudGoldContainer");
+    const oldContainer = add(body, "", ["hudDeathGoldContainer"]);
     const oldAmount = label(oldContainer, "hudDeathGoldLabel", "1000", ["death_penalty_gold"]);
-    const oldModern = label(gameplay, "HudUnsecuredLabel", "1000");
     config({ ENABLE_BETTER_UNSECURED: 1, ENABLE_UNSECURED_SOUL_TIMER: 1 });
     hud.clock.advance(1);
-    oldModern.text = "980"; hud.clock.advance(400);
+    oldAmount.text = "980"; hud.clock.advance(400);
     assert.equal(find("QOLUnsecuredSoulsState").text, "20s");
     const detached = $.CreatePanel("Panel", null, "DetachedUnsecuredSources");
-    oldContainer.SetParent(detached); oldModern.SetParent(detached);
-    const currentContainer = add(gold, "", ["hudDeathGoldContainer"]);
+    oldContainer.SetParent(detached);
+    const currentContainer = add(body, "", ["hudDeathGoldContainer"]);
     const amount = label(currentContainer, "hudDeathGoldLabel", "500", ["death_penalty_gold"]);
-    label(gameplay, "HudUnsecuredLabel", "500");
     hud.clock.advance(2200);
     assert.equal(find("QOLBetterUnsecuredMirrorLabel").text, "500");
     assert.equal(find("QOLUnsecuredSoulsState").text, "20s", "replacement starts a fresh observed-rate history");
-    assert.equal(oldAmount.text, "1000"); assert.equal(oldModern.text, "980");
+    assert.equal(oldAmount.text, "980");
     assert.equal(amount.IsValid(), true); assert.equal(oldContainer.IsValid(), true);
     env.clean();
 });
@@ -396,7 +398,7 @@ test("unsecured source discovery follows the native gold owner without full HUD 
     const lower = add(stats, "LowerLeft");
     const makeGold = (parent, value) => {
         const gold = add(parent, "gold_and_ap_container");
-        const container = add(gold, "", ["hudDeathGoldContainer"]);
+        const container = add(add(gold, "hudGoldContainer"), "", ["hudDeathGoldContainer"]);
         label(container, "hudDeathGoldLabel", value, ["death_penalty_gold"]);
         return gold;
     };

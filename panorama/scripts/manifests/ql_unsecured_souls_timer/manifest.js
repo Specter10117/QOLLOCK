@@ -1,12 +1,13 @@
 // OWNS: Estimated unsecured-souls countdown, private samples and overlay labels.
 // DOES NOT OWN: Native soul conversion, native amount labels or Better Unsecured state.
-// Sources and danger classes follow verified current/legacy native HUD contracts.
+// Source: hud.xml and hud_gold_and_ap_container.xml, confirmed in Panorama Debugger.
 // This timer intentionally stays active in hideout and hero testing.
 // Overlay parent: native hud.xml HudCore > gameplay_hud.
 (() => {
     "use strict";
     const P = QOL.core.panel;
-    const MIN_SAMPLE_MS = 250, STALE_RATE_MS = 12000, EMA_ALPHA = 0.35, SEARCH_MS = 1000;
+    const MIN_SAMPLE_MS = 250, STALE_RATE_MS = 12000, EMA_ALPHA = 0.35;
+    const SOURCE_PATH = ["StatsAndModsContainer", "LowerLeft", "gold_and_ap_container", "hudGoldContainer"];
 
     function parseSouls(text) {
         const value = Number(String(text || "").replace(/[^0-9.-]/g, ""));
@@ -19,13 +20,17 @@
         return remaining > 0 && rate > 0 ? remaining / rate : 0;
     }
 
-    function findFallbackSource(root, gold) {
-        const underGold = QOL.utils.FindFirstPanelByClass(gold, "death_penalty_gold");
-        if (underGold) return underGold;
-        for (const candidate of QOL.utils.FindPanelsByClass(root, "death_penalty_gold") || []) {
-            if (QOL.utils.FindAncestorWithClass(candidate, "hudDeathGoldContainer")) return candidate;
+    function directClass(parent, name) {
+        return P.isAlive(parent) ? parent.Children().find(panel => P.hasClassToken(panel, name)) || null : null;
+    }
+
+    function findSource(core) {
+        let owner = core;
+        for (const id of SOURCE_PATH) {
+            owner = P.findChild(owner, id);
+            if (!owner) return null;
         }
-        return null;
+        return P.findChild(directClass(owner, "hudDeathGoldContainer"), "hudDeathGoldLabel");
     }
 
     function dangerLevel(source, souls) {
@@ -52,19 +57,8 @@
         create(ctx) {
             const tree = P.createOwnedTree();
             const presentation = P.createNativeStyleOwner();
-            const parentResolver = QOL.panelCache.createIdResolver("gameplay_hud", {
-                retryMs: SEARCH_MS, ownerPath: [{ id: "Hud", optional: true }, { className: "HudCore" }]
-            });
-            const modernResolver = QOL.panelCache.createIdResolver("HudUnsecuredLabel", { retryMs: SEARCH_MS });
-            const goldResolver = QOL.panelCache.createIdResolver("gold_and_ap_container", {
-                retryMs: SEARCH_MS,
-                ownerPath: [{ id: "Hud", optional: true }, { className: "HudCore" }, "StatsAndModsContainer", "LowerLeft"]
-            });
-            const amountResolver = QOL.panelCache.createIdResolver("hudDeathGoldLabel", { retryMs: SEARCH_MS });
-            const rootAmountResolver = QOL.panelCache.createIdResolver("hudDeathGoldLabel", { retryMs: SEARCH_MS });
             let running = false, loop = null, rootOwner = null, model = null, overlay = null, stateLabel = null;
-            let source = null, fallbackSource = null, nextSourceSearchMs = 0;
-            let nextModernSearchMs = 0;
+            let source = null;
             let lastSouls = -1, lastSampleMs = 0, rateEma = 0, rateUpdateMs = 0, etaEndMs = 0;
 
             function readModel() {
@@ -86,35 +80,13 @@
                 tree.clear();
                 overlay = null; stateLabel = null;
                 if (resetSource) {
-                    source = null; fallbackSource = null; nextSourceSearchMs = 0; rootOwner = null;
-                    nextModernSearchMs = 0;
-                    modernResolver.reset(); goldResolver.reset(); amountResolver.reset(); rootAmountResolver.reset();
-                    parentResolver.reset();
+                    source = null; rootOwner = null;
                     resetSamples();
                 }
             }
 
-            function resolveSource(root, now) {
-                // Slow only absent modern-label probes while a fallback is in
-                // use. Source loss keeps the resolver's normal recovery cadence.
-                if (!P.isAlive(source) || source.id === "HudUnsecuredLabel" || now >= nextModernSearchMs) {
-                    const modern = modernResolver.resolve(root);
-                    if (modern) return modern;
-                    nextModernSearchMs = now + 3000;
-                }
-                const gold = goldResolver.resolve(root);
-                const amount = gold ? amountResolver.resolve(gold) || rootAmountResolver.resolve(root) : rootAmountResolver.resolve(root);
-                if (amount) return amount;
-                if (now >= nextSourceSearchMs) {
-                    fallbackSource = findFallbackSource(root, gold);
-                    nextSourceSearchMs = now + SEARCH_MS;
-                }
-                return P.isAlive(fallbackSource) ? fallbackSource : null;
-            }
-
-            function ensureOverlay(root) {
+            function ensureOverlay(parent) {
                 tree.sweep();
-                const parent = parentResolver.resolve(root);
                 if (!P.isAlive(parent)) { release(false); return false; }
                 if (!P.isAlive(overlay) || overlay.GetParent() !== parent) {
                     release(false);
@@ -166,12 +138,13 @@
                 const root = P.findHud($.GetContextPanel());
                 if (!P.isAlive(root) || (root.id !== "Hud" && root.paneltype !== "CitadelHud") || !model.enabled) { release(); return; }
                 if (rootOwner !== root) { release(); rootOwner = root; }
-                if (!ensureOverlay(root)) return;
+                const core = directClass(root, "HudCore");
+                if (!ensureOverlay(P.findChild(core, "gameplay_hud"))) return;
                 P.setClass(overlay, "qol-hidden", false);
                 presentation.apply(overlay, QOL.presentation.visibilityStyles("unsecuredTimer", QOL.presentation.visibilityConfig(ctx), root, model.styles));
                 QOL.utils.SetStyleIfChanged(stateLabel, "fontSize", model.fontSize);
                 const now = QOL.utils.PerfNowMs();
-                const current = resolveSource(root, now);
+                const current = findSource(core);
                 if (current !== source) { resetSamples(); source = current; }
                 const rawText = source && typeof source.text === "string" ? source.text : "";
                 const unresolved = !rawText || rawText.charAt(0) === "{";
@@ -209,7 +182,8 @@
         },
         test() {
             try {
-                const gp = P.findTraverse($.GetContextPanel(), "gameplay_hud");
+                const root = P.findHud($.GetContextPanel());
+                const gp = P.findChild(directClass(root, "HudCore"), "gameplay_hud");
                 if (!gp) return null;
                 return { passed: true, name: "Unsecured souls anchor panel exists", message: "",
                     assertions: [{ passed: true, name: "gameplay_hud panel exists" }] };

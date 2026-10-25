@@ -22,26 +22,43 @@ function fixture(id, overrides) {
     return { hud, Q, $, feature, add, core };
 }
 
-test("unsecured timer bounds absent modern-source scans and recovers its priority over the legacy amount", () => {
+test("unsecured timer reads only its native owner and follows late and living replacement sources without broad probes", () => {
     const env = fixture("ql_unsecured_souls_timer", { ENABLE_UNSECURED_SOUL_TIMER: 1 });
     const stats = env.add(env.core, "StatsAndModsContainer");
-    const gold = env.add(env.add(stats, "LowerLeft"), "gold_and_ap_container");
-    env.add(gold, "hudDeathGoldLabel", [], "Label").text = "1000";
+    const lower = env.add(stats, "LowerLeft");
+    const native = value => {
+        const gold = env.add(lower, "gold_and_ap_container");
+        const body = env.add(gold, "hudGoldContainer");
+        const container = env.add(body, "", ["hudDeathGoldContainer"]);
+        const amount = env.add(container, "hudDeathGoldLabel", ["death_penalty_gold"], "Label");
+        amount.text = value;
+        return { gold, amount };
+    };
+    // Deliberate decoys: these are not evidence of alternative native layouts.
+    env.add(env.hud.root, "HudUnsecuredLabel", [], "Label").text = "500";
+    env.add(env.hud.root, "hudDeathGoldLabel", ["death_penalty_gold"], "Label").text = "800";
     const traverse = env.hud.root.FindChildTraverse;
-    let modernScans = 0;
+    const broadProbes = [];
     env.hud.root.FindChildTraverse = function (id) {
-        if (id === "HudUnsecuredLabel") modernScans++;
+        if (["HudUnsecuredLabel", "hudDeathGoldLabel", "gold_and_ap_container"].includes(id)) broadProbes.push(id);
         return traverse.call(this, id);
     };
-    env.feature.onEnable(); env.hud.clock.advance(6200);
+    env.feature.onEnable(); env.hud.clock.advance(1200);
     const state = () => env.hud.root.FindChildTraverse("QOLUnsecuredSoulsState");
-    assert.equal(state().text, "29s");
-    assert.ok(modernScans <= 3, `absent compatibility source triggered ${modernScans} whole-HUD scans`);
-    const modern = env.add(env.core.FindChild("gameplay_hud"), "HudUnsecuredLabel", [], "Label");
-    modern.text = "500"; env.hud.clock.advance(3200);
-    assert.equal(state().text, "20s", "late modern source keeps priority");
-    modern.text = "480"; env.hud.clock.advance(400);
-    assert.equal(state().text, "10s", "live values keep the normal sampling cadence");
+    assert.equal(state().text, "--", "unrelated labels cannot provide a fallback amount");
+    const first = native("1000"); env.hud.clock.advance(200);
+    assert.equal(state().text, "29s", "late native owner is discovered on the next tick");
+    first.amount.text = "980"; env.hud.clock.advance(400);
+    assert.equal(state().text, "20s");
+    first.gold.SetParent(env.add(env.hud.root, "RetiredGold"));
+    const replacement = native("500"); env.hud.clock.advance(200);
+    assert.equal(state().text, "20s", "live old owners cannot leak their decay history");
+    replacement.amount.SetParent(env.add(replacement.gold, "RetiredLabels"));
+    env.hud.clock.advance(200);
+    assert.equal(state().text, "--", "a moved label within the same gold owner is no longer the amount");
+    replacement.gold.DeleteAsync(0); env.hud.clock.advance(1200);
+    assert.equal(state().text, "--");
+    assert.deepEqual(broadProbes, []);
     env.feature.onDisable(); env.hud.clock.advance(20);
     assert.equal(state(), null); assert.deepEqual(env.hud.clock.errors, []);
 });
