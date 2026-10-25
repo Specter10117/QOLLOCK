@@ -94,8 +94,28 @@
                     const y = number(prefix + "Y_OFFSET");
                     return { x, y };
                 };
-                return { visualEnabled: Number(cfg.ENABLE_AMMO_STATUS) === 1, angle: number("AMMO_CLIP_ANGLE"), current, total, currentStyles, totalStyles, infiniteStyles,
-                    currentPosition: textPosition("AMMO_CURRENT_"), maxPosition: textPosition("AMMO_MAX_"),
+                const roles = [["weapon_ammo", currentStyles, textPosition("AMMO_CURRENT_"), current],
+                    ["weapon_ammo_max", totalStyles, textPosition("AMMO_MAX_"), total], ["weapon_ammo_infinite", infiniteStyles, {}, 100]];
+                const textPlans = new Map([16, 18].map(fontSize => [fontSize, roles.map(([className, plan, position, scale]) => {
+                    const styles = { ...plan };
+                    if (fontSize === 18) {
+                        if (scale !== 100) styles.fontSize = Math.max(8, Math.round(fontSize * scale / 100)) + "px";
+                        // Tokamak's digits have native content widths and no gap.
+                        delete styles.width;
+                        delete styles.marginLeft;
+                    }
+                    if (position.x) {
+                        const gap = Number.parseFloat(styles.marginLeft ?? (className === "weapon_ammo_max" && fontSize === 16 ? 2 : 0));
+                        styles.marginLeft = gap + position.x + "px";
+                        styles.marginRight = -position.x + "px";
+                    }
+                    if (position.y) {
+                        styles.marginTop = -position.y + "px";
+                        styles.marginBottom = position.y + "px";
+                    }
+                    return { className, styles };
+                })]));
+                return { visualEnabled: Number(cfg.ENABLE_AMMO_STATUS) === 1, angle: number("AMMO_CLIP_ANGLE"), textPlans,
                     clipStyles: {
                         ...(groupScale !== 100 ? { uiScale: groupScale + "%" } : {}),
                         ...(xOffset ? { x: xOffset + "px" } : {}),
@@ -117,24 +137,7 @@
             function discoverTexts() {
                 const sources = new Map();
                 const fontSize = panelAPI.findChild(panel.GetParent(), "clip_status_mirrored") ? 18 : 16;
-                for (const [className, plan, position, scale] of [["weapon_ammo", model.currentStyles, model.currentPosition, model.current],
-                    ["weapon_ammo_max", model.totalStyles, model.maxPosition, model.total], ["weapon_ammo_infinite", model.infiniteStyles, {}, 100]]) {
-                    const styles = { ...plan };
-                    if (fontSize === 18) {
-                        if (scale !== 100) styles.fontSize = Math.max(8, Math.round(fontSize * scale / 100)) + "px";
-                        // Tokamak's digits have native content widths and no gap.
-                        delete styles.width;
-                        delete styles.marginLeft;
-                    }
-                    if (position.x) {
-                        const gap = Number.parseFloat(styles.marginLeft ?? (className === "weapon_ammo_max" && fontSize === 16 ? 2 : 0));
-                        styles.marginLeft = gap + position.x + "px";
-                        styles.marginRight = -position.x + "px";
-                    }
-                    if (position.y) {
-                        styles.marginTop = -position.y + "px";
-                        styles.marginBottom = position.y + "px";
-                    }
+                for (const { className, styles } of model.textPlans.get(fontSize)) {
                     for (const target of QOL.utils.FindPanelsByClass(panel, className)) {
                         // Keep native multi-class precedence: a later role may
                         // replace shared properties, without dropping earlier ones.

@@ -97,6 +97,38 @@ test("ammo restores customized digit fonts after native feedback without changin
     assert.deepEqual(env.clock.errors, []);
 });
 
+test("ammo derives both native digit plans from settings while preserving live layout and multi-role precedence", () => {
+    const env = setup(), source = env.native(env.root);
+    const mirrored = env.add(source.gun, "clip_status_mirrored");
+    env.feature.onEnable();
+    assert.equal(source.current.style.fontSize, "27px");
+    assert.equal(source.current.style.width, undefined);
+    assert.equal(source.current.style.marginLeft, "20px");
+    env.sandbox.eval("globalThis.ammoRounds = 0; const originalRound = Math.round; Math.round = value => { ammoRounds++; return originalRound(value); };");
+    source.current.style.fontSize = "native overwrite"; env.clock.advance(1600);
+    assert.equal(source.current.style.fontSize, "27px", "native style feedback is still repaired");
+    assert.equal(env.sandbox.eval("ammoRounds"), 0, "unchanged settings require no repeated font-size derivation");
+    source.current.AddClass("weapon_ammo_max"); env.clock.advance(600);
+    assert.equal(source.current.style.fontSize, undefined, "the later neutral Max role releases the earlier Current font");
+    assert.equal(source.current.style.marginLeft, "20px", "the mirrored Max role has no native gap property to replace Current's margin");
+    mirrored.DeleteAsync(0); env.clock.advance(600);
+    assert.equal(source.current.style.fontSize, undefined);
+    assert.equal(source.current.style.width, undefined);
+    assert.equal(source.current.style.marginLeft, undefined, "the standard Max role's null gap releases the Current override");
+    source.current.RemoveClass("weapon_ammo_max"); env.clock.advance(600);
+    assert.equal(source.current.style.fontSize, "24px"); assert.equal(source.current.style.width, "48px");
+    env.cfg.AMMO_TOTAL_SCALE = 175; env.feature.onSettingsChanged();
+    source.current.AddClass("weapon_ammo_max"); env.clock.advance(600);
+    assert.equal(source.current.style.fontSize, "28px"); assert.equal(source.current.style.width, "88px");
+    assert.equal(source.current.style.marginLeft, "4px");
+    env.sandbox.eval("ammoRounds = 0;"); env.add(source.gun, "clip_status_mirrored"); env.clock.advance(600);
+    assert.equal(source.current.style.fontSize, "32px", "a late mirrored layout selects the current settings' alternate plan");
+    assert.equal(source.current.style.width, undefined); assert.equal(source.current.style.marginLeft, "20px");
+    assert.equal(env.sandbox.eval("ammoRounds"), 0);
+    assert.equal(source.current.text, "6"); assert.equal(source.maximum.text, " / 8");
+    env.feature.onDisable(); env.clock.advance(20); assert.deepEqual(env.clock.errors, []);
+});
+
 test("stopped ammo hooks cannot read settings or revive digit presentation", () => {
     const env = setup(), source = env.native(env.root);
     env.feature.onEnable(); env.feature.onDisable();
