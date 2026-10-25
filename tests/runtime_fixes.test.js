@@ -1026,9 +1026,13 @@ test("ult cooldowns syncs timers, dynamically picks up late-joining players, and
     const playersContainer = $.CreatePanel("Panel", playerContents, "PlayersContainer");
 
     const p1 = $.CreatePanel("Panel", playersContainer, "Player1");
-    const hidden1 = $.CreatePanel("Label", p1, "UltimateCooldownTextHidden");
+    const details1 = $.CreatePanel("Panel", p1, "PlayerDetailsContainer");
+    const status1 = $.CreatePanel("Panel", details1, "StatusRow");
+    const ultimate1 = $.CreatePanel("Panel", status1, "UltimateStatus");
+    const background1 = $.CreatePanel("Panel", ultimate1, "UltimateStatusBG");
+    const hidden1 = $.CreatePanel("Label", background1, "UltimateCooldownTextHidden");
     hidden1.text = "45";
-    const shown1 = $.CreatePanel("Label", p1, "UltimateCooldownTextShown");
+    const shown1 = $.CreatePanel("Label", status1, "UltimateCooldownTextShown");
 
     Q.core.ConfigAdapter.loadFromFlat({ ENABLE_ULT_COOLDOWNS: 1 });
     hud.clock.advance(300);
@@ -1039,9 +1043,13 @@ test("ult cooldowns syncs timers, dynamically picks up late-joining players, and
 
     // Add late-joining player
     const p2 = $.CreatePanel("Panel", playersContainer, "Player2");
-    const hidden2 = $.CreatePanel("Label", p2, "UltimateCooldownTextHidden");
+    const details2 = $.CreatePanel("Panel", p2, "PlayerDetailsContainer");
+    const status2 = $.CreatePanel("Panel", details2, "StatusRow");
+    const ultimate2 = $.CreatePanel("Panel", status2, "UltimateStatus");
+    const background2 = $.CreatePanel("Panel", ultimate2, "UltimateStatusBG");
+    const hidden2 = $.CreatePanel("Label", background2, "UltimateCooldownTextHidden");
     hidden2.text = "18";
-    const shown2 = $.CreatePanel("Label", p2, "UltimateCooldownTextShown");
+    const shown2 = $.CreatePanel("Label", status2, "UltimateCooldownTextShown");
 
     hud.clock.advance(300);
     assert.strictEqual(shown2.text, "18", "Late-joining player 2 cooldown must be dynamically picked up and synced");

@@ -429,3 +429,38 @@ test("retired economy config keys stay recognized and inactive without native di
     env.config({ ENABLE_MIN_SOULS: 0, ENABLE_UNSPENT_SOULS: 0 });
     assert.deepEqual(env.hud.clock.errors, []);
 });
+
+
+test("ultimate slots wait for native owners and replace a living status generation without player-wide probes", () => {
+    const env = fixture(), { top } = addTopbar(env), { players } = addRoster(env, top);
+    const player = env.add(players, "Player");
+    const decoyHidden = env.text(player, "UltimateCooldownTextHidden", "99");
+    const decoyShown = env.text(player, "UltimateCooldownTextShown", "Native decoy");
+    const traverse = player.FindChildTraverse, probes = [];
+    player.FindChildTraverse = function (id) {
+        if (["UltimateCooldownTextHidden", "UltimateCooldownTextShown"].includes(id)) probes.push(id);
+        return traverse.call(this, id);
+    };
+    env.config({ ENABLE_ULT_COOLDOWNS: 1 }); env.hud.clock.advance(1250);
+    assert.equal(decoyShown.text, "Native decoy");
+    const details = env.add(player, "PlayerDetailsContainer");
+    const mount = value => {
+        const status = env.add(details, "StatusRow"), ultimate = env.add(status, "UltimateStatus");
+        const background = env.add(ultimate, "UltimateStatusBG");
+        const hidden = env.text(background, "UltimateCooldownTextHidden", value);
+        const shown = env.text(status, "UltimateCooldownTextShown", "");
+        return { status, hidden, shown };
+    };
+    const old = mount("32"); env.hud.clock.advance(250); assert.equal(old.shown.text, "32");
+    old.status.SetParent(env.add(player, "RetiredStatus"));
+    const current = mount("8"); env.hud.clock.advance(250);
+    assert.equal(old.status.IsValid(), true); assert.equal(old.shown.text, "");
+    assert.equal(current.shown.text, "8");
+    env.config({ ENABLE_ULT_COOLDOWNS: 0 }); assert.equal(current.shown.text, "");
+    env.config({ ENABLE_ULT_COOLDOWNS: 1 }); env.hud.clock.advance(250);
+    assert.equal(current.shown.text, "8");
+    assert.equal(decoyHidden.text, "99"); assert.equal(decoyShown.text, "Native decoy");
+    assert.deepEqual(probes, []);
+    env.config({ ENABLE_ULT_COOLDOWNS: 0 });
+    assert.deepEqual(env.hud.clock.errors, []);
+});

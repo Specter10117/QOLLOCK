@@ -17,16 +17,15 @@
             const legacyTopResolver = resolver("CitadelHudTopBar");
             const teamsResolver = resolver("TeamsContainer");
             const teamResolvers = new Map();
-            const slotResolvers = new Map();
+            const shownPanels = new Map();
             let active = false, enabled = false, loop = null, root = null, topBar = null;
             let ownedPlayers = new Set();
             let nextFallback = 0, fallbackPlayers = [];
 
             function releasePlayer(player) {
                 P.setClass(player, CLASS_NAME, false);
-                const slot = slotResolvers.get(player);
-                if (slot) clearShown(slot.shownPanel);
-                slotResolvers.delete(player);
+                clearShown(shownPanels.get(player));
+                shownPanels.delete(player);
             }
 
             function clearShown(panel) {
@@ -38,7 +37,7 @@
                 for (const player of ownedPlayers) releasePlayer(player);
                 ownedPlayers.clear();
                 P.setClass(topBar, CLASS_NAME, false);
-                teamResolvers.clear(); slotResolvers.clear();
+                teamResolvers.clear(); shownPanels.clear();
                 fallbackPlayers = []; nextFallback = 0;
                 for (const owner of [topResolver, legacyTopResolver, teamsResolver]) owner.reset();
                 topBar = null;
@@ -85,19 +84,18 @@
             }
 
             function readSlot(player) {
-                if (!slotResolvers.has(player)) {
-                    const status = ["PlayerDetailsContainer", "StatusRow"];
-                    slotResolvers.set(player, {
-                        hidden: resolver("UltimateCooldownTextHidden", [...status, "UltimateStatus", "UltimateStatusBG"]),
-                        shown: resolver("UltimateCooldownTextShown", status),
-                        shownPanel: null
-                    });
-                }
-                const slot = slotResolvers.get(player);
-                const hidden = slot.hidden.resolve(player);
-                const shown = slot.shown.resolve(player);
-                if (shown !== slot.shownPanel) clearShown(slot.shownPanel);
-                slot.shownPanel = shown;
+                // Current native top-bar XML and the Debugger capture verify
+                // these owners; custom labels are declared in our player XML.
+                const details = P.findChild(player, "PlayerDetailsContainer");
+                const status = P.findChild(details, "StatusRow");
+                const ultimate = P.findChild(status, "UltimateStatus");
+                const background = P.findChild(ultimate, "UltimateStatusBG");
+                const hidden = P.findChild(background, "UltimateCooldownTextHidden");
+                const shown = P.findChild(status, "UltimateCooldownTextShown");
+                const previous = shownPanels.get(player);
+                if (shown !== previous) clearShown(previous);
+                if (P.isAlive(shown)) shownPanels.set(player, shown);
+                else shownPanels.delete(player);
                 if (!P.isAlive(shown)) return;
                 const raw = P.isAlive(hidden) ? hidden.text : "";
                 const text = raw === null || raw === undefined ? "" : String(raw).trim();
