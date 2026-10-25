@@ -464,6 +464,18 @@
         }
     };
 
+    const findChildByClass = (parent, className) => {
+        if (!isPanelAlive(parent) || typeof className !== "string" || !className) return null;
+        try {
+            const count = parent.GetChildCount();
+            for (let index = 0; index < count; index++) {
+                const child = parent.GetChild(index);
+                if (hasClassToken(child, className)) return child;
+            }
+        } catch (_) { /* Native children may retire during enumeration. */ }
+        return null;
+    };
+
     const findTraverse = (root, id) => {
         if (!isPanelAlive(root) || !id) return null;
         try {
@@ -617,6 +629,7 @@
         findRoot,
         findHud,
         findChild,
+        findChildByClass,
         findTraverse,
         setClass,
         setVisible,

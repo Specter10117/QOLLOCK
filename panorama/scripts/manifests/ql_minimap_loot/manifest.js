@@ -28,8 +28,7 @@
             function nativeMap(root) {
                 // XML plus the native capture place these owners directly below
                 // one another. A missing live owner must not adopt a retained map.
-                const byClass = (parent, name) => P.isAlive(parent)
-                    ? parent.Children().find(panel => P.isAlive(panel) && panel.BHasClass(name)) || null : null;
+                const byClass = P.findChildByClass;
                 const core = byClass(root, "HudCore");
                 const gameplay = P.findChild(core, "gameplay_hud");
                 const clamp = byClass(gameplay, "clamp_width");

@@ -30,8 +30,7 @@
             const P = QOL.core.panel, U = QOL.utils;
             // hud.xml and the October 3 Debugger capture agree on these owners.
             // Re-evaluate direct children so a live retired generation cannot win.
-            const directClass = (owner, name) => P.isAlive(owner) ?
-                owner.Children().find(child => P.hasClassToken(child, name)) || null : null;
+            const directClass = P.findChildByClass;
             const directPath = (owner, ids) => {
                 for (const id of ids) {
                     owner = P.findChild(owner, id);

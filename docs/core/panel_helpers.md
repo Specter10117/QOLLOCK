@@ -18,6 +18,7 @@ object is exposed as `QOL.core.panel`, `QOL.core.PanelHelpers`, and
 | `findHud(preferredRoot)` | Search context/ancestors for Hud; no-argument calls cache real HUD matches per context, never loading-root fallbacks. Can return the context/top root as a fallback, so this alone does not prove active gameplay. |
 | `findRoot(panel?)` | Walk ancestors of the supplied panel, defaulting to the current context; return null on native traversal failure. |
 | `findChild(parent, id)` | Safe native `FindChild` wrapper for direct children. |
+| `findChildByClass(parent, className)` | First valid immediate child with that class; short-circuits indexed native enumeration without allocating a child array or searching descendants. Returns null on a miss or native enumeration failure. It does not cache a generation or select the authoritative parent for the caller. |
 | `findTraverse(root, id)` | Safe native `FindChildTraverse` wrapper. |
 | `setClass(panel, className, active)` | Compare current class membership before changing it; return whether changed. |
 | `setVisible(panel, visible)` | Set the panel's `visible` property; this does not compare before assignment. |

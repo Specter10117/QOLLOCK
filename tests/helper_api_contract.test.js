@@ -47,3 +47,31 @@ test("settings shared exports preserve actual panel helpers without fabricating 
     panel.visible = false;
     assert.equal(g.QOL.isPanelVisibleMaybe(panel), false);
 });
+
+test("immediate class discovery never adopts a descendant and follows living child replacement", () => {
+    const hud = sim.createHud(); hud.assertLoaded();
+    const { QOL: Q, $ } = hud.sandbox.global;
+    const find = Q.core.panel.findChildByClass;
+    assert.equal(typeof find, "function");
+    const parent = $.CreatePanel("Panel", hud.root, "ImmediateOwner");
+    const nested = $.CreatePanel("Panel", parent, "NestedOwner");
+    const decoy = $.CreatePanel("Panel", nested, "NestedMatch"); decoy.AddClass("Needle");
+    let traversalCalls = 0, childrenCalls = 0, indexedReads = 0;
+    parent.FindChildrenWithClassTraverse = () => { traversalCalls++; return [decoy]; };
+    parent.Children = () => { childrenCalls++; throw Error("array enumeration must not be used"); };
+    const getChild = parent.GetChild;
+    parent.GetChild = function(index) { indexedReads++; return getChild.call(this, index); };
+    assert.equal(find(parent, "Needle"), null);
+    const current = $.CreatePanel("Panel", parent, "Current"); current.AddClass("Needle");
+    $.CreatePanel("Panel", parent, "LaterMatch").AddClass("Needle");
+    indexedReads = 0;
+    assert.equal(find(parent, "Needle"), current);
+    assert.equal(indexedReads, 2, "stop at the first immediate matching child");
+    current.SetParent($.CreatePanel("Panel", hud.root, "RetiredOwner"));
+    assert.equal(find(parent, "Needle").id, "LaterMatch");
+    assert.equal(current.IsValid(), true, "retirement is about ownership, not validity");
+    assert.equal(traversalCalls, 0); assert.equal(childrenCalls, 0);
+    assert.equal(find(null, "Needle"), null); assert.equal(find(parent, ""), null);
+    parent.GetChildCount = () => { throw Error("native owner disappeared"); };
+    assert.equal(find(parent, "Needle"), null);
+});

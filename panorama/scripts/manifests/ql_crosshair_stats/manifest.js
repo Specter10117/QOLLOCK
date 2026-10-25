@@ -74,14 +74,6 @@
 
             // Current hud.xml and the native Debugger capture place both owners
             // directly under HudCore. A miss stays local to this owner.
-            function directCore(root) {
-                if (!_isAlive(root)) return null;
-                for (let index = 0; index < root.GetChildCount(); index++) {
-                    const panel = root.GetChild(index);
-                    if (P.hasClassToken(panel, "HudCore")) return panel;
-                }
-                return null;
-            }
             const tree = P.createOwnedTree();
             let active = false, rootOwner = null, model = null, loop = null, overlay = null, overlayParent = null;
             const rows = new Map();
@@ -385,7 +377,7 @@
                     hideOverlay();
                     return;
                 }
-                const core = directCore(root);
+                const core = P.findChildByClass(root, "HudCore");
                 if (!ensureOverlay(core)) { hideOverlay(); return; }
                 const content = readContent(readSource(core));
                 if (preview && !content.size) {
