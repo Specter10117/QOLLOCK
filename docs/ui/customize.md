@@ -249,6 +249,11 @@ define the overall frame.
 Frame geometry uses actual native layout measurements, including stamina pip
 unions, without multiplying them again by the configured scale.
 A panel replacement or hidden owner cancels an active move/resize gesture.
+For content unions such as Souls and item cooldowns, captured child identities
+also belong to the gesture and its measurement history. Retiring/replacing a
+measured child cancels that capture and prevents delayed resize corrections from
+moving the new content. A late sample may join an otherwise intact capture;
+settling still requires the same complete union that began the resize.
 Temporary missing dimensions or pending native coordinates on the same living,
 visible owner retain the gesture's captured geometry and native input panels.
 They do not cancel a live edit or erase its Undo entry.

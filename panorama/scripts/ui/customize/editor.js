@@ -32,8 +32,12 @@
         const width = flowWidth(owner, element, before.target);
         return width === null ? null : (width - before.flowWidth) * G.scale(before.target.GetParent(), "x") / G.scale(owner.overlay, "x");
     }
+    const measuredPanels = (element, target) => typeof element.measurePanels === "function"
+        ? element.measurePanels(target).filter(G.isShown) : [];
+    const samePanels = (a, b) => a.length === b.length && a.every((panel, index) => panel === b[index]);
     const observationContext = (owner, element, target) => ({
         parent: target.GetParent(), scaleTarget: Q.presentation.scaleTarget(element, target),
+        panels: measuredPanels(element, target),
         measured: element.id === "healthbar" ? P.findChild(target, "QOLHealthbarGeometry") :
             element.measureId ? P.findChild(target, element.measureId) || P.findTraverse(target, element.measureId) : null,
         density: JSON.stringify([G.scale(owner.overlay, "x"), G.scale(owner.overlay, "y"),
@@ -43,7 +47,7 @@
             .map(field => [field.key, owner.transaction.value(field.key)]))
     });
     const sameContext = (a, b) => !!a && !!b && a.parent === b.parent && a.scaleTarget === b.scaleTarget &&
-        a.measured === b.measured && a.density === b.density && a.origins === b.origins;
+        a.measured === b.measured && samePanels(a.panels, b.panels) && a.density === b.density && a.origins === b.origins;
     function observe(owner, element, target, bounds) {
         const item = owner.frames.get(element.id), values = {};
         for (const field of element.fields) values[field.key] = owner.transaction.value(field.key);
@@ -126,7 +130,8 @@
             const fresh = owner.frames.get(pending.element.id)?.observed;
             if (fresh !== pending.before && sameContext(fresh?.context, context)) return alignmentReady(owner, { element: pending.element, before: fresh });
             const prior = pending.before.context;
-            if (prior.parent !== context.parent || prior.scaleTarget !== context.scaleTarget || prior.measured !== context.measured) return false;
+            if (prior.parent !== context.parent || prior.scaleTarget !== context.scaleTarget || prior.measured !== context.measured ||
+                !samePanels(prior.panels, context.panels)) return false;
             // Density/origin changes preserve this owner's local coordinates.
             // Project the old measurement into the new canvas before checking
             // an offset that was already awaiting native layout.
@@ -284,6 +289,12 @@
             (drag.element.available && !drag.element.available(owner.hud, { ...Q.getSettingsConfig(), ...owner.transaction.snapshot() }))) {
             finishDrag(owner, true);
             return;
+        }
+        if (drag.context.panels.length) {
+            const panels = measuredPanels(drag.element, drag.target);
+            // A late sample may join an intact union. Retired/replaced content
+            // cannot continue a gesture captured against the previous panels.
+            if (!drag.context.panels.every(panel => panels.includes(panel))) { finishDrag(owner, true); return; }
         }
         // Use the cursor only when available at capture. Otherwise sample the
         // native displayPanel after its compositor has placed it.
