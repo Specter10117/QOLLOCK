@@ -1019,7 +1019,8 @@ test("ult cooldowns syncs timers, dynamically picks up late-joining players, and
     hud.assertLoaded();
     const { $, QOL: Q } = hud.sandbox.global;
 
-    const topBar = $.CreatePanel("Panel", hud.root, "TopBar");
+    const core = $.CreatePanel("Panel", hud.root, ""); core.AddClass("HudCore");
+    const topBar = $.CreatePanel("Panel", core, "TopBar");
     const teams = $.CreatePanel("Panel", topBar, "TeamsContainer");
     const team = $.CreatePanel("Panel", teams, "Team1");
     const playerContents = $.CreatePanel("Panel", team, "PlayerContents");

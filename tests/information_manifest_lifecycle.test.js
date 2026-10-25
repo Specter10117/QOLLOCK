@@ -46,7 +46,7 @@ function enableCrosshair(env) {
 }
 
 function addTopbar(env, clock = "20:00") {
-    const top = env.add(env.root || env.hud.root, "TopBar");
+    const top = env.add(env.core, "TopBar");
     const gameTime = env.text(top, "GameTime", clock);
     return { top, gameTime };
 }
@@ -462,5 +462,33 @@ test("ultimate slots wait for native owners and replace a living status generati
     assert.equal(decoyHidden.text, "99"); assert.equal(decoyShown.text, "Native decoy");
     assert.deepEqual(probes, []);
     env.config({ ENABLE_ULT_COOLDOWNS: 0 });
+    assert.deepEqual(env.hud.clock.errors, []);
+});
+
+
+test("ultimate topbar follows late direct owners and retires living out-of-path generations", () => {
+    const env = fixture();
+    env.Q.core.App.shutdown(); env.config({ ENABLE_ULT_COOLDOWNS: 1 });
+    const decoyTop = env.add(env.hud.root, "TopBar");
+    const decoy = addUlt(env, addRoster(env, decoyTop).players, "99");
+    const feature = env.Q.core.FeatureRegistry.getManifest("ql_ult_cooldowns").create({
+        id: "ql_ult_cooldowns", events: env.Q.core.EventBus,
+        config: { view: () => env.Q.core.ConfigStore.view("ql_ult_cooldowns") }
+    });
+    feature.onEnable(); env.hud.clock.advance(2500);
+    assert.equal(decoyTop.BHasClass("ult_cooldowns_active"), false);
+    assert.equal(decoy.shown.text, "");
+    const { top } = addTopbar(env), old = addUlt(env, addRoster(env, top).players, "32");
+    env.hud.clock.advance(250); assert.equal(old.shown.text, "32");
+    env.core.SetParent(env.add(env.hud.root, "RetiredCore"));
+    env.core = env.add(env.hud.root, "", ["HudCore"]);
+    const currentTop = addTopbar(env).top, current = addUlt(env, addRoster(env, currentTop).players, "8");
+    env.hud.clock.advance(250);
+    assert.equal(old.player.IsValid(), true); assert.equal(old.shown.text, "");
+    assert.equal(top.BHasClass("ult_cooldowns_active"), false);
+    assert.equal(current.shown.text, "8");
+    feature.onDisable(); assert.equal(current.shown.text, "");
+    feature.onEnable(); env.hud.clock.advance(250); assert.equal(current.shown.text, "8");
+    assert.equal(decoy.shown.text, ""); feature.onDisable();
     assert.deepEqual(env.hud.clock.errors, []);
 });

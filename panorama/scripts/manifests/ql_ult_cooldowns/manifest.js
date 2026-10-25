@@ -13,8 +13,6 @@
         create(ctx) {
             const P = QOL.core.panel;
             const resolver = (id, ownerPath = []) => QOL.panelCache.createIdResolver(id, { ownerPath, retryMs: 1000, refreshMs: 2000 });
-            const topResolver = resolver("TopBar");
-            const legacyTopResolver = resolver("CitadelHudTopBar");
             const teamsResolver = resolver("TeamsContainer");
             const teamResolvers = new Map();
             const shownPanels = new Map();
@@ -39,7 +37,7 @@
                 P.setClass(topBar, CLASS_NAME, false);
                 teamResolvers.clear(); shownPanels.clear();
                 fallbackPlayers = []; nextFallback = 0;
-                for (const owner of [topResolver, legacyTopResolver, teamsResolver]) owner.reset();
+                teamsResolver.reset();
                 topBar = null;
             }
 
@@ -105,8 +103,10 @@
 
             function update() {
                 if (!active) return;
-                const currentRoot = $.GetContextPanel();
-                const currentTop = topResolver.resolve(currentRoot) || legacyTopResolver.resolve(currentRoot);
+                const currentRoot = P.findHud($.GetContextPanel());
+                const core = P.isAlive(currentRoot) && (currentRoot.id === "Hud" || currentRoot.paneltype === "CitadelHud") ?
+                    P.findChildByClass(currentRoot, "HudCore") : null;
+                const currentTop = P.findChild(core, "TopBar");
                 if (currentRoot !== root || currentTop !== topBar) {
                     release(); root = currentRoot; topBar = currentTop;
                 }
@@ -144,8 +144,9 @@
             };
         },
         test() {
-            const root = $.GetContextPanel();
-            const top = QOL.core.panel.findTraverse(root, "TopBar") || QOL.core.panel.findTraverse(root, "CitadelHudTopBar");
+            const P = QOL.core.panel;
+            const root = P.findHud($.GetContextPanel());
+            const top = P.findChild(P.findChildByClass(root, "HudCore"), "TopBar");
             if (!top) return null;
             return { passed: true, name: "Ult cooldown top bar check", message: "", assertions: [{ passed: true, name: "TopBar exists" }] };
         }
