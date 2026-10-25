@@ -50,6 +50,10 @@
                         marginTop: marginTop + "px", marginRight: marginRight + "px",
                         marginBottom: marginBottom + "px", marginLeft: marginLeft + "px", opacity: String(opacity)
                     };
+                    // The native 440x520 host also contains location/edge UI.
+                    // Let the fixed-icon viewport grow beyond it without
+                    // squishing the map into that unchanged native layout box.
+                    if (fixedIcons) styles.overflow = "noclip";
                     if (hidden) styles.visibility = "collapse";
                     if (drawOverUi) styles.zIndex = "2147483647";
                 } else if (panel.id !== "hud_minimap" && fixedIcons) {

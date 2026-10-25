@@ -70,5 +70,9 @@ the native pixel dimensions apply again.
 The same build changed `minimap_persp` to a non-square native host so location
 text and edge UI fit around the square map viewport. Scaling may use `ui-scale`,
 but must not replace that host's native width or height.
+Fixed-icon mode releases the host's overflow constraint with `noclip`, allowing
+the resized viewport to extend beyond that native box. The viewport retains its
+native clipping; switching back or disabling releases the host override without
+changing saved sizes or offsets.
 Check markers, click targets, range circles, Alt/Tab switching and reset in the
 repacked client.

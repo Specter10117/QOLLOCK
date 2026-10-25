@@ -59,6 +59,7 @@ test("Customize exact Size previews and applies to the fixed-icon renderer in Ba
         assert.equal(env.viewport.style.width, next + "px");
         assert.equal(env.viewport.style.height, next + "px");
         assert.equal(env.host.style.uiScale, "100%", "fixed-icon path does not magnify the HUD");
+        assert.equal(env.host.style.overflow, "noclip", "the native host allows the enlarged viewport in every view");
         assert.equal(env.host.style.width, undefined, "native non-square host survives");
         assert.equal(env.renderer.style.width, undefined, "CSS selects the native render-surface ratio");
         assert.equal(env.renderer.BHasClass(fixedClass), true);
@@ -121,6 +122,40 @@ test("fixed-icon toggle returns to native CSS and whole-map scale without distur
     env.clean();
 });
 
+test("Customize fixed-icon toggles preserve edited size and offsets while releasing the host layout constraint", () => {
+    const env = setup({ fixed: 0 });
+    env.global.QOL.ui.customize.start(null, { elementId: "minimap" });
+    const values = { MINIMAP_SMALL_SIZE: 900, MINIMAP_X_OFFSET: 120, MINIMAP_Y_OFFSET: -70 };
+    for (const [key, value] of Object.entries(values)) {
+        const input = env.find("QOLCustomize_" + key);
+        input.text = String(value); input._fire("ontextentrychange");
+        env.clock.advance(1200);
+    }
+    for (const fixed of [1, 0, 1]) {
+        env.click("QOLCustomize_MINIMAP_FIXED_ICON_SIZE"); env.clock.advance(1200);
+        for (const [key, value] of Object.entries(values)) {
+            assert.equal(env.store.get("ql_minimap_runtime", key), value, key);
+            assert.equal(env.find("QOLCustomize_" + key).text, String(value));
+        }
+        assert.equal(Number(env.store.get("ql_minimap_runtime", "MINIMAP_FIXED_ICON_SIZE")), fixed);
+        assert.equal(env.host.style.uiScale, fixed ? "100%" : "225%");
+        assert.equal(env.viewport.style.width, fixed ? "900px" : undefined);
+        assert.equal(env.host.style.marginRight, "-90px");
+        assert.equal(env.host.style.marginBottom, "-40px");
+        assert.equal(env.host.style.overflow, fixed ? "noclip" : undefined,
+            "the fixed native host must not squish or clip the enlarged viewport");
+        assert.equal(env.host.style.width, undefined);
+        assert.equal(env.host.style.height, undefined);
+        assert.equal(env.viewport.style.overflow, undefined, "retain the viewport's native clipping");
+    }
+    env.click("QOLCustomizeApply"); env.clock.advance(1200);
+    for (const [key, value] of Object.entries(values)) assert.equal(env.global.MOD_CONFIG[key], value);
+    assert.equal(env.global.MOD_CONFIG.MINIMAP_FIXED_ICON_SIZE, 1);
+    env.hud.sandbox.global.QOL.core.FeatureRegistry.disable("ql_minimap_runtime");
+    assert.equal(env.host.style.overflow, undefined, "disable releases the host overflow override");
+    env.clean();
+});
+
 test("fixed-icon presentation rebinds replaced native owners and releases only owned properties", () => {
     const env = setup();
     const oldViewport = env.viewport, oldRenderer = env.renderer, parent = env.host.GetParent();
@@ -140,6 +175,7 @@ test("fixed-icon presentation rebinds replaced native owners and releases only o
     assert.equal(viewport.style.width, undefined); assert.equal(frame.style.height, undefined);
     assert.equal(renderer.BHasClass(fixedClass), false); assert.equal(env.host.style.uiScale, undefined);
     assert.equal(env.host.style.preTransformScale2d, undefined);
+    assert.equal(env.host.style.overflow, undefined);
     assert.equal(renderer.style.transform, "rotateZ(180deg)");
     assert.equal(env.host.GetParent(), parent);
     env.hud.sandbox.global.QOL.core.FeatureRegistry.enable("ql_minimap_runtime");
@@ -160,8 +196,10 @@ test("replaced minimap host releases stacking without moving either native hiera
     const renderer = add(env, add(env, viewport, "HudMinimapContainer"), "hud_minimap");
     env.clock.advance(600);
     assert.equal(oldHost.style.zIndex, undefined); assert.equal(oldHost.style.uiScale, undefined);
+    assert.equal(oldHost.style.overflow, undefined);
     assert.equal(env.renderer.BHasClass(fixedClass), false);
     assert.equal(host.style.zIndex, "2147483647"); assert.equal(viewport.style.width, "800px");
+    assert.equal(host.style.overflow, "noclip");
     assert.equal(renderer.BHasClass(fixedClass), true);
     assert.equal(host.GetParent(), nativeParent); assert.equal(oldHost.GetParent(), orphan);
     env.hud.sandbox.global.QOL.core.FeatureRegistry.disable("ql_minimap_runtime");
