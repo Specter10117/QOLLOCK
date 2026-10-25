@@ -371,11 +371,6 @@
                 if (swatch) swatchSignature = P.syncStyles(swatch, { backgroundColor: text || "transparent" }, swatchSignature).sig;
             });
         }
-        if (element.note) {
-            const details = P.create("Panel", parent, "QOLCustomizeDetails");
-            details.AddClass("QOLCustomizeDetails");
-            label(details, element.note);
-        }
         const sync = (options = {}) => {
             if (!valid()) return;
             if (!options.preserveInput) cancelTimer();

@@ -30,8 +30,7 @@ for (const basic of [0, 1]) test(`disabled Item Cooldowns have no frame, catalog
     assert.equal(g.QOL.ui.customize.start(), true);
     const frame = env.find("QOLCustomizeFrame_cooldowns");
     assert.equal(frame.visible, false, "a surviving panel is not an enabled feature");
-    assert.equal(env.find("QOLCustomizeSelect_cooldowns").visible, false);
-    env.find("QOLCustomizeAllElements")._fire("onactivate");
+    assert.equal(env.find("QOLCustomizeSelect_cooldowns").visible, true);
     const entry = env.find("QOLCustomizeSelect_cooldowns");
     assert.equal(entry.visible, true);
     assert.equal(entry.BHasClass("Unavailable"), true);
@@ -83,7 +82,6 @@ test("HUD keeps feature Customize actions while AP and Active Items remain only 
     for (const id of ["topBar", "bottomBar", "items", "souls", "chat", "damageReport"])
         assert.ok(env.find("QOLCustomizeEntry_" + id), id);
     Q.ui.customize.start();
-    env.find("QOLCustomizeAllElements")._fire("onactivate");
     for (const id of ["abilityPoints", "activeItems"]) assert.ok(env.find("QOLCustomizeSelect_" + id), id);
     env.find("QOLCustomizeCancel")._fire("onactivate");
     assert.deepEqual(env.doc.eventErrors, []); assert.deepEqual(env.clock.errors, []);

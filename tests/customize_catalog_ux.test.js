@@ -19,19 +19,19 @@ function setup() {
     return { ...env, souls: panel, find: id => env.em.FindChildTraverse(id) };
 }
 
-test("catalog starts with visible surfaces, opt-in reveals conditional elements, and a hidden selection can be restored", () => {
+test("catalog starts with all surfaces, filtering is optional, and a hidden selection can be restored", () => {
     const env = setup();
     const { global: g, clock, find, souls } = env;
     assert.equal(g.QOL.ui.customize.start(), true);
     assert.equal(find("QOLCustomizeSelect_souls").visible, true);
-    assert.equal(find("QOLCustomizeSelect_compass").visible, false);
+    assert.equal(find("QOLCustomizeSelect_compass").visible, true);
     for (const id of ["profileScreens", "mainMenu", "healthWarnings", "targetShapes", "nicknames"]) {
         assert.equal(find("QOLCustomizeSelect_" + id), null, id);
     }
     find("QOLCustomizeAllElements")._fire("onactivate");
-    assert.equal(find("QOLCustomizeSelect_compass").visible, true);
-    find("QOLCustomizeAllElements")._fire("onactivate");
     assert.equal(find("QOLCustomizeSelect_compass").visible, false);
+    find("QOLCustomizeAllElements")._fire("onactivate");
+    assert.equal(find("QOLCustomizeSelect_compass").visible, true);
     const toggle = find("QOLCustomize_HUD_SOULS_ENABLED");
     toggle._fire("onactivate"); clock.advance(1200);
     assert.equal(toggle.BHasClass("ToggleOff"), true);
@@ -93,4 +93,27 @@ test("Cancel discards both accepted live typing and pending callbacks without sa
         assert.deepEqual(env.doc.eventErrors, []);
         assert.deepEqual(clock.errors, []);
     }
+});
+
+for (const opacity of [0, 1]) test(`Souls remain recoverable from the full catalog at opacity ${opacity}`, () => {
+    const env = setup(), { global: g, find, clock, souls } = env;
+    Object.assign(g.MOD_CONFIG, { SOULS_OPACITY: opacity, SOULS_X_OFFSET: 5000 });
+    g.SaveAndSync(); clock.advance(1200);
+    if (!opacity) souls.visible = false; // Native layout supplies no measurable visible content.
+    g.QOL.ui.customize.start();
+    const row = find("QOLCustomizeSelect_souls");
+    assert.equal(row.visible, true);
+    row._fire("onactivate");
+    find("QOLCustomizeReset")._fire("onactivate"); clock.advance(1200);
+    assert.equal(find("QOLCustomize_SOULS_OPACITY").text, "100");
+    assert.equal(find("QOLCustomize_SOULS_X_OFFSET").text, "0");
+    find("QOLCustomizeCancel")._fire("onactivate"); clock.advance(1200);
+    assert.deepEqual(env.doc.eventErrors, []); assert.deepEqual(clock.errors, []);
+});
+
+test("Customize inspectors do not render panel descriptions", () => {
+    const env = setup();
+    env.global.QOL.ui.customize.start(null, { elementId: "ammoMax" });
+    assert.equal(env.find("QOLCustomizeDetails"), null);
+    env.find("QOLCustomizeCancel")._fire("onactivate");
 });

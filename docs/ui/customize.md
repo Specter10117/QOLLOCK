@@ -13,8 +13,11 @@ fail before opening or changing HUD state.
 AP and Active Items have no empty standalone subsection in the ordinary HUD
 settings. They remain separate selections in the full Customize catalog.
 The standalone Customize tab lists editable HUD surfaces with independent frames.
-It shows available surfaces by default; All elements also reveals hidden or
-conditional surfaces. The current selection remains listed when hidden so it can
+It shows all surfaces by default, including hidden or conditional surfaces, so
+zero opacity, state hiding and off-screen placement can be repaired without a
+configuration reset. Turning off All elements filters to available surfaces.
+Inspector panel descriptions are omitted for every selection.
+The current selection remains listed when hidden so it can
 be re-enabled. Search filters this list, including localized field names. Empty
 reference entries, separate-context screens and settings-only children do not
 appear in the canvas catalog; their settings section retains its scoped action.
