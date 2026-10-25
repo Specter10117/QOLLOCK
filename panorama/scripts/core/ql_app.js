@@ -85,10 +85,16 @@
             }
         }
         const maxCfg = Object.assign({}, base);
+        const fields = new Map(QOL.settingsFields.map(field => [field.key, field]));
+        const enableToggle = key => {
+            const field = fields.get(key);
+            if (!field || field.kind !== "toggle" || key.startsWith("DISABLE_")) return;
+            // Suppression controls reduce the exercised HUD rather than expand it.
+            maxCfg[key] = field.role === "stateVisibility" || /(^|_)HIDE_/.test(key) ? 0 : 1;
+        };
         for (const k in maxCfg) {
             if (/^(ENABLE_|DISABLE_|HUD_.*_ENABLED$|SUPPORT_|SHOW_|MINIMAL_)/.test(k)) {
-                if (k.startsWith("DISABLE_")) continue;
-                maxCfg[k] = 1;
+                enableToggle(k);
             }
         }
         if (FeatureRegistry && typeof FeatureRegistry.getRegisteredIds === "function") {
@@ -96,9 +102,9 @@
             for (let i = 0; i < ids.length; i++) {
                 const m = FeatureRegistry.getManifest(ids[i]);
                 if (!m) continue;
-                if (m.enableKey) maxCfg[m.enableKey] = 1;
+                if (m.enableKey) enableToggle(m.enableKey);
                 if (Array.isArray(m.enableKeys)) {
-                    for (let k = 0; k < m.enableKeys.length; k++) maxCfg[m.enableKeys[k]] = 1;
+                    for (let k = 0; k < m.enableKeys.length; k++) enableToggle(m.enableKeys[k]);
                 }
                 if (Array.isArray(m.settings)) {
                     for (let s = 0; s < m.settings.length; s++) {
@@ -106,11 +112,12 @@
                         const sk = setting.key;
                         if (!sk || sk.startsWith("DISABLE_")) continue;
                         if (setting.type === "toggle") {
-                            maxCfg[sk] = 1;
+                            enableToggle(sk);
                         } else if (setting.type === "multitoggle" && Array.isArray(setting.options)) {
+                            enableToggle(sk);
                             for (let o = 0; o < setting.options.length; o++) {
                                 const ok = setting.options[o]?.key;
-                                if (ok && !ok.startsWith("DISABLE_")) maxCfg[ok] = 1;
+                                if (ok) enableToggle(ok);
                             }
                         }
                     }
@@ -397,10 +404,12 @@
                 const previous = _stressBenchmark;
                 let savedFlatConfig = previous ? previous.savedConfig : null;
                 if (!previous) {
-                    if (ConfigAdapter && typeof ConfigAdapter.exportToFlat === "function") {
+                    // Runtime buckets may contain a leased Customize draft.
+                    // Only canonical settings belong in the restoration snapshot.
+                    if (globalState?.lastConfig && Object.keys(globalState.lastConfig).length > 0) {
+                        savedFlatConfig = QOL.mergeConfig(globalState.lastConfig);
+                    } else if (ConfigAdapter && typeof ConfigAdapter.exportToFlat === "function") {
                         savedFlatConfig = ConfigAdapter.exportToFlat();
-                    } else if (globalState?.lastConfig && Object.keys(globalState.lastConfig).length > 0) {
-                        savedFlatConfig = Object.assign({}, globalState.lastConfig);
                     } else if (typeof QOL !== "undefined" && typeof QOL.buildDefaultConfig === "function") {
                         savedFlatConfig = QOL.buildDefaultConfig();
                     }
@@ -445,8 +454,10 @@
                 }
                 $.Msg(`[QOLLock][Benchmark] Stress setup active: ${enabledIds.length} feature manifests running, root HUD classes active for ${durSec}s`);
             } catch (e) {
-                if (_stressBenchmark === stress) _stressBenchmark = null;
+                if (_stressBenchmark === stress) _restoreStressBenchmark(hudPanel, "setup-error");
+                if (_benchmarkRequest === request) _benchmarkRequest = null;
                 if (Logger) Logger.logWarn("Benchmark", `Benchmark stress setup failed: ${e?.message || e}`);
+                return;
             }
         } else {
             const enabledIds = (FeatureRegistry && typeof FeatureRegistry.getEnabledIds === "function")

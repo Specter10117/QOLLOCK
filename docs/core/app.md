@@ -36,12 +36,12 @@ Runtime enable-state reconciliation uses the registry's automatic mode. It prese
 `ql_app.js` coordinates live in-game performance benchmarks requested via `QOL_DiagRequest` tokens (prefixed `bm_`):
 - **Normal Benchmark (`bm_<dur>_normal_<token>`)**: Measures the CPU overhead and polling execution metrics of the user's active configuration over `<dur>` seconds without altering any settings.
 - **Stress Benchmark (`bm_<dur>_stress_<token>`)**:
-  - Captures the player's active configuration and revision in a transient stress lease before applying the expanded configuration.
-  - Builds an expanded configuration via `_buildMaximalConfig()`, setting declared enable keys and eligible non-`DISABLE_` toggles/multitoggle options. Numeric modes, compatibility restrictions, runtime suppression and native source availability still limit which features actually run or appear; this is not an all-features-visible guarantee.
+  - Captures the player's canonical configuration and revision in a transient stress lease before applying the expanded configuration. A transient Customize draft is not part of that restoration snapshot.
+  - Builds an expanded configuration via `_buildMaximalConfig()`, using current toggle metadata for declared enable keys and eligible toggles/multitoggle options. Hide controls, including normal/TAB visibility suppression, are cleared for the sample; `DISABLE_` controls and numeric values retain their defaults. Numeric modes, compatibility restrictions, runtime suppression and native source availability still limit which features actually run or appear; this is not an all-features-visible guarantee.
   - While the lease is active, config polling preserves the expanded root classes (e.g. Centered ESC Menu, Minimap transforms) and feature configuration.
   - Buffers any incoming user configuration edits during the benchmark so they are cleanly applied after completion without interfering with the test.
   - Arms a safety timeout fallback timer (`durSec + 3s`) to attempt configuration restoration if normal completion is missed. The callback still depends on the native runtime delivering it.
-  - Upon benchmark completion, error, timeout, or application shutdown, triggers `_restoreStressBenchmark()` to cleanly restore original user settings, reload `ConfigAdapter`, re-sync manifests, and re-apply normal HUD CSS classes.
+  - Upon benchmark completion, setup/start error, timeout, or application shutdown, triggers `_restoreStressBenchmark()` to cleanly restore original user settings, reload `ConfigAdapter`, re-sync manifests, and re-apply normal HUD CSS classes. A failed setup does not start a measurement.
 
 Diagnostic requests own their Scheduler benchmark handles and report callbacks;
 shutdown retires that request before restoring settings. The stress lease owns

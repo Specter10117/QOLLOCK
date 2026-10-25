@@ -15,6 +15,70 @@ function setup() {
     return { hud, Q, request, g };
 }
 
+function topbar(hud) {
+    const core = hud.root.addChild(hud.doc.create("Panel", { classes: ["HudCore"] }));
+    return core.addChild(hud.doc.create("CitadelHudTopBar", { id: "TopBar" }));
+}
+
+test("expanded benchmark keeps HUD surfaces visible and preserves numeric presentation defaults", () => {
+    const { hud, Q, request } = setup();
+    const top = topbar(hud);
+    request("bm_10_stress_visible");
+    hud.clock.advance(600);
+    assert.equal(top.style.visibility, undefined);
+    const expanded = Q.core.ConfigAdapter.exportToFlat();
+    for (const field of Q.settingsFields.filter(field => field.role === "stateVisibility")) {
+        assert.equal(expanded[field.key], 0, field.key);
+    }
+    assert.equal(expanded.ENABLE_HIDE_AMMO_ALL, 0);
+    assert.equal(expanded.ENABLE_HIDE_RELOAD_ICON, 0);
+    assert.equal(expanded.MINIMAL_MINIMAP_OPACITY, 0.9);
+    assert.equal(expanded.ENABLE_COMPASS, 1);
+    hud.clock.advance(10000);
+    assert.equal(top.style.visibility, undefined);
+    assert.deepEqual(hud.clock.errors, []);
+});
+
+test("stress completion restores canonical settings rather than an expired Customize draft", () => {
+    const { hud, Q, g, request } = setup();
+    const top = topbar(hud);
+    const canonical = { ...Q.buildDefaultConfig(), TOP_BAR_X_OFFSET: 37 };
+    g.State.lastConfig = canonical;
+    Q.core.ConfigAdapter.loadFromFlat(canonical);
+    hud.root.AddClass("QOLCustomizeActive");
+    Q.presentation.preview.write(hud.root, { TOP_BAR_HIDE_NORMAL: 1, TOP_BAR_X_OFFSET: 90 },
+        "before-benchmark", Q.core.persistence.getConfigChangeStamp(Q.getUIRoot()));
+    hud.clock.advance(600);
+    assert.equal(top.style.visibility, "collapse");
+    assert.equal(top.style.x, "90px");
+    request("bm_10_stress_expired_preview");
+    hud.clock.advance(10600);
+    assert.equal(top.style.visibility, undefined);
+    assert.equal(top.style.x, "37px");
+    assert.equal(Q.core.ConfigAdapter.exportToFlat().TOP_BAR_HIDE_NORMAL, 0);
+    assert.equal(g.State.lastConfig.TOP_BAR_X_OFFSET, 37);
+    assert.deepEqual(hud.clock.errors, []);
+});
+
+test("partial stress setup failure rolls back settings before starting a sample", () => {
+    const { hud, Q, request } = setup();
+    const baseline = Q.core.ConfigAdapter.exportToFlat();
+    const load = Q.core.ConfigAdapter.loadFromFlat;
+    let starts = 0, fail = true;
+    Q.core.Scheduler.startBenchmark = () => { starts++; };
+    Q.core.ConfigAdapter.loadFromFlat = (...args) => {
+        load(...args);
+        if (fail) { fail = false; throw Error("injected partial stress setup failure"); }
+    };
+    request("bm_10_stress_failed_setup");
+    assert.deepEqual(Q.core.ConfigAdapter.exportToFlat(), baseline);
+    assert.equal(starts, 0);
+    hud.clock.advance(14000);
+    assert.deepEqual(Q.core.ConfigAdapter.exportToFlat(), baseline);
+    assert.ok(hud.sandbox.messages.some(message => message.includes("injected partial stress setup failure")));
+    assert.deepEqual(hud.clock.errors, []);
+});
+
 test("normal benchmark dispatch deduplicates tokens and publishes the captured completion", () => {
     const { hud, Q, request } = setup(), calls = [];
     const baseline = Q.core.ConfigAdapter.exportToFlat();
