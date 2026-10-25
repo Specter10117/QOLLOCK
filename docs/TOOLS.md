@@ -5,14 +5,14 @@ a simulated lookup trace and a native client benchmark answer different question
 
 ## Panel lookup investigations
 
-Use the tracked [October 3 native Debugger capture](../captures/README.md) for
+Use the tracked [October 3 native Debugger capture](../tests/fixtures/hud/README.md) for
 lookup investigations in its hero-testing scenario. The filename is stable;
 check its metadata before comparing any saved reports. Missing panels in one
 scenario do not establish native absence.
 
 | Question | Command | Input and limits |
 | --- | --- | --- |
-| Which active HUD ID/class dependencies occur in the capture? | `node scripts/audit_lookups_vs_capture.js --json` | Defaults to `captures/deadlock_hud_dump.json`. Static inventory, not execution or caller reachability. |
+| Which active HUD ID/class dependencies occur in the capture? | `node scripts/audit_lookups_vs_capture.js --json` | Defaults to `tests/fixtures/hud/2026-10-03-hero-testing.json`. Static inventory, not execution or caller reachability. |
 | Which owners repeatedly search broad subtrees or miss? | `node scripts/trace_feature_hud.js --all --seconds 20 --json` | Defaults to the same capture. Counts simulated calls and visited nodes by actual search root. |
 | Where does one owner's lookup work come from? | `node scripts/trace_feature_hud.js ql_compass --seconds 20 --json` | The feature argument filters the report; other enabled features still run. Use `--events` for individual lookup events. |
 | Which owners issue lookups, covered reads, identical writes and callbacks? | `node scripts/profile_hud.js --seconds 20 --json` | Defaults to the same capture. Reports owner/property investigation candidates and explicit partial API coverage, not native costs or proof of redundant work. `--tree <file>` selects another hierarchy. |

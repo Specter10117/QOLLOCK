@@ -115,11 +115,13 @@ source catalog; the numbers below are temporary test inputs.
   HUD surface, type offsets beyond the former per-feature caps, for example
   horizontal 3500 and vertical 2500. Save and reopen even if the surface leaves
   the screen. Change resolution/UI density and verify that merely reopening or
-  selecting it does not rewrite either stored value. Return to screen must
-  recover the actual owner. Undo/Redo must cover that recovery; Cancel must
-  restore the original off-screen coordinates. Repeat at a large supported
+  selecting it does not rewrite either stored value. Recover it by editing exact
+  coordinates or using Reset; there is no Return to screen action. Undo/Redo must
+  cover that recovery; Cancel must restore the original off-screen coordinates.
+  Repeat at a large supported
   resolution and an ultrawide aspect ratio; record any native clipping.
-- **U3 — Parent units.** Move, align, recover and resize Basic and Advanced item
+- **U3 — Parent units.** Move with and without snapping, recover through exact
+  coordinates/Reset, and resize Basic and Advanced item
   cooldowns at multiple UI densities. Include a percentage offset outside the
   former travel range. The actual HUD, frame and exact entries must agree with
   each other; a density change must not introduce a saved edit or multiply the
@@ -151,7 +153,7 @@ source catalog; the numbers below are temporary test inputs.
   last accepted draft must remain intact and invalid input must stay visible.
   Correct the text, then test wheel edits and row refresh. Open Customize with
   an absent/temporarily unmeasured surface: exact editing must remain available,
-  while measurement-dependent sliders/recovery must not invent a viewport or
+  while measurement-dependent sliders/gestures must not invent a viewport or
   change the draft. Reappearance must use fresh owner measurements.
 - **U8 — Persistence and retained capabilities.** Save a combination of these
   edits, fully exit and restart, then die/respawn and enter another match. Verify

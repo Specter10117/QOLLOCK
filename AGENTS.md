@@ -20,7 +20,7 @@ Do not copy API examples from historical migration notes into runtime code.
 Use [docs/TOOLS.md](docs/TOOLS.md) to choose the tool and its input before running
 an audit. It distinguishes capture-based lookup traces, simulator regressions,
 static inventories and client measurements. Capture identity and limitations are
-recorded in [captures/README.md](captures/README.md).
+recorded in [tests/fixtures/hud/README.md](tests/fixtures/hud/README.md).
 
 For HUD optimization, use `scripts/profile_hud.js` to locate investigation
 candidates, `scripts/trace_feature_hud.js` to inspect search roots, and
@@ -132,7 +132,7 @@ subsystem contracts and examples, not additional permission to bypass them.
   leave a duplicate active implementation, include or watcher.
 - Make small, meaningful commits after completing logical changes. Run and
   verify `npm test` before every commit. The command includes smoke tests,
-  Node regressions, compact-schema validation, API checks and lint.
+  stylesheet checks, Node regressions, compact-schema validation, API checks and lint.
 - Never push without an explicit user request. Never create pull requests.
 - Review relevant documentation when changing source. Update it in the same
   commit only if the change invalidates documented behavior, settings, data

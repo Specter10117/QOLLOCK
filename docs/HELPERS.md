@@ -132,7 +132,8 @@ without legacy fallback writes. Neither helper forces a new default value.
   Spectating, replay, hideout and ambiguous classes return `unknown`.
 - `QOL.core.Scheduler.scheduleOnce(callback, delaySec, featureId)` owns a
   one-shot callback, cancelled on feature disable. `schedule` remains recurring.
-  Event handlers must still be explicitly unsubscribed.
+  Registry-owned `ctx.events` subscriptions retire with their instance; direct
+  EventBus/native subscriptions still require explicit cleanup.
 
 Native clears normalize camelCase style aliases to CSS names before calling
 `ClearPropertyFromCode`: `uiScale` becomes `ui-scale`, for example. The simulator

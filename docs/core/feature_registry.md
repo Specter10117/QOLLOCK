@@ -14,7 +14,8 @@ so overlapping owners receive the same units, bounds and initial values. Invalid
 schemas fail registration without leaving a manifest behind. See the
 [implementation pattern](../MANIFEST_STYLE.md) for native owner structure.
 The instance owns `onEnable()`, `onDisable()` and optional
-`onSettingsChanged(payload)`/read-only `test()` behavior.
+`onSettingsChanged(payload)`. The optional read-only `test(ctx)` hook belongs
+to the manifest and is invoked by ManifestTests, not the instance lifecycle.
 
 Enablement is evaluated by `isFeatureSupposedToBeEnabled(id, configSlice?)`:
 custom `isEnabled(cfg)` first, then a present `enableKey`, then OR across

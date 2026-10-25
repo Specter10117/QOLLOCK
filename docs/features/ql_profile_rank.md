@@ -3,7 +3,8 @@
 The HUD owners are [ql_showrank](../../panorama/scripts/manifests/ql_showrank/manifest.js)
 and [ql_statlocker](../../panorama/scripts/manifests/ql_statlocker/manifest.js).
 They use their existing persisted toggles. The profile page and profile card
-companions are separate native script contexts with only `ql_utils.js` loaded;
+companions are separate native script contexts: their own scripts load with
+`ql_utils.js`, without the HUD core or feature registry;
 their existing profile tools remain available independently of those HUD toggles.
 The active includes and QOL account bindings are in `citadel_db_page_profile.xml`
 and `profile_card.xml`.

@@ -17,7 +17,7 @@ test("captured coexisting stats owners select and move the visible modern compac
     const env = setup();
     // The native October capture has both owners. Its legacy HudStatBlock is
     // collapsed by CSS; its active owner has the visible compact HudStatBlock.
-    const capture = JSON.parse(fs.readFileSync(path.join(__dirname, "../captures/deadlock_hud_dump.json"), "utf8"));
+    const capture = JSON.parse(fs.readFileSync(path.join(__dirname, "../tests/fixtures/hud/2026-10-03-hero-testing.json"), "utf8"));
     const find = (node, id) => node.id === id ? node : (node.children || []).map(child => find(child, id)).find(Boolean);
     for (const id of ["hudPlayerStats", "hudActivePlayerStats"]) {
         assert.ok(find(find(capture.domTree, id), "HudStatBlock"), "captured owner: " + id);

@@ -10,7 +10,7 @@ and [adapter](config_adapter.md).
 | `registerSchema(featureId, schema)` | Canonicalizes and validates `schema.settings`, subscribes persisted keys and initializes the bucket from current shared values. Rejects incompatible shared declarations and repeated feature IDs without partial registration. |
 | `get(featureId, key)` | Reads the stored value, or undefined. |
 | `canonicalSetting(setting)` | Resolves existing persisted defaults and slider metadata from the shared catalog for FeatureRegistry registration. Does not create persistent keys. |
-| `set(featureId, key, value)` | Validates a registered key, normalizes numeric toggles and slider decimals, writes and emits `config:changed` only when the normalized value changes. Returns false on rejection. |
+| `set(featureId, key, value)` | Validates a registered key, normalizes numeric toggles and slider values, writes and emits `config:changed` only when the normalized value changes. Returns false on rejection. |
 | `all(featureId)` | Shallow copy of one bucket. |
 | `view(featureId)` | Actual live bucket, read-only by convention; not frozen or proxied. Never mutate it. |
 | `exportAll()` | New outer object with shallow copies of registered buckets; not recursive cloning. |
@@ -20,9 +20,12 @@ and [adapter](config_adapter.md).
 
 Accepted schema types are `toggle`, `slider`, `dropdown`, `text`, `palette`,
 `action`, `number`, `buttongroup`, and `multitoggle`. Resolved slider schemas require min/max;
-`set` and `load` share finite-number validation and decimal rounding, without
-imposing the compact codec's step. Registered persisted sliders obtain bounds,
-step and decimal precision from the shared settings catalog; their declarations
+`set` and `load` share finite-number validation. Registered sliders use
+`QOL.settings.normalize` to snap to the current catalog step; local sliders
+without a catalog entry use their declared decimal precision (two by default).
+Historical compact quantization does not define this contract. Registered
+persisted sliders obtain bounds, step and decimal precision from the shared
+settings catalog; their declarations
 omit those repeated values and defaults. Local-only fields require explicit
 defaults and validation metadata. UI/wire consistency
 must still be checked separately. Dropdown options, when provided, are compared by string value.

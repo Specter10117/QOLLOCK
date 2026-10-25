@@ -13,7 +13,7 @@ const EVENT_LIMIT = 10000;
 function parseArgs(args = process.argv.slice(2)) {
     const opts = { seconds: 10, warmupMs: 8000, feature: null, enableAll: true,
         configOverrides: {}, includeEvents: false, json: false,
-        capturePath: path.join(__dirname, "..", "captures", "deadlock_hud_dump.json") };
+        capturePath: path.join(__dirname, "..", "tests", "fixtures", "hud", "2026-10-03-hero-testing.json") };
     for (let i = 0; i < args.length; i++) {
         const arg = args[i];
         const value = () => {

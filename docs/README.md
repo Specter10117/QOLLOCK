@@ -21,6 +21,10 @@ For development setup, start with [Contributing](../CONTRIBUTING.md).
 | Reference | Purpose |
 | --- | --- |
 | [Testing](TESTING.md) | Offline checks and their limits |
+| [Build guide](../build_mod/README.md) | CSDK 12 setup and the maintainer build menu |
+| [Diagnostic tools](TOOLS.md) | Choose capture, trace, audit or client measurements |
+| [API validation](VALIDATION.md) | Checked names, evidence and CI coverage |
+| [Capture testing](CAPTURE_TESTING.md) | Import native trees and interpret replay limits |
 | [Client checklist](TEST_CHECKLIST.md) | Maintainer-run game verification |
 | [Releases and native updates](RELEASING.md) | Prepared ZIP publication, upstream reviews and notifications |
 | [Profiling](PROFILING.md) | Measurements and capture tooling |

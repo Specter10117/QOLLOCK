@@ -11,8 +11,9 @@ tools/local_chat_translation/start.ps1
 
 The first start creates an isolated Python 3.12 environment under
 `%LOCALAPPDATA%\QOLLOCK\chat_translation` and installs Pillow. Keeping the
-environment outside this repository prevents DeadPacker from copying or
-compiling Python dependencies. Leave the window open while playing.
+environment outside this repository keeps Python dependencies out of the source
+tree. The current builder includes only the mod's game-content folders. Leave
+the window open while playing.
 
 ## Start automatically at Windows sign-in
 

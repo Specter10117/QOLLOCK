@@ -102,11 +102,14 @@ before hooks run.
   booleans. Do not apply generic JavaScript truthiness to flat values.
 - A manifest `enableKey` is not a complete activation rule if it also declares
   `isEnabled`. Inspect the predicate and shared-key routing.
-- Procedural sliders commit on the current settings step grid where a field exists,
-  within intersected UI/schema bounds. Invalid typed input preserves the prior
-  value. The current catalog owns accepted precision; settings codes preserve it.
-- ConfigStore slider rounding is not compact-codec step snapping. Verify the
-  renderer and actual consumer rather than assuming every numeric path matches.
+- Procedural sliders use the current settings step grid where a field exists.
+  Thumb travel can be narrower than the accepted exact-value domain, especially
+  for positions. Invalid typed input preserves the prior accepted value. Reopening
+  a row must not clamp an accepted off-screen position back into slider travel.
+- ConfigStore sliders with current catalog fields use `QOL.settings.normalize`,
+  including step normalization. Fields without a catalog entry retain decimal
+  rounding. Historical compact-codec grids are import compatibility data, not
+  current control metadata; settings codes preserve normalized current values.
 - Performance tiers are UI metadata, not measured frame-time guarantees. Do not
   assign an unsupported milliseconds-per-tick claim to a new control.
 

@@ -11,6 +11,12 @@ gate for every commit. It does not maintain another manifest/import validator or
 skip CSS/XML changes. Installing/updating local hooks remains an explicit local
 setup action through `setup-hooks.sh`; source edits do not install them.
 
+CI additionally runs Python `*_automation_test.py` suites, the updater Worker
+ESM suite and isolated builder regressions on Windows PowerShell 5.1/PowerShell 7.
+See [RELEASING.md](RELEASING.md#offline-checks) for automation checks. The builder
+regressions parse source and exercise extracted functions; they do not execute a
+build, compiler or VPK packer. These jobs are separate from `npm test`.
+
 Some tests use the panel simulator. They can verify JavaScript behavior under
 that model, but cannot prove real client panel structure, rendering or FPS.
 
@@ -112,7 +118,8 @@ tests/customize_catalog.test.js` for the editor subset. Modeled dimensions and
 input events do not establish native rendering or interaction.
 
 `tests/customize_rework.test.js` checks canvas-density conversions, padded AP
-targets, magnet candidates and truthful guides, alignment actions, delayed
+targets, magnet candidates and truthful guides, undoable Reset of off-screen
+elements, delayed
 layout, all three draggable editor windows, actual view toggles and independent
 AP/stamina persistence. `tests/item_mirror_runtime.test.js` retains main's
 Advanced-mode filter, slot, purchase/sale and shop-transition regression.
@@ -323,7 +330,9 @@ export/reload. A Buff Delay of 15 seconds already worked on that path before the
 release fixes. The confirmed zero-to-30 fallback was a separate bug; its fix
 does not establish the cause of a player's 15-to-30 report.
 
-Slider tests cover accepted UI values through the actual compact codec. The
+Slider tests cover accepted UI values through the production export/import path
+using the current settings-code codec. Historical compact import has separate
+compatibility regressions. The
 helper contract test resolves API references from [the helper map](HELPERS.md)
 against production exports; it cannot establish native traversal semantics.
 These targeted tests complement the [maintainer checklist](TEST_CHECKLIST.md).
@@ -458,7 +467,7 @@ variants are only partially covered.
 | File | Responsibility |
 |---|---|
 | `clock.js` | Virtual clock: one source for `Date.now`, `performance.now`, `$.FrameTime`, `$.Schedule`. Bounded `advance()`, so a runaway poll loop fails loudly. |
-| `panel.js` | Panel object model + `Document`. DFS pre-order `FindChildTraverse`, `Set`-backed classes, `Map`-backed attributes, `maxchars`-aware `SetText`, duplicate-id detection. |
+| `panel.js`, `search.js` | Panel object model + `Document`; shared search rules check each parent's direct children before recursing, following the recorded native probe. Classes, attributes and `maxchars`-aware `SetText` remain modeled behavior. |
 | `layout.js` | Reads script load order from `hud.xml`, stripping comments so cut-over includes stay out. |
 | `sandbox.js` | The `vm` context: `$` API, event dispatch, deterministic `Math.random`. |
 | `game/builds.js` | `BuildsModel` — build state and the tree mutations the C++ client is believed to make. **This is the guessing part.** Fine for counting operations; not evidence about the client. |
@@ -477,9 +486,9 @@ not on an assumed writable JavaScript console or browser automation endpoint.
 Run bundled probes through the Dev buttons. Panorama HUD rendering is not CEF
 page rendering; browser automation of the storage page would not verify the HUD.
 
-When vanilla Deadlock updates, re-check panel ids against
-`G:\GameTracking-Deadlock` — layout under
-`game/citadel/pak01_dir/panorama/layout/`, styles under `.../styles/`.
+When vanilla Deadlock updates, re-check panel IDs against an up-to-date game
+resource checkout. GameTracking keeps layouts under
+`game/citadel/pak01_dir/panorama/layout/` and styles under the sibling `styles/`.
 
 Before updating that extract, preserve a source snapshot with
 `node scripts/audit_game_update.js snapshot --vanilla <panorama-dir>`.
@@ -510,9 +519,11 @@ whole design is "wait for a class the client sets". Testing that requires the
 model to decide when those classes appear, then verifying its own decision — a
 tautology wearing a green checkmark.
 
-So: verify logic that is genuinely self-contained (the codec — 450 fuzz cases),
-verify panels in the client (`test()` hooks), count operations against a captured
-tree (the profiler), and check rendering by repacking the VPK and looking.
+Use codec and production-path regressions for JavaScript logic, including
+controlled source loss and replacement. A fixture must state which native
+behavior it assumes; it cannot validate that assumption itself. Observe native
+panels through client hooks and debugger evidence, count modeled operations
+against labeled captures, and check rendering after maintainer compile/repack.
 
 ## Helper contracts and HUD evidence
 

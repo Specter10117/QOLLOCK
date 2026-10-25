@@ -28,8 +28,10 @@ constraints, not claims that every existing feature already satisfies them.
   A miss can walk the entire subtree; it is not a cheap no-op.
 - Back off unsuccessful discovery where the source is legitimately absent. Check
   recovery after it appears or is recreated; a permanent negative cache is wrong.
-- `QOL.panelCache.resolve` validates liveness, not ownership by its new parent.
-  Clear/rebind owned entries explicitly. Do not clear another feature's cache.
+- `QOL.panelCache.resolve` validates liveness and ancestry under the requested
+  parent/ID and re-resolves moved handles. It has no missing-result backoff or
+  feature lifecycle cleanup; callers still own their cache keys and rebinding.
+  Do not clear another feature's cache.
 - Keep bounded/local traversal where ordering, identity or depth is part of the
   feature contract. A generic helper is not automatically a cheaper equivalent.
 

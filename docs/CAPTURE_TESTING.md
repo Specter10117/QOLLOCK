@@ -33,8 +33,11 @@ but cannot stand in for the complete HUD in either replay tool.
 
 Import preserves literal text, raw debugger rows, the forest and metadata.
 The importer never overwrites existing files. New JSON snapshots/reports under
-`captures/` are local evidence. The tracked fixture is the repaired October 3
-native Debugger hero-testing export; see [capture provenance](../captures/README.md).
+`captures/` are local evidence. This optional directory is ignored in full and
+created when an import writes there; no tool requires it to exist. Shared
+regression input lives in `tests/fixtures/hud/2026-10-03-hero-testing.json`,
+the repaired October 3 native Debugger hero-testing export; see
+[capture provenance](../tests/fixtures/hud/README.md).
 The static audit, tracer, profiler and Git-ref comparator default to it. Supply
 an explicit capture to select another scenario; see [the tool map](TOOLS.md).
 

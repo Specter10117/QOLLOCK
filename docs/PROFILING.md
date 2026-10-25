@@ -7,8 +7,8 @@ measure native traversal time, layout, rendering, GPU work or FPS.
 ## Inputs and capture identity
 
 The profiler, lookup tracer, static dependency audit and Git-ref comparator all
-default to `captures/deadlock_hud_dump.json`, the repaired October 3 native
-Debugger hero-testing export. [Capture provenance](../captures/README.md) records
+default to `tests/fixtures/hud/2026-10-03-hero-testing.json`, the repaired October 3 native
+Debugger hero-testing export. [Capture provenance](../tests/fixtures/hud/README.md) records
 its identity and limitations. The XML-composed HUD and synthetic native panel
 seeding have been removed; an invalid/missing input fails without a fallback.
 

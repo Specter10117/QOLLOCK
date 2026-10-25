@@ -78,10 +78,9 @@ Compilation, VPK repacking and game installation belong to the maintainer.
 Agents must not run build scripts or `resourcecompiler.exe`, modify game addons,
 or create or modify VPK files.
 
-For maintainers, `build_mod/build_mod.bat` opens the Windows build tool.
-Choose `1` for a local VPK or `2` for game addons; add `f` or `-f` for a clean
-rebuild. Enter `s` to start Deadlock, `r` to restart it, or `0` for tool settings.
-The tool also compiles SVG sources into game assets.
+For maintainers, [build_mod/README.md](build_mod/README.md) explains the CSDK 12
+setup and the Windows build menu. The embedded builder selects this repository
+automatically; there is no mod-selection step.
 
 Close Deadlock, compile and pack the changes, then verify them in the client.
 A passing simulator suite does not establish native rendering, FPS or persistence

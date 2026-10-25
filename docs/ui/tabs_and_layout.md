@@ -1,109 +1,51 @@
-# Settings Tabs & Declarative Layout Architecture
+# Settings tabs and content ownership
 
-QOLLOCK settings window employs a unified, declarative layout system centered around `panorama/scripts/ui/layout.js`.
+`panorama/scripts/ui/layout.js` owns sidebar order, group headings, display names
+and icons. It also contains section/feature descriptions for a fallback renderer.
+Most shipped tabs build their actual content through registered renderers.
+Changing a fallback feature list alone does not move or add a visible control.
 
----
+## Navigation
 
-## 1. Single Source of Truth (`Q.ui.layout`)
+`QOL.ui.tabs` in `ui/ql_settings_tabs.js` derives these from `QOL.ui.layout`:
 
-All tabs, sidebar groupings, sections, and feature placements are declared in:
-`panorama/scripts/ui/layout.js`
+- `GetSettingsTabOrder()` returns tab IDs in layout order.
+- `GetSettingsTabGroups()` groups them by heading entries.
+- `GetSettingsTabDisplayName(tabId)` resolves the display name.
+- `GetSettingsTabIconSource(tabId)` resolves the icon path.
 
-```javascript
-Q.ui.layout = [
-    // ── Group Heading ──
-    { heading: "General" },
-    {
-        id: "Support",
-        name: "Support",
-        icon: "s2r://panorama/images/icons/icon_thumbsup.vsvg",
-        custom: true
-    },
-    {
-        id: "Config",
-        name: "Settings",
-        icon: "s2r://panorama/images/icons/icon_gear.vsvg",
-        sections: [
-            {
-                title: "Display & Screen",
-                features: ["ql_ui_controls"]
-            }
-        ]
-    },
-    // ── Group Heading ──
-    { heading: "Gameplay" },
-    {
-        id: "Crosshair",
-        name: "Crosshair",
-        icon: "s2r://panorama/images/icons/properties/range_aoe.vsvg",
-        sections: [
-            {
-                title: "Item Cooldowns",
-                animatedToggle: true,
-                enableKey: "ENABLE_PASSIVE_COOLDOWN",
-                description: "Tracked cooldowns near crosshair",
-                features: ["ql_passive_cooldown", { id: "ql_item_mirror", hideToggle: true }]
-            }
-        ]
-    }
-];
-```
+The module also exposes these functions as compatibility globals. Its hardcoded
+fallback is for an absent/empty layout and does not include every current tab
+(for example, Customize). Use the loaded layout as the navigation authority.
 
----
+## Adding, moving or reordering content
 
-## 2. Dynamic Tab Derivation (`ql_settings_tabs.js`)
+1. Reorder tabs or move them between sidebar groups in `ui/layout.js`.
+2. Find the tab's `QOL.ui.window.registerTabRenderer(tabId, renderFn)` call in the
+   settings XML's loaded modules. Move/add the actual rows there and preserve
+   localization, search collection, reset scope, changed-state tracking and previews.
+3. For a new tab, add its navigation entry and register a renderer loaded by
+   `hud_escape_menu.xml`. Follow [ADDING_SETTINGS.md](../ADDING_SETTINGS.md) when
+   it introduces a setting; a navigation entry does not create persistence or a
+   gameplay consumer.
 
-`panorama/scripts/ui/ql_settings_tabs.js` dynamically inspects `Q.ui.layout` at runtime:
-- `GetSettingsTabOrder()`: Returns array of tab IDs in the order they appear in `Q.ui.layout`.
-- `GetSettingsTabGroups()`: Groups tabs into titled sections based on `{ heading: "..." }` entries.
-- `GetSettingsTabDisplayName(tabId)`: Resolves tab display title.
-- `GetSettingsTabIconSource(tabId)`: Resolves tab icon SVG path.
+## Rendering
 
-If `Q.ui.layout` is not yet loaded (e.g. isolated test harness), it gracefully falls back to canonical defaults.
+`ui/window.js` checks registered renderers first. Current content owners include:
 
-### Canonical Tab Hierarchy
-- **General**: Support, Settings (`Config`), Customize, Presets, Console, Arcade
+| Module under `panorama/scripts/ui/` | Content |
+| --- | --- |
+| `gameplay_tabs.js` | Gameplay tab rows; also retains a UI renderer that is not a current sidebar entry |
+| `config_tab.js` | Config / Settings |
+| `customize/tab.js` | Customize; see [its contract](customize.md) |
+| `presets.js`, `support.js`, `audio.js`, `console_tab.js`, `arcade_tab.js` | Their respective tabs |
 
-Customize uses the registered renderer in `ui/customize/tab.js`; its overlay,
-session and cross-context preview contract are documented in [customize.md](customize.md).
-- **Gameplay**: Crosshair, Healthbar, HUD, Overlay, Minimap, Shop, Audio
-
----
-
-## 3. How to Move, Reorder, or Add Tabs
-
-Because layout is purely declarative:
-
-1. **Reorder tabs in the sidebar:**
-   Move the tab object up or down within `Q.ui.layout` in `panorama/scripts/ui/layout.js`.
-2. **Move a tab to a different group:**
-   Move the tab object above or below a `{ heading: "..." }` line.
-3. **Move a feature between tabs:**
-   Move the feature ID string (e.g. `"ql_stamina"`) from one section's `features` array to another.
-4. **Create a new tab:**
-   Add a new object `{ id: "MyTab", name: "My Tab", icon: "...", sections: [...] }` to `Q.ui.layout`.
-   The window manager and tab bar automatically detect the new tab and render it with zero imperative boilerplate.
-
----
-
-## 4. Tab Content Rendering Architecture
-
-- **Registered Tab Renderers (`_tabRenderers`) Take Precedence**:
-  Because feature manifests are loaded strictly in `hud.xml` (the match HUD realm) and are **not** present in `hud_escape_menu.xml` (the settings menu realm), settings tabs in the escape menu cannot dynamically inspect `FeatureRegistry.getManifest()`.
-  Instead, tabs rely on dedicated, high-fidelity renderers registered with `Q.ui.window.registerTabRenderer(tabId, renderFn)`:
-  - `QOL.ui.gameplayTabs` (`ui/gameplay_tabs.js`): Renders Crosshair, Healthbar, HUD, Minimap, Shop, UI, Overlay.
-  - `QOL.ui.presets` (`ui/presets.js`): Renders Presets tab.
-  - `QOL.ui.configTab` (`ui/config_tab.js`): Renders Settings (Config) tab.
-  - `QOL.ui.support` (`ui/support.js`): Renders Support tab.
-  - `QOL.ui.audio` (`ui/audio.js`): Renders Audio tab.
-  - `QOL.ui.console` (`ui/console_tab.js`): Renders Console tab.
-  - `QOL.ui.arcade` (`ui/arcade_tab.js`): Renders Arcade tab.
-
-- **Declarative Fallback (`renderLayoutTab`)**:
-  If a tab does not register a custom renderer in `_tabRenderers`, `window.js` falls back to `renderLayoutTab(tabId, container)` to render any sections and manifests declared in `Q.ui.layout`.
-  When a section declares `animatedToggle: true` and `enableKey: "..."`, the setting matching `enableKey` is automatically suppressed from the section body to prevent duplicate toggle rows.
-
----
+If no registered renderer exists, `renderLayoutTab` can build declared sections.
+Its feature rows require `FeatureRegistry.getManifest()`; the normal settings
+context loads neither FeatureRegistry nor gameplay manifests. The fallback can
+therefore render section shells without feature controls in that context.
+It suppresses the section's enable setting from the body to avoid duplicate rows.
+Do not load all HUD manifests into settings to make this fallback work.
 
 ## 5. Window Action Controls
 

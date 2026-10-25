@@ -8,7 +8,7 @@ const { createProfiledHud } = require("./simulator/perf/profile.js");
 const { collectProfile } = require("./profile_hud.js");
 const { loadXmlEvidence, indexEvidence, sourceStatus } = require("./capture_sources");
 
-const DEFAULT_CAPTURE = path.join(__dirname, "..", "captures", "deadlock_hud_dump.json");
+const DEFAULT_CAPTURE = path.join(__dirname, "..", "tests", "fixtures", "hud", "2026-10-03-hero-testing.json");
 
 function parseArgs(args = process.argv.slice(2)) {
     const opts = {

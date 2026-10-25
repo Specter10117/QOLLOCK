@@ -3,7 +3,10 @@
 ## Source ownership
 
 - `panorama/scripts/ql_shared_presets.js`: `QOL_PRESETS`, flat defaults,
-  `QOL_ACCOUNT_PRESET_BINDINGS` and versioned compact schemas.
+  `QOL_ACCOUNT_PRESET_BINDINGS` and the current settings catalog.
+- `panorama/scripts/ql_legacy_compact.js`: frozen binary import schemas.
+- `panorama/scripts/ql_settings_code.js`: current lossless sharing codec and its
+  append-only key/reference dictionary.
 - `panorama/scripts/ui/presets.js`: visible preset entries, name resolution,
   application, comparison and active-button tracking.
 - `panorama/scripts/ql_config.js` and the settings normalization chain:

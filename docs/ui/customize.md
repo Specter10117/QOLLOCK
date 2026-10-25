@@ -323,7 +323,8 @@ Ammo also resets both digits' offsets and font sizes; Reset on Current or Max
 only resets that digit. This applies in both the section entry and full editor.
 Independent font controls allow shrinking as well as enlarging. The legacy
 font alias and historical compact schemas retain their compatibility path;
-new values outside the published range use the settings envelope.
+current lossless settings codes preserve newly accepted values, while storage
+keeps the JSON envelope.
 Current/Max font-size layout acknowledgment requires scaled height and a stable
 native box. Their content width can change independently when native ammo text
 gains or loses a digit, especially in Tokamak's content-sized layout. Pixel

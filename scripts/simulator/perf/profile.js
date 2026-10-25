@@ -164,7 +164,7 @@ function createProfiledHud({
     runtimeSources = null,
     configInput = null,
 } = {}) {
-    if (capturedTree === null) capturedTree = JSON.parse(fs.readFileSync(path.join(layout.REPO_ROOT, "captures/deadlock_hud_dump.json"), "utf8"));
+    if (capturedTree === null) capturedTree = JSON.parse(fs.readFileSync(path.join(layout.REPO_ROOT, "tests/fixtures/hud/2026-10-03-hero-testing.json"), "utf8"));
     const clock = new Clock(1000);
     const doc = new Document(clock);
     const sandbox = new Sandbox({ clock, doc, name: "hud" });

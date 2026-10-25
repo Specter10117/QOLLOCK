@@ -6,13 +6,14 @@ Provides Deadlock-specific HUD element discovery, match mode detection (Hideout,
 ## Dependencies
 - `panorama/scripts/core/ql_namespace.js` (`QOL.core.hud`)
 - `panorama/scripts/core/ql_panel_helpers.js` (`QOL.core.panel`)
+- `panorama/scripts/core/ql_hud_state.js` (`QOL.hudState`, shared scoreboard observation)
 
 ## Interface (`QOL.core.hud`)
 - `findHud(preferredRoot)`: Resolves and returns the main `#Hud` panel (delegates to `QOL.core.panel.findHud`).
 - `isInHideout(root)`: Checks if player is in sandbox/testing/hideout mode (`connectedToHideout` / `InHideout` classes).
 - `isGameplayHudShown(root)`: Reports native combat-HUD presentation evidence; requires a real Hud, joined-team state and a visible native `gameplay_hud` ancestry.
 - `isStreetBrawl(root)`: Checks if active match is in Street Brawl mode (`gamemode_streetbrawl`).
-- `isClassActive(className)`: Checks if a given class token is active on the HUD root.
+- `isClassActive(className)`: Checks the HUD root, native `gameplay_hud` and abilities container for a class token.
 - `applyRootClasses(root, config, timestamp, hideoutConnected)`: Synchronizes feature CSS classes onto the root container based on the complete active configuration and live HUD evidence.
 - `refreshRootClasses(root)`: Projects the complete current flat config from ConfigAdapter. Feature hooks use this entry point; passing a local settings slice to `applyRootClasses` would reset unrelated classes.
 
@@ -114,9 +115,13 @@ core panel helper directly rather than a mutable legacy alias.
 
 ## Scoreboard and life evidence
 
-`isScoreboardOpen(root, anchor)` reads persistent `gScoreboardOpen` class state
-from HUD ancestors, a supplied live anchor, or the cached native `minimap_persp`
-GlobalClassListener. It does not infer visibility by counting toggle events.
+`isScoreboardOpen(root, anchor)` delegates to shared `QOL.hudState`, loaded in
+both HUD and settings contexts. It first checks `gScoreboardOpen` on HUD ancestors,
+then the stationary native `DamageReportGlobalClassListener`. Only when that
+listener is absent does it fall back to a supplied live anchor or the native
+`minimap_persp` GlobalClassListener. The stationary listener takes precedence
+because Draw Over UI can reparent the minimap. Toggle events prompt a refresh;
+they do not provide visibility state.
 
 `readHudLifeState(root)` requires a real Hud/CitadelHud and exactly one of `alive`
 or `dead`. It returns `unknown` for missing/ambiguous classes, `spec_mode`,

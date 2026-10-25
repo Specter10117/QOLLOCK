@@ -87,7 +87,7 @@ ShowZipBoostPreview()  ShowCompassPreview()   ShowSpeedPreview()
 | **Crosshair Stats** | `CROSSHAIR_STATS_X_OFFSET`, `CROSSHAIR_STATS_Y_OFFSET`, `CROSSHAIR_STATS_SCALE`, `CROSSHAIR_STATS_OPACITY` | Active stats indicator near crosshair. |
 | **Unsecured Souls** | `UNSECURED_SOUL_TIMER_X_OFFSET`, `UNSECURED_SOUL_TIMER_Y_OFFSET`, `UNSECURED_SOUL_TIMER_SCALE` | Unsecured soul countdown preview. |
 | **Keyboard Overlay**| `KEYBOARD_OVERLAY_X_OFFSET`, `KEYBOARD_OVERLAY_Y_OFFSET`, `KEYBOARD_OVERLAY_SCALE` | Overlay footprint showing scaled dimensions. |
-| **Item Cooldown** | `PASSIVE_COOLDOWN_SIZE`, `PASSIVE_COOLDOWN_X_OFFSET`, `PASSIVE_COOLDOWN_Y_OFFSET` | Cooldown icon frame next to crosshair. |
+| **Item Cooldown** | `PASSIVE_COOLDOWN_SIZE`, `PASSIVE_COOLDOWN_X`, `PASSIVE_COOLDOWN_Y` | Cooldown icon frame next to crosshair. |
 | **Minimap Size & Offset** | `MINIMAP_SMALL_SIZE`, `MINIMAP_X_OFFSET`, `MINIMAP_Y_OFFSET`, `MINIMAP_BASE_OPACITY` | Bounding circular reticle indicating exact minimap placement, diameter, and opacity. |
 
 ---
@@ -95,7 +95,7 @@ ShowZipBoostPreview()  ShowCompassPreview()   ShowSpeedPreview()
 ## 4. UI Controls Integration
 
 When a user interacts with a control in `panorama/scripts/ui/controls.js`:
-1. **Sliders (`createSliderSettingsRow`, `createDualSliderSettingsRow`, `createOffsetControlRow`)**: Calls `getPreview().showForConfigId(configId)` during drag/change.
+1. **Procedural sliders (`QOL.ui.controls.createSliderRow`)**: Call `getPreview().showForConfigId(configId)` after an accepted value change. Schema-driven controls in `ui/renderer.js` have their own dispatch path; do not invent factories from old examples.
 2. **Animated Section Toggles (`createAnimatedInlineToggleSection`)**: Calls `getPreview().showForConfigId(enableConfigId)` immediately upon switch activation or deactivation to retire floating samples.
 3. **Title Checkboxes (`createSectionTitleCheckboxToggle`)**: Calls `getPreview().showForConfigId(configId)` upon check state toggle; the same retirement rule applies.
 
@@ -110,7 +110,17 @@ When a user interacts with a control in `panorama/scripts/ui/controls.js`:
 
 ## 6. Resolution & Coordinate Space Scaling (DPI / Aspect Ratio Fix)
 
-- **Virtual vs. Physical Coordinates**: Source 2 Panorama inline styles (`style.x`, `style.y`, `style.marginRight`, `style.marginBottom`) operate in virtual layout design units (normalized 1920x1080 canvas), whereas runtime layout queries (`actuallayoutwidth`, `actuallayoutheight`, `actualxoffset`, `GetPositionWithinAncestor`) return unscaled physical device pixels.
-- **DPI Scaling**: On higher-DPI displays such as 1440p (`1.333x`) and 4K (`2.0x`), assigning raw physical pixels directly into CSS inline styles causes elements to drift off-target. Previews utilize `GetPreviewHostScale(host)` (`actualuiscale_x`, `actualuiscale_y`, or `actuallayoutwidth / desiredlayoutwidth`) to convert physical measurements back into virtual CSS units before assigning inline styles.
-- **Live Minimap Hierarchy Alignment**: In Deadlock, `#minimap_persp` is nested inside `.clamp_width` (which applies `max-width: 2000px; horizontal-align: center;`), introducing variable horizontal insets on ultrawide displays (16:10, 21:9, 32:9). When `#minimap_persp` is alive in the HUD hierarchy, `ShowMinimapSizePreview` computes its live physical distance to the right/bottom bounds of `contextRoot`, normalizes by `hostScale`, and sets `marginRight` / `marginBottom` dynamically. This guarantees 1:1 pixel-perfect alignment with the actual minimap across all resolutions, aspect ratios, and custom user offsets.
-
+- Inline CSS coordinates and measured layout coordinates can differ with UI scale.
+  `GetPreviewHostScale(host)` uses `actualuiscale_x` / `actualuiscale_y`, then the
+  actual/desired size ratio, falling back to 1 when neither is available. Do not
+  assume every context has a fixed 1920x1080 canvas or infer scale from resolution
+  alone.
+- The minimap preview attempts to read the live `minimap_persp` bounds relative
+  to the settings host and converts the right/bottom distances into host units.
+  If measurements are missing, it uses configured offsets and the available
+  parent inset. This is a placement approximation, not proof of pixel alignment
+  at every aspect ratio or UI density. Verify those cases in the repacked client.
+- Floating samples illustrate selected settings; they are separate from native
+  rendering. The Ammo floating preview is currently disabled by
+  `ENABLE_AMMO_PREVIEW` in the source. Customize's live HUD preview has a separate
+  owner and delivery path; see [Customize](customize.md).

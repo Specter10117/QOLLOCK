@@ -91,9 +91,10 @@ native testing controls, practice-area visibility and the force/hide settings in
 the client. Offline gates cover source loading, existing CSS contracts and API
 usage, not this native rendering/input check.
 
-The offline XML-composition profiler also resolves overrides from the current
-checkout, falling back to extracted native layouts when a source is retired;
-removing an override must not silently remove that subtree from its model.
+Whole-HUD profiling replays an explicit captured hierarchy; it no longer composes
+a HUD from XML or fills missing branches from extracted layouts. A retired XML
+override therefore does not update the capture. Collect a new labeled capture
+when the native hierarchy changes; see [capture testing](CAPTURE_TESTING.md).
 Also verify the friends count in the party button slot, party invites, menu
 opening and party-code context-menu behavior after the party XML retirement.
 Verify both target hint branches, Improved Hint, target-size/opacity controls and

@@ -1,8 +1,8 @@
 # Tracked HUD capture
 
-`deadlock_hud_dump.json` is the native Debugger hero-testing capture collected on
-**2026-10-03 at 11:46:57.838 UTC**, session `musbu75a-debug`. It replaces the
-October 1 HUD-Dumper v2 fixture at the same path.
+`2026-10-03-hero-testing.json` is the native Debugger hero-testing capture collected on
+**2026-10-03 at 11:46:57.838 UTC**, session `musbu75a-debug`. It replaced the
+October 1 HUD-Dumper v2 fixture and now lives with the tracked test inputs.
 
 Source: standalone [HUD-Dumper](https://github.com/Predi-i/Deadlock-UI-Mods/tree/main/HUD-Dumper),
 receiver artifact `deadlock_hud_dump_debugger-hero-testing-rebuilt_musbu75a-debug.json`.
@@ -26,6 +26,7 @@ target visibility. These limitations remain in replay reports.
 
 The static capture audit, lookup tracer, operation profiler and Git-ref comparator
 default to this file. The profiler/comparator accept `--tree` to select another
-capture; there is no synthetic XML fallback. See [the tool map](../docs/TOOLS.md).
+capture; there is no synthetic XML fallback. See [the tool map](../../../docs/TOOLS.md).
 Old reports against the October 1 fixture cannot serve as before/after baselines
-for this hierarchy. Additional local captures and reports remain untracked.
+for this hierarchy. Additional local captures and reports belong in the optional ignored
+`captures/` directory at the repository root, never beside this fixture.

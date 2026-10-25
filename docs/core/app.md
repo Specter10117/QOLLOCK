@@ -1,7 +1,7 @@
 # `panorama/scripts/core/ql_app.js`
 
 ## Purpose
-Top-level application boot coordinator and native engine event bridge. Orchestrates the initial discovery of the Deadlock HUD, deserializes saved configuration from panel attributes, triggers `FeatureRegistry.boot()`, synchronizes settings between the HUD and Escape Menu isolates via a 250ms polling bridge, and hooks native C++ engine events.
+Top-level application boot coordinator and native engine event bridge. Orchestrates the initial discovery of the Deadlock HUD, deserializes saved configuration from panel attributes, triggers `FeatureRegistry.boot()`, synchronizes settings between the HUD and Escape Menu isolates via the panel-attribute polling bridge, and hooks native C++ engine events.
 
 ## Dependencies
 - All core subsystems (`ql_namespace.js`, `ql_logger.js`, `ql_event_bus.js`, `ql_scheduler.js`, `ql_panel_helpers.js`, `ql_config_store.js`, `ql_config_adapter.js`, `ql_feature_registry.js`)
@@ -26,7 +26,7 @@ Deadlock C++ engine events are captured using `$.RegisterForUnhandledEvent` and 
 - `CitadelGameStateChanged` → `engine:game_state_changed` (reactive match phase transitions)
 
 ## Cross-Isolate Config Polling Bridge & Match Lifecycle
-Panorama executes settings UI (`EscapeMenu`) and game HUD in separate JavaScript execution contexts. `ql_app.js` maintains a 250ms heartbeat polling the serialized attribute on the HUD panel, allowing settings changed in the pause menu to propagate on a subsequent heartbeat.
+Panorama executes settings UI (`EscapeMenu`) and game HUD in separate JavaScript execution contexts. `ql_app.js` normally polls the serialized HUD attribute every 250ms, allowing settings changed in the pause menu to propagate on a subsequent heartbeat. While a Customize preview interaction is active, the next poll uses 50ms; stress benchmarking retains the normal interval. These are scheduling delays, not a native delivery-time guarantee.
 
 When a player leaves a match, the HUD panel is destroyed by the engine while the V8 runtime may persist. If the HUD panel becomes invalid during polling or `CitadelGameStateChanged`, `ql_app.js` triggers `shutdown()` to halt timers, cancel scheduler loops, and release feature listeners. Furthermore, `boot()` detects stale instances with invalid HUD handles and performs a clean reboot, preventing compounding polling overhead across successive matches. Poll callbacks carry a session generation, so rejected cancellation or a zero native timer handle cannot revive a retired loop. Teardown never discovers a replacement HUD for saving and preserves publications not yet consumed by its last poll.
 
@@ -37,10 +37,10 @@ Runtime enable-state reconciliation uses the registry's automatic mode. It prese
 - **Normal Benchmark (`bm_<dur>_normal_<token>`)**: Measures the CPU overhead and polling execution metrics of the user's active configuration over `<dur>` seconds without altering any settings.
 - **Stress Benchmark (`bm_<dur>_stress_<token>`)**:
   - Captures the player's active configuration and revision in a transient stress lease before applying the expanded configuration.
-  - Generates a maximal configuration via `_buildMaximalConfig()`, enabling all registered features, toggles, multitoggles, and root CSS transformations on screen.
+  - Builds an expanded configuration via `_buildMaximalConfig()`, setting declared enable keys and eligible non-`DISABLE_` toggles/multitoggle options. Numeric modes, compatibility restrictions, runtime suppression and native source availability still limit which features actually run or appear; this is not an all-features-visible guarantee.
   - While the lease is active, config polling preserves the expanded root classes (e.g. Centered ESC Menu, Minimap transforms) and feature configuration.
   - Buffers any incoming user configuration edits during the benchmark so they are cleanly applied after completion without interfering with the test.
-  - Arms a safety timeout fallback timer (`durSec + 3s`) to guarantee player configuration restoration under abnormal terminations or scheduler errors.
+  - Arms a safety timeout fallback timer (`durSec + 3s`) to attempt configuration restoration if normal completion is missed. The callback still depends on the native runtime delivering it.
   - Upon benchmark completion, error, timeout, or application shutdown, triggers `_restoreStressBenchmark()` to cleanly restore original user settings, reload `ConfigAdapter`, re-sync manifests, and re-apply normal HUD CSS classes.
 
 Diagnostic requests own their Scheduler benchmark handles and report callbacks;

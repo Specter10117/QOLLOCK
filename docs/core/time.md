@@ -7,6 +7,7 @@ Provides parsing and formatting helpers for Deadlock match time and cooldown clo
 - `panorama/scripts/core/ql_namespace.js` (`QOL.core`)
 - `panorama/scripts/core/ql_panel_helpers.js` (`QOL.core.panel.isAlive`, `findHud`)
 - `panorama/scripts/ql_panelcache.js` (private scoped ID resolvers, created lazily after HUD includes)
+- `panorama/scripts/core/ql_scheduler.js` (shared game-second observation when subscribed)
 
 ## Interface (`QOL.core.time`)
 - `formatSeconds(seconds)`: Formats finite seconds into an `M:SS` string (e.g. `65` -> `"1:05"`). Non-finite or negative inputs clamp to `0`.

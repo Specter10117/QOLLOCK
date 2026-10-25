@@ -5,8 +5,8 @@ before changing runtime code, settings or visible text. It describes the current
 source architecture, not a proposed rewrite. Detailed subsystem documents remain
 linked below; old migration plans and audit snapshots are not current API specs.
 
-Reconciled with source on **2026-09-26**. Paths are relative to this repository
-unless explicitly absolute. Source files and active XML includes settle questions
+Paths are relative to this repository unless explicitly absolute. Source files
+and active XML includes settle questions
 about implementation; the maintainer's Panorama Debugger settles questions about
 the native panel tree. Neither this guide nor a green simulator run proves
 in-game behavior.
@@ -184,7 +184,8 @@ Active gameplay implementations register in
 `panorama/scripts/manifests/<id>/manifest.js`. Read an analogous existing manifest
 and [FeatureRegistry](docs/core/feature_registry.md) before adding one. Registration
 metadata and the `create(ctx)` factory are separate from the returned instance's
-`onEnable`, `onDisable`, `onSettingsChanged` and optional read-only `test` hooks.
+`onEnable`, `onDisable` and `onSettingsChanged` hooks. The optional read-only
+`test(ctx)` belongs to the manifest and is invoked by ManifestTests.
 Use the current [manifest implementation pattern](docs/MANIFEST_STYLE.md) and
 scaffold; native discovery/model/rendering/release remain feature-owned.
 
@@ -221,7 +222,8 @@ Use `QOL.core.Scheduler.createPollLoop(callback, seconds, ctx.id)` for recurring
 feature work. It returns `{stop(), reschedule(seconds)}`. `Scheduler.schedule`
 is an alias for a recurring loop, **not** a one-shot timer. The first tick is
 staggered; `reschedule` affects subsequent scheduling without restarting the
-pending tick. `cancelAllForFeature(id)` only owns managed loops for that ID.
+pending tick. `cancelAllForFeature(id)` owns managed loops and one-shots for that ID,
+including `scheduleOnce(callback, delaySec, featureId)`.
 See [scheduler](docs/core/scheduler.md) for error/timing behavior.
 
 On disable, undo owned classes/styles/panels, unregister your event handlers,
@@ -244,7 +246,8 @@ blanket catch and thereby bypass observation. Handle expected stale panels
 without log spam. Lifecycle exceptions and poll exceptions have different paths.
 
 `core/ql_app.js` boots last, loads flat configuration, populates feature buckets,
-boots the registry and polls the config bridge every 0.25 seconds. It forwards
+boots the registry and normally polls the config bridge every 0.25 seconds
+(0.05 seconds during an active Customize interaction, outside stress benchmarking). It forwards
 native shop, scoreboard, escape-menu and game-state signals to `engine:*` events.
 Those events are notifications, not guaranteed final native layout snapshots.
 The optional ForceShopClosed listener is a compatibility probe, not proof that
@@ -260,7 +263,7 @@ There are several related representations, not one interchangeable object:
 | `MOD_CONFIG` | Mutable escape-menu settings object; obtain it at use time via `QOL.getSettingsConfig()` |
 | ConfigStore feature buckets | HUD-side schema-validated slices consumed by manifests |
 | `State.lastConfig` | Existing HUD flat runtime snapshot; not the settings realm's object |
-| Versioned envelope / compact code | Storage and sharing formats; independent of package/release version |
+| JSON envelope / settings code | Storage / current lossless clipboard sharing; historical compact codes remain import-only. Format versions are independent of package/release versions |
 | `QOL_PRESETS` | Named preset values layered over defaults by the preset application flow |
 
 [ConfigAdapter](docs/core/config_adapter.md) builds key ownership from registered
@@ -270,8 +273,9 @@ key-to-feature mapping or add an obsolete `ql_core.js` dispatcher entry.
 
 [ConfigStore](docs/core/config_store.md) validates registered bucket keys. Flat
 0/1 toggles become booleans; exports convert booleans back to 0/1. Dropdown values
-are not universally numeric. Slider validation/rounding is not the compact
-codec's step grid. Adding a manifest field does **not** add it to flat defaults,
+are not universally numeric. Catalog sliders normalize to the current settings
+step; uncataloged local sliders use decimal rounding. Historical compact grids
+are import-only. Adding a manifest field does **not** add it to flat defaults,
 settings controls or serialized schemas.
 
 ### Required setting change path
@@ -300,9 +304,10 @@ settings controls or serialized schemas.
    export/import round-trip, including boundaries and invalid input. Retain
    existing regression coverage that exercises the affected contract.
 
-Procedural sliders in `ui/controls.js` commit on the current settings catalog
-step grid within the intersection of UI/catalog bounds. Storage and sharing preserve
-accepted precision. Inspect actual renderers and runtime consumers; their native
+Procedural sliders in `ui/controls.js` use the current catalog step and accepted
+value domain. Thumb travel can be narrower, especially for positions; accepted
+exact values must survive row refresh outside that travel. Storage and sharing
+preserve accepted precision. Inspect actual renderers and runtime consumers; their native
 presentation semantics are separate from serialization.
 
 Use `QOL.parseStoredConfig` for side-effect-free asynchronous restore validation.
@@ -356,7 +361,7 @@ For new text:
 - Verify English, Russian and an incomplete locale on the actual surface when
   changing visible UI. A dictionary load/count check is not a hardcoded-text audit.
 
-Current runtime codes and exported catalog codes differ in two places:
+Runtime codes, filename suffixes and exported catalog codes can differ:
 Brazilian Portuguese is `pt-br` at runtime, `pt_br` in filenames, `pt-BR` in JSON;
 Belarusian is `by` at runtime and `be` in JSON. Use `scripts/locales_helper.js`
 rather than constructing names. A website-only locale is not a shipped locale.
@@ -550,10 +555,10 @@ race a scheduled callback, and asynchronous deletion is not instantaneous.
 
 | Question | Evidence source |
 | --- | --- |
-| Native layouts, classes, CSS syntax and script examples | `G:\GameTracking-Deadlock\game\citadel\pak01_dir\panorama\` |
-| Native localized game strings | `G:\GameTracking-Deadlock\game\citadel\resource\localization\` |
-| Console command/ConVar names | `D:\GitHub2\panorama-deadlock-stuff\cvarlist.txt` |
-| Native strings/functions as investigation leads | `D:\GitHub2\panorama-deadlock-stuff\strings_dump\` and its DLL directories |
+| Native layouts, classes, CSS syntax and script examples | Updated GameTracking checkout: `game/citadel/pak01_dir/panorama/` |
+| Native localized game strings | GameTracking: `game/citadel/resource/localization/` |
+| Console command/ConVar names | Current game convar dump; checked-in registry evidence records its extraction source |
+| Native strings/functions as investigation leads | Maintainer-supplied dumps from the installed game DLLs; names alone do not establish call signatures |
 | Checked-in API name evidence used by CI | `scripts/data/game_api_registry.json` |
 | Actual panel ancestry, identity, class state and readable labels | Maintainer's in-game Panorama Debugger |
 
@@ -612,19 +617,23 @@ CI uses Node 24 and `npm ci`, followed by `npm test`.
 npm test
 node panorama/scripts/tools/qollock_smoke_test.js
 node scripts/validate_compact_schema.js
+npm run check:styles
 npm run check:api
 npm run lint
 npm run lint:all
 ```
 
-`npm test` currently runs HUD loading smoke, `node --test tests/*.test.js`,
-compact-schema validation, API checking and ESLint, in that order. There is no
+`npm test` runs HUD loading smoke, stylesheet checks, the Node `tests/*.test.js`
+suite with file concurrency limited to four, compact-schema validation, API
+checking and ESLint, in that order. CI also runs separate Python automation,
+Worker and isolated Windows builder checks; see [TESTING.md](docs/TESTING.md). There is no
 separate build-storage fuzz command in that pipeline. Do not copy obsolete
 pipeline names or past test counts into a new check.
 
 | Check | What it establishes | What it does not establish |
 | --- | --- | --- |
 | HUD smoke | Scripts from active `hud.xml` includes load; missing includes fail; manifests register | Settings rendering, hook execution or live gameplay |
+| Stylesheet scanner | Source delimiter, selector-budget and negation-chain checks | Full native CSS grammar, resource compilation or rendering |
 | Node regressions | Assertions on production JS under the test's stated fixtures/model | Native bindings, visual layout, universal feature coverage |
 | Compact-schema validator | Codec transformations and compatibility cases it exercises | Every value accepted by every UI control |
 | API checker | Known static command/event names; unknown names/parse errors fail | Native signature, dispatchability, availability or dynamic expressions |
