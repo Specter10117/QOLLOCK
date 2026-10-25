@@ -177,7 +177,9 @@
             }
 
             function renderCrates(model) {
-                if (!model.crates) { show(crates, false); return; }
+                if (!model.crates || Q.core.hud.isInHideout(rootOwner) || Q.isStreetBrawlModeActive?.(rootOwner)) {
+                    show(crates, false); return;
+                }
                 const second = Q.core.time.readObservedGameTime(rootOwner);
                 if ((model.crateFrom > 0 && second < model.crateFrom * 60) ||
                     (model.crateUntil < 90 && second >= model.crateUntil * 60)) { show(crates, false); return; }

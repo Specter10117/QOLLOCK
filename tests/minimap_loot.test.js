@@ -12,6 +12,16 @@ test("loot text compensates native inversion only while the map is effectively f
     assert.match(css, /\.invert_map\.qol_minimap_flip_active #QOLMinimapLootRoot \.QOLMinimapLootText\s*\{\s*transform:\s*none;/);
 });
 
+test("ordinary crate styles load through the native renderer stylesheet", () => {
+    const read = file => fs.readFileSync(path.join(__dirname, "../panorama/styles/", file), "utf8");
+    assert.match(read("hud_minimap.css"), /@import url\("s2r:\/\/panorama\/styles\/features\/ql_feat_native_hud_minimap\.vcss_c"\)/);
+    const native = read("features/ql_feat_native_hud_minimap.css");
+    assert.match(native, /#hud_minimap #minimap_overlay_root\s*\{[^}]*width: 100%;[^}]*height: 100%;/);
+    assert.match(native, /#hud_minimap #minimap_markers\s*\{/);
+    assert.match(native, /#hud_minimap \.minimap_marker\s*\{/);
+    assert.doesNotMatch(read("features/ql_feat_minimap.css"), /(?:#minimap_overlay_root|#minimap_markers|\.minimap_marker)\s*\{/);
+});
+
 function fixture() {
     const env = createHud({ inHideout: false }); env.assertLoaded();
     const Q = env.sandbox.global.QOL, $ = env.sandbox.global.$;
@@ -85,6 +95,20 @@ test("Map References marker size and opacity also affect ordinary crates without
     assert.equal(crates.style.opacity, "1");
     e.clean();
 });
+
+for (const stateClass of ["gamemode_streetbrawl", "connectedToHideout"]) {
+    test(`static references and ordinary crates hide in ${stateClass} and recover on match return`, () => {
+        const e = fixture();
+        e.configure({ ENABLE_MINIMAP_HEALING_SNACKS: 1, ENABLE_MINIMAP_CRATE_OVERLAY: 1 });
+        const layer = e.renderer.FindChild("QOLMinimapLootRoot"); assert.equal(layer.visible, true);
+        const crates = e.renderer.FindChild("minimap_overlay_root"); assert.equal(crates.style.visibility, "visible");
+        e.root.AddClass(stateClass); e.clock.advance(1200);
+        assert.equal(layer.visible, false); assert.equal(crates.style.visibility, "collapse");
+        e.root.RemoveClass(stateClass); e.clock.advance(1200);
+        assert.equal(layer.visible, true); assert.equal(crates.style.visibility, "visible");
+        e.clean();
+    });
+}
 
 test("late native sources, living replacements, reparented children and re-enable retain one owned loot tree", () => {
     const e = fixture();

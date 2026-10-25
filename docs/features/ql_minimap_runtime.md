@@ -9,6 +9,9 @@ Crates belong to the native `hud_minimap` render surface so native zoom,
 rotation and flip apply to their reference coordinates. Tunnels retain their
 viewport anchor. Crates and tough crates share the configured match-time window;
 its end is exclusive, and the maximum endpoint means no end limit.
+Crate container and marker rules load through the native minimap stylesheet.
+Both reference owners suppress their overlays in hideout and Street Brawl in
+their runtime paths, so inline visibility cannot defeat the mode gate.
 
 The separate `ql_minimap_loot` owner adds static tough-crate, healing-snack,
 statue, localized district-name and numbered route layers. Their source is

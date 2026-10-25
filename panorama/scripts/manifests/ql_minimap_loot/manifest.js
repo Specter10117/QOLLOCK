@@ -124,7 +124,7 @@
                 if (root !== rootOwner) { clear(); rootOwner = root; }
                 const native = P.isAlive(root) && (root.id === "Hud" || root.paneltype === "CitadelHud") ? nativeMap(root) : null;
                 if (native !== owner) { clear(); owner = native; }
-                if (!P.isAlive(owner) || !owner.BHasClass("dl_midtown") || Q.core.hud.isInHideout(root)) { shown(layer, false); return; }
+                if (!P.isAlive(owner) || !owner.BHasClass("dl_midtown") || Q.core.hud.isInHideout(root) || Q.isStreetBrawlModeActive?.(root)) { shown(layer, false); return; }
                 if (!tree.sweep()) { built.clear(); }
                 const previousLayer = layer;
                 layer = tree.child(owner, "Panel", "QOLMinimapLootRoot", { hittest: "false", hittestchildren: "false" });

@@ -362,3 +362,39 @@
 {
     transform: none;
 }
+
+/* Ordinary crate references now belong to this native renderer context. */
+
+#hud_minimap #minimap_overlay_root
+{
+    width: 100%;
+    height: 100%;
+    ignore-parent-flow: true;
+    horizontal-align: center;
+    vertical-align: center;
+    z-index: 1;
+    hittest: false;
+}
+
+#hud_minimap #minimap_markers
+{
+    width: 100%;
+    height: 100%;
+    ignore-parent-flow: true;
+    hittest: false;
+}
+
+#hud_minimap .minimap_marker
+{
+    width: 2px;
+    height: 2px;
+    transform: translateX(-1px) translateY(-1px);
+    background-color: rgba(255, 213, 74, 0.75);
+    box-shadow: fill rgba(42, 33, 0, 0.45) 0px 0px 0px 1px;
+}
+
+.connectedToHideout #hud_minimap #minimap_overlay_root,
+.gamemode_streetbrawl #hud_minimap #minimap_overlay_root
+{
+    visibility: collapse;
+}
