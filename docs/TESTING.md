@@ -144,6 +144,13 @@ one warning owner; objective timers consume a scalar rejuvenator snapshot.
 These checks complement the frozen-main compatibility matrix and do not replace
 client validation of native animation, composition, input or timing.
 
+`rejuv_phase_sequence.test.js` replays successive native boss/charge signals through
+the production registry, clock observer and Scheduler. It checks literal HUD and
+minimap readouts through later cooldown phases, delayed/duplicate signals,
+expiration boundaries, paused match time and the charge-only fallback. Run it with
+`node --test tests/rejuv_phase_sequence.test.js`. This checks the mod's current
+phase policy; it does not verify server timings or native signal delivery/layout.
+
 The map lifecycle suite also exercises partial crate/tunnel construction, moved
 markers, shrinking coordinate data, queued previous trees, stopped hooks and
 still-living HUD replacement. The shared tree suite checks targeted branch
