@@ -339,6 +339,13 @@
                 }
             }
         }
+        // The current registry retires failed owners without the legacy lists;
+        // poll-error streaks are cleared on retirement and cannot identify them.
+        for (const id of registered) {
+            if (!enabled.includes(id) && FeatureRegistry.isFeatureSupposedToBeEnabled(id) && !disabledList.includes(id)) {
+                disabledList.push(id);
+            }
+        }
 
         const diag = {
             features: registered,

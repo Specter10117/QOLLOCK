@@ -1195,6 +1195,9 @@
     "Align top": "По верхнему краю",
     "Center vertically": "По центру Y",
     "Align bottom": "По нижнему краю",
-    "Color palette": "Палитра цветов"
+    "Color palette": "Палитра цветов",
+    "Another developer test is running.": "Уже выполняется другая проверка разработчика.",
+    "Flip each current toggle and observe HUD diagnostics. Restores settings afterward; does not verify rendering or gameplay.": "По очереди переключает актуальные настройки и собирает диагностику HUD. Затем восстанавливает настройки; не проверяет отрисовку и игровой процесс.",
+    "Temporarily cycle presets and observe HUD errors. Stop or completion restores settings; does not verify rendering or gameplay.": "Временно перебирает пресеты и отслеживает ошибки HUD. При остановке или завершении восстанавливает настройки; не проверяет отрисовку и игровой процесс."
 };
 })();

@@ -6,7 +6,6 @@
 //              Feature Isolation Test (FIT) execution & diagnostic polling,
 //              Manifest In-Game Test Suite runner (Phase T2),
 //              Live HUD panel tree dump to console for headless profiler,
-//              Build Storage pipeline dry run automation,
 //              Full test suite runner & compact clipboard report generation,
 //              Preset cycle stress test & auto-disable verification,
 //              Diagnostic log dump & clipboard copy,
@@ -51,6 +50,45 @@
         } catch {
             return null;
         }
+    }
+
+    function diagnosticBusy(statusLabel) {
+        if (!(fitRunning || pcRunning || bmRunning || mtRunning || auditRunning || fsRunning || Q.ui.visualCheck?.isRunning())) return false;
+        if (isAlive(statusLabel)) statusLabel.text = localize("Another developer test is running.");
+        return true;
+    }
+
+    function diagnosticFailures(diag) {
+        return [...new Set([...(diag.disabled || []),
+            ...Object.keys(diag.newErrors || {}).filter(id => diag.newErrors[id] > 0)])];
+    }
+
+    // Both config tests publish temporary values through the existing save path.
+    // Keep newer user edits while rolling back the values owned by the test.
+    function captureConfigTest(statusLabel, actionBtn) {
+        const config = Q.getSettingsConfig();
+        const original = { ...config };
+        const context = $.GetContextPanel();
+        const hud = findHudPanel();
+        let expected = { ...config };
+        const remember = () => { expected = { ...config }; };
+        const ownsConfig = () => Q.getSettingsConfig() === config && $.GetContextPanel() === context;
+        const restore = () => {
+            if (!ownsConfig()) return;
+            const restored = { ...original };
+            for (const key of new Set([...Object.keys(config), ...Object.keys(expected)])) {
+                if (Object.is(config[key], expected[key])) continue;
+                if (Object.prototype.hasOwnProperty.call(config, key)) restored[key] = config[key];
+                else delete restored[key];
+            }
+            for (const key of Object.keys(config)) delete config[key];
+            Object.assign(config, restored);
+            globalThis.SaveAndSync();
+            remember();
+        };
+        return { config, restore, remember,
+            current: () => ownsConfig() && isAlive(context) && isAlive(statusLabel) && isAlive(actionBtn) &&
+                isAlive(hud) && findHudPanel() === hud && JSON.stringify(config) === JSON.stringify(expected) };
     }
 
     // =========================================================================
@@ -134,7 +172,7 @@
         const audit = result.engineAudit;
         let runtimeErrors = 0;
         for (const id of Object.keys(diag.newErrors || {})) runtimeErrors += diag.newErrors[id] || 0;
-        runtimeErrors = Math.max(runtimeErrors, audit?.runtimeErrors || 0);
+        runtimeErrors = Math.max(runtimeErrors, audit?.runtimeErrors || 0, diagnosticFailures(diag).length);
         const errors = s.errors + runtimeErrors + (audit?.readErrors || 0) + (audit?.bridgeErrors || 0);
         const unchecked = s.skipped + s.notRun;
         const incomplete = result.aborted || s.total === 0 || (audit && !audit.hudFound) || !result.report;
@@ -180,52 +218,19 @@
             return;
         }
 
-        const toggleKeys = [];
-        const seenKeys = {};
-        const defaultCfg = (typeof DEFAULT_CONFIG !== "undefined" && DEFAULT_CONFIG) ? DEFAULT_CONFIG : {};
-        const dcKeys = Object.keys(defaultCfg);
-        for (let i = 0; i < dcKeys.length; i++) {
-            const dk = dcKeys[i];
-            if ((dk.startsWith("ENABLE_") || dk.startsWith("HUD_") || dk.startsWith("SHOW_")) && !seenKeys[dk]) {
-                seenKeys[dk] = true;
-                toggleKeys.push(dk);
-            }
-        }
-
-        const presetsObj = (typeof PRESETS !== "undefined" && PRESETS) ? PRESETS : ((typeof globalThis !== "undefined" && (globalThis.QOL_PRESETS || globalThis.PRESETS)) ? (globalThis.QOL_PRESETS || globalThis.PRESETS) : {});
-        const presetNames = Object.keys(presetsObj);
-        for (let pi = 0; pi < presetNames.length; pi++) {
-            const presetCfg = presetsObj[presetNames[pi]];
-            if (!presetCfg) continue;
-            const pkKeys = Object.keys(presetCfg);
-            for (let pki = 0; pki < pkKeys.length; pki++) {
-                const pk = pkKeys[pki];
-                if ((pk.startsWith("ENABLE_") || pk.startsWith("HUD_") || pk.startsWith("SHOW_")) && !seenKeys[pk]) {
-                    seenKeys[pk] = true;
-                    toggleKeys.push(pk);
-                }
-            }
-        }
-
-        toggleKeys.sort();
-        const testQueue = toggleKeys.map((key) => ({ name: key, configKeys: [key] }));
+        if (diagnosticBusy(statusLabel)) return;
+        const testQueue = Q.settingsFields.filter(field => field.kind === "toggle")
+            .map(field => field.key).sort();
 
         if (testQueue.length === 0) {
             setStatus("No toggle keys found", "#cc4444");
             return;
         }
 
-        const modCfg = (typeof MOD_CONFIG !== "undefined" && MOD_CONFIG) ? MOD_CONFIG : {};
-        const savedConfig = JSON.stringify(modCfg);
+        const session = captureConfigTest(statusLabel, actionBtn);
+        const modCfg = session.config;
         const saveAndSync = (typeof SaveAndSync === "function") ? SaveAndSync : () => {};
-        const restore = () => {
-            // Normalization can derive additional flags from the tested toggle.
-            // Restore the complete snapshot so Stop cannot leave those behind.
-            const snapshot = JSON.parse(savedConfig);
-            for (const key of Object.keys(modCfg)) if (!Object.prototype.hasOwnProperty.call(snapshot, key)) delete modCfg[key];
-            Object.assign(modCfg, snapshot);
-            saveAndSync();
-        };
+        const restore = session.restore;
         fitRestore = restore;
 
         let passed = 0;
@@ -239,6 +244,7 @@
 
         function runNext() {
             if (!fitRunning || token !== fitToken) return;
+            if (!session.current()) { stop(); return; }
             if (index >= testQueue.length) {
                 fitRunning = false;
                 setBtnActive(false);
@@ -251,15 +257,12 @@
             }
 
             const entry = testQueue[index];
-            const label = `[${index + 1}/${testQueue.length}] ${entry.name}`;
+            const label = `[${index + 1}/${testQueue.length}] ${entry}`;
             setStatus(label, "#66cc99");
 
             try {
-                for (let ek = 0; ek < entry.configKeys.length; ek++) {
-                    const ck = entry.configKeys[ek];
-                    modCfg[ck] = 1;
-                }
-                saveAndSync();
+                modCfg[entry] = Number(modCfg[entry]) === 1 ? 0 : 1;
+                try { saveAndSync(); } finally { session.remember(); }
 
                 const forceToken = `fit_${token}_${index}`;
                 const hudPanel = findHudPanel();
@@ -278,11 +281,12 @@
                 function pollFitDiag() {
                     pollAttempts++;
                     if (!fitRunning || token !== fitToken) return;
+                    if (!session.current()) { stop(); return; }
 
                     const nowMs = Date.now();
                     if ((nowMs - pollStartMs) > 5500) {
                         skipped++;
-                        $.Msg(`[QOLLock][FeatureTest] SKIP: ${entry.name} — diagnostic sync timeout`);
+                        $.Msg(`[QOLLock][FeatureTest] SKIP: ${entry} — diagnostic sync timeout`);
                         restore();
                         index++;
                         $.Schedule(0.08, runNext);
@@ -298,10 +302,10 @@
                         try {
                             const diag = JSON.parse(rawDiag);
                             if (diag.diagToken === forceToken) {
-                                const disabledFeatures = (diag.disabled && diag.disabled.length > 0) ? diag.disabled : [];
+                                const disabledFeatures = diagnosticFailures(diag);
                                 if (disabledFeatures.length > 0) {
                                     failed++;
-                                    $.Msg(`[QOLLock][FeatureTest] FAIL: ${entry.name} → auto-disabled: ${disabledFeatures.join(", ")}`);
+                                    $.Msg(`[QOLLock][FeatureTest] FAIL: ${entry} → diagnostic errors: ${disabledFeatures.join(", ")}`);
                                 } else {
                                     passed++;
                                 }
@@ -320,11 +324,19 @@
                 $.Schedule(0.15, pollFitDiag);
             } catch (e) {
                 failed++;
-                $.Msg(`[QOLLock][FeatureTest] FAIL: ${entry.name} threw: ${e?.message || e}`);
+                $.Msg(`[QOLLock][FeatureTest] FAIL: ${entry} threw: ${e?.message || e}`);
                 restore();
                 index++;
                 $.Schedule(0.08, runNext);
             }
+        }
+        function stop() {
+            fitRunning = false;
+            fitToken++;
+            fitRestore = null;
+            restore();
+            setBtnActive(false);
+            setStatus("Stopped", "#aa8844");
         }
         $.Schedule(0.1, runNext);
     }
@@ -357,6 +369,7 @@
             setBtnActive(false);
             return;
         }
+        if (diagnosticBusy(statusLabel)) return;
 
         const token = ++mtToken;
         mtRunning = true;
@@ -433,10 +446,11 @@
     }
 
     // =========================================================================
-    // Panel Tree Dump & Build Storage Dry Run
+    // Panel Tree Dump & HUD State Recording
     // =========================================================================
 
     function requestPanelTreeDump(statusLabel) {
+        if (diagnosticBusy(statusLabel)) return false;
         const hudPanel = findHudPanel();
         if (!hudPanel || !hudPanel.SetAttributeString) {
             if (isAlive(statusLabel)) {
@@ -469,6 +483,7 @@
     }
 
     function requestHudStateObservation(statusLabel) {
+        if (diagnosticBusy(statusLabel)) return;
         const localize = text => globalThis.LocalizeSettingsText(text, true);
         const hud = findHudPanel();
         if (!isAlive(hud)) {
@@ -499,37 +514,6 @@
         if (isAlive(statusLabel)) statusLabel.text = localize(copied ? "HUD state report copied." : "Copy failed; see the console log.");
     }
 
-    function requestBuildStorageDryRun(statusLabel) {
-        const hudPanel = findHudPanel();
-        if (!hudPanel || !hudPanel.SetAttributeString) {
-            if (isAlive(statusLabel)) {
-                statusLabel.text = localize("Hud panel not found");
-                statusLabel.style.color = "#cc4444";
-            }
-            return false;
-        }
-        try {
-            hudPanel.SetAttributeString("QOL_BUILD_DUMP_TREE", "1");
-        } catch (e) {
-            warnLog("settings", `BuildStorage dry run failed: ${e?.message || e}`);
-            if (isAlive(statusLabel)) {
-                statusLabel.text = localize("Request failed");
-                statusLabel.style.color = "#cc4444";
-            }
-            return false;
-        }
-        $.Msg("[QOLLock][BuildStorage] requested tree dump dry run");
-        if (isAlive(statusLabel)) {
-            statusLabel.text = localize("Dry run started");
-            statusLabel.style.color = "#66cc99";
-        }
-        const setFeedback = Q.ui?.configTab?.setLocalizedConfigFeedbackMessage || globalThis.SetLocalizedConfigFeedbackMessage;
-        if (typeof setFeedback === "function") {
-            setFeedback("Build storage dry run started", "success", 5000);
-        }
-        return true;
-    }
-
     // =========================================================================
     // In-Game Engine Audit Runner (Spews directly to console ~)
     // =========================================================================
@@ -551,7 +535,7 @@
             }
         };
 
-        if (auditRunning) return;
+        if (diagnosticBusy(statusLabel)) return;
         const token = ++auditToken;
         auditRunning = true;
         setBtnActive(true);
@@ -644,7 +628,7 @@
             }
         };
 
-        if (fsRunning) return;
+        if (diagnosticBusy(statusLabel)) return;
         const token = ++fsToken;
         fsRunning = true;
         setBtnActive(true);
@@ -736,7 +720,7 @@
             }
         };
 
-        if (bmRunning) return;
+        if (diagnosticBusy(statusLabel)) return;
         const token = ++bmToken;
         bmRunning = true;
         setBtnActive(true);
@@ -845,6 +829,7 @@
     let pcRunning = false;
     let pcToken = 0;
     let pcResults = [];
+    let pcRestore = null;
 
     function runPresetCycle(statusLabel, actionBtn) {
         const setStatus = (text, color) => {
@@ -865,16 +850,20 @@
         if (pcRunning) {
             pcRunning = false;
             pcToken++;
+            const restore = pcRestore;
+            pcRestore = null;
+            if (restore) restore();
             setBtnActive(false);
             const done = pcResults.length;
             const presetsForTotal = (typeof PRESETS !== "undefined" && PRESETS) ? PRESETS : ((typeof globalThis !== "undefined" && (globalThis.QOL_PRESETS || globalThis.PRESETS)) ? (globalThis.QOL_PRESETS || globalThis.PRESETS) : {});
             const total = Object.keys(presetsForTotal).length;
             setStatus(format("Stopped ({done} of {total})", { done, total }), "#aa8844");
             if (typeof setFeedback === "function") {
-                setFeedback(`Stopped after ${done} presets.`, "info", 2400);
+                setFeedback(format("Stopped ({done} of {total})", { done, total }), "info", 2400);
             }
             return;
         }
+        if (diagnosticBusy(statusLabel)) return;
 
         const presetsObj = (typeof PRESETS !== "undefined" && PRESETS) ? PRESETS : ((typeof globalThis !== "undefined" && (globalThis.QOL_PRESETS || globalThis.PRESETS)) ? (globalThis.QOL_PRESETS || globalThis.PRESETS) : {});
         const presetNames = Object.keys(presetsObj).sort();
@@ -882,6 +871,8 @@
             setStatus("No presets found.", "#cc4444");
             return;
         }
+        const session = captureConfigTest(statusLabel, actionBtn);
+        pcRestore = session.restore;
 
         pcRunning = true;
         pcResults = [];
@@ -893,9 +884,12 @@
 
         function runNext() {
             if (!pcRunning || token !== pcToken) return;
+            if (!session.current()) { stop(); return; }
 
             if (index >= presetNames.length) {
                 pcRunning = false;
+                pcRestore = null;
+                session.restore();
                 setBtnActive(false);
                 let passed = 0;
                 let failed = 0;
@@ -948,17 +942,16 @@
             let applyOk = true;
             let applyErr = "";
             try {
-                const applyPresetFn = Q.ui?.presets?.applyPresetByName || globalThis.ApplyPresetByName;
-                if (typeof applyPresetFn === "function") {
-                    applyPresetFn(presetName);
-                } else {
-                    throw new Error("ApplyPresetByName not available");
-                }
+                // Resolve the current preset without changing runtime preset-name
+                // bookkeeping or rebuilding the card that owns this test.
+                const candidate = Q.ui.presets.buildPresetCandidateConfigByName(presetName);
+                if (!candidate || !Q.ui.presets.applyPresetConfig(candidate)) throw new Error("Preset not available");
+                globalThis.SaveAndSync();
             } catch (e) {
                 applyOk = false;
                 applyErr = e?.message || String(e || "");
                 $.Msg(`[QOLLock][presetCycle] ApplyPresetByName failed for '${presetName}': ${applyErr}`);
-            }
+            } finally { session.remember(); }
 
             if (!applyOk) {
                 pcResults.push({ name: presetName, passed: false, autoDisabled: [], featuresLoaded: 0, timeMs: Date.now() - startMs, exception: applyErr });
@@ -985,6 +978,7 @@
             function pollDiag() {
                 pollAttempts++;
                 if (!pcRunning || token !== pcToken) return;
+                if (!session.current()) { stop(); return; }
 
                 const nowMs = Date.now();
                 const elapsedPollMs = nowMs - pollStartMs;
@@ -1009,7 +1003,7 @@
                         const diag = JSON.parse(rawDiag);
                         if (diag.diagToken === forceToken) {
                             const elapsedMs = nowMs - startMs;
-                            const autoDisabled = (diag.disabled) ? diag.disabled : [];
+                            const autoDisabled = diagnosticFailures(diag);
                             const features = (diag.features) ? diag.features : [];
                             const isSuccess = autoDisabled.length === 0;
 
@@ -1040,6 +1034,14 @@
             $.Schedule(0.15, pollDiag);
         }
 
+        function stop() {
+            pcRunning = false;
+            pcToken++;
+            pcRestore = null;
+            session.restore();
+            setBtnActive(false);
+            setStatus("Stopped", "#aa8844");
+        }
         $.Schedule(0.1, runNext);
     }
 
@@ -1265,6 +1267,7 @@
             "Open in a match or sandbox. Compare HUD changes and test gameplay. Stop restores settings without saving the test values.",
             "Start",
             (statusLbl) => {
+                if (diagnosticBusy(statusLbl)) return;
                 const started = Q.ui.visualCheck?.start(() => {
                     if (isAlive(statusLbl)) statusLbl.text = globalThis.LocalizeSettingsText("Settings restored", true);
                 });
@@ -1292,7 +1295,7 @@
             "FeatureTestStatus",
             "s2r://panorama/images/icons/icon_play.vsvg",
             "Feature Test",
-            "Test each feature individually (enable → verify → disable).",
+            "Flip each current toggle and observe HUD diagnostics. Restores settings afterward; does not verify rendering or gameplay.",
             "Run Feature Test",
             (statusLbl, btn) => runFeatureIsolationTest(statusLbl, btn)
         );
@@ -1319,18 +1322,6 @@
             "Dump the live panel tree to the console log for the offline profiler. Requires HUD context; save your console log afterwards.",
             "Dump Tree",
             (statusLbl) => requestPanelTreeDump(statusLbl)
-        );
-
-        createDevActionRow(
-            list,
-            "DevBsDumpRow",
-            "BsDumpBtn",
-            "BsDumpStatus",
-            "s2r://panorama/images/icons/icon_play.vsvg",
-            "Build Storage Dry Run",
-            "Perform a dry run of the build storage pipeline (switch hero, open shop, open popup) and dump tree to console. Requires HUD context.",
-            "Run Storage Test",
-            (statusLbl) => requestBuildStorageDryRun(statusLbl)
         );
 
         createDevActionRow(
@@ -1364,7 +1355,7 @@
             "PresetCycleStatus",
             "s2r://panorama/images/icons/icon_reorder.vsvg",
             "Preset Cycle",
-            "Apply every preset and verify no features auto-disable. Click again to stop.",
+            "Temporarily cycle presets and observe HUD errors. Stop or completion restores settings; does not verify rendering or gameplay.",
             "Cycle Presets",
             (statusLbl, btn) => runPresetCycle(statusLbl, btn)
         );
@@ -1400,7 +1391,6 @@
         requestPanelTreeDump,
         requestHudStateObservation,
         copyHudStateObservation,
-        requestBuildStorageDryRun,
         runFullTestSuite,
         runPresetCycle,
         runInGameBenchmark,

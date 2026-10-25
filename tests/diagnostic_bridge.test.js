@@ -26,6 +26,19 @@ test("boot writes initial diagnostic snapshot to QOL_Diag", () => {
     assert.strictEqual(typeof diag.errors, "object", "diag.errors must be an object");
 });
 
+test("diagnostics report a current manifest retired after consecutive poll errors", () => {
+    const hud = sim.createHud();
+    const Q = hud.sandbox.global.QOL;
+    const registry = Q.core.FeatureRegistry;
+    registry.register({ id: "diagnostic_failure", enabledByDefault: true, settings: [],
+        create: () => ({ onEnable() {}, onDisable() {} }) });
+    registry.enable("diagnostic_failure");
+    for (let i = 0; i < 10; i++) Q.core.EventBus.emit("scheduler:error", { featureId: "diagnostic_failure", message: "injected poll failure" });
+    assert.equal(registry.isEnabled("diagnostic_failure"), false);
+    assert.ok(Q.core.App.buildDiagSnapshot().disabled.includes("diagnostic_failure"));
+    assert.ok(!Q.core.App.buildDiagSnapshot().disabled.includes("ql_compass"), "an ordinary disabled setting is not a runtime failure");
+});
+
 test("QOL_DiagRequest with force token updates QOL_Diag with matching diagToken", () => {
     const hud = sim.createHud();
     hud.assertLoaded();

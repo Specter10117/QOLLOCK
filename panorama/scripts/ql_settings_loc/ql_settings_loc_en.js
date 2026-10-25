@@ -1195,6 +1195,9 @@
     "Align top": "Align top",
     "Center vertically": "Center vertically",
     "Align bottom": "Align bottom",
-    "Color palette": "Color palette"
+    "Color palette": "Color palette",
+    "Another developer test is running.": "Another developer test is running.",
+    "Flip each current toggle and observe HUD diagnostics. Restores settings afterward; does not verify rendering or gameplay.": "Flip each current toggle and observe HUD diagnostics. Restores settings afterward; does not verify rendering or gameplay.",
+    "Temporarily cycle presets and observe HUD errors. Stop or completion restores settings; does not verify rendering or gameplay.": "Temporarily cycle presets and observe HUD errors. Stop or completion restores settings; does not verify rendering or gameplay."
 };
 })();

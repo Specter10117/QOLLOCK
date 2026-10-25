@@ -88,6 +88,8 @@ The window manager resolves the current SettingsWindow identity before reusing i
 
 Save feedback and its delayed reset belong to the latest accepted save action and its original settings context/root. An older acknowledgment cannot report success for a newer pending save or publish onto a replacement context. Indefinite feedback invalidates the preceding message's clear callback.
 
-The developer Feature Test snapshots the complete settings configuration. Stop and normal per-feature restoration restore that snapshot through SaveAndSync, including derived flags changed by normalization. Retired test callbacks cannot reapply temporary toggles after Stop. These are live publication checks, not durable CEF-save guarantees.
+The developer Feature Test uses the current toggle catalog, flips one setting at a time and restores the complete snapshot through SaveAndSync, including derived flags changed by normalization. Preset Cycle resolves current preset candidates without changing runtime preset-name bookkeeping and restores the original configuration on Stop or completion. Both stop and restore if their controls or HUD are retired, or if settings are edited externally; newer user edits are preserved while temporary test values are removed. Retired callbacks cannot resume a stopped run. These are live diagnostic observations, not rendering/gameplay verification or durable CEF-save guarantees.
+
+Dev diagnostic actions serialize requests so configuration tests, benchmarks and report requests cannot overwrite each other's bridge tokens. The walkthrough also excludes these runs. The retired Build Storage Dry Run action has no runtime consumer and is not offered as a working test.
 
 Run node --test tests/ui_async_owners.test.js for these modeled transitions. Native tab animation, header drag routing and client context replacement still require maintainer verification.

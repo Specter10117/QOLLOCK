@@ -17,6 +17,11 @@ Top-level application boot coordinator and native engine event bridge. Orchestra
 - `writeDiagSnapshot(hudPanel, forceToken?)`: Writes the structured snapshot as JSON to the panel's `QOL_Diag` attribute. Without a panel it does nothing; this is not a disk save.
 - `buildDiagSnapshot(forceToken?)`: Returns the diagnostic snapshot object, optionally carrying the request token; it does not publish the object.
 
+Diagnostic `disabled` entries include registered owners whose configuration calls
+for enablement but which have no active instance, as well as retained legacy
+disable evidence. Ordinary off settings are excluded. This preserves failure
+visibility after the registry clears a retired owner's consecutive-error count.
+
 ## Native Engine Event Bridging
 Deadlock C++ engine events are captured using `$.RegisterForUnhandledEvent` and forwarded to `EventBus`:
 - `CitadelScoreboardToggle` → `engine:scoreboard_toggle` (refresh notification; no visibility payload)

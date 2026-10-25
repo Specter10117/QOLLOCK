@@ -173,7 +173,6 @@ test("ui/dev_tab: exports public API on QOL.ui.devTab and globalThis", () => {
     assert.strictEqual(typeof devApi.runFeatureIsolationTest, "function");
     assert.strictEqual(typeof devApi.runManifestTests, "function");
     assert.strictEqual(typeof devApi.requestPanelTreeDump, "function");
-    assert.strictEqual(typeof devApi.requestBuildStorageDryRun, "function");
     assert.strictEqual(typeof devApi.runFullTestSuite, "function");
     assert.strictEqual(typeof devApi.runPresetCycle, "function");
     assert.strictEqual(typeof devApi.copyDiagnosticsToClipboard, "function");
@@ -195,19 +194,6 @@ test("ui/dev_tab: requestPanelTreeDump writes force-sync token to HUD bridge", (
     const attr = env.hudPanel.GetAttributeString("QOL_DiagRequest", "");
     assert.ok(attr.startsWith("dt_"), "QOL_DiagRequest should start with dt_");
     assert.strictEqual(statusLabel.text, "Dumped to console log");
-});
-
-test("ui/dev_tab: requestBuildStorageDryRun writes QOL_BUILD_DUMP_TREE attribute", () => {
-    const env = createTestEnvironment();
-    const { requestBuildStorageDryRun } = env.sandbox.QOL.ui.devTab;
-
-    const statusLabel = env.sandbox.$.CreatePanel("Label", env.rootPanel, "TestStatus");
-    const ok = requestBuildStorageDryRun(statusLabel);
-
-    assert.strictEqual(ok, true);
-    const attr = env.hudPanel.GetAttributeString("QOL_BUILD_DUMP_TREE", "");
-    assert.strictEqual(attr, "1");
-    assert.strictEqual(statusLabel.text, "Dry run started");
 });
 
 test("ui/dev_tab: copyDiagnosticsToClipboard calls dumpDiagnostics and copies to clipboard", () => {
@@ -234,7 +220,7 @@ test("ui/dev_tab: render builds all dev sections and action buttons", () => {
     assert.ok(list.FindChildTraverse("FeatureTestBtn"), "Should render FeatureTestBtn");
     assert.ok(list.FindChildTraverse("ManifestTestBtn"), "Should render ManifestTestBtn");
     assert.ok(list.FindChildTraverse("TreeDumpBtn"), "Should render TreeDumpBtn");
-    assert.ok(list.FindChildTraverse("BsDumpBtn"), "Should render BsDumpBtn");
+    assert.equal(list.FindChildTraverse("BsDumpBtn"), null, "Do not offer the retired storage pipeline as a working test");
     assert.ok(list.FindChildTraverse("FullSuiteBtn"), "Should render FullSuiteBtn");
     assert.ok(list.FindChildTraverse("PresetCycleBtn"), "Should render PresetCycleBtn");
     assert.ok(list.FindChildTraverse("DiagCopyLogsBtn"), "Should render DiagCopyLogsBtn");
@@ -273,6 +259,26 @@ test("audit displays a failed HUD observation as failure even when copying succe
     assert.equal(button.BHasClass("CycleActive"), false);
     assert.match(env.getClipboardText(), /source label missing/);
 });
+
+for (const method of ["runManifestTests", "runInGameEngineAudit", "runFullTestSuite"]) {
+    test(`${method} does not report success when the current registry has retired an owner`, () => {
+        const env = createTestEnvironment();
+        const label = env.sandbox.$.CreatePanel("Label", env.rootPanel, "Status");
+        const button = env.sandbox.$.CreatePanel("Button", env.rootPanel, "Action");
+        const api = env.sandbox.QOL.ui.devTab;
+        if (method === "runManifestTests") api[method](label, button);
+        else api[method](env.rootPanel, label, button);
+        env.hudPanel.SetAttributeString("QOL_Diag", JSON.stringify({
+            disabled: ["ql_topbar"], newErrors: {}, testResults: {
+                token: env.hudPanel.GetAttributeString("QOL_DiagRequest", ""),
+                summary: { total: 1, passed: 1, failed: 0, errors: 0, skipped: 0, notRun: 0 }, report: "Hook observed"
+            }
+        }));
+        env.clock.advance(500);
+        assert.equal(label.style.color, "#cc4444");
+        assert.match(label.text, /1 errors/);
+    });
+}
 
 test("audit rejects a stale report and shows timeout instead of success", () => {
     const env = createTestEnvironment();
