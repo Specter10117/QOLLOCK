@@ -37,7 +37,7 @@ test("production clipboard export is short and decodes the complete supplied con
     assert.equal(g.QOL.ui.modal.tryApplyImportStringWithDiagnostics(code).ok, true);
     assert.equal(g.QOL.persistence.serializeSettings(config).charAt(0), "{", "disk storage remains JSON");
     const frozenPayload = g.QOL.persistence.fromBase64Url(frozenCode.split(":")[1]);
-    assert.deepEqual(plain(g.QOL.persistence.deserializeSettings(frozenPayload)), config,
+    assert.deepEqual({ ...g.QOL_DEFAULT_CONFIG, ...plain(g.QOL.persistence.deserializeSettings(frozenPayload)) }, config,
         "previously published IDs and reference values must never change");
 });
 

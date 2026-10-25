@@ -61,6 +61,10 @@
 		<!-- ==== End QOLLOCK customization preview ==== -->
 		<include src="s2r://panorama/scripts/ql_recent_purchases_data.vjs_c" />
 		<include src="s2r://panorama/scripts/ql_minimap_crate_data.vjs_c" />
+		<!-- ==== QOLLOCK static minimap loot and route references ==== -->
+		<include src="s2r://panorama/scripts/ql_minimap_loot_data.vjs_c" />
+		<include src="s2r://panorama/scripts/manifests/ql_minimap_loot/manifest.vjs_c" />
+		<!-- ==== End QOLLOCK static minimap loot and route references ==== -->
 		<include src="s2r://panorama/scripts/tools/qol_dump_tree.vjs_c" />
 		<include src="s2r://panorama/scripts/manifests/ql_cast_failed_hint/manifest.vjs_c" />
 		<include src="s2r://panorama/scripts/manifests/ql_mouse_cursor/manifest.vjs_c" />

@@ -5,6 +5,26 @@
     var _root = (typeof globalThis !== "undefined") ? globalThis : (typeof window !== "undefined") ? window : {};
     if (!_root.SETTINGS_LOCALE_TEXT) _root.SETTINGS_LOCALE_TEXT = {};
     _root.SETTINGS_LOCALE_TEXT["en"] = {
+    "All": "All",
+    "Map References": "Map References",
+    "Marker Size": "Marker Size",
+    "Route Size": "Route Size",
+    "Show Crates": "Show Crates",
+    "Tough Crates": "Tough Crates",
+    "Healing Snacks": "Healing Snacks",
+    "Statues": "Statues",
+    "Camp Names": "Camp Names",
+    "Crate Routes": "Crate Routes",
+    "Routes From Minute": "Routes From Minute",
+    "Routes Until Minute": "Routes Until Minute",
+    "Crates From Minute": "Crates From Minute",
+    "Crates Until Minute": "Crates Until Minute",
+    "Static Midtown locations; markers do not track remaining loot.": "Static Midtown locations; markers do not track remaining loot.",
+    "Numbered reference routes for collecting crates on Midtown.": "Numbered reference routes for collecting crates on Midtown.",
+
+    "Left Bridge Buff Timer": "Left Bridge Buff Timer",
+    "Right Bridge Buff Timer": "Right Bridge Buff Timer",
+
     "Unsupported settings code. Update QOLLOCK and try again.": "Unsupported settings code. Update QOLLOCK and try again.",
     "Show rank badges on the top bar and escape menu player list.": "Show rank badges on the top bar and escape menu player list.",
     "Show rank badges on top bar player panels (requires Show Player Ranks).": "Show rank badges on top bar player panels (requires Show Player Ranks).",

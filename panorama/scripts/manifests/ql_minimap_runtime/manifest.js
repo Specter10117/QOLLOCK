@@ -39,6 +39,10 @@
             { key: "ALT_ZOOM_DRAW_OVER_UI", type: "toggle" },
             { key: "TAB_ZOOM_DRAW_OVER_UI", type: "toggle" },
             { key: "ENABLE_MINIMAP_CRATE_OVERLAY", type: "toggle" },
+            { key: "MINIMAP_LOOT_MARKER_SCALE", type: "slider" },
+            { key: "MINIMAP_LOOT_OPACITY", type: "slider" },
+            { key: "MINIMAP_CRATE_FROM_MINUTE", type: "slider" },
+            { key: "MINIMAP_CRATE_UNTIL_MINUTE", type: "slider" },
             { key: "ENABLE_MINIMAP_REM_TUNNELS", type: "toggle" },
             { key: "MINIMAP_REM_TUNNELS_OPACITY", type: "slider" },
             { key: "ENABLE_ALT_ZOOM_REM_TUNNELS", type: "toggle" },
@@ -90,6 +94,8 @@
                 };
                 return { alt: enabled("ENABLE_ALT_ZOOM"), tab: enabled("ENABLE_TAB_ZOOM"), fixedIcons: enabled("MINIMAP_FIXED_ICON_SIZE"),
                     minimalist: enabled("MINIMAL_MINIMAP"), minimalOpacity: U.NormalizeOpacityNumber(number("MINIMAL_MINIMAP_OPACITY", 0.9), 0.9),
+                    crateMarkerScale: number("MINIMAP_LOOT_MARKER_SCALE", 100) / 100, crateOpacity: number("MINIMAP_LOOT_OPACITY", 1),
+                    crateFrom: number("MINIMAP_CRATE_FROM_MINUTE", 0), crateUntil: number("MINIMAP_CRATE_UNTIL_MINUTE", 90),
                     crates: enabled("ENABLE_MINIMAP_CRATE_OVERLAY"), iconColor: P.resolvePaletteColor(cfg.MINIMAP_ICON_COLOR),
                     base: view(""), altView: view("ALT"), tabView: view("TAB") };
             }
@@ -172,7 +178,10 @@
 
             function renderCrates(model) {
                 if (!model.crates) { show(crates, false); return; }
-                const next = ensure(anchor, "minimap_overlay_root", crates);
+                const second = Q.core.time.readObservedGameTime(rootOwner);
+                if ((model.crateFrom > 0 && second < model.crateFrom * 60) ||
+                    (model.crateUntil < 90 && second >= model.crateUntil * 60)) { show(crates, false); return; }
+                const next = ensure(renderer, "minimap_overlay_root", crates);
                 if (next !== crates) {
                     for (const panel of [crates, markers, ...markerPanels]) owned.delete(panel);
                     crates = next; markers = null; markerPanels = []; crateData = null; crateReady = false;
@@ -183,6 +192,9 @@
                     markers = nextMarkers; markerPanels = []; crateData = null; crateReady = false;
                 }
                 if (!P.isAlive(markers)) { show(crates, false); return; }
+                // MapHunter fractions refer to the native render surface. Its
+                // zoom/rotation must move ordinary crates with the other loot.
+                if (!style(crates, { zIndex: "1", opacity: String(model.crateOpacity) })) { show(crates, false); return; }
                 // Map API remains unverified; retain the shipped Midtown table.
                 const data = Q.minimapCrateData || (typeof CRATE_DATA === "object" ? CRATE_DATA : null);
                 const points = data?.dl_midtown?.crates || (Array.isArray(data?.dl_midtown) ? data.dl_midtown : []);
@@ -211,7 +223,8 @@
                     crateReady = true;
                     coordinates.forEach(([x, y], index) => {
                         crateReady = style(markerPanels[index], {
-                            position: x * 100 + "% " + y * 100 + "% 0", width: "2px", height: "2px", transform: "translateX(-1px) translateY(-1px)",
+                            position: x * 100 + "% " + y * 100 + "% 0", width: 2 * model.crateMarkerScale + "px", height: 2 * model.crateMarkerScale + "px",
+                            transform: "translateX(" + -model.crateMarkerScale + "px) translateY(" + -model.crateMarkerScale + "px)",
                             opacity: "1.0", backgroundColor: "rgba(255, 213, 74, 0.75)", border: "1px solid rgba(42, 33, 0, 0.45)"
                         }) && crateReady;
                     });
@@ -301,7 +314,9 @@
 
             function refresh() {
                 if (!active) return;
+                const previousScale = model?.crateMarkerScale;
                 model = readModel();
+                if (previousScale !== model.crateMarkerScale) crateReady = false;
                 geometry.resetDiscovery(); canvasResolver.reset(); renderResolver.reset();
                 syncLoop(); update();
             }

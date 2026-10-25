@@ -38,6 +38,29 @@
             t("ENABLE_MINIMAP_REJUV_TIMER", "Rejuvenator Timer"), t("ENABLE_MINIMAP_BUFF_TIMER", "Buff Timer"),
             t("ENABLE_MINIMAP_BUFF_TIMER_ON_BRIDGE", "Bridge Buff Timer"), t("ENABLE_MINIMAP_ALWAYS_ON_MID_BOSS", "Always Show Mid Boss")
         ] },
+        { id: "midBossTimer", name: "Mid Boss Timer", group: "Minimap", parentId: "mapTimers",
+            path: [...mapPath, "QOLMinimapTimersRoot", "QOLMinimapRejuvTimer"],
+            fields: [t("ENABLE_MINIMAP_REJUV_TIMER", "Enable"), ...geometry("MINIMAP_MID_BOSS_", true), opacity("MINIMAP_MID_BOSS_")] },
+        { id: "buffTimer", name: "Buff Timer", group: "Minimap", parentId: "mapTimers",
+            path: [...mapPath, "QOLMinimapTimersRoot", "QOLMinimapBuffTimer"],
+            fields: [t("ENABLE_MINIMAP_BUFF_TIMER", "Enable"), ...geometry("MINIMAP_BUFF_", true), opacity("MINIMAP_BUFF_")] },
+        { id: "bridgeBuffLeft", name: "Left Bridge Buff Timer", group: "Minimap", parentId: "mapTimers",
+            path: [...mapPath, "QOLMinimapTimersRoot", "QOLMinimapBuffBridgeLeftTimer"],
+            fields: [t("ENABLE_MINIMAP_BUFF_TIMER", "Enable"), ...geometry("MINIMAP_BRIDGE_LEFT_", true), opacity("MINIMAP_BRIDGE_LEFT_")] },
+        { id: "bridgeBuffRight", name: "Right Bridge Buff Timer", group: "Minimap", parentId: "mapTimers",
+            path: [...mapPath, "QOLMinimapTimersRoot", "QOLMinimapBuffBridgeRightTimer"],
+            fields: [t("ENABLE_MINIMAP_BUFF_TIMER", "Enable"), ...geometry("MINIMAP_BRIDGE_RIGHT_", true), opacity("MINIMAP_BRIDGE_RIGHT_")] },
+        { id: "mapLoot", name: "Map References", group: "Minimap",
+            path: [...mapPath, "HudMinimapContainer", "hud_minimap", "QOLMinimapLootRoot"],
+            resolve(hud) {
+                const renderer = C.findPath(hud, [...mapPath, "HudMinimapContainer", "hud_minimap"]);
+                return QOL.core.panel.findChild(renderer, "QOLMinimapLootRoot") || QOL.core.panel.findChild(renderer, "minimap_overlay_root");
+            }, fields: [
+                f("MINIMAP_LOOT_MARKER_SCALE", "Marker Size"), opacity("MINIMAP_LOOT_"), f("MINIMAP_ROUTE_SCALE", "Route Size"),
+                ...["ENABLE_MINIMAP_TOUGH_CRATES", "ENABLE_MINIMAP_HEALING_SNACKS", "ENABLE_MINIMAP_STATUES", "ENABLE_MINIMAP_CRATE_ROUTES"].map(key => t(key, "Enable", true)),
+                f("MINIMAP_CAMP_NAMES", "Camp Names", null, { hidden: true }),
+                ...["MINIMAP_ROUTE_FROM_MINUTE", "MINIMAP_ROUTE_UNTIL_MINUTE", "MINIMAP_CRATE_FROM_MINUTE", "MINIMAP_CRATE_UNTIL_MINUTE"].map(key => f(key, "Time", null, { hidden: true }))
+            ] },
         { id: "shop", name: "Shop", group: "Shop", path: [...core, "CitadelHudHeroShop", "Shop", "MainPanel"], fields: [
             toggle("HUD_SHOP_ENABLED"), f("SHOP_OFFSET_X", "Horizontal Offset", null, { axis: "x" }),
             f("SHOP_OFFSET_Y", "Vertical Offset", null, { axis: "y", direction: -1 }), f("SHOP_SCALE", "Scale", null, { resize: true }), opacity("SHOP_"),

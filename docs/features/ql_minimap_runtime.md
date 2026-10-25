@@ -4,7 +4,22 @@ The [manifest](../../panorama/scripts/manifests/ql_minimap_runtime/manifest.js)
 owns Base, Alt and Tab minimap geometry, opacity, crates and tunnels.
 [ql_compass](ql_compass.md) owns rotation and flip; objective overlays and
 Rejuvenator phase state have separate owners. Crate positions come from
-`ql_minimap_crate_data.js`.
+`ql_minimap_crate_data.js`, refreshed from the supplied MapHunter static table.
+Crates belong to the native `hud_minimap` render surface so native zoom,
+rotation and flip apply to their reference coordinates. Tunnels retain their
+viewport anchor. Crates and tough crates share the configured match-time window;
+its end is exclusive, and the maximum endpoint means no end limit.
+
+The separate `ql_minimap_loot` owner adds static tough-crate, healing-snack,
+statue, localized district-name and numbered route layers. Their source is
+`ql_minimap_loot_data.js`; this is a reference map, with no live loot availability
+tracking. Discovery follows direct native owner breadcrumbs and waits when they
+are absent. A positive native Midtown class is required for these new layers.
+Native district tokens supply HUD translations, independently of the settings
+language. Routes have a separate match-time window; appearance settings never
+move the map-relative coordinates. Changing appearance rebuilds only this owner's
+created tree, and disable/replacement retires all owned children.
+
 
 Draw-over-UI behavior uses a stacking override without reparenting
 `minimap_persp`. The native location labels inherit their district/building

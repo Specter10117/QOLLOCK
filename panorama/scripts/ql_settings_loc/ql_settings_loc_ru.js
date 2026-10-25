@@ -5,6 +5,26 @@
     var _root = (typeof globalThis !== "undefined") ? globalThis : (typeof window !== "undefined") ? window : {};
     if (!_root.SETTINGS_LOCALE_TEXT) _root.SETTINGS_LOCALE_TEXT = {};
     _root.SETTINGS_LOCALE_TEXT["ru"] = {
+    "All": "???",
+    "Map References": "Подсказки на карте",
+    "Marker Size": "Размер маркеров",
+    "Route Size": "Размер маршрутов",
+    "Show Crates": "Показывать ящики",
+    "Tough Crates": "Прочные ящики",
+    "Healing Snacks": "Лечебная еда",
+    "Statues": "Статуи",
+    "Camp Names": "Названия районов",
+    "Crate Routes": "Маршруты ящиков",
+    "Routes From Minute": "Маршруты: с минуты",
+    "Routes Until Minute": "Маршруты: до минуты",
+    "Crates From Minute": "Ящики: с минуты",
+    "Crates Until Minute": "Ящики: до минуты",
+    "Static Midtown locations; markers do not track remaining loot.": "Статичные точки на карте Midtown; маркеры не отслеживают оставшуюся добычу.",
+    "Numbered reference routes for collecting crates on Midtown.": "Пронумерованные маршруты сбора ящиков на карте Midtown.",
+
+    "Left Bridge Buff Timer": "Таймер усиления на левом мосту",
+    "Right Bridge Buff Timer": "Таймер усиления на правом мосту",
+
     "Unsupported settings code. Update QOLLOCK and try again.": "Этот код настроек не поддерживается. Обновите QOLLOCK и попробуйте снова.",
     "Show rank badges on the top bar and escape menu player list.": "Показывать значки ранга в верхней панели и списке игроков меню паузы.",
     "Show rank badges on top bar player panels (requires Show Player Ranks).": "Показывать значки ранга в верхней панели (требуется «Ранги игроков»).",

@@ -71,7 +71,6 @@ test("search retains absent conditional features and matches localized field nam
     const env = setup();
     env.global.MOD_CONFIG.LANGUAGE = env.global.QOL.ui.theme.SETTINGS_LANGUAGE_RUSSIAN;
     env.global.QOL.ui.customize.start();
-    activate(env, "QOLCustomizeAllElements");
     const search = env.em.FindChildTraverse("QOLCustomizeSearch");
     search.text = "fire rate";
     search._fire("ontextentrychange");

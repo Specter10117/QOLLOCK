@@ -351,3 +351,14 @@
 {
 	transform: scaleY(1) scaleX(1);
 }
+
+/* Static reference labels keep the native flipped-map text orientation. */
+.invert_map #QOLMinimapLootRoot .QOLMinimapLootText
+{
+    transform: scaleX(-1) scaleY(-1);
+}
+
+.invert_map.qol_minimap_flip_active #QOLMinimapLootRoot .QOLMinimapLootText
+{
+    transform: none;
+}
