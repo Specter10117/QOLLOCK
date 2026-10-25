@@ -14,8 +14,14 @@ function setup() {
     };
     function mount(root = env.doc.root, raw = "123 - Example - 1") {
         const core = add(root, "", "Panel", "HudCore"), stats = add(core, "StatsAndModsContainer"), lower = add(stats, "LowerLeft");
-        const shop = add(root, "SelectedBuildInfo"), source = add(shop, "SelectedBuildInfoTitle", "Label"); source.text = raw;
-        const outer = root.FindChildTraverse("SelectedBuildOuter") || add(root, "SelectedBuildOuter");
+        const builds = add(core, "CitadelHudHeroBuilds");
+        const shop = add(builds, "SelectedBuildInfo"), source = add(shop, "SelectedBuildInfoTitle", "Label"); source.text = raw;
+        let shopBuilds = core;
+        for (const id of ["CitadelHudHeroShop", "Shop", "MainPanel", "ShopModsContainer", "ShopModListsContainer", "ShopModsSelectedBuild"])
+            shopBuilds = add(shopBuilds, id);
+        const header = add(shopBuilds, "", "Panel", "BuildHeader");
+        const headerContainer = add(header, "", "Panel", "BuildHeaderContainer");
+        const outer = add(headerContainer, "SelectedBuildOuter");
         const name = add(outer, "", "Label", "SelectedBuildName"); name.text = "Native Name";
         return { core, stats, lower, shop, source, outer, name };
     }
@@ -110,4 +116,29 @@ test("build ID registry releases partial enable UI and permits a fresh owner", (
     registry.enable("ql_show_build_id"); e.clock.advance(20); assert.equal(registry.isEnabled("ql_show_build_id"), false); assert.equal(e.overlay(), null);
     reject = false; registry.enable("ql_show_build_id"); assert.equal(e.label().text, "Public Build: 123 - Example");
     registry.disable("ql_show_build_id"); e.clock.advance(20); assert.equal(e.overlay(), null); assert.deepEqual(e.clock.errors, []);
+});
+
+
+test("build ID ignores unrelated templates and follows replacement owners without global probes", () => {
+    const e = setup();
+    const decoy = e.add(e.root, "SelectedBuildInfoTitle", "Label"); decoy.text = "999 - Decoy - 1";
+    const native = e.mount();
+    native.source.SetParent(e.add(e.root, "RetiredBinding"));
+    const probes = [], traverse = e.root.FindChildTraverse;
+    e.root.FindChildTraverse = function (id) {
+        if (["SelectedBuildInfoTitle", "SelectedBuildOuter", "SelectedBuildName", "LowerLeft"].includes(id)) probes.push(id);
+        return traverse.call(this, id);
+    };
+    e.feature.onEnable(); e.clock.advance(4200);
+    assert.equal(e.overlay(), null, "an out-of-path binding must not supply build metadata");
+    const source = e.add(native.shop, "SelectedBuildInfoTitle", "Label"); source.text = "321 - Current - 1";
+    e.clock.advance(1100); assert.equal(e.label().text, "Public Build: 321 - Current");
+    native.core.SetParent(e.add(e.root, "RetiredCore"));
+    e.mount(undefined, "456 - Replacement - 1");
+    e.clock.advance(1100); assert.equal(e.label().text, "Public Build: 456 - Replacement");
+    assert.deepEqual(probes, []);
+    e.feature.onDisable(); e.clock.advance(20);
+    e.feature.onEnable(); e.clock.advance(1100);
+    assert.equal(e.label().text, "Public Build: 456 - Replacement");
+    assert.equal(decoy.text, "999 - Decoy - 1"); stop(e);
 });

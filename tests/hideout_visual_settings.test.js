@@ -345,8 +345,12 @@ test("build ID reapplies text and layout to a recreated label", () => {
     const hud = createHud({ inHideout: true });
     hud.assertLoaded();
     const { $, QOL: Q } = hud.sandbox.global;
-    const lowerLeft = $.CreatePanel("Panel", hud.root, "LowerLeft");
-    const source = $.CreatePanel("Label", hud.root, "SelectedBuildInfoTitle");
+    const core = $.CreatePanel("Panel", hud.root, ""); core.AddClass("HudCore");
+    const stats = $.CreatePanel("Panel", core, "StatsAndModsContainer");
+    const lowerLeft = $.CreatePanel("Panel", stats, "LowerLeft");
+    const builds = $.CreatePanel("Panel", core, "CitadelHudHeroBuilds");
+    const info = $.CreatePanel("Panel", builds, "SelectedBuildInfo");
+    const source = $.CreatePanel("Label", info, "SelectedBuildInfoTitle");
     source.text = "123 - Example - 1";
     Q.core.ConfigStore.set("ql_show_build_id", "ENABLE_SHOW_BUILD_ID", true);
     hud.clock.advance(1100);

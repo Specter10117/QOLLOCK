@@ -5,7 +5,6 @@
 (() => {
     "use strict";
     const ID = "ql_show_build_id";
-    const SEARCH_MS = 3000;
     const panelStyles = { marginLeft: "26px", verticalAlign: "bottom", height: "24px", flowChildren: "right", zIndex: "5" };
     const labelStyles = { whiteSpace: "nowrap", fontSize: "16px", fontWeight: "bold", fontFamily: "oracle, blocky, sans-serif",
         color: "#FFEFD7", textShadow: "0px 1px 3px 3.0 #000000cc" };
@@ -29,13 +28,17 @@
         settings: [{ key: "ENABLE_SHOW_BUILD_ID", type: "toggle" }, { key: "ENABLE_SHOW_BUILD_ID_TITLE", type: "toggle" }],
         create(ctx) {
             const P = QOL.core.panel, U = QOL.utils;
-            const lowerResolver = QOL.panelCache.createIdResolver("LowerLeft", {
-                retryMs: SEARCH_MS, ownerPath: [{ id: "Hud", optional: true }, { className: "HudCore" }, "StatsAndModsContainer"]
-            });
-            const sourceResolver = QOL.panelCache.createIdResolver("SelectedBuildInfoTitle", { retryMs: SEARCH_MS, refreshMs: SEARCH_MS });
-            const outerResolver = QOL.panelCache.createIdResolver("SelectedBuildOuter", { retryMs: SEARCH_MS, refreshMs: SEARCH_MS });
-            const nameResolver = QOL.panelCache.createIdResolver("SelectedBuildName", { retryMs: SEARCH_MS, refreshMs: SEARCH_MS });
-            const resolvers = [lowerResolver, sourceResolver, outerResolver, nameResolver];
+            // hud.xml and the October 3 Debugger capture agree on these owners.
+            // Re-evaluate direct children so a live retired generation cannot win.
+            const directClass = (owner, name) => P.isAlive(owner) ?
+                owner.Children().find(child => P.hasClassToken(child, name)) || null : null;
+            const directPath = (owner, ids) => {
+                for (const id of ids) {
+                    owner = P.findChild(owner, id);
+                    if (!owner) return null;
+                }
+                return owner;
+            };
             const tree = P.createOwnedTree();
             let active = false, model = null, loop = null, rootOwner = null, parent = null, panel = null, label = null;
             let panelSignature = null, labelSignature = null;
@@ -51,18 +54,20 @@
                 hide(); tree.clear();
                 parent = panel = label = null; panelSignature = labelSignature = null;
             }
-            function resetSources() { for (const resolver of resolvers) resolver.reset(); }
-            function readName(root) {
-                const owner = outerResolver.resolve(root) || nameResolver.resolve(root);
-                const nativeLabel = P.isAlive(owner) && owner.BHasClass("SelectedBuildName") ? owner :
-                    U.FindFirstPanelByClass(owner, "SelectedBuildName");
+            function readName(core) {
+                const builds = directPath(core, ["CitadelHudHeroShop", "Shop", "MainPanel", "ShopModsContainer",
+                    "ShopModListsContainer", "ShopModsSelectedBuild"]);
+                const header = directClass(directClass(builds, "BuildHeader"), "BuildHeaderContainer");
+                const owner = P.findChild(header, "SelectedBuildOuter");
+                const nativeLabel = U.FindFirstPanelByClass(owner, "SelectedBuildName");
                 const name = P.readText(nativeLabel).trim();
                 return name && !name.startsWith("#") && name !== "Unknown" ? name : "";
             }
-            function readContent(root) {
-                const selected = parse(P.readText(sourceResolver.resolve(root)));
+            function readContent(core) {
+                const source = directPath(core, ["CitadelHudHeroBuilds", "SelectedBuildInfo", "SelectedBuildInfoTitle"]);
+                const selected = parse(P.readText(source));
                 if (!selected) return null;
-                const name = model.title ? selected.name || readName(root) : "";
+                const name = model.title ? selected.name || readName(core) : "";
                 return selected.visibility + " Build: " + selected.id + (name ? " - " + name : "");
             }
             function ensure(nextParent) {
@@ -86,18 +91,19 @@
             function update() {
                 if (!active) return;
                 const root = P.findHud($.GetContextPanel());
-                if (root !== rootOwner) { releaseTree(); resetSources(); rootOwner = root; }
+                if (root !== rootOwner) { releaseTree(); rootOwner = root; }
                 if (!P.isAlive(root) || (root.id !== "Hud" && root.paneltype !== "CitadelHud")) { releaseTree(); return; }
                 tree.sweep();
-                const nextParent = lowerResolver.resolve(root);
+                const core = directClass(root, "HudCore");
+                const nextParent = directPath(core, ["StatsAndModsContainer", "LowerLeft"]);
                 if (parent && parent !== nextParent) releaseTree();
                 if (!model.enabled) { hide(); return; }
-                const content = readContent(root);
+                const content = readContent(core);
                 if (!content) { hide(); return; }
                 if (ensure(nextParent)) render(content);
                 else hide();
             }
-            function refresh() { model = readModel(); resetSources(); update(); }
+            function refresh() { model = readModel(); update(); }
             return {
                 onEnable() {
                     active = true; refresh();
@@ -107,7 +113,7 @@
                 onDisable() {
                     active = false;
                     if (loop) loop.stop(); loop = null;
-                    releaseTree(); tree.dispose(); resetSources(); model = rootOwner = null;
+                    releaseTree(); tree.dispose(); model = rootOwner = null;
                 }
             };
         },

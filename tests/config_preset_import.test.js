@@ -170,8 +170,12 @@ test("enabling ENABLE_SHOW_BUILD_ID activates ql_show_build_id and updates HUD b
 
     // Setup required DOM elements
     const $ = hud.sandbox.global.$;
-    const lowerLeft = $.CreatePanel("Panel", hud.root, "LowerLeft");
-    const sourceTitle = $.CreatePanel("Label", hud.root, "SelectedBuildInfoTitle");
+    const core = $.CreatePanel("Panel", hud.root, ""); core.AddClass("HudCore");
+    const stats = $.CreatePanel("Panel", core, "StatsAndModsContainer");
+    const lowerLeft = $.CreatePanel("Panel", stats, "LowerLeft");
+    const builds = $.CreatePanel("Panel", core, "CitadelHudHeroBuilds");
+    const info = $.CreatePanel("Panel", builds, "SelectedBuildInfo");
+    const sourceTitle = $.CreatePanel("Label", info, "SelectedBuildInfoTitle");
     sourceTitle.text = "98765 - Competitive Ivy - 1";
 
     // Enable show build id with title
