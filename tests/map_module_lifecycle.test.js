@@ -222,6 +222,54 @@ test("crate ownership retires moved markers and shrinking data without rebuildin
     assert.equal(last.IsValid(), false); assert.equal(crates.IsValid(), false); assert.equal(e.renderer.IsValid(), true); e.clean();
 });
 
+test("crate descriptors are reused across polls and rebuilt for changed coordinate data", () => {
+    const e = fixture();
+    const P = e.Q.core.panel, createTree = P.createOwnedTree;
+    const descriptors = new Set();
+    let copiedResults = 0;
+    // Observe real helper inputs; its own result arrays and panel reconciliation
+    // remain in the production path. This counts descriptor identity, not native cost.
+    P.createOwnedTree = () => {
+        const tree = createTree(), children = tree.children;
+        tree.children = (parent, type, entries) => {
+            for (const entry of entries) if (entry.id.startsWith("QOLMinimapCrateMarker")) descriptors.add(entry);
+            const result = children(parent, type, entries), map = result.map;
+            result.map = function (...args) { copiedResults++; return map.apply(this, args); };
+            return result;
+        };
+        return tree;
+    };
+    const { feature } = directMinimap(e);
+    P.createOwnedTree = createTree;
+    feature.onEnable(); e.clock.advance(500);
+    const crates = e.viewport.FindChild("minimap_overlay_root"), markers = crates.FindChild("minimap_markers");
+    assert.equal(markers.GetChildCount(), 3);
+    assert.equal(markers.GetChild(0).style.position, "25% 75% 0");
+    assert.equal(descriptors.size, 3, "unchanged coordinates construct one descriptor per marker, not per poll");
+    assert.equal(copiedResults, 0, "the helper's panel array needs no second mapped copy");
+
+    const retained = markers.GetChild(1);
+    descriptors.clear();
+    e.Q.minimapCrateData = { dl_midtown: { crates: [[0.1, 0.2], [0.7, 0.8], [0.9, 0.3]] } };
+    e.clock.advance(500);
+    assert.equal(markers.GetChild(1), retained);
+    assert.equal(retained.style.position, "70% 80% 0", "same-length data replacement updates retained markers");
+    assert.equal(descriptors.size, 3);
+    e.Q.minimapCrateData = { dl_midtown: { crates: [[NaN, 0.2], [0.4, Infinity]] } };
+    e.clock.advance(150);
+    assert.equal(markers.GetChildCount(), 0, "invalid coordinates retire former markers");
+    e.Q.minimapCrateData = { dl_midtown: { crates: [] } };
+    e.clock.advance(150); assert.equal(markers.GetChildCount(), 0);
+    feature.onDisable(); e.clock.advance(20);
+    e.Q.minimapCrateData = { dl_midtown: { crates: [[0.6, 0.4]] } };
+    descriptors.clear(); feature.onEnable(); e.clock.advance(250);
+    const rebuilt = e.viewport.FindChild("minimap_overlay_root").FindChild("minimap_markers");
+    assert.equal(rebuilt.GetChildCount(), 1);
+    assert.equal(rebuilt.GetChild(0).style.position, "60% 40% 0");
+    assert.equal(descriptors.size, 1, "re-enable builds a fresh descriptor set");
+    feature.onDisable(); e.clock.advance(20); e.clean();
+});
+
 test("minimap hides partial crate and tunnel trees until construction and styles recover", () => {
     const e = fixture(), { feature } = directMinimap(e), create = e.$.CreatePanel;
     let reject = true;

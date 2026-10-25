@@ -65,6 +65,7 @@
             let tunnel = null, crates = null, markers = null;
             let crateData = null;
             let crateCoordinates = [];
+            let crateEntries = [];
             let crateReady = false;
             let markerPanels = [];
             let rangePanels = [];
@@ -123,6 +124,7 @@
                 markerPanels = [];
                 crateData = null;
                 crateCoordinates = [];
+                crateEntries = [];
                 crateReady = false;
             }
 
@@ -184,22 +186,25 @@
                 // Map API remains unverified; retain the shipped Midtown table.
                 const data = Q.minimapCrateData || (typeof CRATE_DATA === "object" ? CRATE_DATA : null);
                 const points = data?.dl_midtown?.crates || (Array.isArray(data?.dl_midtown) ? data.dl_midtown : []);
-                if (crateData !== points) crateCoordinates = points.map(point => [Number(Array.isArray(point) ? point[0] : point.u), Number(Array.isArray(point) ? point[1] : point.v)])
-                    .filter(point => point.every(Number.isFinite));
+                if (crateData !== points) {
+                    crateCoordinates = points.map(point => [Number(Array.isArray(point) ? point[0] : point.u), Number(Array.isArray(point) ? point[1] : point.v)])
+                        .filter(point => point.every(Number.isFinite));
+                    crateEntries = crateCoordinates.map((_, index) => ({
+                        id: "QOLMinimapCrateMarker" + index, properties: { class: "minimap_marker" }
+                    }));
+                    crateReady = false;
+                }
                 const coordinates = crateCoordinates;
-                if (crateData !== points) crateReady = false;
                 crateData = points;
                 for (let index = coordinates.length; index < markerPanels.length; index++) {
                     owned.delete(markerPanels[index]); tree.remove("QOLMinimapCrateMarker" + index);
                 }
-                const nextPanels = tree.children(markers, "Panel", coordinates.map((point, index) => ({
-                    id: "QOLMinimapCrateMarker" + index, properties: { class: "minimap_marker" }
-                })));
-                markerPanels = nextPanels.map((panel, index) => {
+                const nextPanels = tree.children(markers, "Panel", crateEntries);
+                nextPanels.forEach((panel, index) => {
                     const previous = markerPanels[index];
                     if (previous !== panel) { owned.delete(previous); crateReady = false; }
-                    return panel;
                 });
+                markerPanels = nextPanels;
                 if (markerPanels.some(panel => !P.isAlive(panel))) { crateReady = false; show(crates, false); return; }
                 if (!crateReady) {
                     crateReady = true;
