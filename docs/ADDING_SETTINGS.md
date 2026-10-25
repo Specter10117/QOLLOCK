@@ -46,13 +46,36 @@ separate contracts. None automatically creates the others.
    Append a permanent ID/reference entry in `ql_settings_code.js`; never reorder,
    remove or edit previous entries, including when defaults change or a setting
    retires. See [settings codes](core/settings_codes.md). Storage stays JSON.
-   Frozen historical compact tables
-   and their reader belong to `ql_legacy_compact.js`. Preserve their field order,
+   Frozen historical compact tables and their reader belong to
+   `ql_legacy_compact.js`. Preserve their field order,
    bounds, steps and migrations. Package/schema versions still require explicit
    maintainer authorization.
 8. **Check the complete round-trip.** Verify control -> dirty intent -> published
    config -> HUD consumer -> export -> import, plus reset/preset application and
    disable/re-enable. Include range boundaries and malformed typed input.
+
+## Clipboard exchange when adding a setting
+
+For a new persisted key, append `[key, referenceValue]` to the `dictionary` array
+in `panorama/scripts/ql_settings_code.js`. Its array position is its permanent ID;
+do not assign a separate ID or insert the entry next to a related feature.
+Use the initially approved default as the reference, with the same primitive
+type as the normalized setting. The reference becomes immutable once published.
+
+- Changing an existing default or slider range does **not** change its dictionary
+  entry. Update the owning defaults/metadata instead.
+- Retiring a setting leaves its dictionary entry in place. Never regenerate the
+  table from current defaults, reorder it or reuse a retired slot.
+- Omitting a new key makes export fail; it does not silently exclude the key.
+- An older client rejects a code from an unknown dictionary even when the new
+  setting has its reference value and no explicit record. This is intentional.
+- Verify both the new default and a changed value through the production
+  clipboard writer and the other runtime context's reader. Keep old-code import
+  and the frozen fixture in `tests/settings_code.test.js` passing.
+
+Adding an entry does not require changing the binary field ranges or codec
+algorithm. It does not authorize a package, schema or wire-format version bump.
+See [settings codes](core/settings_codes.md) for the full compatibility contract.
 
 ## Runtime hook contract
 
@@ -81,7 +104,7 @@ before hooks run.
   `isEnabled`. Inspect the predicate and shared-key routing.
 - Procedural sliders commit on the current settings step grid where a field exists,
   within intersected UI/schema bounds. Invalid typed input preserves the prior
-   value. The current catalog owns accepted precision; settings codes preserve it.
+  value. The current catalog owns accepted precision; settings codes preserve it.
 - ConfigStore slider rounding is not compact-codec step snapping. Verify the
   renderer and actual consumer rather than assuming every numeric path matches.
 - Performance tiers are UI metadata, not measured frame-time guarantees. Do not
