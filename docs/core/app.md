@@ -11,11 +11,11 @@ Top-level application boot coordinator and native engine event bridge. Orchestra
 - `boot()`: Main entry point. Resolves HUD panel, restores configuration from `Deadlock_Mod_Settings_v1` attribute, boots all enabled features, starts cross-isolate config synchronization, and registers native engine event listeners.
 - `shutdown()`: Retires the current polling generation, saves modified settings only to its captured living HUD when no newer publication is pending, and shuts down all active features.
 - `isBooted()`: Returns `true` if application initialization succeeded.
-- `getHud()`: Returns the cached reference to the Deadlock HUD panel.
-- `syncRootClasses(hud)`: Keeps layout state classes synchronized on the HUD root (e.g. `InHideout`, `Streetbrawl`).
-- `syncDiagnosticState(hud)`: Synchronizes performance and error telemetry to panel attributes for debugging.
-- `writeDiagSnapshot()`: Generates and persists a structured diagnostic state object.
-- `buildDiagSnapshot()`: Returns the in-memory diagnostic snapshot dictionary.
+- `getHud()`: Returns the cached HUD reference, or attempts discovery when no reference is cached.
+- `syncRootClasses(hudPanel?, flatConfig?)`: Projects root classes from a complete flat config. Without explicit arguments, resolves the HUD and the current stress/runtime/exported config, including an applicable Customize preview. Do not pass a feature-local bucket.
+- `syncDiagnosticState(hudPanel, nowMs)`: Handles diagnostic requests and publishes telemetry to panel attributes. Pass the current millisecond clock value, as the app poll does; it controls the five-second periodic-write deadline.
+- `writeDiagSnapshot(hudPanel, forceToken?)`: Writes the structured snapshot as JSON to the panel's `QOL_Diag` attribute. Without a panel it does nothing; this is not a disk save.
+- `buildDiagSnapshot(forceToken?)`: Returns the diagnostic snapshot object, optionally carrying the request token; it does not publish the object.
 
 ## Native Engine Event Bridging
 Deadlock C++ engine events are captured using `$.RegisterForUnhandledEvent` and forwarded to `EventBus`:
