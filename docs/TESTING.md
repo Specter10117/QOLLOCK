@@ -58,6 +58,13 @@ regressions; single negations on separate ancestors/descendants or comma-separat
 selectors remain allowed. It does not implement native CSS grammar or compile resources;
 the maintainer's compilation and client checks remain required.
 
+`node --test tests/style_sources.test.js` covers the stylesheet source inspector's
+separate XML/resource routes, import/declaration locations, comment/string false
+positives, duplicate paths, source cycles, unavailable native imports and bounded
+coverage. Its CLI regression searches the actual shipped style graph. These
+checks establish source provenance, not selector applicability or computed CSS;
+see [stylesheet source investigations](TOOLS.md#stylesheet-source-investigations).
+
 `check:origin-css` resolves GameTracking's remote `master` SHA, reads the native
 HUD layout and its recursive stylesheet imports from that pinned GitHub
 revision, then checks imports reachable through QOLLOCK HUD stylesheets for
