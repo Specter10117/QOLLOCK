@@ -133,7 +133,7 @@ test("clock observations reuse parsed text while reading live values and followi
     } });
     // Observe real regex execution, preserving String.match results. Source
     // discovery and the native text getter remain on every read.
-    env.sandbox.eval("globalThis.clockParses = 0; const originalMatch = String.prototype.match; String.prototype.match = function (pattern) { if (pattern.source.includes('d{1,2}')) clockParses++; return originalMatch.call(this, pattern); };");
+    env.sandbox.eval("globalThis.clockParses = 0; const originalMatch = String.prototype.match; String.prototype.match = function (pattern) { if (pattern && typeof pattern.source === 'string' && pattern.source.includes('d{1,2}')) clockParses++; return originalMatch.call(this, pattern); };");
     for (let i = 0; i < 20; i++) assert.equal(Q.core.time.readGameTime(), 462);
     assert.equal(reads, 20);
     assert.equal(env.sandbox.eval("clockParses"), 1, "unchanged native clock text requires one parse");
