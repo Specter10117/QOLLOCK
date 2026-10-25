@@ -199,14 +199,15 @@
                 for (let index = coordinates.length; index < markerPanels.length; index++) {
                     owned.delete(markerPanels[index]); tree.remove("QOLMinimapCrateMarker" + index);
                 }
-                const nextPanels = tree.children(markers, "Panel", crateEntries);
-                nextPanels.forEach((panel, index) => {
-                    const previous = markerPanels[index];
-                    if (previous !== panel) { owned.delete(previous); crateReady = false; }
-                });
-                markerPanels = nextPanels;
-                if (markerPanels.some(panel => !P.isAlive(panel))) { crateReady = false; show(crates, false); return; }
                 if (!crateReady) {
+                    // update's ownership sweep already validates stable markers.
+                    // Reconcile only after a retired node, new data or failed render.
+                    const nextPanels = tree.children(markers, "Panel", crateEntries);
+                    nextPanels.forEach((panel, index) => {
+                        if (markerPanels[index] !== panel) owned.delete(markerPanels[index]);
+                    });
+                    markerPanels = nextPanels;
+                    if (markerPanels.some(panel => !P.isAlive(panel))) { show(crates, false); return; }
                     crateReady = true;
                     coordinates.forEach(([x, y], index) => {
                         crateReady = style(markerPanels[index], {
@@ -259,7 +260,7 @@
                 if (!active) return;
                 const root = P.findHud($.GetContextPanel());
                 if (root !== rootOwner) { releasePresentation(); rootOwner = root; }
-                tree.sweep();
+                if (!tree.sweep()) crateReady = false;
                 if (!P.isAlive(root) || (root.id !== "Hud" && root.paneltype !== "CitadelHud")) { releasePresentation(); return; }
                 const host = discover(root);
                 if (!P.isAlive(host)) { show(tunnel, false); show(crates, false); return; }

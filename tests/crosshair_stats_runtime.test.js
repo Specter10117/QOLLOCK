@@ -83,6 +83,32 @@ function value(root, key) {
     return root.FindChildTraverse(`QOLCrosshairStatRow_${key}_value`);
 }
 
+test("crosshair reconciles row siblings in one pass and replaces a moved owned row", () => {
+    const hud = createCrosshairHud();
+    const { $, QOL: Q } = hud.sandbox.global;
+    const source = $.CreatePanel("Panel", hud.root, "hudActivePlayerStats");
+    addModifier($, source, "fireRateContainer", { number: "+10", postfix: "%", classes: ["shouldShow", "isPositive"] });
+    enableActiveStats(Q); hud.clock.advance(300);
+    const overlay = hud.root.FindChildTraverse("QOLCrosshairStatsOverlay");
+    const find = overlay.FindChild;
+    let individualLookups = 0;
+    overlay.FindChild = function (id) {
+        if (id.startsWith("QOLCrosshairStatRow_")) individualLookups++;
+        return find.call(this, id);
+    };
+    hud.clock.advance(500);
+    assert.equal(individualLookups, 0, "row construction must not search the same sibling list once per stat");
+    const old = row(hud.root, "fireRate");
+    old.SetParent($.CreatePanel("Panel", null, "RetiredRows"));
+    hud.clock.advance(200);
+    assert.equal(old.IsValid(), false);
+    assert.notEqual(row(hud.root, "fireRate"), old);
+    assert.equal(value(hud.root, "fireRate").text, "+10%");
+    Q.core.FeatureRegistry.disable("ql_crosshair_stats"); hud.clock.advance(20);
+    assert.equal(hud.root.FindChildTraverse("QOLCrosshairStatsOverlay"), null);
+    assert.deepEqual(hud.clock.errors, []);
+});
+
 // Owner paths shared by extracted active-player-stats XML and the native
 // Debugger capture. Value/caster contents below these owners are test data.
 function nativeOwners($, source) {

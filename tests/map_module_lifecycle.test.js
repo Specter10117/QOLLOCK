@@ -222,6 +222,22 @@ test("crate ownership retires moved markers and shrinking data without rebuildin
     assert.equal(last.IsValid(), false); assert.equal(crates.IsValid(), false); assert.equal(e.renderer.IsValid(), true); e.clean();
 });
 
+test("stable crate markers are enumerated only by the ownership sweep and moved markers recover", () => {
+    const e = fixture(), { feature } = directMinimap(e); feature.onEnable();
+    const markers = e.viewport.FindChild("minimap_overlay_root").FindChild("minimap_markers");
+    const children = markers.Children;
+    let enumerations = 0;
+    markers.Children = function () { enumerations++; return children.call(this); };
+    e.clock.advance(500);
+    assert.ok(enumerations > 0 && enumerations <= 11, `stable markers were enumerated ${enumerations} times in ten ticks`);
+    const old = markers.GetChild(0); old.SetParent(e.orphan);
+    e.clock.advance(150);
+    assert.equal(old.IsValid(), false);
+    assert.equal(markers.GetChildCount(), 3);
+    assert.equal(markers.FindChild("QOLMinimapCrateMarker0").style.position, "25% 75% 0");
+    feature.onDisable(); e.clock.advance(20); assert.equal(markers.IsValid(), false); e.clean();
+});
+
 test("crate descriptors are reused across polls and rebuilt for changed coordinate data", () => {
     const e = fixture();
     const P = e.Q.core.panel, createTree = P.createOwnedTree;

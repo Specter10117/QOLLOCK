@@ -64,6 +64,7 @@
             const rootAmountResolver = QOL.panelCache.createIdResolver("hudDeathGoldLabel", { retryMs: SEARCH_MS });
             let running = false, loop = null, rootOwner = null, model = null, overlay = null, stateLabel = null;
             let source = null, fallbackSource = null, nextSourceSearchMs = 0;
+            let nextModernSearchMs = 0;
             let lastSouls = -1, lastSampleMs = 0, rateEma = 0, rateUpdateMs = 0, etaEndMs = 0;
 
             function readModel() {
@@ -86,6 +87,7 @@
                 overlay = null; stateLabel = null;
                 if (resetSource) {
                     source = null; fallbackSource = null; nextSourceSearchMs = 0; rootOwner = null;
+                    nextModernSearchMs = 0;
                     modernResolver.reset(); goldResolver.reset(); amountResolver.reset(); rootAmountResolver.reset();
                     parentResolver.reset();
                     resetSamples();
@@ -93,8 +95,13 @@
             }
 
             function resolveSource(root, now) {
-                const modern = modernResolver.resolve(root);
-                if (modern) return modern;
+                // Slow only absent modern-label probes while a fallback is in
+                // use. Source loss keeps the resolver's normal recovery cadence.
+                if (!P.isAlive(source) || source.id === "HudUnsecuredLabel" || now >= nextModernSearchMs) {
+                    const modern = modernResolver.resolve(root);
+                    if (modern) return modern;
+                    nextModernSearchMs = now + 3000;
+                }
                 const gold = goldResolver.resolve(root);
                 const amount = gold ? amountResolver.resolve(gold) || rootAmountResolver.resolve(root) : rootAmountResolver.resolve(root);
                 if (amount) return amount;

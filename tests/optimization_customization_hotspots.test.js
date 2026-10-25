@@ -22,6 +22,30 @@ function fixture(id, overrides) {
     return { hud, Q, $, feature, add, core };
 }
 
+test("unsecured timer bounds absent modern-source scans and recovers its priority over the legacy amount", () => {
+    const env = fixture("ql_unsecured_souls_timer", { ENABLE_UNSECURED_SOUL_TIMER: 1 });
+    const stats = env.add(env.core, "StatsAndModsContainer");
+    const gold = env.add(env.add(stats, "LowerLeft"), "gold_and_ap_container");
+    env.add(gold, "hudDeathGoldLabel", [], "Label").text = "1000";
+    const traverse = env.hud.root.FindChildTraverse;
+    let modernScans = 0;
+    env.hud.root.FindChildTraverse = function (id) {
+        if (id === "HudUnsecuredLabel") modernScans++;
+        return traverse.call(this, id);
+    };
+    env.feature.onEnable(); env.hud.clock.advance(6200);
+    const state = () => env.hud.root.FindChildTraverse("QOLUnsecuredSoulsState");
+    assert.equal(state().text, "29s");
+    assert.ok(modernScans <= 3, `absent compatibility source triggered ${modernScans} whole-HUD scans`);
+    const modern = env.add(env.core.FindChild("gameplay_hud"), "HudUnsecuredLabel", [], "Label");
+    modern.text = "500"; env.hud.clock.advance(3200);
+    assert.equal(state().text, "20s", "late modern source keeps priority");
+    modern.text = "480"; env.hud.clock.advance(400);
+    assert.equal(state().text, "10s", "live values keep the normal sampling cadence");
+    env.feature.onDisable(); env.hud.clock.advance(20);
+    assert.equal(state(), null); assert.deepEqual(env.hud.clock.errors, []);
+});
+
 test("target scope follows native host replacement while the broad sweep retains late external shapes", () => {
     const env = fixture("ql_target_shapes", { UNIT_TARGET_SIZE: 200, UNIT_TARGET_HINT_SIZE: 140 });
     const { hud, $, add, core, feature } = env;

@@ -64,6 +64,7 @@
                 ["HudStatBlock", "CoreStats", "Weapon"],
                 ["HudStatBlock", "CoreStats", "Spirit"]
             ];
+            const rowEntries = STAT_DEFS.map(def => ({ id: "QOLCrosshairStatRow_" + def.key }));
             const SOURCE_OWNER = {
                 fireRate: "WeaponColumn", clipSize: "WeaponColumn", bulletLifesteal: "WeaponColumn",
                 range: "SpiritColumn", duration: "SpiritColumn", techLifesteal: "SpiritColumn",
@@ -307,9 +308,10 @@
                 if (previous !== overlay) { rows.clear(); layoutSignature = null; }
                 if (!_isAlive(overlay)) return false;
                 let complete = true;
-                for (const def of STAT_DEFS) {
-                    const id = "QOLCrosshairStatRow_" + def.key;
-                    const row = tree.child(overlay, "Panel", id);
+                const rowPanels = tree.children(overlay, "Panel", rowEntries);
+                for (let index = 0; index < STAT_DEFS.length; index++) {
+                    const def = STAT_DEFS[index], id = rowEntries[index].id;
+                    const row = rowPanels[index];
                     if (!_isAlive(row)) { complete = false; continue; }
                     P.setClass(row, "QOLCrosshairStatRow", true);
                     const icon = tree.child(row, "Panel", id + "_icon");
