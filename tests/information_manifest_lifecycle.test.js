@@ -94,7 +94,7 @@ function directCreatedOwner(env, def) {
     env.Q.core.App.shutdown();
     env.config({ [def.key]: 1, CROSSHAIR_STATS_SHOW_FIRERATE: 1, CROSSHAIR_STATS_SHOW_BUFFS: 1 });
     const create = () => env.Q.core.FeatureRegistry.getManifest(def.id).create({ events: env.Q.core.EventBus, id: def.id, config: { view: () => env.Q.core.ConfigStore.view(def.id) } });
-    const source = addFire(env, env.hud.root, "+12");
+    const source = addFire(env, env.core, "+12");
     const { top, gameTime } = addTopbar(env, "12:00"), map = env.add(env.hud.root, "hud_minimap");
     env.add(map, "TestCapturePoint", ["map_button", "capture_point", "koth_warning"]);
     return { feature: create(), create, source, top, gameTime };
@@ -133,7 +133,7 @@ for (const def of createdOwners) {
         const previous = createdTree(env.find(def.overlay));
         env.hud.doc.root = env.$.CreatePanel("CitadelHud", null, "Hud"); env.hud.doc.root.AddClass("joined_team");
         const core = env.add(env.hud.doc.root, "", ["HudCore"]); env.add(core, "gameplay_hud");
-        addFire(env, env.hud.doc.root, "+36");
+        addFire(env, core, "+36");
         const top = env.add(core, "TopBar"); env.text(top, "GameTime", "12:05");
         const map = env.add(env.hud.doc.root, "hud_minimap"); env.add(map, "NextCapturePoint", ["map_button", "capture_point", "koth_warning"]);
         feature.onSettingsChanged(); env.hud.clock.advance(600);
@@ -148,7 +148,7 @@ for (const def of createdOwners) {
 
 test("crosshair replaces an alive overlay generation with its current layout and content", () => {
     const env = fixture();
-    addFire(env, env.hud.root, "+12");
+    addFire(env, env.core, "+12");
     enableCrosshair(env);
     env.hud.clock.advance(200);
     const first = env.find("QOLCrosshairStatsOverlay");
@@ -170,7 +170,7 @@ test("crosshair replaces an alive overlay generation with its current layout and
 
 test("crosshair retries partial row creation and incomplete style writes", () => {
     const env = fixture();
-    addFire(env, env.hud.root, "+12");
+    addFire(env, env.core, "+12");
     const create = env.$.CreatePanel;
     let rejectCreation = true;
     env.$.CreatePanel = (type, parent, id, properties) => {
@@ -195,7 +195,7 @@ test("crosshair retries partial row creation and incomplete style writes", () =>
 
 test("crosshair releases detached source value handles and picks a new native modifier core", () => {
     const env = fixture();
-    const { row, core } = addFire(env, env.hud.root, "+12");
+    const { row, core } = addFire(env, env.core, "+12");
     enableCrosshair(env);
     env.hud.clock.advance(200);
     core.SetParent(env.retired);

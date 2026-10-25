@@ -18,6 +18,7 @@ function createCrosshairHud() {
     hud.root.AddClass("joined_team");
     const core = $.CreatePanel("Panel", hud.root, "");
     core.AddClass("HudCore");
+    hud.core = core;
     hud.gameplay = $.CreatePanel("Panel", core, "gameplay_hud");
     return hud;
 }
@@ -86,7 +87,7 @@ function value(root, key) {
 test("crosshair reconciles row siblings in one pass and replaces a moved owned row", () => {
     const hud = createCrosshairHud();
     const { $, QOL: Q } = hud.sandbox.global;
-    const source = $.CreatePanel("Panel", hud.root, "hudActivePlayerStats");
+    const source = $.CreatePanel("Panel", hud.core, "hudActivePlayerStats");
     addModifier($, source, "fireRateContainer", { number: "+10", postfix: "%", classes: ["shouldShow", "isPositive"] });
     enableActiveStats(Q); hud.clock.advance(300);
     const overlay = hud.root.FindChildTraverse("QOLCrosshairStatsOverlay");
@@ -127,7 +128,7 @@ test("crosshair suspends stat work in the first hideout room and refreshes in th
     const hud = createCrosshairHud();
     const { $, QOL: Q } = hud.sandbox.global;
     hud.root.AddClass("connectedToHideout");
-    const source = $.CreatePanel("Panel", hud.root, "hudActivePlayerStats");
+    const source = $.CreatePanel("Panel", hud.core, "hudActivePlayerStats");
     const owners = nativeOwners($, source);
     const fire = addModifier($, owners.weapon, "fireRateContainer", {
         number: "+10", postfix: "%", classes: ["shouldShow", "isPositive"]
@@ -165,7 +166,7 @@ test("crosshair suspends stat work in the first hideout room and refreshes in th
 test("only selected Active Stats Customize preview bypasses Escape/scoreboard and releases on withdrawal", () => {
     const hud = createCrosshairHud();
     const { $, QOL: Q } = hud.sandbox.global;
-    const source = $.CreatePanel("Panel", hud.root, "hudActivePlayerStats");
+    const source = $.CreatePanel("Panel", hud.core, "hudActivePlayerStats");
     const owners = nativeOwners($, source);
     addModifier($, owners.weapon, "fireRateContainer", {
         number: "+10", postfix: "%", classes: ["shouldShow", "isPositive"]
@@ -213,7 +214,7 @@ test("selected Active Stats keeps its owned rows editable without native modifie
     assert.strictEqual(samples[0].FindChildTraverse(samples[0].id + "_value").text, "--");
     assert.strictEqual(hud.root.FindChildTraverse("hudActivePlayerStats"), null, "sample creates no fake native source");
     assert.strictEqual(JSON.stringify(Q.core.ConfigAdapter.exportToFlat()), before);
-    const source = $.CreatePanel("Panel", hud.root, "hudActivePlayerStats"), owners = nativeOwners($, source);
+    const source = $.CreatePanel("Panel", hud.core, "hudActivePlayerStats"), owners = nativeOwners($, source);
     const fire = addModifier($, owners.weapon, "fireRateContainer", {
         number: "+10", postfix: "%", classes: ["shouldShow", "isPositive"]
     });
@@ -234,7 +235,7 @@ test("selected Active Stats keeps its owned rows editable without native modifie
 test("crosshair missing-row discovery waits while cached values keep updating", () => {
     const hud = createCrosshairHud();
     const { $, QOL: Q } = hud.sandbox.global;
-    const source = $.CreatePanel("Panel", hud.root, "hudActivePlayerStats");
+    const source = $.CreatePanel("Panel", hud.core, "hudActivePlayerStats");
     const owners = nativeOwners($, source);
     const fire = addModifier($, owners.weapon, "fireRateContainer", {
         number: "+10", postfix: "%", classes: ["shouldShow", "isPositive"]
@@ -264,7 +265,7 @@ test("crosshair missing-row discovery waits while cached values keep updating", 
 test("crosshair resolves direct modifier cores without enumerating their descendants and retains nested values", () => {
     const hud = createCrosshairHud();
     const { $, QOL: Q } = hud.sandbox.global;
-    const source = $.CreatePanel("Panel", hud.root, "hudActivePlayerStats");
+    const source = $.CreatePanel("Panel", hud.core, "hudActivePlayerStats");
     const owners = nativeOwners($, source);
     const fire = addModifier($, owners.weapon, "fireRateContainer", {
         number: "+10", postfix: "%", nestedValue: true, classes: ["shouldShow", "isPositive"]
@@ -284,7 +285,7 @@ test("crosshair resolves direct modifier cores without enumerating their descend
 test("crosshair skips a detached first class candidate and retains the next current modifier core", () => {
     const hud = createCrosshairHud();
     const { $, QOL: Q } = hud.sandbox.global;
-    const source = $.CreatePanel("Panel", hud.root, "hudActivePlayerStats");
+    const source = $.CreatePanel("Panel", hud.core, "hudActivePlayerStats");
     const fire = addModifier($, nativeOwners($, source).weapon, "fireRateContainer", {
         number: "+10", postfix: "%", classes: ["shouldShow", "isPositive"]
     });
@@ -309,7 +310,7 @@ test("crosshair discovers conditional rows in narrow owners and recovers from ro
     assert.strictEqual(row(hud.root, "fireRate").BHasClass("qol-hidden"), true);
 
     // The entire native source can appear after the feature is enabled.
-    const source = $.CreatePanel("Panel", hud.root, "hudActivePlayerStats");
+    const source = $.CreatePanel("Panel", hud.core, "hudActivePlayerStats");
     const owners = nativeOwners($, source);
     hud.clock.advance(200);
     const fire = addModifier($, owners.weapon, "fireRateContainer", {
@@ -365,7 +366,7 @@ test("crosshair discovers conditional rows in narrow owners and recovers from ro
 test("crosshair compatibility search finds late rows outside verified paths and resets on disable", () => {
     const hud = createCrosshairHud();
     const { $, QOL: Q } = hud.sandbox.global;
-    const source = $.CreatePanel("Panel", hud.root, "hudActivePlayerStats");
+    const source = $.CreatePanel("Panel", hud.core, "hudActivePlayerStats");
     nativeOwners($, source);
     enableActiveStats(Q);
     Q.core.ConfigAdapter.loadFromFlat({ CROSSHAIR_STATS_SHOW_BULLETEVASION: 1 });
@@ -404,7 +405,7 @@ test("crosshair Active Stats reads the renamed source and current value classes"
         classes: ["shouldShow", "isNegative"],
     });
 
-    const source = $.CreatePanel("Panel", hud.root, "hudActivePlayerStats");
+    const source = $.CreatePanel("Panel", hud.core, "hudActivePlayerStats");
     addModifier($, source, "fireRateContainer", {
         number: "+20",
         postfix: "%",
@@ -469,7 +470,7 @@ test("crosshair Active Stats invalidates cached rows when its native source is r
     const hud = createCrosshairHud();
     const { $, QOL: Q } = hud.sandbox.global;
 
-    let source = $.CreatePanel("Panel", hud.root, "hudActivePlayerStats");
+    let source = $.CreatePanel("Panel", hud.core, "hudActivePlayerStats");
     addModifier($, source, "fireRateContainer", {
         number: "+10",
         postfix: "%",
@@ -483,7 +484,7 @@ test("crosshair Active Stats invalidates cached rows when its native source is r
     // validity-only cache would keep reading this stale same-id panel forever.
     const oldHud = $.CreatePanel("Panel", hud.doc.absRoot, "OldHudGeneration");
     source.SetParent(oldHud);
-    source = $.CreatePanel("Panel", hud.root, "hudActivePlayerStats");
+    source = $.CreatePanel("Panel", hud.core, "hudActivePlayerStats");
     addModifier($, source, "fireRateContainer", {
         number: "-30",
         postfix: "%",
@@ -493,4 +494,44 @@ test("crosshair Active Stats invalidates cached rows when its native source is r
 
     assert.strictEqual(value(hud.root, "fireRate").text, "-30%");
     assert.strictEqual(row(hud.root, "fireRate").BHasClass("isDebuff"), true);
+});
+
+
+test("crosshair waits at verified owners and follows a living HudCore replacement without global probes", () => {
+    const hud = createCrosshairHud();
+    const { $, QOL: Q } = hud.sandbox.global;
+    const decoy = $.CreatePanel("Panel", hud.root, "hudActivePlayerStats");
+    addModifier($, decoy, "fireRateContainer", { number: "+99", postfix: "%", classes: ["shouldShow", "isPositive"] });
+    Q.core.App.shutdown();
+    enableActiveStats(Q);
+    Q.core.hud.isGameplayHudShown(hud.root);
+    const feature = Q.core.FeatureRegistry.getManifest("ql_crosshair_stats").create({
+        id: "ql_crosshair_stats", events: Q.core.EventBus,
+        config: { view: () => Q.core.ConfigStore.view("ql_crosshair_stats") }
+    });
+    const traverse = hud.root.FindChildTraverse, probes = [];
+    hud.root.FindChildTraverse = function (id) {
+        if (id === "hudActivePlayerStats") probes.push(id);
+        return traverse.call(this, id);
+    };
+    feature.onEnable(); hud.clock.advance(1200);
+    assert.equal(row(hud.root, "fireRate").BHasClass("qol-hidden"), true);
+    const source = $.CreatePanel("Panel", hud.core, "hudActivePlayerStats");
+    addModifier($, source, "fireRateContainer", { number: "+12", postfix: "%", classes: ["shouldShow", "isPositive"] });
+    hud.clock.advance(200); assert.equal(value(hud.root, "fireRate").text, "+12%");
+    const previousOverlay = hud.root.FindChildTraverse("QOLCrosshairStatsOverlay");
+    hud.core.SetParent($.CreatePanel("Panel", hud.root, "RetiredCore"));
+    hud.core = addClass($.CreatePanel("Panel", hud.root, ""), "HudCore");
+    hud.gameplay = $.CreatePanel("Panel", hud.core, "gameplay_hud");
+    const replacement = $.CreatePanel("Panel", hud.core, "hudActivePlayerStats");
+    addModifier($, replacement, "fireRateContainer", { number: "-24", postfix: "%", classes: ["shouldShow", "isNegative"] });
+    hud.clock.advance(200);
+    assert.equal(previousOverlay.IsValid(), false);
+    assert.equal(value(hud.root, "fireRate").text, "-24%");
+    feature.onDisable(); hud.clock.advance(20);
+    feature.onEnable(); hud.clock.advance(200);
+    assert.equal(value(hud.root, "fireRate").text, "-24%");
+    assert.deepEqual(probes, []);
+    feature.onDisable();
+    assert.deepEqual(hud.clock.errors, []);
 });

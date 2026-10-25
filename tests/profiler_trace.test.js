@@ -115,8 +115,10 @@ for (const args of [["--seconds"], ["--healthbar", "oops"], ["--healthbar", "Inf
 
 const fixture = () => ({ domTree: { id: "CitadelHudRoot", children: [
     { id: "Hud", classes: ["connectedToGame", "joined_team"], children: [
-        { id: "gameplay_hud", children: [] },
-        { id: "hudActivePlayerStats", children: [] },
+        { type: "Panel", classes: ["HudCore"], children: [
+            { id: "gameplay_hud", children: [] },
+            { id: "hudActivePlayerStats", children: [] },
+        ] },
     ] },
 ] } });
 

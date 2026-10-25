@@ -72,10 +72,16 @@
                 techResist: "VitalityColumn", regen: "VitalityColumn", weaponPower: "Weapon", spirit: "Spirit"
             };
 
-            const sourceResolver = QOL.panelCache.createIdResolver(SOURCE_PANEL_ID, { retryMs: 800, refreshMs: 800 });
-            const gameplayResolver = QOL.panelCache.createIdResolver("gameplay_hud", {
-                retryMs: 800, ownerPath: [{ id: "Hud", optional: true }, { className: "HudCore" }]
-            });
+            // Current hud.xml and the native Debugger capture place both owners
+            // directly under HudCore. A miss stays local to this owner.
+            function directCore(root) {
+                if (!_isAlive(root)) return null;
+                for (let index = 0; index < root.GetChildCount(); index++) {
+                    const panel = root.GetChild(index);
+                    if (P.hasClassToken(panel, "HudCore")) return panel;
+                }
+                return null;
+            }
             const tree = P.createOwnedTree();
             let active = false, rootOwner = null, model = null, loop = null, overlay = null, overlayParent = null;
             const rows = new Map();
@@ -124,8 +130,8 @@
                 return false;
             }
 
-            function readSource(root) {
-                const source = sourceResolver.resolve(P.findHud(root) || root);
+            function readSource(core) {
+                const source = P.findChild(core, SOURCE_PANEL_ID);
                 if (source !== state.sourcePanel) {
                     _resetDiscovery();
                     state.sourcePanel = source;
@@ -295,9 +301,9 @@
                 overlay = null; overlayParent = null; rows.clear(); layoutSignature = null;
             }
 
-            function ensureOverlay(root) {
+            function ensureOverlay(core) {
                 tree.sweep();
-                const parent = gameplayResolver.resolve(root);
+                const parent = P.findChild(core, "gameplay_hud");
                 if (!_isAlive(parent)) { removeOverlay(); return false; }
                 if (overlayParent !== parent || !_isDirectChild(overlay, parent)) {
                     removeOverlay();
@@ -368,7 +374,7 @@
                 const root = P.findHud($.GetContextPanel());
                 if (root !== rootOwner) {
                     removeOverlay(); _resetDiscovery(); state.sourcePanel = null;
-                    sourceResolver.reset(); gameplayResolver.reset(); rootOwner = root;
+                    rootOwner = root;
                 }
                 if (!_isAlive(root) || (root.id !== "Hud" && root.paneltype !== "CitadelHud")) { removeOverlay(); return; }
                 if (!model.enabled) { removeOverlay(); return; }
@@ -379,8 +385,9 @@
                     hideOverlay();
                     return;
                 }
-                if (!ensureOverlay(root)) { hideOverlay(); return; }
-                const content = readContent(readSource(root));
+                const core = directCore(root);
+                if (!ensureOverlay(core)) { hideOverlay(); return; }
+                const content = readContent(readSource(core));
                 if (preview && !content.size) {
                     // Keep the real owned row tree editable when the hero has
                     // no active modifiers. No native value or filter is changed.
@@ -409,7 +416,6 @@
                     if (loop) { loop.stop(); loop = null; }
                     removeOverlay(); _resetDiscovery();
                     state.sourcePanel = null; model = null;
-                    sourceResolver.reset(); gameplayResolver.reset();
                     tree.dispose(); rootOwner = null;
                 }
             }, update);
