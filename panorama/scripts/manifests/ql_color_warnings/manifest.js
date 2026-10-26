@@ -51,37 +51,34 @@
         };
     };
     const createSelfWarnings = () => {
-        const containerResolver = Q.panelCache.createIdResolver("health_and_abilities_container", {
-            ownerPath: [{ className: "HudCore" }, "gameplay_hud"]
-        });
-        const ids = ["HealthRegenAndTotal", "currentHealthLabel", "current_health", "totalHealthLabel", "max_health",
-            "hud_health_bars_stacked", "hud_health_bars", "health_bars_container", "health_bar"];
-        const resolvers = Object.fromEntries(ids.map(id => [id, Q.panelCache.createIdResolver(id)]));
         const pulse = createPulse(), presentation = createPresentation();
         let container = null;
         const release = () => {
             presentation.release();
             pulse.reset();
             container = null;
-            containerResolver.reset();
-            for (const resolver of Object.values(resolvers)) resolver.reset();
         };
         const readSources = root => {
-            const current = containerResolver.resolve(root);
+            const core = P.findChildByClass(P.findHud(root), "HudCore");
+            const current = P.findChild(P.findChild(core, "gameplay_hud"), "health_and_abilities_container");
             if (current !== container) {
                 presentation.release();
                 pulse.reset();
                 container = current;
-                for (const resolver of Object.values(resolvers)) resolver.reset();
             }
             if (!P.isAlive(container)) return null;
-            const find = id => resolvers[id].resolve(container);
-            const regen = find("HealthRegenAndTotal");
-            const currentHealth = U.FindFirstPanelByClass(regen, "currentHealthLabel") || find("currentHealthLabel") || find("current_health");
-            const totalHealth = U.FindFirstPanelByClass(regen, "totalHealthLabel") || find("totalHealthLabel") || find("max_health");
-            const bars = find("hud_health_bars_stacked") || find("hud_health_bars");
-            const bar = find("health_bars_container") || find("health_bar");
-            return { currentHealth, totalHealth, bars, bar, fill: P.findChild(bar, "health_bar_left") };
+            // Shipped canvas and captured native layout have the same local
+            // owners; the native number group is inside HealthBarContent.
+            const canvas = P.findChild(container, "QOLHealthbarGeometry") || container;
+            const content = P.findChild(canvas, "HealthBarContent");
+            const regen = P.findChild(canvas, "HealthRegenAndTotal") || P.findChild(content, "HealthRegenAndTotal");
+            const group = P.findChildByClass(regen, "healthContainer");
+            const currentHealth = P.findChildByClass(group, "currentHealthLabel");
+            const totalHealth = P.findChildByClass(group, "totalHealthLabel");
+            const bars = P.findChild(content, "hud_health_bars");
+            const border = P.findChildByClass(P.findChildByClass(bars, "health_bar_line"), "health_bar_border");
+            const bar = P.findChild(border, "health_bar");
+            return { currentHealth, totalHealth, bars, bar, fill: P.findChild(bar, "health_bar_Left") };
         };
         const readPercent = sources => {
             const current = parseInt(P.readTextDeep(sources.currentHealth, 0).replace(/[^0-9]/g, ""), 10);

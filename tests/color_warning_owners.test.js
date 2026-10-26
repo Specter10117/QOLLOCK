@@ -18,20 +18,53 @@ function setup(config) {
     return { ...env, Q, $, feature };
 }
 
-function selfHealth(env, current = 700, total = 1000) {
-    const container = env.$.CreatePanel("Panel", env.root, "health_and_abilities_container");
-    const regen = env.$.CreatePanel("Panel", container, "HealthRegenAndTotal");
-    const currentLabel = env.$.CreatePanel("Label", regen, "CurrentHealth");
+function selfHealth(env, current = 700, total = 1000, geometry = true) {
+    const core = env.root.Children().find(panel => panel.BHasClass("HudCore")) || env.$.CreatePanel("Panel", env.root, "");
+    core.AddClass("HudCore");
+    const gameplay = core.FindChild("gameplay_hud") || env.$.CreatePanel("Panel", core, "gameplay_hud");
+    const container = env.$.CreatePanel("Panel", gameplay, "health_and_abilities_container");
+    const canvas = geometry ? env.$.CreatePanel("Panel", container, "QOLHealthbarGeometry") : container;
+    const content = env.$.CreatePanel("Panel", canvas, "HealthBarContent");
+    const regen = env.$.CreatePanel("Panel", geometry ? canvas : content, "HealthRegenAndTotal");
+    const group = env.$.CreatePanel("Panel", regen, ""); group.AddClass("healthContainer");
+    const currentLabel = env.$.CreatePanel("Label", group, "CurrentHealth");
     currentLabel.AddClass("currentHealthLabel");
     currentLabel.text = String(current);
-    const totalLabel = env.$.CreatePanel("Label", regen, "TotalHealth");
+    const totalLabel = env.$.CreatePanel("Label", group, "TotalHealth");
     totalLabel.AddClass("totalHealthLabel");
     totalLabel.text = String(total);
-    const bars = env.$.CreatePanel("Panel", container, "hud_health_bars_stacked");
-    const bar = env.$.CreatePanel("ProgressBar", bars, "health_bars_container");
-    const fill = env.$.CreatePanel("Panel", bar, "health_bar_left");
-    return { container, currentLabel, totalLabel, bars, bar, fill };
+    const bars = env.$.CreatePanel("CitadelHudHealth", content, "hud_health_bars");
+    const line = env.$.CreatePanel("Panel", bars, ""); line.AddClass("health_bar_line");
+    const border = env.$.CreatePanel("Panel", line, ""); border.AddClass("health_bar_border");
+    const bar = env.$.CreatePanel("ProgressBarWithMiddle", border, "health_bar");
+    const fill = env.$.CreatePanel("Panel", bar, "health_bar_Left"); fill.AddClass("ProgressBarLeft");
+    return { container, canvas, content, regen, group, currentLabel, totalLabel, bars, bar, fill };
 }
+
+for (const geometry of [true, false]) test(`self warnings follow current ${geometry ? "geometry" : "captured"} health owners through gaps`, () => {
+    const env = setup({ ENABLE_COLOR_WARNING_75: 1 }), self = selfHealth(env, 700, 1000, geometry);
+    env.feature.onEnable();
+    assert.equal(self.currentLabel.style.color, "rgb(255, 240, 120)");
+    const retired = env.$.CreatePanel("Panel", self.regen, "RetiredNumbers");
+    self.group.SetParent(retired);
+    env.clock.advance(300);
+    assert.equal(self.currentLabel.style.color, undefined, "a living number group outside the native direct owner is released");
+    assert.equal(self.fill.style.washColor, undefined, "missing current numbers cannot reuse retired labels");
+    const group = env.$.CreatePanel("Panel", self.regen, ""); group.AddClass("healthContainer");
+    const current = env.$.CreatePanel("Label", group, ""); current.AddClass("currentHealthLabel"); current.text = "900";
+    const maximum = env.$.CreatePanel("Label", group, ""); maximum.AddClass("totalHealthLabel"); maximum.text = "/ 1000";
+    env.clock.advance(300);
+    assert.equal(current.style.color, "rgb(255, 255, 255)");
+    assert.equal(self.fill.style.washColor, "rgb(255, 255, 255)");
+    self.fill.SetParent(retired);
+    const fill = env.$.CreatePanel("Panel", self.bar, "health_bar_Left"); fill.AddClass("ProgressBarLeft");
+    env.clock.advance(300);
+    assert.equal(self.fill.style.washColor, undefined);
+    assert.equal(fill.style.washColor, "rgb(255, 255, 255)");
+    env.feature.onDisable();
+    assert.equal(current.style.color, undefined); assert.equal(fill.style.washColor, undefined);
+    assert.deepEqual(env.clock.errors, []);
+});
 
 function topbarHealth(env, kind = "enemy", current = 500, total = 1000) {
     const slot = env.$.CreatePanel("Panel", env.root, "");
@@ -173,6 +206,12 @@ test("failed native color writes retry and missing health data releases stale se
     assert.equal(color, "rgb(255, 86, 86)");
     assert.ok(attempts >= 2);
     assert.equal(self.currentLabel.style.color, undefined);
+    assert.equal(self.fill.style.washColor, undefined);
+    self.bar.value = 900; self.bar.max = 1000;
+    env.clock.advance(300);
+    assert.equal(self.fill.style.washColor, "rgb(255, 255, 255)", "native progress remains a fallback when number text is unavailable");
+    delete self.bar.max;
+    env.clock.advance(300);
     assert.equal(self.fill.style.washColor, undefined);
     env.feature.onDisable();
     assert.deepEqual(env.clock.errors, []);

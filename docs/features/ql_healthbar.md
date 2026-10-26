@@ -36,6 +36,14 @@ to `ql_color_warnings`; Budhud observes that color for its percentage readout
 instead of running another pulse or clearing the native label. Presentation and accent
 signatures are cached only after successful writes; partial writes remain
 retryable. Default presentation never clears unrelated native transforms.
+
+Self warnings follow the current health container's shipped canvas or captured
+native `HealthBarContent` owners directly. Number labels come from the immediate
+`HealthRegenAndTotal > .healthContainer` group; retired labels elsewhere cannot
+supply health. Bar/fill colors use `hud_health_bars > .health_bar_line >
+.health_bar_border > health_bar > health_bar_Left`, including the native fill's
+case-sensitive ID. Unreadable number bindings retain the existing native progress
+value/max fallback; unavailable health evidence releases the warning styles.
 Shared offsets, appearance and canvas geometry use separate instances of the
 common native-style owner. They observe native readback instead of trusting a
 desired-style signature; rejected retirement remains pending after disable.
