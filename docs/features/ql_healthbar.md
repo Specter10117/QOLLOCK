@@ -87,6 +87,11 @@ Minecraft experience reads the current `StatsAndModsContainer > LowerLeft >
 gold_and_ap_container` and its native `PlayerLevelContainer > PlayerLevel >
 .PlayerLevelContainer` children. Missing owners wait locally; retired gold panels
 elsewhere in the HUD cannot supply level or XP values.
+Named modifier checks stay within the live center `status_bars > hud_modifiers`
+and minimap-side `hud_aura_modifiers` owners. Modifier history and unrelated
+components cannot drive poisoned heart textures. Replacing either live owner
+invalidates the cached modifier result; ordinary label changes retain the
+existing sampling cadence.
 Armor icons read the same measured middle-fraction contract from native
 `ratking_armor_bar` while `ratKingArmorActive` is present. Their separate owned
 tree retires moved/replaced icons without deleting foreign children. Food reads

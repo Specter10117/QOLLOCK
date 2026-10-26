@@ -63,6 +63,7 @@
             if (panel.text !== text) panel.text = text;
         }
         let runtimeRoot = null, contextRoot = null, sourceGeneration = [], sources = null, generation = 0;
+        let modifierSources = [];
         const featureId = ctx && ctx.id || 'ql_healthbar';
         const healthResolver = QOL.panelCache.createIdResolver('health_and_abilities_container', {
             retryMs: 400, ownerPath: [{ id: 'Hud', optional: true }, { className: 'HudCore' }, 'gameplay_hud']
@@ -191,6 +192,7 @@
             }
             ownedStyles.clear();
             sourceGeneration = [];
+            modifierSources = [];
             sources = null;
             contextRoot = null;
             Object.assign(state, createState());
@@ -321,12 +323,23 @@
             }
         }
 
-        function McCheckModifierActive(root, name) {
-                    let modifierLabels = root && root.FindChildrenWithClassTraverse ? root.FindChildrenWithClassTraverse("modifier_name") : null;
-            if (!modifierLabels || modifierLabels.length === 0) return false;
-            for (let i = 0; i < modifierLabels.length; i += 1) {
-                let label = modifierLabels[i];
-                if (label.text && label.text.toUpperCase().indexOf(name) !== -1) return true;
+        function refreshModifierSources(core) {
+            const gameplay = P.findChild(core, "gameplay_hud");
+            const alive = P.findChild(gameplay, "gameplay_hud_alive");
+            const center = P.findChild(P.findChild(alive, "status_bars"), "hud_modifiers");
+            const aura = P.findChild(P.findChildByClass(gameplay, "clamp_width"), "hud_aura_modifiers");
+            if (modifierSources[0] !== center || modifierSources[1] !== aura) {
+                modifierSources = [center, aura];
+                state.mcCheckModifierNextMs = 0;
+            }
+        }
+
+        function McCheckModifierActive(name) {
+            for (const owner of modifierSources) {
+                for (const label of U.FindPanelsByClass(owner, "modifier_name")) {
+                    const text = label.text || "";
+                    if (text.toUpperCase().includes(name)) return true;
+                }
             }
             return false;
         }
@@ -749,8 +762,7 @@
             }
         }
 
-        function readExperience(root) {
-            const core = P.findChildByClass(P.findHud(root), "HudCore");
+        function readExperience(core) {
             const lower = P.findChild(P.findChild(core, "StatsAndModsContainer"), "LowerLeft");
             const gold = P.findChild(lower, "gold_and_ap_container");
             const playerLevel = P.findChild(P.findChild(gold, "PlayerLevelContainer"), "PlayerLevel");
@@ -794,18 +806,20 @@
         function readModel(root, hudRoot, nowMs) {
             // A selected editor surface may have no bound player in hideout.
             // Sample data belongs to this renderer; native labels stay untouched.
-            const preview = QOL.presentation.preview.selected(P.findHud(root), "healthbar");
+            const hud = P.findHud(root), core = P.findChildByClass(hud, "HudCore");
+            const preview = QOL.presentation.preview.selected(hud, "healthbar");
             const health = McReadHealthValues(hudRoot) || (preview ? { currentHealth: 750, totalHealth: 1000 } : null);
             if (!health) return null;
             const hp = McComputeHealthState(health.currentHealth, health.totalHealth, hudRoot, nowMs);
+            refreshModifierSources(core);
             if (nowMs >= state.mcCheckModifierNextMs) {
-                state.mcLastModifierResult = McCheckModifierActive(root, "AFFLICTED");
+                state.mcLastModifierResult = McCheckModifierActive("AFFLICTED");
                 state.mcCheckModifierNextMs = nowMs + MC_MODIFIER_THROTTLE_MS;
             }
             const bars = sources && sources.bars;
             return { ...health, ...hp, afflicted: state.mcLastModifierResult,
                 armor: P.isAlive(bars) && bars.BHasClass("ratKingArmorActive") ? readPendingFraction(hudRoot, "ratking_armor_bar") * health.totalHealth : 0,
-                barrier: readBarrier(hudRoot), experience: readExperience(root),
+                barrier: readBarrier(hudRoot), experience: readExperience(core),
                 hunger: McParseChargesForHunger(root),
                 hasRejuvenator: P.isAlive(bars) && bars.BHasClass("HasRejuvenator") };
         }

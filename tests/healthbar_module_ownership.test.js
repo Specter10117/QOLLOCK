@@ -59,7 +59,17 @@ function fixture() {
             hearts, food, shields, bulletCurrent, bulletMax, shieldBox, shieldHearts, xp, level, totem, mcPercent, heal, damage };
     }
     const tree = healthTree();
-    return { ...env, q, add, tree, healthTree, gameplay, other };
+    const modifierTree = () => {
+        const statusBars = add(add(gameplay, "gameplay_hud_alive"), "status_bars");
+        const center = add(statusBars, "hud_modifiers", ["hud_modifiers", "center_modifiers"]);
+        add(center, "BuffModifiers");
+        const centerDebuffs = add(center, "DebuffModifiers");
+        const aura = add(add(gameplay, "", ["clamp_width"]), "hud_aura_modifiers", ["hud_modifiers"]);
+        add(aura, "BuffModifiers");
+        const auraDebuffs = add(aura, "DebuffModifiers");
+        return { statusBars, center, centerDebuffs, aura, auraDebuffs };
+    };
+    return { ...env, q, add, tree, healthTree, modifierTree, gameplay, other };
 }
 function start(env, cfg) {
     const f = env.q.core.FeatureRegistry.getManifest("ql_healthbar").create({ events: env.q.core.EventBus,
@@ -464,7 +474,7 @@ test("Minecraft projects full, half and empty fills with each layer's texture", 
     check(fills(tree, "HeartDeferred"), 3, "orange_");
     check(fills(tree, "HeartHealing"), 5, "green_");
     check(tree.shieldHearts.FindChildrenWithClassTraverse("HeartFill"), 1, "absorption_");
-    env.add(env.root, "", ["modifier_name"], "Label").text = "AFFLICTED";
+    env.add(env.modifierTree().centerDebuffs, "", ["modifier_name"], "Label").text = "AFFLICTED";
     env.clock.advance(501); mc.update(env.root, {}, env.clock.now(), true);
     check(fills(tree, "HeartFill"), 2, "poisoned_");
     const changing = fills(tree, "HeartFill")[3];
@@ -475,6 +485,47 @@ test("Minecraft projects full, half and empty fills with each layer's texture", 
     assert.equal(changing.style.visibility, "collapse");
     mc.release(); env.clock.advance(1000);
     assert.deepEqual(env.clock.errors, []);
+});
+
+test("Minecraft poisoned hearts read live modifier owners and ignore retained history", () => {
+    const env = fixture(), modifiers = env.modifierTree();
+    const images = new Map(), create = env.sandbox.global.$.CreatePanel;
+    env.sandbox.global.$.CreatePanel = (...args) => {
+        const panel = create(...args), setImage = panel.SetImage;
+        panel.SetImage = image => { images.set(panel, image); return setImage.call(panel, image); };
+        return panel;
+    };
+    const history = env.add(env.gameplay.GetParent(), "hud_modifier_history", ["hud_modifier_history"]);
+    const tracks = env.add(history, "modifier_tracks");
+    const track = env.add(tracks, "", ["modifier_history_track"]);
+    const item = env.add(track, "", ["modifier_history_item"]);
+    const tag = env.add(item, "", ["modifier_tag"]);
+    env.add(tag, "", ["modifier_name"], "Label").text = "AFFLICTED";
+    let broadLookups = 0;
+    const enumerate = env.root.FindChildrenWithClassTraverse;
+    env.root.FindChildrenWithClassTraverse = function (name) {
+        if (name === "modifier_name") broadLookups++;
+        return enumerate.call(this, name);
+    };
+    const poisoned = () => fills(env.tree, "HeartFill").some(panel => images.get(panel)?.includes("/poisoned_"));
+    const f = start(env, { HEALTHBAR_TYPE: 5 });
+    assert.equal(poisoned(), false, "modifier history does not describe a current debuff");
+    for (const owner of [modifiers.centerDebuffs, modifiers.auraDebuffs]) {
+        const label = env.add(owner, "", ["modifier_name"], "Label"); label.text = "Afflicted";
+        env.clock.advance(550); assert.equal(poisoned(), true);
+        label.SetParent(env.other);
+        env.clock.advance(550); assert.equal(poisoned(), false, "retained out-of-owner labels are retired");
+    }
+    env.add(modifiers.centerDebuffs, "", ["modifier_name"], "Label").text = "AFFLICTED";
+    env.clock.advance(550); assert.equal(poisoned(), true);
+    modifiers.center.SetParent(env.other);
+    const replacement = env.add(modifiers.statusBars, "hud_modifiers");
+    env.add(replacement, "BuffModifiers"); env.add(replacement, "DebuffModifiers");
+    env.clock.advance(50);
+    assert.equal(poisoned(), false, "owner replacement invalidates the cached modifier result immediately");
+    assert.equal(broadLookups, 0, "missing and replaced named modifier owners never trigger a HUD-wide scan");
+    f.onDisable(); env.clock.advance(1);
+    assert.equal(env.tree.hearts.GetChildCount(), 0); assert.deepEqual(env.clock.errors, []);
 });
 
 test("Minecraft tracks grid/food/health source replacements while previous panels stay alive", () => {
