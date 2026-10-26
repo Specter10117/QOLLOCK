@@ -202,10 +202,25 @@
                 const number = key => QOL.settings.readNumber(key, cfg[key]);
                 const scale = number("COMPASS_SCALE"), stretchX = number("COMPASS_STRETCH_X"), stretchY = number("COMPASS_STRETCH_Y");
                 const x = number("COMPASS_X_OFFSET"), y = number("COMPASS_Y_OFFSET");
-                return { compass: Number(cfg.ENABLE_COMPASS) === 1, speed: Number(cfg.ENABLE_COMPASS_SPEED) === 1,
+                const next = { compass: Number(cfg.ENABLE_COMPASS) === 1, speed: Number(cfg.ENABLE_COMPASS_SPEED) === 1,
                     spin: Number(cfg.MINIMAP_ROTATE_WITH_PLAYER) === 1, flip: Number(cfg.MINIMAP_FLIP) === 1,
                     scale, stretchX, stretchY, x, y, speedX: number("COMPASS_SPEED_X_OFFSET"), speedY: number("COMPASS_SPEED_Y_OFFSET"),
                     appliedY: 240 - y, width: Math.round(200 * stretchX / 100), height: Math.round(50 * stretchY / 100) };
+                const speedBaseX = next.compass ? next.x : 0;
+                const speedBaseY = next.compass ? next.appliedY + next.height + 14 : 120;
+                next.layout = {
+                    root: { visibility: "collapse", marginTop: "120px", x: Math.round(next.x) + "px", y: Math.round(next.appliedY - 120) + "px",
+                        preTransformScale2d: "1.00, 1.00", uiScale: next.scale + "%", width: next.width + "px", height: "fit-children", overflow: "noclip" },
+                    box: { width: next.width + "px", height: next.height + "px", visibility: "collapse" },
+                    readout: { width: "100%", height: "40px", flowChildren: "none" },
+                    degree: { width: next.speed ? "50%" : "100%", textAlign: next.speed ? "left" : "center",
+                        horizontalAlign: "left", verticalAlign: "center", visibility: "collapse" },
+                    speedLabel: { width: next.compass ? "50%" : "100%", textAlign: next.compass ? "right" : "center",
+                        horizontalAlign: next.compass ? "right" : "center", verticalAlign: "center" },
+                    speedRoot: { visibility: "collapse", width: (next.compass ? next.width : 200) + "px",
+                        x: Math.round(speedBaseX + next.speedX) + "px", y: Math.round(speedBaseY - 120 - next.speedY) + "px" }
+                };
+                return next;
             }
 
             function belongsTo(panel, root) {
@@ -659,18 +674,15 @@
 
             function renderLayout(model, hud) {
                 const visible = model.compass && !QOL.presentation.shouldHide("compass", QOL.presentation.visibilityConfig(ctx), hud) ? "visible" : "collapse";
-                sync(_compassRoot, { visibility: visible, marginTop: "120px", x: Math.round(model.x) + "px", y: Math.round(model.appliedY - 120) + "px",
-                    preTransformScale2d: "1.00, 1.00", uiScale: model.scale + "%", width: model.width + "px", height: "fit-children", overflow: "noclip" });
-                sync(_compassBox, { width: model.width + "px", height: model.height + "px", visibility: visible });
-                sync(_compassReadout, { width: "100%", height: "40px", flowChildren: "none" });
-                sync(_compassDegree, { width: model.speed ? "50%" : "100%", textAlign: model.speed ? "left" : "center",
-                    horizontalAlign: "left", verticalAlign: "center", visibility: visible });
-                sync(_speedLabel, { width: model.compass ? "50%" : "100%", textAlign: model.compass ? "right" : "center",
-                    horizontalAlign: model.compass ? "right" : "center", verticalAlign: "center" });
-                const speedBaseX = model.compass ? model.x : 0;
-                const speedBaseY = model.compass ? model.appliedY + model.height + 14 : 120;
-                sync(_speedRoot, { visibility: model.speed && !QOL.presentation.shouldHide("speed", QOL.presentation.visibilityConfig(ctx), hud) ? "visible" : "collapse", width: (model.compass ? model.width : 200) + "px",
-                    x: Math.round(speedBaseX + model.speedX) + "px", y: Math.round(speedBaseY - 120 - model.speedY) + "px" });
+                const layout = model.layout;
+                layout.root.visibility = layout.box.visibility = layout.degree.visibility = visible;
+                layout.speedRoot.visibility = model.speed && !QOL.presentation.shouldHide("speed", QOL.presentation.visibilityConfig(ctx), hud) ? "visible" : "collapse";
+                sync(_compassRoot, layout.root);
+                sync(_compassBox, layout.box);
+                sync(_compassReadout, layout.readout);
+                sync(_compassDegree, layout.degree);
+                sync(_speedLabel, layout.speedLabel);
+                sync(_speedRoot, layout.speedRoot);
             }
 
             function _updateCompass(hud, cfg, nowMs) {

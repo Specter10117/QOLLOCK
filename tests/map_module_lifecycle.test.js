@@ -794,3 +794,25 @@ for (const property of ["preTransformRotate2d", "transform"]) test(`compass read
     assert.ok(Math.abs(parseFloat(e.renderer.style.preTransformRotate2d) + 165) < 0.02, "rotation converges on the changed native heading");
     feature.onDisable(); e.clean();
 });
+
+test("compass reuses derived layout maps while live heading and settings keep updating", () => {
+    const e = fixture(), source = localPlayer(e, e.renderer, 40);
+    const { feature } = directCompass(e);
+    feature.onEnable();
+    const ids = new Set(["QOLCompassRoot", "QOLCompassBox", "QOLCompassReadout", "QOLCompassDegree", "QOLSpeedRoot", "QOLSpeedLabel"]);
+    const maps = new Set(), sync = e.Q.core.panel.syncStyles;
+    e.Q.core.panel.syncStyles = (panel, styles, signature) => {
+        if (ids.has(panel?.id)) maps.add(styles);
+        return sync(panel, styles, signature);
+    };
+    e.clock.advance(500);
+    source.image.style.preTransformRotate2d = "75deg";
+    e.clock.advance(500);
+    assert.equal(e.root.FindChildTraverse("QOLCompassDegree").text, "75°");
+    assert.equal(maps.size, 6, "live ticks reuse the six settings-derived layout maps");
+    e.Q.core.ConfigStore.set("ql_compass", "COMPASS_SCALE", 125);
+    feature.onSettingsChanged(); e.clock.advance(150);
+    assert.equal(e.root.FindChildTraverse("QOLCompassRoot").style.uiScale, "125%");
+    assert.equal(maps.size, 12, "settings replace the derived model once");
+    feature.onDisable(); e.clean();
+});
