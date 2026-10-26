@@ -80,17 +80,18 @@ for (const owner of owners) {
 
     test(owner.id + ": retries partial construction/styles and releases every created panel", () => {
         const env = fixture(owner); env.scene(); const create = env.$.CreatePanel; let failCreate = true, failStyle = true;
+        const position = owner.id === "ql_unsecured_souls_timer" ? "marginLeft" : "x";
         env.$.CreatePanel = (type, parent, id, properties) => {
             if (id === owner.child && failCreate) throw Error("modeled child creation failure");
             const panel = create(type, parent, id, properties);
             if (id === owner.overlay) panel.style = new Proxy(panel.style, { set(target, key, value) {
-                if (key === "x" && failStyle) throw Error("modeled style failure"); target[key] = value; return true;
+                if (key === position && failStyle) throw Error("modeled style failure"); target[key] = value; return true;
             } });
             return panel;
         };
         env.feature.onEnable(); env.clock.advance(500); assert.equal(env.find(owner.child), null);
-        failCreate = false; env.clock.advance(500); assert.ok(env.find(owner.child)); assert.equal(env.overlay().style.x, undefined);
-        failStyle = false; env.clock.advance(500); assert.match(env.overlay().style.x, /px$/);
+        failCreate = false; env.clock.advance(500); assert.ok(env.find(owner.child)); assert.equal(env.overlay().style[position], undefined);
+        failStyle = false; env.clock.advance(500); assert.match(env.overlay().style[position], /px$/);
         const created = env.children(); env.stop(); for (const panel of created) assert.equal(panel.IsValid(), false, panel.id);
     });
 

@@ -162,10 +162,10 @@
             if (!allowedElements.has(element.id)) return false;
             const values = {};
             const config = Q.mergeConfig(Object.assign({}, baseline, draft));
-            // Hidden modes/filters stay with ordinary settings. Ammo's family
-            // reset also includes its independent digit geometry, not the alias.
+            // Reset presentation without changing enable/hide switches or
+            // hidden modes/filters. Ammo includes independent digit geometry.
             const fields = [...element.fields.filter(field => !field.hidden),
-                ...scopedElements(element).slice(1).flatMap(item => item.fields)];
+                ...scopedElements(element).slice(1).flatMap(item => item.fields)].filter(field => field.type !== "toggle");
             for (const field of fields) if (!field.when || field.when({ value: key => config[key] })) values[field.key] = QOL_DEFAULT_CONFIG[field.key];
             return edit(values, null, false);
         }

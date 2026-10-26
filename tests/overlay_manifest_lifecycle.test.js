@@ -323,8 +323,8 @@ test("unsecured timer samples across its minimum interval, resets on gains/sourc
     hud.clock.advance(1);
     const overlay = find("QOLUnsecuredSoulsOverlay");
     const state = find("QOLUnsecuredSoulsState");
-    assert.equal(overlay.style.x, "-1999px"); assert.equal(overlay.style.y, "1501px");
-    assert.equal(overlay.style.marginBottom, undefined);
+    assert.equal(overlay.style.marginLeft, "-2519px"); assert.equal(overlay.style.marginBottom, "-1391px");
+    assert.equal(overlay.style.x, undefined); assert.equal(overlay.style.y, undefined);
     assert.equal(state.style.fontSize, "32px"); assert.equal(state.text, "29s");
     source.text = "990"; hud.clock.advance(200);
     source.text = "980"; hud.clock.advance(200);
@@ -339,6 +339,56 @@ test("unsecured timer samples across its minimum interval, resets on gains/sourc
     Q.core.ConfigStore.set("ql_unsecured_souls_timer", "ENABLE_UNSECURED_SOUL_TIMER", false); hud.clock.advance(1);
     assert.equal(find("QOLUnsecuredSoulsOverlay"), null);
     assert.equal(replacement.text, "500");
+    env.clean();
+});
+
+function unsecuredTimerFixture(value) {
+    const env = fixture();
+    const stats = env.add(env.core, "StatsAndModsContainer");
+    const gold = env.add(env.add(stats, "LowerLeft"), "gold_and_ap_container");
+    const container = env.add(env.add(gold, "hudGoldContainer"), "", ["hudDeathGoldContainer"]);
+    const source = env.label(container, "hudDeathGoldLabel", value, ["death_penalty_gold"]);
+    env.config({ ENABLE_UNSECURED_SOUL_TIMER: 1 });
+    env.hud.clock.advance(1);
+    return { ...env, source, state: env.find("QOLUnsecuredSoulsState") };
+}
+
+test("unsecured timer retains saved margin coordinates and matching drag distance", () => {
+    const env = unsecuredTimerFixture("1000");
+    const overlay = env.find("QOLUnsecuredSoulsOverlay");
+    assert.equal(overlay.style.marginLeft, "-1370px");
+    assert.equal(overlay.style.marginBottom, "150px");
+    assert.equal(overlay.style.x, undefined);
+    assert.equal(overlay.style.y, undefined);
+    const settings = require("./load_settings_environment")();
+    const Q = settings.global.QOL;
+    const element = Q.presentation.elements.find(item => item.id === "unsecuredTimer");
+    const values = Q.ui.customizeGeometry.dragValues(element, overlay,
+        { UNSECURED_SOUL_TIMER_X_OFFSET: -850, UNSECURED_SOUL_TIMER_Y_OFFSET: 40 }, { x: 20, y: 10 });
+    assert.equal(values.UNSECURED_SOUL_TIMER_X_OFFSET, -810);
+    assert.equal(values.UNSECURED_SOUL_TIMER_Y_OFFSET, 30);
+    env.clean();
+});
+
+test("unsecured timer parses compact amounts without treating them as single souls", () => {
+    const env = unsecuredTimerFixture("1.2k");
+    assert.equal(env.state.text, "31s");
+    env.source.text = "1,200"; env.hud.clock.advance(200);
+    assert.equal(env.state.text, "31s");
+    env.clean();
+});
+
+test("unsecured timer measures complete native update intervals and counts down between changes", () => {
+    const env = unsecuredTimerFixture("1000");
+    env.hud.clock.advance(800);
+    env.source.text = "980"; env.hud.clock.advance(200);
+    assert.equal(env.state.text, "49s", "20 souls converted over one full second");
+    env.hud.clock.advance(1000);
+    assert.equal(env.state.text, "48s", "unchanged text must not postpone the deadline");
+    env.source.text = "940"; env.hud.clock.advance(200);
+    assert.ok(parseInt(env.state.text, 10) < 49);
+    env.source.text = "0"; env.hud.clock.advance(200);
+    assert.equal(env.state.text, "");
     env.clean();
 });
 
@@ -394,7 +444,7 @@ test("unsecured mirrors rebind still-live native sources and reset the timer est
     const amount = label(currentContainer, "hudDeathGoldLabel", "500", ["death_penalty_gold"]);
     hud.clock.advance(2200);
     assert.equal(find("QOLBetterUnsecuredMirrorLabel").text, "500");
-    assert.equal(find("QOLUnsecuredSoulsState").text, "20s", "replacement starts a fresh observed-rate history");
+    assert.equal(find("QOLUnsecuredSoulsState").text, "18s", "replacement starts a fresh estimate and counts down for two seconds");
     assert.equal(oldAmount.text, "980");
     assert.equal(amount.IsValid(), true); assert.equal(oldContainer.IsValid(), true);
     env.clean();
@@ -421,7 +471,7 @@ test("unsecured source discovery follows the native gold owner without full HUD 
     config({ ENABLE_UNSECURED_SOUL_TIMER: 1, ENABLE_BETTER_UNSECURED: 1 });
     hud.clock.advance(6200);
     assert.equal(find("QOLBetterUnsecuredMirrorLabel").text, "1000");
-    assert.equal(find("QOLUnsecuredSoulsState").text, "29s");
+    assert.equal(find("QOLUnsecuredSoulsState").text, "23s", "six elapsed seconds are not added back on each poll");
     assert.equal(broadGoldSearches, 0, "verified native owners need no whole-HUD periodic rediscovery");
 
     lower.id = "RetiredLowerLeft";
@@ -430,7 +480,7 @@ test("unsecured source discovery follows the native gold owner without full HUD 
     hud.clock.advance(2200);
     assert.equal(first.IsValid(), true, "retired native source remains alive");
     assert.equal(find("QOLBetterUnsecuredMirrorLabel").text, "500");
-    assert.equal(find("QOLUnsecuredSoulsState").text, "20s");
+    assert.equal(find("QOLUnsecuredSoulsState").text, "18s");
     assert.equal(broadGoldSearches, 0);
     for (const id of ["ql_unsecured_souls_timer", "ql_better_unsecured_hud"]) Q.core.FeatureRegistry.disable(id);
     hud.clock.advance(20);

@@ -207,7 +207,9 @@ being described as a requirement to enter a match.
 
 The session holds a draft, selection locks and bounded undo/redo history. Reset
 stays beside Undo/Redo outside the scrolling inspector and reads current defaults
-for the selected element's visible fields from source. Reset also clears pending field text
+for the selected element's visible presentation fields from source. Enable/hide
+switches and other toggles retain their current values, including normal/TAB
+visibility. Reset also clears pending field text
 when the accepted draft already equals defaults, without creating an Undo entry.
 Hidden feature modes and
 content filters remain unchanged; ordinary settings sections retain their full

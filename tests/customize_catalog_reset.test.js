@@ -3,7 +3,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const load = require("./load_settings_environment");
 
-test("every scoped surface resets visible fields, preserves hidden options, and supports Undo/Redo", () => {
+test("every scoped surface resets presentation, preserves switches and hidden options, and supports Undo/Redo", () => {
     const env = load(), g = env.global;
     g.QOL.ui.window.setOpen(true); env.clock.advance(500);
     const window = env.em.FindChildTraverse("SettingsWindow");
@@ -18,10 +18,10 @@ test("every scoped surface resets visible fields, preserves hidden options, and 
         }
         assert.equal(session.edit(patch), true, element.id);
         const before = JSON.stringify(session.snapshot());
-        const hidden = element.fields.filter(field => field.hidden && field.key !== "AMMO_PANEL_SCALE" && element.id !== "ammo")
+        const hidden = element.fields.filter(field => field.type === "toggle" || (field.hidden && field.key !== "AMMO_PANEL_SCALE" && element.id !== "ammo"))
             .map(field => [field.key, session.value(field.key)]);
         assert.equal(session.reset(element), true, element.id);
-        for (const field of element.fields.filter(field => !field.hidden || (element.id === "ammo" && field.key !== "AMMO_PANEL_SCALE")))
+        for (const field of element.fields.filter(field => field.type !== "toggle" && (!field.hidden || (element.id === "ammo" && field.key !== "AMMO_PANEL_SCALE"))))
             assert.equal(session.value(field.key), g.QOL_DEFAULT_CONFIG[field.key], `${element.id}/${field.key}`);
         for (const [key, value] of hidden) assert.equal(session.value(key), value, `preserve ${element.id}/${key}`);
         const reset = JSON.stringify(session.snapshot());

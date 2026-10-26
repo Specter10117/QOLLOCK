@@ -110,3 +110,41 @@ test("preset to Default hides disabled retained surfaces on each Customize openi
     env.find("QOLCustomizeCancel")._fire("onactivate");
     assert.deepEqual(env.clock.errors, []); assert.deepEqual(env.doc.eventErrors, []);
 });
+
+test("Unsecured Timer Reset restores presentation while preserving enabled state through Undo and Save", () => {
+    const env = load(), g = env.global, Q = env.hud.sandbox.global.QOL;
+    g.QOL.ui.window.setOpen(true); env.clock.advance(500);
+    const add = (parent, id, classes = [], type = "Panel") => parent.addChild(env.doc.create(type, { id, classes }));
+    const core = add(env.hud.root, "", ["HudCore"]);
+    add(core, "gameplay_hud");
+    const stats = add(core, "StatsAndModsContainer");
+    const gold = add(add(stats, "LowerLeft"), "gold_and_ap_container");
+    const container = add(add(gold, "hudGoldContainer"), "", ["hudDeathGoldContainer"]);
+    add(container, "hudDeathGoldLabel", ["death_penalty_gold"], "Label").text = "1000";
+    Object.assign(g.MOD_CONFIG, { ENABLE_UNSECURED_SOUL_TIMER: 1, UNSECURED_SOUL_TIMER_X_OFFSET: 400,
+        UNSECURED_SOUL_TIMER_SCALE: 175, UNSECURED_SOUL_TIMER_OPACITY: 0.5 });
+    g.SaveAndSync(); env.clock.advance(1200);
+    assert.equal(g.QOL.ui.customize.start(null, { elementId: "unsecuredTimer" }), true);
+    const toggle = env.em.FindChildTraverse("QOLCustomize_ENABLE_UNSECURED_SOUL_TIMER");
+    const overlay = () => env.hud.root.FindChildTraverse("QOLUnsecuredSoulsOverlay");
+    assert.equal(toggle.BHasClass("ToggleOn"), true);
+    assert.ok(overlay());
+    env.em.FindChildTraverse("QOLCustomizeReset")._fire("onactivate");
+    env.clock.advance(1200);
+    assert.equal(toggle.BHasClass("ToggleOn"), true);
+    assert.equal(Q.core.FeatureRegistry.isEnabled("ql_unsecured_souls_timer"), true);
+    assert.equal(overlay().style.marginLeft, "-1370px");
+    assert.equal(overlay().FindChildTraverse("QOLUnsecuredSoulsState").style.fontSize, "16px");
+    assert.equal(overlay().style.opacity, undefined);
+    env.em.FindChildTraverse("QOLCustomizeUndo")._fire("onactivate"); env.clock.advance(1200);
+    assert.equal(toggle.BHasClass("ToggleOn"), true);
+    assert.equal(overlay().style.marginLeft, "-120px");
+    env.em.FindChildTraverse("QOLCustomizeRedo")._fire("onactivate"); env.clock.advance(1200);
+    g.QOL.core.storageBridge.saveSettings = (_config, callback) => callback(null);
+    env.em.FindChildTraverse("QOLCustomizeApply")._fire("onactivate"); env.clock.advance(1200);
+    assert.equal(g.MOD_CONFIG.ENABLE_UNSECURED_SOUL_TIMER, 1);
+    assert.equal(g.MOD_CONFIG.UNSECURED_SOUL_TIMER_X_OFFSET, -850);
+    assert.equal(g.MOD_CONFIG.UNSECURED_SOUL_TIMER_SCALE, 100);
+    assert.equal(g.MOD_CONFIG.UNSECURED_SOUL_TIMER_OPACITY, 1);
+    assert.deepEqual(env.clock.errors, []); assert.deepEqual(env.doc.eventErrors, []);
+});

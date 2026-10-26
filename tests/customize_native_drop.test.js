@@ -75,7 +75,7 @@ test("preview withdrawal fills canonical defaults instead of retaining draft buc
 
 for (const [id, key, feature] of [["souls", "HUD_SOULS_ENABLED", "ql_souls"], ["items", "HUD_ITEMS_ENABLED", "ql_items"],
     ["topBar", "HUD_TOP_BAR_ENABLED", "ql_topbar"], ["bottomBar", "HUD_BOTTOM_BAR_ENABLED", "ql_bottom_bar"]]) {
-    test(`${id}: Enable controls native visibility, history and reset; Cancel preserves saved placement`, () => {
+    test(`${id}: Reset preserves hidden state and Cancel restores saved visibility and placement`, () => {
         const env = load();
         const { global: g, clock, hud } = env;
         const element = g.QOL.presentation.elements.find(item => item.id === id);
@@ -92,7 +92,8 @@ for (const [id, key, feature] of [["souls", "HUD_SOULS_ENABLED", "ql_souls"], ["
         click("QOLCustomizeUndo"); assert.equal(panel.style.visibility, undefined);
         click("QOLCustomizeRedo"); assert.equal(panel.style.visibility, "collapse");
         click("QOLCustomizeReset");
-        assert.equal(panel.style.visibility, undefined);
+        assert.equal(panel.style.visibility, "collapse", "Reset changes presentation without enabling the hidden owner");
+        assert.equal(env.em.FindChildTraverse("QOLCustomize_" + key).BHasClass("ToggleOn"), false);
         assert.equal(hud.sandbox.global.QOL.core.ConfigStore.get(feature, offset), 0);
         const resetRow = env.em.FindChildTraverse("QOLCustomizeReset").GetParent();
         assert.equal(resetRow.id, "QOLCustomizeResetRow");

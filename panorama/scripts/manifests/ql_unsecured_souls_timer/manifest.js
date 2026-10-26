@@ -10,8 +10,13 @@
     const SOURCE_PATH = ["StatsAndModsContainer", "LowerLeft", "gold_and_ap_container", "hudGoldContainer"];
 
     function parseSouls(text) {
-        const value = Number(String(text || "").replace(/[^0-9.-]/g, ""));
-        return Number.isFinite(value) && value >= 0 ? Math.round(value) : 0;
+        const raw = String(text || "").replace(/[\s,]/g, "").toLowerCase();
+        const match = raw.match(/^(\d+(?:\.\d+)?)([kmb]?)$/);
+        if (!match) return null;
+        const suffix = match[2];
+        const multiplier = suffix === "k" ? 1000 : suffix === "m" ? 1000000 : suffix === "b" ? 1000000000 : 1;
+        const value = Number(match[1]) * multiplier;
+        return Number.isFinite(value) ? Math.round(value) : null;
     }
 
     function fallbackEta(souls, gameMinutes) {
@@ -60,6 +65,7 @@
             let running = false, loop = null, rootOwner = null, model = null, overlay = null, stateLabel = null;
             let source = null;
             let lastSouls = -1, lastSampleMs = 0, rateEma = 0, rateUpdateMs = 0, etaEndMs = 0;
+            let estimatedSouls = -1;
 
             function readModel() {
                 const cfg = QOL.presentation.captureVisibility(ctx, ctx.config.view());
@@ -67,12 +73,15 @@
                 const x = Math.round(Number(cfg.UNSECURED_SOUL_TIMER_X_OFFSET)) || 0;
                 const y = Math.round(Number(cfg.UNSECURED_SOUL_TIMER_Y_OFFSET)) || 0;
                 return { enabled: Number(cfg.ENABLE_UNSECURED_SOUL_TIMER) === 1,
-                    styles: { x: x + "px", y: -y + "px" },
+                    // Saved offsets predate Customize and adjust the centered
+                    // margin, whose horizontal movement is half its value.
+                    styles: { marginLeft: (-520 + x) + "px", marginBottom: (110 + y) + "px" },
                     fontSize: Math.max(1, Math.round(16 * scale / 100)) + "px" };
             }
 
             function resetSamples() {
                 lastSouls = -1; lastSampleMs = 0; rateEma = 0; rateUpdateMs = 0; etaEndMs = 0;
+                estimatedSouls = -1;
             }
 
             function release(resetSource = true) {
@@ -110,6 +119,9 @@
                 const elapsed = now - lastSampleMs;
                 if (elapsed < MIN_SAMPLE_MS) return;
                 const delta = lastSouls - souls;
+                // Keep the start of the interval until the native amount
+                // changes; its refresh cadence need not match our poll loop.
+                if (delta === 0) return;
                 if (delta > 0) {
                     const rate = delta / (elapsed / 1000);
                     if (Number.isFinite(rate) && rate > 0.01) {
@@ -118,17 +130,19 @@
                     }
                 }
                 lastSouls = souls; lastSampleMs = now;
+                return true;
             }
 
-            function estimate(souls, unresolved, root, now) {
+            function estimate(souls, unresolved, root, now, rateChanged) {
                 let eta = 0;
-                if (!unresolved && souls > 0) {
+                if (!unresolved && souls > 0 && (souls !== estimatedSouls || rateChanged || etaEndMs === 0)) {
                     const fallback = fallbackEta(souls, QOL.core.time.readGameTime(root) / 60);
                     if (rateUpdateMs > 0 && now - rateUpdateMs <= STALE_RATE_MS && rateEma > 0.01) eta = souls / rateEma;
                     if (!Number.isFinite(eta) || eta <= 0 || (fallback > 0 && eta > fallback * 2)) eta = fallback;
                     eta = Math.min(999, eta);
                     if (eta > 0) etaEndMs = now + Math.round(eta * 1000);
                 } else if (souls <= 0) { etaEndMs = 0; rateEma = 0; rateUpdateMs = 0; }
+                estimatedSouls = unresolved ? -1 : souls;
                 const remaining = etaEndMs > now ? (etaEndMs - now) / 1000 : eta;
                 return unresolved ? "--" : souls <= 0 ? "" : Math.max(1, Math.ceil(remaining)) + "s";
             }
@@ -147,10 +161,11 @@
                 const current = findSource(core);
                 if (current !== source) { resetSamples(); source = current; }
                 const rawText = source && typeof source.text === "string" ? source.text : "";
-                const unresolved = !rawText || rawText.charAt(0) === "{";
-                const souls = unresolved ? 0 : parseSouls(rawText);
-                if (!unresolved) sample(souls, now);
-                const status = estimate(souls, unresolved, root, now);
+                const parsed = parseSouls(rawText);
+                const unresolved = parsed === null;
+                const souls = unresolved ? 0 : parsed;
+                const rateChanged = !unresolved && sample(souls, now);
+                const status = estimate(souls, unresolved, root, now, rateChanged);
                 const danger = dangerLevel(source, souls);
                 for (let level = 1; level <= 4; level++) P.setClass(overlay, "danger_" + level, danger === level);
                 P.setClass(overlay, "has_souls", souls > 0);
