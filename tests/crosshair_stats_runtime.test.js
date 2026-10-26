@@ -117,7 +117,14 @@ test("crosshair reconciles row siblings in one pass and replaces a moved owned r
     enableActiveStats(Q); hud.clock.advance(300);
     const overlay = hud.root.FindChildTraverse("QOLCrosshairStatsOverlay");
     const find = overlay.FindChild;
-    let individualLookups = 0, overlayLookups = 0, contentReads = 0;
+    let individualLookups = 0, overlayLookups = 0, contentReads = 0, childLookups = 0;
+    for (const ownedRow of overlay.Children()) {
+        const findChild = ownedRow.FindChild;
+        ownedRow.FindChild = function (id) {
+            childLookups++;
+            return findChild.call(this, id);
+        };
+    }
     const findOverlay = hud.gameplay.FindChild, findSource = hud.core.FindChild;
     hud.gameplay.FindChild = function (id) {
         if (id === "QOLCrosshairStatsOverlay") overlayLookups++;
@@ -134,6 +141,7 @@ test("crosshair reconciles row siblings in one pass and replaces a moved owned r
     hud.clock.advance(500);
     assert.equal(individualLookups, 0, "row construction must not search the same sibling list once per stat");
     assert.ok(contentReads > 0, "the normal live update path was exercised");
+    assert.equal(childLookups, 0, "the ownership sweep already validates stable icon/value handles");
     assert.equal(overlayLookups, contentReads, "the owned tree resolves the overlay once per content update");
     const old = row(hud.root, "fireRate");
     old.SetParent($.CreatePanel("Panel", null, "RetiredRows"));
@@ -146,6 +154,55 @@ test("crosshair reconciles row siblings in one pass and replaces a moved owned r
     assert.equal(overlay.IsValid(), false, "the owned tree retires a moved overlay without an extra lookup");
     assert.notEqual(hud.root.FindChildTraverse("QOLCrosshairStatsOverlay"), overlay);
     assert.equal(value(hud.root, "fireRate").text, "+10%", "the replacement receives the current native content");
+    Q.core.FeatureRegistry.disable("ql_crosshair_stats"); hud.clock.advance(20);
+    assert.equal(hud.root.FindChildTraverse("QOLCrosshairStatsOverlay"), null);
+    assert.deepEqual(hud.clock.errors, []);
+});
+
+test("crosshair retries partial owned children and retires moved or replaced living icon/value handles", () => {
+    const hud = createCrosshairHud(), { $, QOL: Q } = hud.sandbox.global;
+    const source = $.CreatePanel("Panel", hud.core, "hudActivePlayerStats");
+    addModifier($, source, "fireRateContainer", { number: "+10", postfix: "%", classes: ["shouldShow", "isPositive"] });
+    const create = $.CreatePanel;
+    let rejectValue = true;
+    $.CreatePanel = (type, parent, id, properties) => {
+        if (id === "QOLCrosshairStatRow_fireRate_value" && rejectValue) throw Error("temporary value creation failure");
+        return create(type, parent, id, properties);
+    };
+    enableActiveStats(Q); hud.clock.advance(300);
+    assert.equal(value(hud.root, "fireRate"), null);
+    rejectValue = false; hud.clock.advance(200);
+    assert.equal(value(hud.root, "fireRate").text, "+10%");
+    const detached = $.CreatePanel("Panel", null, "RetiredCrosshairChildren");
+    for (const suffix of ["icon", "value"]) {
+        const parent = row(hud.root, "fireRate"), id = `QOLCrosshairStatRow_fireRate_${suffix}`;
+        const previous = parent.FindChild(id);
+        previous.SetParent(detached);
+        const foreign = create(suffix === "icon" ? "Panel" : "Label", parent, id);
+        hud.clock.advance(300);
+        const replacement = parent.FindChild(id);
+        assert.equal(previous.IsValid(), false, "moved living children are retired");
+        assert.equal(foreign.IsValid(), false, "a living foreign replacement is not adopted");
+        assert.ok(replacement && replacement !== previous && replacement !== foreign);
+        assert.equal(value(hud.root, "fireRate").text, "+10%");
+        const icon = parent.FindChild("QOLCrosshairStatRow_fireRate_icon");
+        assert.equal(icon.BHasClass("FireRate"), true);
+        icon.RemoveClass("FireRate"); icon.hittest = true;
+        hud.clock.advance(200);
+        assert.equal(icon.BHasClass("FireRate"), true, "cached children retain class reconciliation");
+        assert.equal(icon.hittest, false, "cached children retain owned input flags");
+    }
+    hud.root.AddClass("gScoreboardOpen"); hud.clock.advance(200);
+    const hiddenChildren = row(hud.root, "fireRate").Children();
+    for (const child of hiddenChildren) child.SetParent(detached);
+    hud.clock.advance(200);
+    assert.ok(hiddenChildren.every(child => !child.IsValid()), "hidden sweeps retire lost children");
+    hud.root.RemoveClass("gScoreboardOpen"); hud.clock.advance(300);
+    assert.equal(value(hud.root, "fireRate")?.text, "+10%", "showing the same row rebuilds children retired while hidden");
+    assert.equal(row(hud.root, "fireRate").FindChild("QOLCrosshairStatRow_fireRate_icon").BHasClass("FireRate"), true);
+    Q.core.FeatureRegistry.disable("ql_crosshair_stats");
+    Q.core.FeatureRegistry.enable("ql_crosshair_stats"); hud.clock.advance(300);
+    assert.equal(value(hud.root, "fireRate").text, "+10%");
     Q.core.FeatureRegistry.disable("ql_crosshair_stats"); hud.clock.advance(20);
     assert.equal(hud.root.FindChildTraverse("QOLCrosshairStatsOverlay"), null);
     assert.deepEqual(hud.clock.errors, []);

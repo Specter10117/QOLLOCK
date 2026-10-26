@@ -290,7 +290,9 @@
             }
 
             function ensureOverlay(core) {
-                tree.sweep();
+                // The sweep validates every owned ID and its current parent.
+                // Reuse complete child handles until that topology changes.
+                if (!tree.sweep()) rows.clear();
                 const parent = P.findChild(core, "gameplay_hud");
                 if (!_isAlive(parent)) { removeOverlay(); return false; }
                 if (overlayParent !== parent) {
@@ -308,12 +310,15 @@
                     const row = rowPanels[index];
                     if (!_isAlive(row)) { complete = false; continue; }
                     P.setClass(row, "QOLCrosshairStatRow", true);
-                    const icon = tree.child(row, "Panel", id + "_icon");
-                    const value = tree.child(row, "Label", id + "_value");
+                    const cached = rows.get(def.key);
+                    const icon = cached?.row === row && cached.icon.hittest === false && cached.icon.hittestchildren === false
+                        ? cached.icon : tree.child(row, "Panel", id + "_icon");
+                    const value = cached?.row === row && cached.value.hittest === false && cached.value.hittestchildren === false
+                        ? cached.value : tree.child(row, "Label", id + "_value");
                     if (!_isAlive(icon) || !_isAlive(value)) { complete = false; continue; }
                     for (const name of ["QOLCrosshairStatIcon", "statIcon", "PropertiesIcon", def.icon]) P.setClass(icon, name, true);
                     P.setClass(value, "QOLCrosshairStatValue", true);
-                    rows.set(def.key, { row, value });
+                    rows.set(def.key, { row, icon, value });
                 }
                 // Retain partial construction for the next tick, but never show
                 // an incomplete overlay or cache it as completely rendered.
@@ -369,7 +374,7 @@
                 const preview = QOL.presentation.preview.selected(root, "activeStats");
                 if (QOL.presentation.shouldHide("activeStats", QOL.presentation.visibilityConfig(ctx), root) ||
                     (!preview && (!QOL.core.hud.isGameplayHudShown(root) || QOL.core.hud.isScoreboardOpen(root)))) {
-                    tree.sweep();
+                    if (!tree.sweep()) rows.clear();
                     hideOverlay();
                     return;
                 }
