@@ -61,6 +61,12 @@ function addCapture(env, top, nativeBuff = true) {
     return { charges, friendly, timer, panel, label };
 }
 
+function addNativeMinimap(env) {
+    let owner = env.add(env.gameplay, "", ["clamp_width"]);
+    for (const id of ["minimap_persp", "minimap_container", "HudMinimapContainer"]) owner = env.add(owner, id);
+    return env.add(owner, "hud_minimap");
+}
+
 function addRoster(env, top) {
     const teams = env.add(top, "TeamsContainer");
     const team = env.add(teams, "TeamFriendly");
@@ -336,7 +342,7 @@ test("rejuv publishes scalar phase state for the minimap-only consumer and reset
     env.hud.clock.advance(400);
     assert.equal(env.Q.core.FeatureRegistry.isEnabled("ql_rejuv_hud"), true);
     assert.deepEqual(JSON.parse(JSON.stringify(env.Q.state.rejuvState)), { running: true, spawnWaiting: true, counter: 0 });
-    const map = env.add(env.hud.root, "hud_minimap");
+    const map = addNativeMinimap(env);
     const midboss = env.add(map, "TestMidBoss", ["mid_boss", "map_button", "midboss_spawned"]);
     env.hud.clock.advance(10500);
     midboss.RemoveClass("midboss_spawned");
@@ -357,6 +363,43 @@ test("rejuv publishes scalar phase state for the minimap-only consumer and reset
     assert.equal(env.Q.state.rejuvState.running, false);
     assert.deepEqual(env.hud.clock.errors, []);
     assert.equal(top.IsValid(), true);
+});
+
+test("rejuv midboss evidence stays in the current native renderer through gaps and replacement", () => {
+    const env = fixture(), { gameTime } = addTopbar(env, "12:00");
+    env.Q.core.App.shutdown();
+    const unrelated = env.add(env.gameplay, "hud_minimap");
+    const decoy = env.add(unrelated, "", ["mid_boss", "map_button", "midboss_spawned"]);
+    let broadLookups = 0;
+    const find = env.hud.root.FindChildTraverse, enumerate = env.hud.root.FindChildrenWithClassTraverse;
+    env.hud.root.FindChildTraverse = function (id) {
+        if (id === "hud_minimap" || id === "minimap_persp") broadLookups++;
+        return find.call(this, id);
+    };
+    env.hud.root.FindChildrenWithClassTraverse = function (name) {
+        if (name === "mid_boss") broadLookups++;
+        return enumerate.call(this, name);
+    };
+    const feature = env.Q.core.FeatureRegistry.getManifest("ql_rejuv_hud").create({
+        id: "ql_rejuv_hud", events: env.Q.core.EventBus,
+        config: { view: () => ({ ENABLE_REJUV_HUD: 1 }) }
+    });
+    feature.onEnable(); env.hud.clock.advance(400);
+    decoy.RemoveClass("midboss_spawned"); gameTime.text = "12:01"; env.hud.clock.advance(600);
+    assert.equal(env.Q.state.rejuvState.spawnWaiting, true, "an unrelated renderer cannot claim a midboss kill");
+    const map = addNativeMinimap(env);
+    const boss = env.add(map, "", ["mid_boss", "map_button", "midboss_spawned"]);
+    env.hud.clock.advance(400);
+    gameTime.text = "12:02"; env.hud.clock.advance(200);
+    boss.RemoveClass("midboss_spawned"); env.hud.clock.advance(400);
+    assert.equal(env.Q.state.rejuvState.counter, 420, "a late native renderer is observed without the old miss deadline");
+    const native = map.GetParent(), viewport = native.GetParent(); native.SetParent(env.retired);
+    env.add(env.add(viewport, "HudMinimapContainer"), "hud_minimap");
+    gameTime.text = "12:03"; env.hud.clock.advance(600);
+    assert.equal(env.Q.state.rejuvState.counter, 419, "a living old renderer cannot reset the current phase");
+    assert.equal(map.IsValid(), true); assert.equal(broadLookups, 0);
+    feature.onDisable();
+    assert.equal(env.Q.state.rejuvState.running, false); assert.deepEqual(env.hud.clock.errors, []);
 });
 
 test("rejuv retries a rejected native text write without freezing the phase render", () => {

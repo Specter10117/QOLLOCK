@@ -1,7 +1,7 @@
 // OWNS: Rejuvenator phase/capture model and QOL topbar objective readouts.
 // PUBLISHES: State.rejuvState {running, spawnWaiting, counter} for minimap timers.
 // DOES NOT OWN: Native charges/mid-boss feedback or minimap overlay geometry.
-// Source paths: citadel_hud_top_bar.xml and the existing native mid_boss tokens.
+// Source paths: citadel_hud_top_bar.xml and hud.xml's native minimap renderer.
 (() => {
     "use strict";
     const FEATURE_ID = "ql_rejuv_hud";
@@ -33,11 +33,10 @@
             const P = QOL.core.panel;
             const time = QOL.core.time;
             const State = QOL.state;
-            const makeResolver = (id, ownerPath = [], retryMs = 1000) => QOL.panelCache.createIdResolver(id, { ownerPath, retryMs, refreshMs: 2000 });
+            const makeResolver = (id, ownerPath = []) => QOL.panelCache.createIdResolver(id, { ownerPath, retryMs: 1000, refreshMs: 2000 });
             const topResolver = makeResolver("TopBar");
             const legacyTopResolver = makeResolver("CitadelHudTopBar");
             const chargesResolver = makeResolver("RejuvenatorCharges", [{ id: "TopBar", optional: true }]);
-            const mapResolvers = ["hud_minimap", "minimap_persp"].map(id => makeResolver(id, [], 10000));
             const outputs = new Map();
             let active = false, settings = null, root = null, loop = null, unsubscribe = null;
             let chargeOwner = null, mapOwner = null, midBoss = null, nextMidBossSearch = 0;
@@ -82,9 +81,11 @@
                 const chargeCount = P.isAlive(friendly) || P.isAlive(enemy)
                     ? Math.max(QOL.getHighestRejuvChargeTokenOnPanel(friendly), QOL.getHighestRejuvChargeTokenOnPanel(enemy)) : null;
                 const nativeBuff = P.isAlive(timer) ? timer.BHasClass("has_rejuv") : null;
-                let map = null;
-                for (const resolver of mapResolvers) { map = resolver.resolve(root); if (P.isAlive(map)) break; }
-                const scope = map || root;
+                const core = P.findChildByClass(P.findHud(root), "HudCore");
+                const gameplay = P.findChild(core, "gameplay_hud");
+                const host = P.findChild(P.findChildByClass(gameplay, "clamp_width"), "minimap_persp");
+                const native = P.findChild(P.findChild(host, "minimap_container"), "HudMinimapContainer");
+                const scope = P.findChild(native, "hud_minimap");
                 if (scope !== mapOwner) { mapOwner = scope; midBoss = null; nextMidBossSearch = 0; }
                 if (midBoss && (!P.isAlive(midBoss) || !belongsTo(midBoss, scope) ||
                     !midBoss.BHasClass("mid_boss") || !midBoss.BHasClass("map_button"))) { midBoss = null; nextMidBossSearch = 0; }
@@ -180,7 +181,7 @@
             function release() {
                 for (const [key, panel] of outputs) releaseOutput(key, panel);
                 outputs.clear();
-                for (const resolver of [...mapResolvers, topResolver, legacyTopResolver, chargesResolver]) resolver.reset();
+                for (const resolver of [topResolver, legacyTopResolver, chargesResolver]) resolver.reset();
                 chargeOwner = null; mapOwner = null; midBoss = null; nextMidBossSearch = 0;
                 presentation = null;
             }

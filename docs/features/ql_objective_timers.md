@@ -16,6 +16,10 @@ Rejuvenator and buff readouts follow the shipped direct-child paths under the
 current TopBar. Missing parents or labels wait for that local subtree; similarly
 named panels in other components cannot become readout fallbacks. Living
 replacement labels receive the current phase text and presentation.
+Midboss evidence stays within the native `hud_minimap` renderer reached through
+`gameplay_hud > .clamp_width > minimap_persp > minimap_container >
+HudMinimapContainer`. Missing or replaced renderers are unknown source states;
+other HUD components cannot supply a substitute midboss or reset the phase.
 
 The minimap timer instance derives geometry settings in its settings hooks and
 reconciles native objective/clock evidence at its existing cadence. It waits for
