@@ -7,6 +7,10 @@ Source selection is bounded and ordered; a generic first matching class can
 select the wrong player. Preserve heading normalization, retry backoff and
 panel replacement invalidation.
 
+When the native renderer exists, heading/player discovery stays inside
+`hud_minimap`, excluding its viewport frame and decorations. Renderer replacement
+also invalidates the player binding and motion samples.
+
 Heading samples, motion history and presentation signatures belong to the
 feature instance. A replacement renderer, local-player image or overlay parent
 starts a new binding generation. Speed-only mode still samples the native

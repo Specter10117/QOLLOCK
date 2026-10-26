@@ -33,6 +33,15 @@
             P.findChild(source.parent, "hint_container") === panel;
     }
 
+    function findTargetScope(hud) {
+        // hud.xml, the October 3 capture and the October 26 live Debugger
+        // target confirm this host, including primary unit_target instances.
+        const core = P.findChildByClass(hud, "HudCore");
+        const gameplay = P.findChild(core, "gameplay_hud");
+        const alive = P.findChild(gameplay, "gameplay_hud_alive");
+        return P.findChild(P.findChild(alive, "crosshair"), "unit_target_container");
+    }
+
     QOL.core.FeatureRegistry.register({
         id: ID,
         enabledByDefault: true,
@@ -52,25 +61,9 @@
             let root = null;
             let model = null;
             let nextDiscovery = 0;
-            let nextBroadDiscovery = 0;
             let targetScope = null;
-            let broadShapes = new Map(), broadHints = new Map();
             let loop = null;
             let active = false;
-
-            function findTargetScope(hud) {
-                // hud.xml and the Debugger capture verify these direct children.
-                // The dynamic host may be missing, so avoid a full-HUD ID miss here.
-                let core = null;
-                try {
-                    core = (hud.Children() || []).find(panel => panels.isAlive(panel) &&
-                        panels.hasClassToken(panel, "HudCore"));
-                } catch (_) { return null; }
-                const gameplay = panels.findChild(core, "gameplay_hud");
-                const alive = panels.findChild(gameplay, "gameplay_hud_alive");
-                const crosshair = panels.findChild(alive, "crosshair");
-                return panels.findChild(crosshair, "unit_target_container");
-            }
 
             function readModel() {
                 const cfg = ctx.config.view();
@@ -89,8 +82,7 @@
             function releaseAll() {
                 styleOwner.clear();
                 shapes.clear(); hints.clear();
-                broadShapes.clear(); broadHints.clear();
-                nextDiscovery = nextBroadDiscovery = 0;
+                nextDiscovery = 0;
                 targetScope = null;
             }
 
@@ -108,8 +100,8 @@
                 for (const [target, owner] of owners) {
                     if (!panels.isAlive(target)) { owners.delete(target); nextDiscovery = 0; continue; }
                     let ancestor = target;
-                    for (let depth = 0; depth < 64 && panels.isAlive(ancestor) && ancestor !== root; depth++) ancestor = ancestor.GetParent();
-                    if (ancestor !== root || !matches(target, owner.source)) {
+                    for (let depth = 0; depth < 64 && panels.isAlive(ancestor) && ancestor !== targetScope; depth++) ancestor = ancestor.GetParent();
+                    if (ancestor !== targetScope || !matches(target, owner.source)) {
                         release(target); owners.delete(target); nextDiscovery = 0; continue;
                     }
                     styleOwner.apply(target, styles);
@@ -126,23 +118,15 @@
                     return;
                 }
                 const now = QOL.utils.PerfNowMs();
+                const scope = findTargetScope(root);
+                if (scope !== targetScope) {
+                    releaseAll();
+                    targetScope = scope;
+                }
                 if (now >= nextDiscovery) {
-                    const scope = findTargetScope(root);
-                    if (scope !== targetScope) {
-                        targetScope = scope;
-                        nextBroadDiscovery = 0;
-                    }
-                    if (now >= nextBroadDiscovery) {
-                        broadShapes = new Map(model.shapeActive ? QOL.utils.FindPanelsByClass(root, "target_shape").map(panel => [panel, null]) : []);
-                        broadHints = model.hintActive ? hintSources(root) : new Map();
-                        nextBroadDiscovery = now + (scope ? 3000 : 500);
-                    }
-                    const currentShapes = new Map(broadShapes);
-                    const currentHints = new Map(broadHints);
-                    if (scope) {
-                        if (model.shapeActive) for (const panel of QOL.utils.FindPanelsByClass(scope, "target_shape")) currentShapes.set(panel, null);
-                        if (model.hintActive) for (const [panel, source] of hintSources(scope)) currentHints.set(panel, source);
-                    }
+                    const currentShapes = new Map(scope && model.shapeActive ?
+                        QOL.utils.FindPanelsByClass(scope, "target_shape").map(panel => [panel, null]) : []);
+                    const currentHints = scope && model.hintActive ? hintSources(scope) : new Map();
                     reconcile(shapes, currentShapes);
                     reconcile(hints, currentHints);
                     nextDiscovery = now + (shapes.size || hints.size ? 1000 : 500);
@@ -155,7 +139,7 @@
             function refreshSettings() {
                 if (!active) return;
                 model = readModel();
-                nextDiscovery = nextBroadDiscovery = 0;
+                nextDiscovery = 0;
                 QOL.core.hud.refreshRootClasses($.GetContextPanel());
                 update();
             }
@@ -177,7 +161,7 @@
         },
         test() {
             try {
-                const root = $.GetContextPanel();
+                const root = findTargetScope(P.findHud($.GetContextPanel()));
                 const shapes = root?.FindChildrenWithClassTraverse("target_shape") || [];
                 const hints = hintSources(root);
                 return { passed: true, name: "Target shape panels traversal works",

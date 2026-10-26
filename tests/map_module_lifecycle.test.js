@@ -73,6 +73,42 @@ test("minimap decoration rebinds canvas and map_render without a viewport change
     e.clean();
 });
 
+test("minimap follows the native background canvas without descendant discovery", () => {
+    const e = fixture();
+    e.canvas.SetParent(e.orphan);
+    const background = e.add(e.renderer, "MinimapBackgroundTest");
+    let scans = 0;
+    const traverse = e.renderer.FindChildTraverse;
+    e.renderer.FindChildTraverse = function (id) {
+        if (id === "canvas") scans++;
+        return traverse.call(this, id);
+    };
+    const first = e.add(background, "canvas");
+    e.configure({ MINIMAP_ICON_COLOR: 13 }); e.clock.advance(1200);
+    const color = e.Q.core.panel.resolvePaletteColor(13);
+    assert.equal(first.style.washColor, color);
+    first.SetParent(e.orphan);
+    const next = e.add(background, "canvas"); e.clock.advance(100);
+    assert.equal(first.style.washColor, undefined);
+    assert.equal(next.style.washColor, color);
+    assert.equal(scans, 0, "the verified background owner must resolve each current canvas directly");
+    e.clean();
+});
+
+test("compass selects the renderer player instead of a viewport decoration", () => {
+    const e = fixture();
+    const decoration = localPlayer(e, e.viewport, 150);
+    decoration.player.AddClass("active"); decoration.player.AddClass("client_cone_fov");
+    const source = localPlayer(e, e.renderer, 70);
+    source.player.AddClass("active"); source.player.AddClass("client_cone_fov");
+    const { feature } = directCompass(e); feature.onEnable(); e.clock.advance(300);
+    assert.equal(e.root.FindChildTraverse("QOLCompassDegree").text, "70°");
+    source.player.SetParent(e.orphan);
+    localPlayer(e, e.renderer, 40); e.clock.advance(300);
+    assert.equal(e.root.FindChildTraverse("QOLCompassDegree").text, "40°");
+    feature.onDisable(); e.clean();
+});
+
 test("minimalist opacity follows native background images without fading their canvas sibling", () => {
     const e = fixture();
     e.render.DeleteAsync(0); e.clock.advance(1);
@@ -642,11 +678,11 @@ test("compass skips local-player enumeration when the preferred active cone alre
     const e = fixture(), cone = localPlayer(e, e.renderer, 70);
     cone.player.AddClass("active"); cone.player.AddClass("client_cone_fov");
     const fallback = localPlayer(e, e.renderer, 20);
-    const enumerate = e.viewport.FindChildrenWithClassTraverse;
+    const enumerate = e.renderer.FindChildrenWithClassTraverse;
     let fallbackScans = 0;
-    e.viewport.FindChildrenWithClassTraverse = name => {
+    e.renderer.FindChildrenWithClassTraverse = name => {
         if (name === "localplayer") fallbackScans++;
-        return enumerate.call(e.viewport, name);
+        return enumerate.call(e.renderer, name);
     };
     const { feature } = directCompass(e); feature.onEnable(); e.clock.advance(1000);
     assert.equal(e.root.FindChildTraverse("QOLCompassDegree").text, "70°");

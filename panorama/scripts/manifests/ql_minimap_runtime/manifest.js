@@ -56,7 +56,8 @@
         ],
         create(ctx) {
             const geometry = Q.features.minimapGeometry.create();
-            const canvasResolver = Q.panelCache.createIdResolver("canvas");
+            // hud_minimap.xml and the October 3 capture place the canvas here.
+            const canvasResolver = Q.panelCache.createIdResolver("canvas", { ownerPath: ["MinimapBackgroundTest"] });
             const renderResolver = Q.panelCache.createIdResolver("map_render");
             const owned = new Map();
             const nativeStyles = P.createNativeStyleOwner();

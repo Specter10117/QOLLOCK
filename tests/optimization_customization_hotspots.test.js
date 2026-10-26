@@ -63,7 +63,7 @@ test("unsecured timer reads only its native owner and follows late and living re
     assert.equal(state(), null); assert.deepEqual(env.hud.clock.errors, []);
 });
 
-test("target scope follows native host replacement while the broad sweep retains late external shapes", () => {
+test("target scope follows native host replacement without probing or styling external shapes", () => {
     const env = fixture("ql_target_shapes", { UNIT_TARGET_SIZE: 200, UNIT_TARGET_HINT_SIZE: 140 });
     const { hud, $, add, core, feature } = env;
     const gameplay = core.FindChild("gameplay_hud");
@@ -80,13 +80,22 @@ test("target scope follows native host replacement while the broad sweep retains
         return { instance, hint, shape, scaledHint };
     };
     const old = native(host);
+    const enumerate = hud.root.FindChildrenWithClassTraverse;
+    const probes = [];
+    hud.root.FindChildrenWithClassTraverse = function (name) {
+        if (["target_shape", "unit_target_instance"].includes(name)) probes.push(name);
+        return enumerate.call(this, name);
+    };
     feature.onEnable();
     assert.equal(old.shape.style.uiScale, "200%");
     assert.equal(old.hint.style.uiScale, "140%");
     assert.equal(old.scaledHint.style.uiScale, "140%");
 
-    const retired = add(hud.doc.absRoot, "RetiredTargetHost");
+    const retired = add(hud.root, "RetiredTargetHost");
     host.SetParent(retired);
+    hud.clock.advance(600);
+    assert.equal(old.shape.style.uiScale, undefined, "a living host moved elsewhere in the same HUD is retired");
+    assert.equal(old.hint.style.uiScale, undefined);
     const replacement = native(add(crosshair, "unit_target_container"));
     hud.clock.advance(1200);
     assert.equal(old.shape.style.uiScale, undefined);
@@ -101,7 +110,8 @@ test("target scope follows native host replacement while the broad sweep retains
     hud.clock.advance(1200);
     assert.equal(external.style.uiScale, undefined, "external additions use the bounded broad sweep");
     hud.clock.advance(2000);
-    assert.equal(external.style.uiScale, "200%", "broad compatibility discovery remains active");
+    assert.equal(external.style.uiScale, undefined, "unrelated shapes cannot become native source fallbacks");
+    assert.deepEqual(probes, [], "source discovery stays inside the verified native host");
     feature.onDisable();
     assert.equal(external.style.uiScale, undefined);
     assert.equal(replacement.hint.style.uiScale, undefined);

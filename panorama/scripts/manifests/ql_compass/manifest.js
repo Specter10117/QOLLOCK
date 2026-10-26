@@ -255,7 +255,9 @@
                 for (const panel of [_minimapFlipClassTarget, _minimapContainer]) {
                     if (panel !== nextFlip && panel !== container) P.setClass(panel, "qol_minimap_flip_active", false);
                 }
-                const nextScope = container || nextRotate;
+                // Native player/cone snippets belong to hud_minimap (XML and
+                // October 3 capture), not its viewport decorations.
+                const nextScope = renderer || container || nextRotate;
                 if (nextScope !== minimapScope) resetSamples();
                 minimapScope = nextScope;
                 _minimapRotateTarget = nextRotate;

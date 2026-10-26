@@ -95,7 +95,9 @@ test("legacy root styles, threshold aliases and target-shape runtime receive dra
         target[key] = value; return true;
     } });
     const report = add(env, core, "CitadelHudDamageReport");
-    const shape = add(env, core, "", ["target_shape"]);
+    let targetOwner = core;
+    for (const id of ["gameplay_hud", "gameplay_hud_alive", "crosshair", "unit_target_container"]) targetOwner = add(env, targetOwner, id);
+    const shape = add(env, targetOwner, "", ["target_shape"]);
     const session = g.QOL.ui.customizeSession.create(g.QOL.core.persistence.getUIRoot(), hud.root, env.em.FindChildTraverse("SettingsWindow"));
     hud.root.AddClass("QOLCustomizeActive");
     session.edit({ CHAT_X_OFFSET: 175, CHAT_Y_OFFSET: 80, DAMAGE_REPORT_X_OFFSET: 125,

@@ -18,10 +18,22 @@ function setup(id, overrides = {}) {
         for (const name of classes) panel.AddClass(name);
         return panel;
     };
-    return { ...env, Q, $, cfg, feature, add, reads: () => reads };
+    const result = { ...env, Q, $, cfg, feature, add, reads: () => reads };
+    result.sourceRoot = id === "ql_target_shapes" ? targetScope(result) : env.root;
+    return result;
 }
 
-function nativeTarget(env, parent = env.doc.root) {
+function targetScope(env, root = env.doc.root) {
+    // Current hud.xml plus October 3 capture and October 26 live target evidence.
+    const core = root.Children().find(panel => panel.BHasClass("HudCore")) || env.add(root, "", ["HudCore"]);
+    let owner = core;
+    for (const id of ["gameplay_hud", "gameplay_hud_alive", "crosshair", "unit_target_container"]) {
+        owner = owner.FindChild(id) || env.add(owner, id);
+    }
+    return owner;
+}
+
+function nativeTarget(env, parent = targetScope(env)) {
     const root = env.add(parent, "", ["ability_element_unit_target"], "Citadel_AbilityHUDElement_UnitTarget");
     const instance = env.add(root, "", ["unit_target_instance"]);
     const unscaled = env.add(instance, "unscaled_panel"), hint = env.add(unscaled, "hint_container");
@@ -33,9 +45,9 @@ function nativeTarget(env, parent = env.doc.root) {
 test("target geometry discovers only the customized channel and releases it independently", () => {
     const env = setup("ql_target_shapes", { UNIT_TARGET_SIZE: 200 }), target = nativeTarget(env);
     target.hint.style.uiScale = "73%";
-    const enumerate = env.root.FindChildrenWithClassTraverse;
+    const enumerate = env.sourceRoot.FindChildrenWithClassTraverse;
     let hintScans = 0;
-    env.root.FindChildrenWithClassTraverse = name => { if (name === "unit_target_instance") hintScans++; return enumerate.call(env.root, name); };
+    env.sourceRoot.FindChildrenWithClassTraverse = name => { if (name === "unit_target_instance") hintScans++; return enumerate.call(env.sourceRoot, name); };
     env.feature.onEnable(); env.clock.advance(1200);
     assert.equal(target.shape.style.uiScale, "200%");
     assert.equal(target.hint.style.uiScale, "73%", "shape sizing must not override native hint geometry");
@@ -63,7 +75,7 @@ for (const [id, classes, config] of [
     ["ql_target_shapes", ["target_shape"], { UNIT_TARGET_SIZE: 200, UNIT_TARGET_OPACITY: 0.4 }],
     ["ql_damage_numbers", ["HudIndicatorText"], { HUD_INDICATOR_SIZE: 30, DAMAGE_NUMBER_OPACITY: 0.4 }]
 ]) test(id + " repairs native opacity feedback and finishes rejected cleanup after stop", () => {
-    const env = setup(id, config), panel = env.add(env.root, "NativeFeedback", classes);
+    const env = setup(id, config), panel = env.add(env.sourceRoot, "NativeFeedback", classes);
     env.feature.onEnable(); assert.equal(panel.style.opacity, "0.40");
     panel.style.opacity = "0.8"; env.clock.advance(600);
     assert.equal(panel.style.opacity, "0.40");
@@ -81,7 +93,7 @@ for (const [id, classes, config] of [
 test("default target and damage controllers preserve native code styles they never owned", () => {
     for (const [id, classes] of [["ql_target_shapes", ["target_shape"]], ["ql_damage_numbers", ["HudIndicatorText"]]]) {
         const env = setup(id);
-        const panel = env.add(env.root, "DefaultFixture", classes);
+        const panel = env.add(env.sourceRoot, "DefaultFixture", classes);
         const native = { uiScale: "78%", preTransformScale2d: "0.6, 0.6", opacity: "0.35", fontSize: "41px" };
         Object.assign(panel.style, native);
         const hints = id === "ql_target_shapes" ? nativeTarget(env) : null;
@@ -97,7 +109,7 @@ test("default target and damage controllers preserve native code styles they nev
 
 test("target settings apply immediately, release removed living owners and restore defaults without overriding native children", () => {
     const env = setup("ql_target_shapes", { UNIT_TARGET_SIZE: 200, UNIT_TARGET_OPACITY: 0.4, UNIT_TARGET_HINT_SIZE: 125 });
-    const shape = env.add(env.root, "TargetFixture", ["target_shape"]);
+    const shape = env.add(env.sourceRoot, "TargetFixture", ["target_shape"]);
     const hint = nativeTarget(env).hint;
     const child = env.add(shape, "DiamondFixture"); child.style.transform = "rotateZ(45deg)";
     shape.style.x = "13px";
@@ -106,7 +118,7 @@ test("target settings apply immediately, release removed living owners and resto
     shape.RemoveClass("target_shape"); env.clock.advance(1200);
     for (const property of ["uiScale", "preTransformScale2d", "opacity"]) assert.equal(shape.style[property], undefined);
     assert.equal(shape.style.x, "13px"); assert.equal(child.style.transform, "rotateZ(45deg)");
-    const replacement = env.add(env.root, "NewTargetFixture", ["target_shape"]);
+    const replacement = env.add(env.sourceRoot, "NewTargetFixture", ["target_shape"]);
     env.clock.advance(1200); assert.equal(replacement.style.uiScale, "200%");
     Object.assign(env.cfg, { UNIT_TARGET_SIZE: 150, UNIT_TARGET_OPACITY: 1, UNIT_TARGET_HINT_SIZE: 100 });
     env.feature.onSettingsChanged();
@@ -117,13 +129,13 @@ test("target settings apply immediately, release removed living owners and resto
 
 test("target retries rejected writes, releases the old live HUD and cleans up disable without callbacks reviving it", () => {
     const env = setup("ql_target_shapes", { UNIT_TARGET_SIZE: 225, UNIT_TARGET_OPACITY: 0.3 });
-    const old = env.add(env.root, "TargetFixture", ["target_shape"]);
+    const old = env.add(env.sourceRoot, "TargetFixture", ["target_shape"]);
     let reject = true;
     old.style = new Proxy({}, { set(target, key, value) { if (key === "opacity" && reject) throw Error("temporary native failure"); target[key] = value; return true; } });
     env.feature.onEnable(); assert.equal(old.style.opacity, undefined);
     reject = false; env.clock.advance(300); assert.equal(old.style.opacity, "0.30");
     const nextRoot = env.add(env.doc.absRoot, "Hud", [], "CitadelHud");
-    const replacement = env.add(nextRoot, "TargetFixture", ["target_shape"]);
+    const replacement = env.add(targetScope(env, nextRoot), "TargetFixture", ["target_shape"]);
     env.doc.root = nextRoot; env.clock.advance(300);
     assert.equal(old.style.uiScale, undefined); assert.equal(old.style.opacity, undefined);
     assert.equal(replacement.style.uiScale, "225%");
@@ -134,7 +146,7 @@ test("target retries rejected writes, releases the old live HUD and cleans up di
 
 test("target geometry releases living moved shapes and recycled native hint scopes before the full discovery cadence", () => {
     const env = setup("ql_target_shapes", { UNIT_TARGET_SIZE: 225, UNIT_TARGET_HINT_SIZE: 140 });
-    const shape = env.add(env.root, "TargetFixture", ["target_shape"]), source = nativeTarget(env), hint = source.hint;
+    const shape = env.add(env.sourceRoot, "TargetFixture", ["target_shape"]), source = nativeTarget(env), hint = source.hint;
     shape.style.color = "#ABCDEF"; hint.style.x = "13px";
     env.feature.onEnable(); assert.equal(shape.style.uiScale, "225%"); assert.equal(hint.style.uiScale, "140%");
     shape.SetParent(env.add(null, "RetiredTarget")); source.instance.RemoveClass("unit_target_instance"); env.clock.advance(300);
