@@ -2149,8 +2149,8 @@
 	}
 }
 
-.damage_fountain_active .WindowRoot,
-.damage_fountain_active .Window
+.damage_fountain_active CitadelHudDamageEventIndicator.WindowRoot,
+.damage_fountain_active CitadelHudDamageEventIndicator.Window
 {
     height: 300px;
     width: 300px;
@@ -3829,20 +3829,20 @@
 
 .damage_fountain_active .damage_type_gun.fountain_emphasised1 .WindowRoot .HudIndicatorContainer,
 .damage_fountain_active .bullet_damage_new.fountain_emphasised1 .WindowRoot .HudIndicatorContainer,
-.damage_fountain_active .WindowRoot.damage_type_gun.fountain_emphasised1 .HudIndicatorContainer,
-.damage_fountain_active .WindowRoot.bullet_damage_new.fountain_emphasised1 .HudIndicatorContainer,
+.damage_fountain_active CitadelHudDamageEventIndicator.WindowRoot.damage_type_gun.fountain_emphasised1 .HudIndicatorContainer,
+.damage_fountain_active CitadelHudDamageEventIndicator.WindowRoot.bullet_damage_new.fountain_emphasised1 .HudIndicatorContainer,
 .damage_fountain_active .damage_type_gun.fountain_emphasised2 .WindowRoot .HudIndicatorContainer,
 .damage_fountain_active .bullet_damage_new.fountain_emphasised2 .WindowRoot .HudIndicatorContainer,
-.damage_fountain_active .WindowRoot.damage_type_gun.fountain_emphasised2 .HudIndicatorContainer,
-.damage_fountain_active .WindowRoot.bullet_damage_new.fountain_emphasised2 .HudIndicatorContainer,
+.damage_fountain_active CitadelHudDamageEventIndicator.WindowRoot.damage_type_gun.fountain_emphasised2 .HudIndicatorContainer,
+.damage_fountain_active CitadelHudDamageEventIndicator.WindowRoot.bullet_damage_new.fountain_emphasised2 .HudIndicatorContainer,
 .damage_fountain_active .damage_type_gun.fountain_emphasised3 .WindowRoot .HudIndicatorContainer,
 .damage_fountain_active .bullet_damage_new.fountain_emphasised3 .WindowRoot .HudIndicatorContainer,
-.damage_fountain_active .WindowRoot.damage_type_gun.fountain_emphasised3 .HudIndicatorContainer,
-.damage_fountain_active .WindowRoot.bullet_damage_new.fountain_emphasised3 .HudIndicatorContainer,
+.damage_fountain_active CitadelHudDamageEventIndicator.WindowRoot.damage_type_gun.fountain_emphasised3 .HudIndicatorContainer,
+.damage_fountain_active CitadelHudDamageEventIndicator.WindowRoot.bullet_damage_new.fountain_emphasised3 .HudIndicatorContainer,
 .damage_fountain_active .damage_type_gun.fountain_emphasised4 .WindowRoot .HudIndicatorContainer,
 .damage_fountain_active .bullet_damage_new.fountain_emphasised4 .WindowRoot .HudIndicatorContainer,
-.damage_fountain_active .WindowRoot.damage_type_gun.fountain_emphasised4 .HudIndicatorContainer,
-.damage_fountain_active .WindowRoot.bullet_damage_new.fountain_emphasised4 .HudIndicatorContainer,
+.damage_fountain_active CitadelHudDamageEventIndicator.WindowRoot.damage_type_gun.fountain_emphasised4 .HudIndicatorContainer,
+.damage_fountain_active CitadelHudDamageEventIndicator.WindowRoot.bullet_damage_new.fountain_emphasised4 .HudIndicatorContainer,
 .damage_fountain_active .damage_type_gun.fountain_emphasised5 .WindowRoot .HudIndicatorContainer,
 .damage_fountain_active .bullet_damage_new.fountain_emphasised5 .WindowRoot .HudIndicatorContainer
 {
@@ -3853,8 +3853,8 @@
     animation-fill-mode: forwards;
 }
 
-.damage_fountain_active .WindowRoot.damage_type_gun.fountain_emphasised5 .HudIndicatorContainer,
-.damage_fountain_active .WindowRoot.bullet_damage_new.fountain_emphasised5 .HudIndicatorContainer
+.damage_fountain_active CitadelHudDamageEventIndicator.WindowRoot.damage_type_gun.fountain_emphasised5 .HudIndicatorContainer,
+.damage_fountain_active CitadelHudDamageEventIndicator.WindowRoot.bullet_damage_new.fountain_emphasised5 .HudIndicatorContainer
 {
     horizontal-align: right;
     animation-name: qol_fountain_emphasised_float, qol_fountain_emphasised_wobble;
@@ -5770,1252 +5770,1252 @@
 
 /* Scale the native event wrapper, preserving inner distance/animation scales. */
 
-.damage_fountain_active.damage_fountain_scale_50 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_50 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 50%;
 }
 
-.damage_fountain_active.damage_fountain_scale_51 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_51 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 51%;
 }
 
-.damage_fountain_active.damage_fountain_scale_52 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_52 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 52%;
 }
 
-.damage_fountain_active.damage_fountain_scale_53 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_53 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 53%;
 }
 
-.damage_fountain_active.damage_fountain_scale_54 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_54 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 54%;
 }
 
-.damage_fountain_active.damage_fountain_scale_55 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_55 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 55%;
 }
 
-.damage_fountain_active.damage_fountain_scale_56 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_56 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 56%;
 }
 
-.damage_fountain_active.damage_fountain_scale_57 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_57 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 57%;
 }
 
-.damage_fountain_active.damage_fountain_scale_58 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_58 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 58%;
 }
 
-.damage_fountain_active.damage_fountain_scale_59 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_59 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 59%;
 }
 
-.damage_fountain_active.damage_fountain_scale_60 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_60 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 60%;
 }
 
-.damage_fountain_active.damage_fountain_scale_61 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_61 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 61%;
 }
 
-.damage_fountain_active.damage_fountain_scale_62 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_62 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 62%;
 }
 
-.damage_fountain_active.damage_fountain_scale_63 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_63 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 63%;
 }
 
-.damage_fountain_active.damage_fountain_scale_64 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_64 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 64%;
 }
 
-.damage_fountain_active.damage_fountain_scale_65 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_65 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 65%;
 }
 
-.damage_fountain_active.damage_fountain_scale_66 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_66 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 66%;
 }
 
-.damage_fountain_active.damage_fountain_scale_67 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_67 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 67%;
 }
 
-.damage_fountain_active.damage_fountain_scale_68 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_68 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 68%;
 }
 
-.damage_fountain_active.damage_fountain_scale_69 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_69 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 69%;
 }
 
-.damage_fountain_active.damage_fountain_scale_70 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_70 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 70%;
 }
 
-.damage_fountain_active.damage_fountain_scale_71 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_71 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 71%;
 }
 
-.damage_fountain_active.damage_fountain_scale_72 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_72 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 72%;
 }
 
-.damage_fountain_active.damage_fountain_scale_73 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_73 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 73%;
 }
 
-.damage_fountain_active.damage_fountain_scale_74 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_74 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 74%;
 }
 
-.damage_fountain_active.damage_fountain_scale_75 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_75 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 75%;
 }
 
-.damage_fountain_active.damage_fountain_scale_76 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_76 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 76%;
 }
 
-.damage_fountain_active.damage_fountain_scale_77 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_77 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 77%;
 }
 
-.damage_fountain_active.damage_fountain_scale_78 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_78 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 78%;
 }
 
-.damage_fountain_active.damage_fountain_scale_79 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_79 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 79%;
 }
 
-.damage_fountain_active.damage_fountain_scale_80 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_80 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 80%;
 }
 
-.damage_fountain_active.damage_fountain_scale_81 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_81 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 81%;
 }
 
-.damage_fountain_active.damage_fountain_scale_82 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_82 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 82%;
 }
 
-.damage_fountain_active.damage_fountain_scale_83 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_83 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 83%;
 }
 
-.damage_fountain_active.damage_fountain_scale_84 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_84 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 84%;
 }
 
-.damage_fountain_active.damage_fountain_scale_85 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_85 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 85%;
 }
 
-.damage_fountain_active.damage_fountain_scale_86 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_86 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 86%;
 }
 
-.damage_fountain_active.damage_fountain_scale_87 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_87 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 87%;
 }
 
-.damage_fountain_active.damage_fountain_scale_88 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_88 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 88%;
 }
 
-.damage_fountain_active.damage_fountain_scale_89 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_89 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 89%;
 }
 
-.damage_fountain_active.damage_fountain_scale_90 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_90 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 90%;
 }
 
-.damage_fountain_active.damage_fountain_scale_91 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_91 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 91%;
 }
 
-.damage_fountain_active.damage_fountain_scale_92 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_92 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 92%;
 }
 
-.damage_fountain_active.damage_fountain_scale_93 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_93 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 93%;
 }
 
-.damage_fountain_active.damage_fountain_scale_94 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_94 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 94%;
 }
 
-.damage_fountain_active.damage_fountain_scale_95 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_95 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 95%;
 }
 
-.damage_fountain_active.damage_fountain_scale_96 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_96 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 96%;
 }
 
-.damage_fountain_active.damage_fountain_scale_97 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_97 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 97%;
 }
 
-.damage_fountain_active.damage_fountain_scale_98 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_98 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 98%;
 }
 
-.damage_fountain_active.damage_fountain_scale_99 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_99 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 99%;
 }
 
-.damage_fountain_active.damage_fountain_scale_101 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_101 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 101%;
 }
 
-.damage_fountain_active.damage_fountain_scale_102 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_102 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 102%;
 }
 
-.damage_fountain_active.damage_fountain_scale_103 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_103 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 103%;
 }
 
-.damage_fountain_active.damage_fountain_scale_104 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_104 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 104%;
 }
 
-.damage_fountain_active.damage_fountain_scale_105 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_105 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 105%;
 }
 
-.damage_fountain_active.damage_fountain_scale_106 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_106 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 106%;
 }
 
-.damage_fountain_active.damage_fountain_scale_107 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_107 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 107%;
 }
 
-.damage_fountain_active.damage_fountain_scale_108 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_108 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 108%;
 }
 
-.damage_fountain_active.damage_fountain_scale_109 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_109 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 109%;
 }
 
-.damage_fountain_active.damage_fountain_scale_110 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_110 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 110%;
 }
 
-.damage_fountain_active.damage_fountain_scale_111 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_111 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 111%;
 }
 
-.damage_fountain_active.damage_fountain_scale_112 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_112 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 112%;
 }
 
-.damage_fountain_active.damage_fountain_scale_113 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_113 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 113%;
 }
 
-.damage_fountain_active.damage_fountain_scale_114 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_114 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 114%;
 }
 
-.damage_fountain_active.damage_fountain_scale_115 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_115 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 115%;
 }
 
-.damage_fountain_active.damage_fountain_scale_116 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_116 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 116%;
 }
 
-.damage_fountain_active.damage_fountain_scale_117 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_117 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 117%;
 }
 
-.damage_fountain_active.damage_fountain_scale_118 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_118 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 118%;
 }
 
-.damage_fountain_active.damage_fountain_scale_119 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_119 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 119%;
 }
 
-.damage_fountain_active.damage_fountain_scale_120 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_120 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 120%;
 }
 
-.damage_fountain_active.damage_fountain_scale_121 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_121 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 121%;
 }
 
-.damage_fountain_active.damage_fountain_scale_122 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_122 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 122%;
 }
 
-.damage_fountain_active.damage_fountain_scale_123 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_123 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 123%;
 }
 
-.damage_fountain_active.damage_fountain_scale_124 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_124 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 124%;
 }
 
-.damage_fountain_active.damage_fountain_scale_125 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_125 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 125%;
 }
 
-.damage_fountain_active.damage_fountain_scale_126 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_126 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 126%;
 }
 
-.damage_fountain_active.damage_fountain_scale_127 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_127 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 127%;
 }
 
-.damage_fountain_active.damage_fountain_scale_128 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_128 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 128%;
 }
 
-.damage_fountain_active.damage_fountain_scale_129 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_129 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 129%;
 }
 
-.damage_fountain_active.damage_fountain_scale_130 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_130 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 130%;
 }
 
-.damage_fountain_active.damage_fountain_scale_131 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_131 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 131%;
 }
 
-.damage_fountain_active.damage_fountain_scale_132 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_132 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 132%;
 }
 
-.damage_fountain_active.damage_fountain_scale_133 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_133 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 133%;
 }
 
-.damage_fountain_active.damage_fountain_scale_134 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_134 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 134%;
 }
 
-.damage_fountain_active.damage_fountain_scale_135 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_135 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 135%;
 }
 
-.damage_fountain_active.damage_fountain_scale_136 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_136 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 136%;
 }
 
-.damage_fountain_active.damage_fountain_scale_137 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_137 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 137%;
 }
 
-.damage_fountain_active.damage_fountain_scale_138 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_138 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 138%;
 }
 
-.damage_fountain_active.damage_fountain_scale_139 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_139 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 139%;
 }
 
-.damage_fountain_active.damage_fountain_scale_140 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_140 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 140%;
 }
 
-.damage_fountain_active.damage_fountain_scale_141 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_141 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 141%;
 }
 
-.damage_fountain_active.damage_fountain_scale_142 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_142 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 142%;
 }
 
-.damage_fountain_active.damage_fountain_scale_143 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_143 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 143%;
 }
 
-.damage_fountain_active.damage_fountain_scale_144 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_144 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 144%;
 }
 
-.damage_fountain_active.damage_fountain_scale_145 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_145 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 145%;
 }
 
-.damage_fountain_active.damage_fountain_scale_146 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_146 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 146%;
 }
 
-.damage_fountain_active.damage_fountain_scale_147 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_147 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 147%;
 }
 
-.damage_fountain_active.damage_fountain_scale_148 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_148 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 148%;
 }
 
-.damage_fountain_active.damage_fountain_scale_149 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_149 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 149%;
 }
 
-.damage_fountain_active.damage_fountain_scale_150 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_150 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 150%;
 }
 
-.damage_fountain_active.damage_fountain_scale_151 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_151 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 151%;
 }
 
-.damage_fountain_active.damage_fountain_scale_152 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_152 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 152%;
 }
 
-.damage_fountain_active.damage_fountain_scale_153 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_153 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 153%;
 }
 
-.damage_fountain_active.damage_fountain_scale_154 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_154 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 154%;
 }
 
-.damage_fountain_active.damage_fountain_scale_155 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_155 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 155%;
 }
 
-.damage_fountain_active.damage_fountain_scale_156 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_156 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 156%;
 }
 
-.damage_fountain_active.damage_fountain_scale_157 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_157 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 157%;
 }
 
-.damage_fountain_active.damage_fountain_scale_158 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_158 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 158%;
 }
 
-.damage_fountain_active.damage_fountain_scale_159 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_159 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 159%;
 }
 
-.damage_fountain_active.damage_fountain_scale_160 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_160 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 160%;
 }
 
-.damage_fountain_active.damage_fountain_scale_161 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_161 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 161%;
 }
 
-.damage_fountain_active.damage_fountain_scale_162 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_162 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 162%;
 }
 
-.damage_fountain_active.damage_fountain_scale_163 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_163 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 163%;
 }
 
-.damage_fountain_active.damage_fountain_scale_164 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_164 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 164%;
 }
 
-.damage_fountain_active.damage_fountain_scale_165 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_165 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 165%;
 }
 
-.damage_fountain_active.damage_fountain_scale_166 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_166 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 166%;
 }
 
-.damage_fountain_active.damage_fountain_scale_167 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_167 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 167%;
 }
 
-.damage_fountain_active.damage_fountain_scale_168 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_168 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 168%;
 }
 
-.damage_fountain_active.damage_fountain_scale_169 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_169 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 169%;
 }
 
-.damage_fountain_active.damage_fountain_scale_170 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_170 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 170%;
 }
 
-.damage_fountain_active.damage_fountain_scale_171 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_171 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 171%;
 }
 
-.damage_fountain_active.damage_fountain_scale_172 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_172 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 172%;
 }
 
-.damage_fountain_active.damage_fountain_scale_173 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_173 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 173%;
 }
 
-.damage_fountain_active.damage_fountain_scale_174 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_174 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 174%;
 }
 
-.damage_fountain_active.damage_fountain_scale_175 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_175 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 175%;
 }
 
-.damage_fountain_active.damage_fountain_scale_176 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_176 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 176%;
 }
 
-.damage_fountain_active.damage_fountain_scale_177 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_177 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 177%;
 }
 
-.damage_fountain_active.damage_fountain_scale_178 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_178 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 178%;
 }
 
-.damage_fountain_active.damage_fountain_scale_179 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_179 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 179%;
 }
 
-.damage_fountain_active.damage_fountain_scale_180 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_180 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 180%;
 }
 
-.damage_fountain_active.damage_fountain_scale_181 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_181 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 181%;
 }
 
-.damage_fountain_active.damage_fountain_scale_182 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_182 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 182%;
 }
 
-.damage_fountain_active.damage_fountain_scale_183 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_183 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 183%;
 }
 
-.damage_fountain_active.damage_fountain_scale_184 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_184 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 184%;
 }
 
-.damage_fountain_active.damage_fountain_scale_185 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_185 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 185%;
 }
 
-.damage_fountain_active.damage_fountain_scale_186 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_186 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 186%;
 }
 
-.damage_fountain_active.damage_fountain_scale_187 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_187 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 187%;
 }
 
-.damage_fountain_active.damage_fountain_scale_188 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_188 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 188%;
 }
 
-.damage_fountain_active.damage_fountain_scale_189 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_189 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 189%;
 }
 
-.damage_fountain_active.damage_fountain_scale_190 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_190 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 190%;
 }
 
-.damage_fountain_active.damage_fountain_scale_191 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_191 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 191%;
 }
 
-.damage_fountain_active.damage_fountain_scale_192 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_192 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 192%;
 }
 
-.damage_fountain_active.damage_fountain_scale_193 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_193 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 193%;
 }
 
-.damage_fountain_active.damage_fountain_scale_194 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_194 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 194%;
 }
 
-.damage_fountain_active.damage_fountain_scale_195 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_195 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 195%;
 }
 
-.damage_fountain_active.damage_fountain_scale_196 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_196 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 196%;
 }
 
-.damage_fountain_active.damage_fountain_scale_197 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_197 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 197%;
 }
 
-.damage_fountain_active.damage_fountain_scale_198 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_198 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 198%;
 }
 
-.damage_fountain_active.damage_fountain_scale_199 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_199 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 199%;
 }
 
-.damage_fountain_active.damage_fountain_scale_200 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_200 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 200%;
 }
 
-.damage_fountain_active.damage_fountain_scale_201 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_201 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 201%;
 }
 
-.damage_fountain_active.damage_fountain_scale_202 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_202 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 202%;
 }
 
-.damage_fountain_active.damage_fountain_scale_203 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_203 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 203%;
 }
 
-.damage_fountain_active.damage_fountain_scale_204 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_204 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 204%;
 }
 
-.damage_fountain_active.damage_fountain_scale_205 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_205 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 205%;
 }
 
-.damage_fountain_active.damage_fountain_scale_206 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_206 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 206%;
 }
 
-.damage_fountain_active.damage_fountain_scale_207 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_207 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 207%;
 }
 
-.damage_fountain_active.damage_fountain_scale_208 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_208 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 208%;
 }
 
-.damage_fountain_active.damage_fountain_scale_209 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_209 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 209%;
 }
 
-.damage_fountain_active.damage_fountain_scale_210 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_210 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 210%;
 }
 
-.damage_fountain_active.damage_fountain_scale_211 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_211 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 211%;
 }
 
-.damage_fountain_active.damage_fountain_scale_212 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_212 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 212%;
 }
 
-.damage_fountain_active.damage_fountain_scale_213 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_213 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 213%;
 }
 
-.damage_fountain_active.damage_fountain_scale_214 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_214 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 214%;
 }
 
-.damage_fountain_active.damage_fountain_scale_215 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_215 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 215%;
 }
 
-.damage_fountain_active.damage_fountain_scale_216 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_216 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 216%;
 }
 
-.damage_fountain_active.damage_fountain_scale_217 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_217 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 217%;
 }
 
-.damage_fountain_active.damage_fountain_scale_218 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_218 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 218%;
 }
 
-.damage_fountain_active.damage_fountain_scale_219 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_219 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 219%;
 }
 
-.damage_fountain_active.damage_fountain_scale_220 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_220 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 220%;
 }
 
-.damage_fountain_active.damage_fountain_scale_221 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_221 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 221%;
 }
 
-.damage_fountain_active.damage_fountain_scale_222 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_222 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 222%;
 }
 
-.damage_fountain_active.damage_fountain_scale_223 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_223 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 223%;
 }
 
-.damage_fountain_active.damage_fountain_scale_224 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_224 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 224%;
 }
 
-.damage_fountain_active.damage_fountain_scale_225 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_225 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 225%;
 }
 
-.damage_fountain_active.damage_fountain_scale_226 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_226 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 226%;
 }
 
-.damage_fountain_active.damage_fountain_scale_227 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_227 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 227%;
 }
 
-.damage_fountain_active.damage_fountain_scale_228 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_228 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 228%;
 }
 
-.damage_fountain_active.damage_fountain_scale_229 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_229 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 229%;
 }
 
-.damage_fountain_active.damage_fountain_scale_230 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_230 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 230%;
 }
 
-.damage_fountain_active.damage_fountain_scale_231 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_231 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 231%;
 }
 
-.damage_fountain_active.damage_fountain_scale_232 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_232 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 232%;
 }
 
-.damage_fountain_active.damage_fountain_scale_233 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_233 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 233%;
 }
 
-.damage_fountain_active.damage_fountain_scale_234 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_234 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 234%;
 }
 
-.damage_fountain_active.damage_fountain_scale_235 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_235 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 235%;
 }
 
-.damage_fountain_active.damage_fountain_scale_236 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_236 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 236%;
 }
 
-.damage_fountain_active.damage_fountain_scale_237 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_237 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 237%;
 }
 
-.damage_fountain_active.damage_fountain_scale_238 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_238 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 238%;
 }
 
-.damage_fountain_active.damage_fountain_scale_239 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_239 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 239%;
 }
 
-.damage_fountain_active.damage_fountain_scale_240 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_240 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 240%;
 }
 
-.damage_fountain_active.damage_fountain_scale_241 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_241 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 241%;
 }
 
-.damage_fountain_active.damage_fountain_scale_242 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_242 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 242%;
 }
 
-.damage_fountain_active.damage_fountain_scale_243 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_243 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 243%;
 }
 
-.damage_fountain_active.damage_fountain_scale_244 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_244 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 244%;
 }
 
-.damage_fountain_active.damage_fountain_scale_245 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_245 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 245%;
 }
 
-.damage_fountain_active.damage_fountain_scale_246 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_246 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 246%;
 }
 
-.damage_fountain_active.damage_fountain_scale_247 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_247 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 247%;
 }
 
-.damage_fountain_active.damage_fountain_scale_248 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_248 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 248%;
 }
 
-.damage_fountain_active.damage_fountain_scale_249 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_249 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 249%;
 }
 
-.damage_fountain_active.damage_fountain_scale_250 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_250 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 250%;
 }
 
-.damage_fountain_active.damage_fountain_scale_251 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_251 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 251%;
 }
 
-.damage_fountain_active.damage_fountain_scale_252 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_252 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 252%;
 }
 
-.damage_fountain_active.damage_fountain_scale_253 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_253 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 253%;
 }
 
-.damage_fountain_active.damage_fountain_scale_254 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_254 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 254%;
 }
 
-.damage_fountain_active.damage_fountain_scale_255 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_255 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 255%;
 }
 
-.damage_fountain_active.damage_fountain_scale_256 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_256 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 256%;
 }
 
-.damage_fountain_active.damage_fountain_scale_257 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_257 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 257%;
 }
 
-.damage_fountain_active.damage_fountain_scale_258 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_258 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 258%;
 }
 
-.damage_fountain_active.damage_fountain_scale_259 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_259 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 259%;
 }
 
-.damage_fountain_active.damage_fountain_scale_260 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_260 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 260%;
 }
 
-.damage_fountain_active.damage_fountain_scale_261 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_261 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 261%;
 }
 
-.damage_fountain_active.damage_fountain_scale_262 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_262 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 262%;
 }
 
-.damage_fountain_active.damage_fountain_scale_263 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_263 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 263%;
 }
 
-.damage_fountain_active.damage_fountain_scale_264 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_264 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 264%;
 }
 
-.damage_fountain_active.damage_fountain_scale_265 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_265 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 265%;
 }
 
-.damage_fountain_active.damage_fountain_scale_266 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_266 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 266%;
 }
 
-.damage_fountain_active.damage_fountain_scale_267 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_267 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 267%;
 }
 
-.damage_fountain_active.damage_fountain_scale_268 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_268 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 268%;
 }
 
-.damage_fountain_active.damage_fountain_scale_269 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_269 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 269%;
 }
 
-.damage_fountain_active.damage_fountain_scale_270 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_270 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 270%;
 }
 
-.damage_fountain_active.damage_fountain_scale_271 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_271 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 271%;
 }
 
-.damage_fountain_active.damage_fountain_scale_272 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_272 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 272%;
 }
 
-.damage_fountain_active.damage_fountain_scale_273 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_273 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 273%;
 }
 
-.damage_fountain_active.damage_fountain_scale_274 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_274 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 274%;
 }
 
-.damage_fountain_active.damage_fountain_scale_275 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_275 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 275%;
 }
 
-.damage_fountain_active.damage_fountain_scale_276 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_276 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 276%;
 }
 
-.damage_fountain_active.damage_fountain_scale_277 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_277 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 277%;
 }
 
-.damage_fountain_active.damage_fountain_scale_278 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_278 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 278%;
 }
 
-.damage_fountain_active.damage_fountain_scale_279 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_279 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 279%;
 }
 
-.damage_fountain_active.damage_fountain_scale_280 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_280 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 280%;
 }
 
-.damage_fountain_active.damage_fountain_scale_281 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_281 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 281%;
 }
 
-.damage_fountain_active.damage_fountain_scale_282 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_282 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 282%;
 }
 
-.damage_fountain_active.damage_fountain_scale_283 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_283 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 283%;
 }
 
-.damage_fountain_active.damage_fountain_scale_284 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_284 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 284%;
 }
 
-.damage_fountain_active.damage_fountain_scale_285 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_285 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 285%;
 }
 
-.damage_fountain_active.damage_fountain_scale_286 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_286 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 286%;
 }
 
-.damage_fountain_active.damage_fountain_scale_287 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_287 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 287%;
 }
 
-.damage_fountain_active.damage_fountain_scale_288 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_288 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 288%;
 }
 
-.damage_fountain_active.damage_fountain_scale_289 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_289 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 289%;
 }
 
-.damage_fountain_active.damage_fountain_scale_290 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_290 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 290%;
 }
 
-.damage_fountain_active.damage_fountain_scale_291 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_291 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 291%;
 }
 
-.damage_fountain_active.damage_fountain_scale_292 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_292 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 292%;
 }
 
-.damage_fountain_active.damage_fountain_scale_293 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_293 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 293%;
 }
 
-.damage_fountain_active.damage_fountain_scale_294 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_294 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 294%;
 }
 
-.damage_fountain_active.damage_fountain_scale_295 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_295 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 295%;
 }
 
-.damage_fountain_active.damage_fountain_scale_296 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_296 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 296%;
 }
 
-.damage_fountain_active.damage_fountain_scale_297 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_297 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 297%;
 }
 
-.damage_fountain_active.damage_fountain_scale_298 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_298 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 298%;
 }
 
-.damage_fountain_active.damage_fountain_scale_299 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_299 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 299%;
 }
 
-.damage_fountain_active.damage_fountain_scale_300 .WindowRoot
+.damage_fountain_active.damage_fountain_scale_300 CitadelHudDamageEventIndicator.WindowRoot
 {
     ui-scale: 300%;
 }

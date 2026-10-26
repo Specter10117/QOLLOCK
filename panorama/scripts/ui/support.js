@@ -77,6 +77,7 @@
         { label: "RizoBoy", role: "Contributor", url: "https://gamebanana.com/members/4436032" },
         { label: "Klutzz", role: "Contributor", url: "https://gamebanana.com/members/4745216" },
         { label: "ArkanoidVFX", role: "Contributor", url: "https://gamebanana.com/members/1359230" },
+        { label: "oldreceipt", role: "Contributor", url: "https://github.com/oldreceipt" },
         { label: "Goblin Man Sam", role: "Contributor", url: "https://gamebanana.com/members/4762321" },
         { label: "NinjabladeJR", role: "Contributor", url: "https://gamebanana.com/members/4779465" },
         { label: "Mikoboy", role: "Contributor", url: "https://gamebanana.com/members/2814130" },

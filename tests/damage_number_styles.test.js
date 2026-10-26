@@ -11,7 +11,7 @@ test("Fountain slider scales the event wrapper while preserving inner animation 
     const rules = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)];
     for (let percent = 50; percent <= 300; percent++) {
         if (percent === 100) continue;
-        const selector = ".damage_fountain_active.damage_fountain_scale_" + percent + " .WindowRoot";
+        const selector = ".damage_fountain_active.damage_fountain_scale_" + percent + " CitadelHudDamageEventIndicator.WindowRoot";
         const rule = rules.find(([, selectors]) => selectors.trim() === selector);
         assert.ok(rule, selector);
         assert.equal(/ui-scale:\s*([^;]+);/.exec(rule[2])[1], percent + "%");
@@ -21,6 +21,28 @@ test("Fountain slider scales the event wrapper while preserving inner animation 
     assert.ok(baseline);
     assert.match(baseline[2], /ui-scale:\s*68%;/);
     assert.doesNotMatch(css, /damage_fountain_(?:small|medium|large)_active/);
+});
+
+test("Fountain window geometry and scaling exclude native subtitles", () => {
+    const css = read("qol_damage_fountain_full.css").replace(/\/\*[\s\S]*?\*\//g, "");
+    const rules = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)];
+    // The native Debugger capture identifies damage windows as this panel type;
+    // subtitles use WindowRoot too, so every window rule needs the type scope.
+    const windows = rules.flatMap(([, selectors, body]) => selectors.split(",")
+        .filter(selector => /\.Window(?:Root)?\s*$/.test(selector))
+        .map(selector => ({ selector: selector.trim(), body })));
+    assert.ok(windows.length > 2, "includes geometry and slider scaling rules");
+    for (const { selector } of windows) {
+        assert.match(selector, / CitadelHudDamageEventIndicator\.Window(?:Root)?$/);
+    }
+    for (const windowClass of ["WindowRoot", "Window"]) {
+        const rule = windows.find(({ selector }) =>
+            selector === ".damage_fountain_active CitadelHudDamageEventIndicator." + windowClass);
+        assert.ok(rule, windowClass + " retains damage window geometry");
+        assert.match(rule.body, /height:\s*300px;/);
+        assert.match(rule.body, /width:\s*300px;/);
+        assert.match(rule.body, /flow-children:\s*right;/);
+    }
 });
 
 test("native event indicators load their baseline before QOLLOCK fountain keyframes and visibility rules", () => {
