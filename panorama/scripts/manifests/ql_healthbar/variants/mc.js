@@ -4,6 +4,7 @@
     "use strict";
     const H = QOL.healthbar, P = QOL.core.panel, U = QOL.utils;
     H.registerVariant("mc", function(ctx) {
+        const stamina = QOL.presentation.elements.find(element => element.id === "stamina");
         const createState = () => ({
             mcHeartsBlinkTimer: null,
             mcLowHealthJiggleTimer: null,
@@ -686,6 +687,10 @@
         }
 
         function McResolveChargesContainer(root) {
+            const native = QOL.presentation.findPath(root, stamina.path);
+            const dash = P.isAlive(native) ? native.GetParent() : null;
+            if (P.hasClassToken(dash, "ability_element_charges") && dash.paneltype === "Citadel_AbilityHUDElement_Dash" &&
+                U.FindPanelsByClass(native, "charge").length) return native;
             // Prefer the live crosshair; a settings preview must not become the
             // player's stamina source. The class/ID pair is verified native markup.
             const crosshair = P.findTraverse(root, "crosshair");

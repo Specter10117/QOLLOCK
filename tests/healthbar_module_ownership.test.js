@@ -72,9 +72,9 @@ function fills(tree, className) { return tree.hearts.FindChildrenWithClassTraver
 test("Minecraft food reads signed native stamina arcs and prefers dash over ability charges", () => {
     const env = fixture();
     for (const food of env.tree.food.Children()) food.SetImage = image => { food._image = image; };
-    const crosshair = env.add(env.gameplay, "crosshair");
+    const crosshair = env.add(env.add(env.gameplay, "gameplay_hud_alive"), "crosshair");
     const charges = (type, angle) => {
-        const element = env.add(crosshair, "", ["ability_element_charges"], type);
+        const element = env.add(crosshair, type === "Citadel_AbilityHUDElement_Dash" ? "dash" : "", ["ability_element_charges"], type);
         const container = env.add(element, "charges_container");
         return Array.from({ length: 3 }, () => {
             const charge = env.add(container, "", ["charge", "has_charge"]);
@@ -85,6 +85,16 @@ test("Minecraft food reads signed native stamina arcs and prefers dash over abil
     };
     charges("Citadel_AbilityHUDElement_Progress", 0);
     const dash = charges("Citadel_AbilityHUDElement_Dash", -14);
+    let broadLookups = 0;
+    const traverse = env.root.FindChildTraverse, enumerate = crosshair.FindChildrenWithClassTraverse;
+    env.root.FindChildTraverse = function (id) {
+        if (id === "crosshair") broadLookups++;
+        return traverse.call(this, id);
+    };
+    crosshair.FindChildrenWithClassTraverse = function (name) {
+        if (name === "ability_element_charges") broadLookups++;
+        return enumerate.call(this, name);
+    };
     const mc = env.q.healthbar.mc.create({ id: "ql_healthbar" });
     const update = time => mc.update(env.root, { HEALTHBAR_TYPE: 5 }, time, true);
     const fullFood = () => env.tree.food.Children().filter(p => p._image === "s2r://panorama/images/minecraft/food_8x_png.vtex").length;
@@ -99,6 +109,11 @@ test("Minecraft food reads signed native stamina arcs and prefers dash over abil
     dash.forEach(p => { p.RemoveClass("finished"); p.style.clip = ""; });
     update(150);
     assert.equal(fullFood(), 0, "unreadable arcs never invent a ready charge");
+    dash[0].GetParent().GetParent().GetParent().SetParent(env.other);
+    charges("Citadel_AbilityHUDElement_Dash", 28);
+    update(200);
+    assert.equal(fullFood(), 10, "living old dash generations cannot mask current stamina");
+    assert.equal(broadLookups, 0, "verified Dash breadcrumbs need no crosshair or ability-tree search");
     mc.release();
 });
 
