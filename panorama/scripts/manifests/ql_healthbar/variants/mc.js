@@ -52,9 +52,6 @@
         const heartsTree = P.createOwnedTree(), barrierTree = P.createOwnedTree(), armorTree = P.createOwnedTree();
         const armorHearts = [];
         const ownedStyles = new Map(), ownedText = new Map(), imageSignatures = new Map(), foodOwners = new Set();
-        const goldResolver = QOL.panelCache.createIdResolver("gold_and_ap_container", {
-            retryMs: 400, ownerPath: [{ id: "Hud", optional: true }, { className: "HudCore" }, "gameplay_hud", "gameplay_hud_alive"]
-        });
         function setImage(panel, image) {
             if (!P.isAlive(panel) || imageSignatures.get(panel) === image) return;
             panel.SetImage(image);
@@ -187,7 +184,6 @@
             for (const panel of foodOwners) if (P.isAlive(panel)) panel.SetImage("s2r://panorama/images/minecraft/food_8x_png.vtex");
             foodOwners.clear();
             imageSignatures.clear();
-            goldResolver.reset();
             healthResolver.reset();
             rootResolver.reset();
             for (const [owner, properties] of ownedStyles) {
@@ -754,9 +750,13 @@
         }
 
         function readExperience(root) {
-            const gold = goldResolver.resolve(root);
-            const fill = P.findTraverse(gold, "SoulsFill");
-            const label = P.findTraverse(gold, "PlayerLevelNumber");
+            const core = P.findChildByClass(P.findHud(root), "HudCore");
+            const lower = P.findChild(P.findChild(core, "StatsAndModsContainer"), "LowerLeft");
+            const gold = P.findChild(lower, "gold_and_ap_container");
+            const playerLevel = P.findChild(P.findChild(gold, "PlayerLevelContainer"), "PlayerLevel");
+            const group = P.findChildByClass(playerLevel, "PlayerLevelContainer");
+            const fill = P.findChild(P.findChild(group, "Souls"), "SoulsFill");
+            const label = P.findChild(group, "PlayerLevelNumber");
             let percent = null, level = null;
             if (P.isAlive(fill)) {
                 const value = Number(fill.actuallayoutheight), scale = Number(fill.actualuiscale_y);

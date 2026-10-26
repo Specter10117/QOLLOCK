@@ -83,6 +83,10 @@ queried. Verify both overlays and their healing/blink timing after compilation;
 offline tests prove source routing and lifecycle, not native progress rendering.
 Native current/max number bindings remain native; only derived percentage and
 experience labels are written by Minecraft.
+Minecraft experience reads the current `StatsAndModsContainer > LowerLeft >
+gold_and_ap_container` and its native `PlayerLevelContainer > PlayerLevel >
+.PlayerLevelContainer` children. Missing owners wait locally; retired gold panels
+elsewhere in the HUD cannot supply level or XP values.
 Armor icons read the same measured middle-fraction contract from native
 `ratking_armor_bar` while `ratKingArmorActive` is present. Their separate owned
 tree retires moved/replaced icons without deleting foreign children. Food reads

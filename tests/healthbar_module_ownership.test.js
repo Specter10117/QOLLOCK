@@ -180,6 +180,51 @@ test("Minecraft armor follows the native middle fraction and retires its own ico
     assert.equal(foreign.IsValid(), true);
 });
 
+test("Minecraft XP follows native gold and level owners without HUD or gold-subtree probes", () => {
+    const env = fixture(), { tree } = env;
+    const stats = env.add(env.gameplay.GetParent(), "StatsAndModsContainer");
+    const lower = env.add(stats, "LowerLeft");
+    let broadLookups = 0;
+    const goldTree = (height, level) => {
+        const gold = env.add(lower, "gold_and_ap_container");
+        const playerLevel = env.add(env.add(gold, "PlayerLevelContainer"), "PlayerLevel");
+        const group = env.add(playerLevel, "", ["PlayerLevelContainer"]);
+        const fill = env.add(env.add(group, "Souls"), "SoulsFill");
+        fill.actuallayoutheight = height; fill.actualuiscale_y = 1;
+        const label = env.add(group, "PlayerLevelNumber", [], "Label"); label.text = level;
+        const find = gold.FindChildTraverse;
+        gold.FindChildTraverse = function (id) { broadLookups++; return find.call(this, id); };
+        return { gold, group, fill, label };
+    };
+    const find = env.root.FindChildTraverse;
+    env.root.FindChildTraverse = function (id) {
+        if (id === "gold_and_ap_container") broadLookups++;
+        return find.call(this, id);
+    };
+    const mc = env.q.healthbar.mc.create({ id: "ql_healthbar" });
+    const update = time => mc.update(env.root, {}, time, true);
+    update(0);
+    assert.equal(tree.xp.style.clip, undefined); assert.equal(tree.level.text, "");
+    const first = goldTree(26, "7"); update(50); update(2000);
+    assert.equal(tree.xp.style.clip, "rect( 0px, 50%, 100%, 0px )");
+    assert.equal(tree.level.text, "7");
+    first.gold.SetParent(env.other);
+    const next = goldTree(39, "8"); update(2050);
+    assert.equal(first.gold.IsValid(), true);
+    assert.equal(tree.xp.style.clip, "rect( 0px, 75%, 100%, 0px )"); assert.equal(tree.level.text, "8");
+    next.label.SetParent(env.other);
+    env.add(next.group, "PlayerLevelNumber", [], "Label").text = "9"; update(2100);
+    assert.equal(tree.level.text, "9", "live old labels cannot mask a current native binding");
+    next.gold.SetParent(env.other); update(2150);
+    assert.equal(tree.level.text, "9", "missing current gold never samples a retired owner elsewhere in the HUD");
+    goldTree(52, "10"); update(2200);
+    assert.equal(tree.level.text, "10"); assert.equal(tree.xp.style.clip, "rect( 0px, 100%, 100%, 0px )");
+    assert.equal(broadLookups, 0, "gold and level replacements stay on their verified owners");
+    mc.release();
+    assert.equal(tree.xp.style.clip, undefined); assert.equal(tree.level.text, "");
+    assert.deepEqual(env.clock.errors, []);
+});
+
 test("healthbar factories have no panel, style, callback or shared-state side effects", () => {
     const env = fixture();
     const before = env.clock.pendingCount();
