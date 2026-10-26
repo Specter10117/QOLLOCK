@@ -16,6 +16,13 @@
     ], "Healthbar"), { scaleKey: "PLAYER_HEALTHBAR_SCALE" });
     C.register([
         healthbar,
+        { id: "statsList", name: "Stats List", group: "HUD", parentId: "playerStats", scaleKey: "STATS_LIST_SCALE",
+            path: [...core, "hudActivePlayerStats", "StatList"],
+            resolve(hud) {
+                return QOL.core.panel.findChild(QOL.core.panel.findChild(
+                    QOL.core.panel.findChildByClass(hud, "HudCore"), "hudActivePlayerStats"), "StatList");
+            },
+            fields: [...geometry("STATS_LIST_", true), opacity("STATS_LIST_")] },
         detail("healthWarnings", "Health Warnings", [...gameplay, "health_and_abilities_container"], [
             ...thresholds("ENABLE_COLOR_WARNING_")
         ], "Healthbar"),
@@ -37,11 +44,10 @@
             t("ENABLE_LEGACY_COOLDOWNS", "Legacy Durations"), t("ENABLE_HIDE_FAILED_HINT", "Hide Failed Cast Hint")
         ]),
         detail("buildInfo", "Build ID", [...lower, "selected_build_info"], [toggle("ENABLE_SHOW_BUILD_ID"), t("ENABLE_SHOW_BUILD_ID_TITLE", "Build Title")], "Overlay"),
-        { id: "targetShapes", name: "Target Shapes", group: "Crosshair", note: "These visuals follow world targets. Size and visibility remain configurable; screen dragging does not apply.", fields: [
+        { id: "targetShapes", name: "Target Shapes", group: "Crosshair", fields: [
             t("ENABLE_RED_DIAMOND", "Red Diamond"), t("ENABLE_IMPROVED_HINT", "Improved Hint"), f("UNIT_TARGET_SIZE", "Size"),
             f("UNIT_TARGET_OPACITY", "Opacity"), f("UNIT_TARGET_HINT_SIZE", "Hint Size")
         ] },
-        { id: "statlocker", name: "Statlocker", group: "HUD", fields: [toggle("ENABLE_STATLOCKER")],
-            note: "HUD profile links use this toggle. Profile and profile-card additions have their own context and no editable geometry." }
+        { id: "statlocker", name: "Statlocker", group: "HUD", fields: [toggle("ENABLE_STATLOCKER")] }
     ]);
 })();

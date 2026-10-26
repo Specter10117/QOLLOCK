@@ -1078,6 +1078,10 @@ var QOL_SETTINGS_FIELDS = [
     {"key":"MINIMAP_ROUTE_UNTIL_MINUTE","kind":"number","role":"number","unit":"min","displayFactor":1,"min":0,"max":90,"step":1,"owners":["ql_minimap_loot"]},
     {"key":"MINIMAP_CRATE_FROM_MINUTE","kind":"number","role":"number","unit":"min","displayFactor":1,"min":0,"max":90,"step":1,"owners":["ql_minimap_loot","ql_minimap_runtime"]},
     {"key":"MINIMAP_CRATE_UNTIL_MINUTE","kind":"number","role":"number","unit":"min","displayFactor":1,"min":0,"max":90,"step":1,"owners":["ql_minimap_loot","ql_minimap_runtime"]},
+    {"key":"STATS_LIST_X_OFFSET","kind":"number","role":"position","unit":"px","displayFactor":1,"min":-QOL_SETTING_LIMITS.coordinate,"max":QOL_SETTING_LIMITS.coordinate,"step":1,"owners":["ql_presentation_scale"]},
+    {"key":"STATS_LIST_Y_OFFSET","kind":"number","role":"position","unit":"px","displayFactor":1,"min":-QOL_SETTING_LIMITS.coordinate,"max":QOL_SETTING_LIMITS.coordinate,"step":1,"owners":["ql_presentation_scale"]},
+    {"key":"STATS_LIST_SCALE","kind":"number","role":"scale","unit":"%","displayFactor":1,"owners":["ql_presentation_scale"]},
+    {"key":"STATS_LIST_OPACITY","kind":"number","role":"opacity","unit":"%","displayFactor":100,"min":0,"max":1,"step":0.01,"owners":["ql_presentation_scale"]},
     {"key":"ENABLE_UPDATE_CHECKER","min":0,"max":1,"step":1,"kind":"toggle","role":"toggle","unit":"","displayFactor":1,"owners":["ql_ui_controls"]}
 ];
 
@@ -1372,6 +1376,10 @@ var QOL_DEFAULT_CONFIG = {
         ITEMS_SCALE: 100,
         STAMINA_SCALE: 100,
         STATS_POSITION_SCALE: 100,
+        STATS_LIST_X_OFFSET: 0,
+        STATS_LIST_Y_OFFSET: 0,
+        STATS_LIST_SCALE: 100,
+        STATS_LIST_OPACITY: 1,
         COMPASS_SPEED_SCALE: 100,
         STATS_POSITION_SIDE: 0,
         STATS_POSITION_X_OFFSET: 0,

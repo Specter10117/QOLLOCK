@@ -492,7 +492,8 @@ test("ammo uses native gun breadcrumbs, retries text/container writes and releas
 
 test("ammo preserves untouched native digit properties and restores owned RGB after native feedback", () => {
     const env = setup("ql_ammo", { ENABLE_AMMO_STATUS: 1 });
-    const gunData = env.$.CreatePanel("Panel", env.core, "gun_data");
+    let gunData = env.core;
+    for (const id of ["gameplay_hud", "gameplay_hud_alive", "crosshair", "gun", "gun_data"]) gunData = env.$.CreatePanel("Panel", gunData, id);
     const ammo = env.$.CreatePanel("Panel", gunData, "ammo_panel");
     const current = env.$.CreatePanel("Label", ammo, "");
     current.AddClass("weapon_ammo");

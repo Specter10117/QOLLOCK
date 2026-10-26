@@ -832,6 +832,7 @@
     "Performance": "Performance",
     "Pin the stats panel to the left (default, like vanilla) or right side of the screen.": "Pin the stats panel to the left (default, like vanilla) or right side of the screen.",
     "Player Stats": "Player Stats",
+    "Stats List": "Stats List",
     "Preset Cycle": "Preset Cycle",
     "Recent Purchases": "Recent Purchases",
     "Rejuvenator": "Rejuvenator",

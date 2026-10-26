@@ -42,10 +42,7 @@
         ],
         create(ctx) {
             const panelAPI = QOL.core.panel;
-            const gunPath = [{ id: "Hud", optional: true }, { className: "HudCore" },
-                "gameplay_hud", "gameplay_hud_alive", "crosshair", "gun", "gun_data"];
-            const ammoResolver = QOL.panelCache.createIdResolver("ammo_panel", { retryMs: 500, ownerPath: gunPath });
-            const clipResolver = QOL.panelCache.createIdResolver("clip_status", { retryMs: 500, ownerPath: gunPath });
+            const gunPath = [...QOL.presentation.paths.crosshair, "gun", "gun_data"];
             const geometry = panelAPI.createNativeStyleOwner({ resetValues: { x: "0px", y: "0px" }, releasePosition: true });
             // Native ammo_panel flows right: position is ignored for its digits.
             // Balanced margins move a label without displacing its siblings.
@@ -157,15 +154,13 @@
                 for (const [fontSize, owner] of textStyles) owner.retain(retained.get(fontSize));
             }
 
-            function discoverClips(root) {
+            function discoverClips(owner) {
                 const sources = new Map();
-                // The live ammo owner wins over duplicate IDs in retained templates.
-                const owner = panelAPI.isAlive(panel) ? panel.GetParent() : null;
-                const clip = panelAPI.findChild(owner, "clip_status") || panelAPI.findTraverse(owner, "clip_status") || clipResolver.resolve(root);
+                // Native XML and Debugger place both rings directly in gun_data,
+                // including layouts without digits. Missing sources retry here.
+                const clip = panelAPI.findChild(owner, "clip_status");
                 if (!clip) return sources;
-                let parent = null;
-                try { parent = clip.GetParent(); } catch (_) { /* stale native owner */ }
-                const mirrored = panelAPI.findChild(parent, "clip_status_mirrored") || panelAPI.findTraverse(parent, "clip_status_mirrored");
+                const mirrored = panelAPI.findChild(owner, "clip_status_mirrored");
                 if (mirrored) {
                     // Tokamak's centered heat halves start at 90 and 180 degrees.
                     sources.set(clip, { angle: 90 - model.angle, baseline: 90 });
@@ -194,12 +189,13 @@
                 if (!active) return;
                 const candidate = panelAPI.findHud($.GetContextPanel());
                 const root = panelAPI.isAlive(candidate) && (candidate.id === "Hud" || candidate.paneltype === "CitadelHud") ? candidate : null;
-                const current = ammoResolver.resolve(root);
+                const gun = QOL.presentation.findPath(root, gunPath);
+                const current = panelAPI.findChild(gun, "ammo_panel");
                 if (current !== panel) {
                     releaseMain();
                     panel = current;
                 }
-                const clipSources = discoverClips(root);
+                const clipSources = discoverClips(gun);
                 renderClips(clipSources, root);
                 const textSources = panel ? discoverTexts() : new Map();
                 renderTexts(textSources);
@@ -213,8 +209,6 @@
                 if (!active) return;
                 model = readModel();
                 setNativeVisual(model.visualEnabled);
-                ammoResolver.reset();
-                clipResolver.reset();
                 update();
                 QOL.core.hud.refreshRootClasses(panelAPI.findHud($.GetContextPanel()));
             }
@@ -234,8 +228,6 @@
                     for (const owner of clipStyles.values()) owner.clear();
                     geometry.clear();
                     panel = model = null;
-                    ammoResolver.reset();
-                    clipResolver.reset();
                     if (nativeVisual !== null) setNativeVisual(false);
                     nativeVisual = null;
                 }

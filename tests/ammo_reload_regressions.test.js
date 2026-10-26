@@ -6,6 +6,13 @@ const assert = require("node:assert/strict");
 const { createHud } = require("../scripts/simulator");
 const loadSettings = require("./load_settings_environment");
 
+function addGunData($, root) {
+    const core = $.CreatePanel("Panel", root, ""); core.AddClass("HudCore");
+    let owner = core;
+    for (const id of ["gameplay_hud", "gameplay_hud_alive", "crosshair", "gun", "gun_data"]) owner = $.CreatePanel("Panel", owner, id);
+    return owner;
+}
+
 function addClipHalf($, root, id) {
     const half = $.CreatePanel("Panel", root, id);
     for (const ringId of ["clip_bg_progress_bar", "clip_bonus_progress_bar", "clip_progress_bar"])
@@ -17,7 +24,7 @@ test("Default preset disables native magazine updates through the settings-to-HU
     const env = loadSettings(), commands = [];
     const { $ } = env.hud.sandbox.global;
     env.hud.sandbox.onEvent("CitadelConCommand", command => commands.push(command));
-    const clip = addClipHalf($, env.hud.root, "clip_status");
+    const clip = addClipHalf($, addGunData($, env.hud.root), "clip_status");
     Object.assign(env.global.MOD_CONFIG, { ENABLE_AMMO_STATUS: 1, AMMO_CLIP_ANGLE: 45 });
     env.global.SaveAndSync(); env.clock.advance(1000);
     assert.deepEqual(commands, ["citadel_crosshair_enable_clip_status 1"]);
@@ -32,7 +39,8 @@ test("magazine rotation keeps both native half-rings together across hero layout
     const hud = createHud({ inHideout: true });
     hud.assertLoaded();
     const { $, QOL: Q } = hud.sandbox.global;
-    const first = addClipHalf($, hud.root, "clip_status");
+    const gun = addGunData($, hud.root);
+    const first = addClipHalf($, gun, "clip_status");
     Q.core.ConfigStore.set("ql_ammo", "AMMO_CLIP_ANGLE", 45);
     hud.clock.advance(600);
     assert.equal(first.style.transform, "rotateZ(-45deg)");
@@ -40,8 +48,8 @@ test("magazine rotation keeps both native half-rings together across hero layout
 
     first.DeleteAsync(0);
     hud.clock.advance(1);
-    const left = addClipHalf($, hud.root, "clip_status");
-    const right = addClipHalf($, hud.root, "clip_status_mirrored");
+    const left = addClipHalf($, gun, "clip_status");
+    const right = addClipHalf($, gun, "clip_status_mirrored");
     hud.clock.advance(600);
     assert.equal(left.style.transform, "rotateZ(45deg)");
     assert.equal(right.style.transform, "rotateZ(135deg)");
@@ -56,14 +64,14 @@ test("magazine rotation keeps both native half-rings together across hero layout
     Q.core.ConfigStore.set("ql_ammo", "AMMO_CLIP_ANGLE", 45);
     right.DeleteAsync(0);
     hud.clock.advance(1);
-    const newRight = addClipHalf($, hud.root, "clip_status_mirrored");
+    const newRight = addClipHalf($, gun, "clip_status_mirrored");
     hud.clock.advance(600);
     assert.equal(newRight.style.transform, "rotateZ(135deg)", "late mirrored half");
 
     left.DeleteAsync(0);
     newRight.DeleteAsync(0);
     hud.clock.advance(1);
-    const standardAgain = addClipHalf($, hud.root, "clip_status");
+    const standardAgain = addClipHalf($, gun, "clip_status");
     hud.clock.advance(600);
     assert.equal(standardAgain.style.transform, "rotateZ(-45deg)");
     assert.equal(standardAgain.Children()[0].style.transform, undefined);
@@ -82,7 +90,7 @@ test("native magazine enable follows settings while replaced clip panels retain 
     hud.sandbox.onEvent("CitadelConCommand", command => commands.push(command));
     const decoyOwner = $.CreatePanel("Panel", hud.root, "HiddenGunTemplate");
     const decoy = addClipHalf($, decoyOwner, "clip_status");
-    const gunData = $.CreatePanel("Panel", hud.root, "gun_data");
+    const gunData = addGunData($, hud.root);
     const first = addClipHalf($, gunData, "clip_status");
     const ammoPanel = $.CreatePanel("Panel", gunData, "ammo_panel");
     const currentAmmo = $.CreatePanel("Label", ammoPanel, "CurrentAmmo");

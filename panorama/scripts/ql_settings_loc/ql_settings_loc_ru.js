@@ -832,6 +832,7 @@
     "Performance": "Производительность",
     "Pin the stats panel to the left (default, like vanilla) or right side of the screen.": "Закрепляет панель характеристик слева (по умолчанию, как в ваниле) или справа экрана.",
     "Player Stats": "Характеристики игрока",
+    "Stats List": "Список характеристик",
     "Preset Cycle": "Перебор пресетов",
     "Recent Purchases": "Недавние покупки",
     "Rejuvenator": "Реджув",

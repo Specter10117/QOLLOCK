@@ -16,7 +16,9 @@ test("ammo group geometry follows sibling rings without changing crosshair or na
     const hud = createHud({ inHideout: true });
     hud.assertLoaded();
     const { $, QOL: Q } = hud.sandbox.global;
-    const gun = $.CreatePanel("Panel", hud.root, "gun_data");
+    const core = $.CreatePanel("Panel", hud.root, ""); core.AddClass("HudCore");
+    let gun = core;
+    for (const id of ["gameplay_hud", "gameplay_hud_alive", "crosshair", "gun", "gun_data"]) gun = $.CreatePanel("Panel", gun, id);
     const crosshair = $.CreatePanel("Panel", gun, "GunGrosshair");
     const ammo = $.CreatePanel("Panel", gun, "ammo_panel");
     ammo.style.x = "50%";
@@ -78,7 +80,9 @@ test("ring-only mirrored hero layout accepts group geometry without ammo digits"
     const hud = createHud({ inHideout: true });
     hud.assertLoaded();
     const { $, QOL: Q } = hud.sandbox.global;
-    const gun = $.CreatePanel("Panel", hud.root, "gun_data");
+    const core = $.CreatePanel("Panel", hud.root, ""); core.AddClass("HudCore");
+    let gun = core;
+    for (const id of ["gameplay_hud", "gameplay_hud_alive", "crosshair", "gun", "gun_data"]) gun = $.CreatePanel("Panel", gun, id);
     const first = ring($, gun, "clip_status");
     const mirrored = ring($, gun, "clip_status_mirrored");
     Q.core.ConfigStore.set("ql_ammo", "AMMO_HUD_SCALE", 140);

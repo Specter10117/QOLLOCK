@@ -125,13 +125,16 @@ test("souls offsets follow a replacement panel without another setting edit", ()
     const hud = createHud({ inHideout: true });
     hud.assertLoaded();
     const { $, QOL: Q } = hud.sandbox.global;
-    const first = $.CreatePanel("Panel", hud.root, "gold_and_ap_container");
+    const core = $.CreatePanel("Panel", hud.root, ""); core.AddClass("HudCore");
+    const stats = $.CreatePanel("Panel", core, "StatsAndModsContainer");
+    const left = $.CreatePanel("Panel", stats, "LowerLeft");
+    const first = $.CreatePanel("Panel", left, "gold_and_ap_container");
     Q.core.ConfigStore.set("ql_souls", "SOULS_X_OFFSET", 100);
     hud.clock.advance(1100);
     assert.equal(first.style.x, "100px");
     first.DeleteAsync(0);
     hud.clock.advance(1);
-    const replacement = $.CreatePanel("Panel", hud.root, "gold_and_ap_container");
+    const replacement = $.CreatePanel("Panel", left, "gold_and_ap_container");
     hud.clock.advance(1100);
     assert.equal(replacement.style.x, "100px");
     Q.core.ConfigStore.set("ql_souls", "SOULS_X_OFFSET", 0);
@@ -143,14 +146,16 @@ test("ammo geometry and late text targets survive hideout panel replacement", ()
     const hud = createHud({ inHideout: true });
     hud.assertLoaded();
     const { $, QOL: Q } = hud.sandbox.global;
-    const first = $.CreatePanel("Panel", hud.root, "ammo_panel");
+    let gun = $.CreatePanel("Panel", hud.root, ""); gun.AddClass("HudCore");
+    for (const id of ["gameplay_hud", "gameplay_hud_alive", "crosshair", "gun", "gun_data"]) gun = $.CreatePanel("Panel", gun, id);
+    const first = $.CreatePanel("Panel", gun, "ammo_panel");
     Q.core.ConfigStore.set("ql_ammo", "AMMO_PANEL_X_OFFSET", 100);
     Q.core.ConfigStore.set("ql_ammo", "AMMO_TEXT_COLOR", 3);
     hud.clock.advance(600);
     assert.equal(first.style.marginLeft, "100px");
     first.DeleteAsync(0);
     hud.clock.advance(1);
-    const replacement = $.CreatePanel("Panel", hud.root, "ammo_panel");
+    const replacement = $.CreatePanel("Panel", gun, "ammo_panel");
     hud.clock.advance(600);
     assert.equal(replacement.style.marginLeft, "100px");
     const text = $.CreatePanel("Label", replacement, "AmmoText");
@@ -160,7 +165,7 @@ test("ammo geometry and late text targets survive hideout panel replacement", ()
     text.style.color = "#ffffff";
     hud.clock.advance(600);
     assert.equal(text.style.color, Q.core.panel.resolvePaletteColor(3), "selected ammo color survives native rewrites");
-    const clip = $.CreatePanel("Panel", hud.root, "clip_status");
+    const clip = $.CreatePanel("Panel", gun, "clip_status");
     const ring = $.CreatePanel("Panel", clip, "ClipRing");
     ring.style.transform = "rotateZ(23deg)";
     Q.core.ConfigStore.set("ql_ammo", "AMMO_CLIP_ANGLE", 45);
@@ -224,8 +229,13 @@ for (const scenario of [
         const hud = createHud({ inHideout: true });
         hud.assertLoaded();
         const { $, QOL: Q } = hud.sandbox.global;
-        const parent = scenario.shop ? $.CreatePanel("Panel", hud.root, "CitadelHudHeroShop") :
+        let parent = scenario.shop ? $.CreatePanel("Panel", hud.root, "CitadelHudHeroShop") :
             scenario.parentId ? $.CreatePanel("Panel", hud.root, scenario.parentId) : hud.root;
+        if (scenario.feature === "ql_souls") {
+            const core = $.CreatePanel("Panel", hud.root, ""); core.AddClass("HudCore");
+            const stats = $.CreatePanel("Panel", core, "StatsAndModsContainer");
+            parent = $.CreatePanel("Panel", stats, "LowerLeft");
+        }
         const first = $.CreatePanel("Panel", parent, scenario.id);
         if (scenario.panelClass) first.AddClass(scenario.panelClass);
         if (scenario.offsetKey) Q.core.ConfigStore.set(scenario.feature, scenario.offsetKey, 100);

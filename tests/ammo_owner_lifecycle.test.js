@@ -15,7 +15,10 @@ function setup() {
     });
     const add = (parent, id, type = "Panel") => $.CreatePanel(type, parent, id);
     const native = root => {
-        const weapon = add(root, "gun", "Citadel_AbilityHUDElement_Gun"); weapon.AddClass("clip_style_chunks");
+        const core = add(root, ""); core.AddClass("HudCore");
+        let owner = core;
+        for (const id of ["gameplay_hud", "gameplay_hud_alive", "crosshair"]) owner = add(owner, id);
+        const weapon = add(owner, "gun", "Citadel_AbilityHUDElement_Gun"); weapon.AddClass("clip_style_chunks");
         const gun = add(weapon, "gun_data"), panel = add(gun, "ammo_panel");
         const current = add(panel, "CurrentAmmo", "Label"); current.AddClass("weapon_ammo"); current.text = "6";
         const maximum = add(panel, "MaxAmmo", "Label"); maximum.AddClass("weapon_ammo_max"); maximum.text = " / 8";
@@ -24,6 +27,26 @@ function setup() {
     };
     return { ...env, Q, $, cfg, feature, add, native, reads: () => reads };
 }
+
+test("missing ammo breadcrumbs ignore unrelated templates and recover through the live owner", () => {
+    const env = setup();
+    const decoy = env.add(env.root, "gun_data");
+    const clip = env.add(decoy, "clip_status");
+    const element = env.Q.presentation.elements.find(item => item.id === "ammo");
+    assert.equal(env.Q.presentation.resolve(element, env.root, env.cfg), null, "editor ignores unrelated templates too");
+    env.cfg.AMMO_CLIP_ANGLE = 45;
+    env.feature.onEnable(); env.clock.advance(1600);
+    assert.equal(clip.style.transform, undefined, "missing breadcrumbs cannot style a retained template");
+    const live = env.native(env.root), ring = env.add(live.gun, "clip_status");
+    env.clock.advance(600);
+    assert.equal(live.current.style.fontSize, "24px");
+    assert.equal(ring.style.transform, "rotateZ(-45deg)");
+    live.weapon.SetParent(decoy); env.clock.advance(600);
+    assert.equal(live.current.style.fontSize, undefined, "a living owner outside the path is retired");
+    assert.equal(ring.style.transform, undefined);
+    env.feature.onDisable();
+    assert.deepEqual(env.clock.errors, []);
+});
 
 test("magazine toggle drives native updates only on settings changes and restores the vanilla gate", () => {
     const env = setup(), source = env.native(env.root), clip = env.add(source.gun, "clip_status");

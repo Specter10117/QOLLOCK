@@ -31,7 +31,11 @@ function createMatchHudTree({ inHideout = false, isGameplayHudAlive = true } = {
     const topBar = hud.sandbox.global.$.CreatePanel("CitadelHudTopBar", root, "TopBar");
     const minimap = hud.sandbox.global.$.CreatePanel("Panel", root, "minimap_container");
     const health = hud.sandbox.global.$.CreatePanel("Panel", root, "hud_health");
-    const souls = hud.sandbox.global.$.CreatePanel("Panel", root, "gold_and_ap_container");
+    const core = hud.sandbox.global.$.CreatePanel("Panel", root, "");
+    core.AddClass("HudCore");
+    const stats = hud.sandbox.global.$.CreatePanel("Panel", core, "StatsAndModsContainer");
+    const left = hud.sandbox.global.$.CreatePanel("Panel", stats, "LowerLeft");
+    const souls = hud.sandbox.global.$.CreatePanel("Panel", left, "gold_and_ap_container");
     const gameplayHud = hud.sandbox.global.$.CreatePanel("Panel", root, "gameplay_hud");
     const gameplayHudAlive = hud.sandbox.global.$.CreatePanel("Panel", gameplayHud, "gameplay_hud_alive");
     const abilityContainer = hud.sandbox.global.$.CreatePanel("Panel", root, "ability_container");
@@ -162,6 +166,7 @@ test("INVARIANT 2: Explicit feature disable restores vanilla layout cleanly, ena
     configStore.set("ql_souls", "SOULS_Y_OFFSET", 40);
     env.hud.clock.advance(500);
     assert.strictEqual(env.panels.souls.BHasClass("qol-hidden"), false);
+    assert.strictEqual(env.panels.souls.style.y, "-40px");
 
     // Disable Souls explicitly -> hides panel with qol-hidden
     configStore.set("ql_souls", "HUD_SOULS_ENABLED", 0);

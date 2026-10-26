@@ -24,6 +24,26 @@ const submit = (env, key, value) => {
     input.text = String(value); input._fire("oninputsubmit"); env.clock.advance(1200);
 };
 
+for (const id of ["ammoCurrent", "ammoMax"])
+test(`${id}: shared ammo color previews through the inspector and Cancel restores native styles`, () => {
+    const env = setup();
+    env.global.QOL.ui.customize.start(null, { elementId: id });
+    assert.ok(env.em.FindChildTraverse("QOLCustomizePicker_AMMO_TEXT_COLOR"), "same native color picker as stamina");
+    submit(env, "AMMO_TEXT_COLOR", "#123ABC");
+    assert.equal(env.current.style.color, "#123ABC");
+    assert.equal(env.max.style.color, "#123ABC", "main's existing color is shared by both labels");
+    activate(env, "QOLCustomizeUndo"); env.clock.advance(1200);
+    assert.equal(env.current.style.color, undefined);
+    assert.equal(env.max.style.color, undefined);
+    activate(env, "QOLCustomizeRedo"); env.clock.advance(1200);
+    assert.equal(env.current.style.color, "#123ABC");
+    activate(env, "QOLCustomizeCancel"); env.clock.advance(1200);
+    assert.equal(env.current.style.color, undefined);
+    assert.equal(env.max.style.color, undefined);
+    assert.deepEqual(env.doc.eventErrors, []);
+    assert.deepEqual(env.clock.errors, []);
+});
+
 test("digit movement uses balanced margins inside native sibling flow", () => {
     const env = setup();
     for (const [id, prefix, target, left] of [["ammoCurrent", "AMMO_CURRENT_", env.current, "17px"],

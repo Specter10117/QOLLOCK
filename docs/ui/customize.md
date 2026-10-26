@@ -142,6 +142,12 @@ root and existing MenuBack binding all route through the same cancellation
 guard. Duplicate delivery of one MenuBack cannot also close settings or resume
 gameplay; the next separate Escape retains ordinary settings/menu behavior.
 
+Ammo, Current Ammo and Max Ammo expose the same existing shared text color.
+Editing or resetting that color from any of these selections affects both digit
+labels, including the max-ammo separator. Ammo runtime and editor discovery use
+the verified crosshair/gun/gun_data owner; absent digits or rings are retried
+through that owner without searching unrelated HUD templates.
+
 Colors appear in the inspector with a stock `CitadelColorPicker`, preset swatches,
 a HEX entry and native Default action. A single Color palette button with an
 embedded preview chip expands the native saturation/value canvas, hue strip and
@@ -513,7 +519,12 @@ the extra override; it cannot force conditional content to appear. Optional
 features still require their existing enable setting. Native Ammo and Player
 Stats can activate suppression independently of their visual/placement options.
 Stats hides through the outer wrapper opacity so its native data remains available
-to mirrors; its compact child keeps custom opacity. Stamina also suppresses
+to mirrors; its compact child keeps custom opacity. Position offsets move both
+coexisting native stats owners together so the legacy compact block and active
+modifier effects stay aligned.
+Stats List exposes additional local position, scale and opacity for the active
+owner's detailed resistances/modifiers, independently of compact-block scale.
+Its local offsets follow the shared Player Stats group position. Stamina suppresses
 through opacity, keeping the dynamic native dash charge tree in layout. The
 presentation owner combines state suppression with its independent opacity
 control and releases both at their defaults. The maintainer's client captures

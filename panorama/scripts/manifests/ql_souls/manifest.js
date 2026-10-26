@@ -3,6 +3,15 @@
 // Source: hud.xml, Hud > .HudCore > StatsAndModsContainer > LowerLeft > gold_and_ap_container.
 (() => {
     "use strict";
+    function findContainer(root) {
+        const P = QOL.core.panel;
+        if (!P.isAlive(root) || (root.id !== "Hud" && root.paneltype !== "CitadelHud")) return null;
+        const core = P.findChildByClass(root, "HudCore");
+        const stats = P.findChild(core, "StatsAndModsContainer");
+        const left = P.findChild(stats, "LowerLeft");
+        return P.findChild(left, "gold_and_ap_container");
+    }
+
     QOL.core.FeatureRegistry.register({
         id: "ql_souls",
         // Visibility is a presentation setting; keep discovery alive while hidden.
@@ -16,9 +25,6 @@
         ],
         create(ctx) {
             const panelAPI = QOL.core.panel;
-            const resolver = QOL.panelCache.createIdResolver("gold_and_ap_container", {
-                ownerPath: [{ id: "Hud", optional: true }, { className: "HudCore" }, "StatsAndModsContainer", "LowerLeft"]
-            });
             const styles = panelAPI.createNativeStyleOwner({ resetValues: { x: "0px", y: "0px" }, releasePosition: true });
             let model = null;
             let loop = null;
@@ -45,7 +51,7 @@
             function update() {
                 if (!active) return;
                 const root = panelAPI.findHud($.GetContextPanel());
-                const panel = panelAPI.isAlive(root) && (root.id === "Hud" || root.paneltype === "CitadelHud") ? resolver.resolve(root) : null;
+                const panel = findContainer(root);
                 styles.retain([panel]);
                 if (panel) styles.apply(panel, QOL.presentation.visibilityStyles("souls", QOL.presentation.visibilityConfig(ctx), root, model.styles), { "qol-hidden": !model.enabled });
             }
@@ -53,7 +59,6 @@
             function refreshSettings() {
                 if (!active) return;
                 model = readModel();
-                resolver.reset();
                 update();
             }
 
@@ -70,14 +75,13 @@
                     QOL.core.Scheduler.cancelAllForFeature(ctx.id);
                     styles.clear();
                     model = null;
-                    resolver.reset();
                 }
             }, update);
         },
         test() {
             try {
-                const root = $.GetContextPanel();
-                const panel = root ? root.FindChildTraverse("gold_and_ap_container") : null;
+                const root = QOL.core.panel.findHud($.GetContextPanel());
+                const panel = findContainer(root);
                 if (!panel) return null;
                 return { passed: true, name: "Souls panel exists", message: "", assertions: [{ passed: true, name: "gold_and_ap_container panel exists" }] };
             } catch (e) {

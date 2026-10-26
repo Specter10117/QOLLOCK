@@ -42,10 +42,10 @@ test("captured coexisting stats owners select and move the visible modern compac
     proxy.actualxoffset += 700; proxy.actualyoffset -= 650;
     startDrag.end(env, frame, frame); env.clock.advance(1200);
     assert.equal(active.style.x, "700px"); assert.equal(active.style.y, "-650px");
-    assert.equal(legacy.style.x, undefined);
+    assert.equal(legacy.style.x, "700px", "coexisting compact and effects owners share placement");
     assert.equal(block.GetParent(), active);
     activate(env, "QOLCustomizeCancel"); env.clock.advance(1200);
-    assert.equal(active.style.x, undefined); clean(env);
+    assert.equal(active.style.x, undefined); assert.equal(legacy.style.x, undefined); clean(env);
 });
 
 test("stamina is hoverable before catalog selection and never measures other ability charges", () => {

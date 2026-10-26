@@ -22,7 +22,7 @@ function setup(scenario) {
     const native = root => {
         const core = add(root, "", ["HudCore"]), stats = add(core, "StatsAndModsContainer"), left = add(stats, "LowerLeft");
         const souls = add(left, "gold_and_ap_container");
-        if (scenario.id === "ql_souls") return { core, panel: souls, souls };
+        if (scenario.id === "ql_souls") return { core, stats, left, panel: souls, souls };
         if (scenario.id === "ql_topbar") return { core, panel: add(core, "TopBar"), souls };
         const abilities = add(core, "AbilitiesContainer"), panel = add(abilities, "hud_signature"), slots = add(abilities, "ActiveAbilitiesMenu"), ap = add(abilities, "APContainer");
         const icon = add(ap, "", ["APCurrencyIcon"]), amount = add(ap, "", ["APCurrencyAmount"], "Label"), infinite = add(ap, "hudAPInfinite");
@@ -137,5 +137,31 @@ test("abilities tint and visibility leave AP currency colors and active-slot geo
     assert.equal(current.panel.style.washColor, undefined);
     assert.equal(current.icon.style.washColor, "#123456");
     assert.equal(current.amount.style.color, "#654321");
+    env.feature.onDisable(); assert.deepEqual(env.clock.errors, []);
+});
+
+
+test("souls ignores unrelated sources and follows late direct owners while retired ancestors stay alive", () => {
+    const env = setup(cases[0]);
+    const decoy = env.add(env.root, "gold_and_ap_container");
+    env.feature.onEnable(); env.clock.advance(2200);
+    assert.equal(decoy.style.x, undefined); assert.equal(decoy.style.opacity, undefined);
+    const first = env.native(env.root); env.clock.advance(1100);
+    assert.equal(first.panel.style.x, "60px"); assert.equal(first.panel.style.opacity, "0.40");
+    first.left.SetParent(env.add(first.stats, "RetiredLeft"));
+    env.clock.advance(1100);
+    assert.equal(first.panel.IsValid(), true); assert.equal(first.panel.style.x, undefined);
+    assert.equal(first.panel.style.opacity, undefined);
+    const left = env.add(first.stats, "LowerLeft"), replacement = env.add(left, "gold_and_ap_container");
+    env.clock.advance(1100); assert.equal(replacement.style.x, "60px");
+    first.core.SetParent(env.add(env.root, "RetiredCore"));
+    const current = env.native(env.root); env.clock.advance(1100);
+    assert.equal(replacement.style.x, undefined); assert.equal(current.panel.style.x, "60px");
+    env.cfg.HUD_SOULS_ENABLED = false; env.feature.onSettingsChanged();
+    assert.equal(current.panel.BHasClass("qol-hidden"), true); assert.equal(decoy.BHasClass("qol-hidden"), false);
+    env.feature.onDisable(); env.clock.advance(20);
+    assert.equal(current.panel.BHasClass("qol-hidden"), false);
+    env.cfg.HUD_SOULS_ENABLED = true; env.feature.onEnable(); env.clock.advance(1100);
+    assert.equal(current.panel.style.x, "60px"); assert.equal(decoy.style.x, undefined);
     env.feature.onDisable(); assert.deepEqual(env.clock.errors, []);
 });

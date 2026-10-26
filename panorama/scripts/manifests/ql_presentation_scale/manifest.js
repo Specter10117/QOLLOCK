@@ -4,13 +4,13 @@
     "use strict";
     const Q = QOL;
     const P = Q.core.panel;
-    const scaled = new Set(["souls", "items", "stamina", "playerStats", "speed", "abilityPoints", "damageReport"]);
-    const opacityOwners = ["activeItems", "abilityPoints", "ammo", "stamina", "playerStats", "compass", "speed", "zipBoost",
+    const scaled = new Set(["souls", "items", "stamina", "playerStats", "statsList", "speed", "abilityPoints", "damageReport"]);
+    const opacityOwners = ["activeItems", "abilityPoints", "ammo", "stamina", "playerStats", "statsList", "compass", "speed", "zipBoost",
         "statBonuses", "combatStatus", "unsecuredTimer", "unsecuredSouls", "keyboard", "damageReport", "chat"];
     const elements = [...new Set([...scaled, ...opacityOwners])].map(id => Q.presentation.elements.find(element => element.id === id));
     const opacityKeys = new Map(opacityOwners.map(id => [id,
         elements.find(element => element.id === id).fields.find(field => Q.settings.get(field.key).role === "opacity").key]));
-    const positions = new Set(["abilityPoints", "stamina"]);
+    const positions = new Set(["abilityPoints", "stamina", "statsList"]);
     function basePercent(element, root) {
         const has = name => !!root?.BHasClass(name);
         // base/hud.css and features/ql_feat_aspect_ratio.css own inventory scale.

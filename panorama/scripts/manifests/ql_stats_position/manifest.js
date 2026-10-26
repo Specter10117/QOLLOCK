@@ -1,4 +1,4 @@
-// OWNS: Nondefault x/y offsets and conditional opacity of the visible native stats owner.
+// OWNS: Shared x/y offsets of native stats owners and conditional opacity of the visible owner.
 // DOES NOT OWN: Native stats layout, content or child transforms.
 // Source: hud.xml, Hud > .HudCore > hudActivePlayerStats;
 // legacy owner: .HudCore > StatsAndModsContainer > LowerLeft > hudPlayerStats.
@@ -37,16 +37,20 @@
             function update() {
                 if (!running) return;
                 const root = P.findHud($.GetContextPanel());
-                const panel = P.isAlive(root) && (root.id === "Hud" || root.paneltype === "CitadelHud")
-                    ? Q.presentation.chooseStatsPanel(legacy.resolve(root), active.resolve(root)) : null;
-                styles.retain([panel]);
-                if (!P.isAlive(panel)) return;
+                const validRoot = P.isAlive(root) && (root.id === "Hud" || root.paneltype === "CitadelHud");
+                const legacyPanel = validRoot ? legacy.resolve(root) : null;
+                const activePanel = validRoot ? active.resolve(root) : null;
+                const panel = Q.presentation.chooseStatsPanel(legacyPanel, activePanel);
+                const owners = [legacyPanel, activePanel].filter(P.isAlive);
+                styles.retain(owners);
                 const hidden = Q.presentation.shouldHide("playerStats", model.visibilityConfig, root);
                 const properties = {};
                 if (model.x) properties.x = model.x + "px";
                 if (model.y) properties.y = -model.y + "px";
-                if (hidden) properties.opacity = "0";
-                styles.apply(panel, properties);
+                // Legacy compact stats and active modifier effects are separate
+                // native siblings. Move both, preserving each child's layout.
+                for (const owner of owners) styles.apply(owner,
+                    hidden && owner === panel ? { ...properties, opacity: "0" } : properties);
             }
             function refreshSettings() {
                 if (!running) return;

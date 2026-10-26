@@ -28,8 +28,10 @@ test("Bug 1 & 2: ql_ammo enables when slider is customized and neutral scale rel
     // 1. Initially disabled at neutral defaults
     assert.strictEqual(FR.isEnabled("ql_ammo"), false, "ql_ammo should initially be disabled");
 
-    // Create dummy ammo panel in the DOM
-    const root = hud.root;
+    // Match the native gun owner rather than relying on HUD-wide discovery.
+    const $ = hud.sandbox.global.$;
+    let root = $.CreatePanel("Panel", hud.root, ""); root.AddClass("HudCore");
+    for (const id of ["gameplay_hud", "gameplay_hud_alive", "crosshair", "gun", "gun_data"]) root = $.CreatePanel("Panel", root, id);
     const ap = hud.sandbox.global.$.CreatePanel("Panel", root, "ammo_panel");
     ap.style.x = "50%";
     ap.style.y = "85px";

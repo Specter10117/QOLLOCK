@@ -67,3 +67,34 @@ test("stats hiding reads actual scoreboard state and keeps placement independent
     assert.equal(env.active.style.opacity, undefined, "retired events cannot hide native stats after disable");
     assert.deepEqual(env.clock.errors, []);
 });
+
+test("moving legacy compact stats also moves the separate active modifier owner and retires replacements", () => {
+    const env = setup();
+    const compact = env.$.CreatePanel("Panel", env.legacy, "HudStatBlock");
+    Object.assign(compact, { actuallayoutwidth: 180, actuallayoutheight: 60 });
+    const effects = env.$.CreatePanel("Panel", env.active, "StatList");
+    effects.style.position = "7px 9px 0px";
+    assert.equal(env.Q.presentation.chooseStatsPanel(env.legacy, env.active), env.legacy);
+    env.Q.core.ConfigAdapter.loadFromFlat({ ENABLE_STATS_POSITION: 1, STATS_POSITION_X_OFFSET: 123, STATS_POSITION_Y_OFFSET: 45 });
+    const cfg = env.Q.core.ConfigStore.view("ql_stats_position");
+    const feature = env.registry.getManifest("ql_stats_position").create({
+        id: "ql_stats_position", config: { view: () => cfg }, events: env.Q.core.EventBus
+    });
+    feature.onEnable();
+    for (const owner of [env.legacy, env.active]) {
+        assert.equal(owner.style.x, "123px"); assert.equal(owner.style.y, "-45px");
+    }
+    assert.equal(effects.style.position, "7px 9px 0px", "native effect coordinates remain relative to their owner");
+    env.active.SetParent(env.$.CreatePanel("Panel", env.root, "RetiredStats"));
+    const current = env.$.CreatePanel("Panel", env.core, "hudActivePlayerStats");
+    env.$.CreatePanel("Panel", current, "StatList");
+    env.clock.advance(1100);
+    assert.equal(env.active.style.x, undefined); assert.equal(current.style.x, "123px");
+    cfg.STATS_POSITION_X_OFFSET = cfg.STATS_POSITION_Y_OFFSET = 0;
+    feature.onSettingsChanged();
+    for (const owner of [env.legacy, current]) {
+        assert.equal(owner.style.x, undefined); assert.equal(owner.style.y, undefined);
+    }
+    feature.onDisable();
+    assert.deepEqual(env.clock.errors, []);
+});

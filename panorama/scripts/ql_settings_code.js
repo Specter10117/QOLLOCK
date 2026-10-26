@@ -460,7 +460,11 @@
         ["MINIMAP_ROUTE_FROM_MINUTE",3],
         ["MINIMAP_ROUTE_UNTIL_MINUTE",10],
         ["MINIMAP_CRATE_FROM_MINUTE",0],
-        ["MINIMAP_CRATE_UNTIL_MINUTE",90]
+        ["MINIMAP_CRATE_UNTIL_MINUTE",90],
+        ["STATS_LIST_X_OFFSET",0],
+        ["STATS_LIST_Y_OFFSET",0],
+        ["STATS_LIST_SCALE",100],
+        ["STATS_LIST_OPACITY",1]
     ].map(entry => Object.freeze(entry));
     Object.freeze(dictionary);
     const keys = new Set(dictionary.map(entry => entry[0]));

@@ -4,7 +4,7 @@
     const Q = globalThis.QOL;
     const P = Q.core.panel;
     let nextToken = 0;
-    const scopedElements = element => element.id === "ammo"
+    const scopedElements = element => ["ammo", "playerStats"].includes(element.id)
         ? [element, ...Q.presentation.elements.filter(item => item.parentId === element.id)] : [element];
 
     function resolveHud(root) {

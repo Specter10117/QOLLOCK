@@ -147,9 +147,8 @@
             const panel = resolveAmmo(hud);
             return panel?.id === "ammo_panel" ? QOL_UTILS.FindPanelsByClass(panel, className)[0] || null : null;
         },
-        note: "These labels inherit Ammo's shared styling. Max ammo includes the separator.",
         available: (_hud, config) => Number(config?.[id === "ammoCurrent" ? "ENABLE_HIDE_AMMO_ALL" : "ENABLE_HIDE_MAGAZINE"]) !== 1,
-        fields: [...geometry(prefix), { key: sizeKey, label: "Size", unit: "%", resize: true }]
+        fields: [...geometry(prefix), { key: sizeKey, label: "Size", unit: "%", resize: true }, color("AMMO_TEXT_COLOR")]
     });
     register(nativeElements);
 
@@ -185,7 +184,7 @@
             (element.fallbackPath ? findPath(hud, element.fallbackPath) : null);
     }
     function resolveAmmo(hud) {
-        const gun = findPath(hud, [...crosshair, "gun", "gun_data"]) || Q.core.panel.findTraverse(hud, "gun_data");
+        const gun = findPath(hud, [...crosshair, "gun", "gun_data"]);
         return Q.core.panel.findChild(gun, "ammo_panel") || Q.core.panel.findChild(gun, "clip_status") ||
             Q.core.panel.findChild(gun, "clip_status_mirrored");
     }

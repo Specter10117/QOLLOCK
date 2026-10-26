@@ -85,6 +85,7 @@ test("destroying the external palette dock retires late native events and toggle
 
 test("all RGB owners expose the stock picker; opening/seeding never edits the draft", () => {
     for (const [id, key] of [["items", "ITEMS_WASH_COLOR"], ["stamina", "STAMINA_CHARGE_COLOR"], ["ammo", "AMMO_TEXT_COLOR"],
+        ["ammoCurrent", "AMMO_TEXT_COLOR"], ["ammoMax", "AMMO_TEXT_COLOR"],
         ["bottomBar", "BOTTOM_BAR_WASH_COLOR"], ["keyboard", "KEYBOARD_OVERLAY_WASH_COLOR"],
         ["healthbar", "PLAYER_HEALTHBAR_ACCENT_COLOR"], ["minimap", "MINIMAP_ICON_COLOR"]]) {
         const env = setup(id);
