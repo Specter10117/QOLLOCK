@@ -52,6 +52,32 @@ test("urn difference reads native totals before contradictory legacy player tota
     assert.equal(env.reads(), 1); env.stop();
 });
 
+test("urn discovery stays within direct networth and team owners and follows living role swaps", () => {
+    const env = setup(), top = env.top(), source = env.native(top);
+    let broad = 0;
+    for (const method of ["FindChildTraverse", "FindChildrenWithClassTraverse"]) {
+        const find = top[method].bind(top);
+        top[method] = (...args) => {
+            if (["TeamNetworth", "TeamsContainer", "TeamScoreFriendly", "TeamScoreEnemy"].includes(args[0])) broad++;
+            return find(...args);
+        };
+    }
+    env.feature.onEnable(); env.clock.advance(350);
+    assert.equal(env.display(), "+33.3%"); assert.equal(broad, 0);
+    source.networth.SetParent(env.add(null, "RetiredNetworth"));
+    const teams = env.legacy(top), [friendly, enemy] = teams.Children();
+    const find = teams.FindChildrenWithClassTraverse.bind(teams);
+    teams.FindChildrenWithClassTraverse = name => {
+        assert.ok(!["friend", "enemy", "team1", "team2"].includes(name), "team selection must not walk player trees");
+        return find(name);
+    };
+    env.clock.advance(350); assert.equal(env.display(), "+33.3%");
+    friendly.RemoveClass("friend"); friendly.AddClass("enemy");
+    enemy.RemoveClass("enemy"); enemy.AddClass("friend");
+    env.clock.advance(350); assert.equal(env.display(), "-33.3%", "team roles are read live, without an alive-only cache");
+    assert.equal(source.friendly.IsValid(), true); assert.equal(broad, 0); env.stop();
+});
+
 test("urn difference keeps both legacy team class fallbacks and upgrades when preferred native scores arrive", () => {
     for (const [friendly, enemy] of [["friend", "enemy"], ["team1", "team2"]]) {
         const env = setup(), top = env.top(); env.legacy(top, friendly, enemy);

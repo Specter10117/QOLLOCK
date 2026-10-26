@@ -37,15 +37,19 @@
                 icon = tree.child(overlay, "Panel", "UrnTrackerSoulIcon", { "class": "UrnTrackerSoulIcon" });
                 return P.isAlive(overlay) && P.isAlive(label) && P.isAlive(icon);
             }
-            function readSource(top) {
+            function readSource(top, networth) {
                 // Reconcile live descendants at the sampling cadence. A living old
                 // label, removed class or late preferred score is not a valid cache.
                 const labels = (owner, className) => P.isAlive(owner) ? U.FindPanelsByClass(owner, className) : [];
-                const friendly = labels(P.findTraverse(top, "TeamScoreFriendly"), "ScoreLabel");
-                const enemy = labels(P.findTraverse(top, "TeamScoreEnemy"), "ScoreLabel");
+                const friendly = labels(P.findChild(networth, "TeamScoreFriendly"), "ScoreLabel");
+                const enemy = labels(P.findChild(networth, "TeamScoreEnemy"), "ScoreLabel");
                 if (friendly.length && enemy.length) return { friendly, enemy };
-                const teams = P.findTraverse(top, "TeamsContainer");
-                const team = (preferred, fallback) => U.FindFirstPanelByClass(teams, preferred) || U.FindFirstPanelByClass(teams, fallback);
+                const teams = P.findChild(top, "TeamsContainer");
+                // Team classes can flip without destroying a player tree. Select
+                // among native team siblings, then search values inside that team.
+                const siblings = P.isAlive(teams) ? teams.Children().filter(P.isAlive) : [];
+                const team = (preferred, fallback) => siblings.find(panel => panel.BHasClass(preferred)) ||
+                    siblings.find(panel => panel.BHasClass(fallback));
                 return { friendly: labels(team("friend", "team1"), "hiddenGoldValue"),
                     enemy: labels(team("enemy", "team2"), "hiddenGoldValue") };
             }
@@ -63,8 +67,9 @@
                     QOL.core.hud.isInHideout(root)) { clearOverlay(); return; }
                 const top = topResolver.resolve(root);
                 if (!P.isAlive(top)) { clearOverlay(); return; }
-                const nextParent = U.FindFirstPanelByClass(top, "TeamNetworth") || top;
-                const source = readSource(top);
+                const networth = P.findChildByClass(top, "TeamNetworth");
+                const nextParent = networth || top;
+                const source = readSource(top, networth);
                 const total = values => values.reduce((sum, panel) => sum + model.parse(panel.text), 0);
                 const result = model.derive(total(source.friendly), total(source.enemy), QOL.core.time.readGameTime(top));
                 if (ensure(nextParent)) render(result);
