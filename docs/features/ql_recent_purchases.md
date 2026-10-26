@@ -13,8 +13,12 @@ by the existing `HeroNameHidden` labels and native `HeroBadge.heroid` evidence.
 Living replacements of the shop, purchase container, top bar, card or hero identity
 release the retired generation and invalidate its pending work.
 
-The current purchase snippet's labels and icon are direct row children. Each
-observation snapshots those siblings once and reads their current values; no
+The current history container holds purchase rows as direct children; row
+discovery does not traverse native hero-image descendants. The purchase snippet's
+labels and icon are direct row children. Each
+observation snapshots those siblings once and reads the values needed by active
+surfaces; shop-only mode omits notification time/hero reads, and notification-only
+mode copies tier/team/type classes when observing a new event. No
 leaf handles are retained across polls. Nested compatibility layouts still use
 the existing class traversal fallback. Purchase observation frequency, late
 hero completion, event deduplication and notification deadlines are unchanged.

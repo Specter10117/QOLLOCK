@@ -213,6 +213,51 @@ test("purchase rows use direct native leaves and observe replacements without ca
     env.stop(); env.clean();
 });
 
+test("purchase discovery stays on direct history rows without traversing native hero image descendants", () => {
+    const env = fixture(); env.start();
+    let scans = 0;
+    const traverse = env.shop.list.FindChildrenWithClassTraverse.bind(env.shop.list);
+    env.shop.list.FindChildrenWithClassTraverse = name => { scans++; return traverse(name); };
+    const first = env.purchase();
+    env.purchase(env.add(first.row, "NativeHeroImageContents"), { name: "Extra Health", time: "02:00" });
+    env.clock.advance(250);
+    assert.equal(env.entries().length, 1, "only native container children represent purchase events");
+    assert.equal(scans, 0, "history discovery must not traverse native row internals");
+    first.labels.recentModPurchaseName.text = "Extra Stamina";
+    first.labels.recentTimePurchased.text = "02:01";
+    env.clock.advance(250); assert.equal(env.entries().length, 2, "unchanged row identity still observes recycled content");
+    env.stop(); env.clean();
+});
+
+test("notification-only idle observations defer purchase class reads until an event is new", () => {
+    const env = fixture({ ENABLE_SHOP_RECENT_PURCHASES: 0 });
+    const first = env.purchase(); env.start();
+    const hasClass = first.row.BHasClass.bind(first.row);
+    let classReads = 0;
+    first.row.BHasClass = name => { if (/^is(?:Tier|Team|Weapon|Armor|Tech)/.test(name)) classReads++; return hasClass(name); };
+    env.clock.advance(600);
+    assert.equal(classReads, 0);
+    first.row.RemoveClass("isTier1Purchase"); first.row.AddClass("isTier3Purchase");
+    first.labels.recentTimePurchased.text = "02:00";
+    env.clock.advance(250);
+    assert.equal(env.entries().length, 1);
+    assert.equal(env.entries()[0].BHasClass("isTier3Purchase"), true, "fresh notifications still copy current classes");
+    env.stop(); env.clean();
+});
+
+test("shop-only purchase rendering does not read notification time or hero labels", () => {
+    const env = fixture({ ENABLE_SHOP_ITEM_NOTIFICATIONS: 0 });
+    const first = env.purchase();
+    let reads = 0;
+    for (const key of ["recentTimePurchased", "recentModPurchaserHero"]) {
+        Object.defineProperty(first.labels[key], "text", { get() { reads++; return ""; } });
+    }
+    env.start();
+    assert.equal(first.icon.BHasClass("iconSet"), true);
+    assert.equal(reads, 0);
+    env.stop(); env.clean();
+});
+
 test("nested compatibility purchase leaves still notify and accept late hero text", () => {
     const env = fixture(); env.start();
     const source = env.purchase();
