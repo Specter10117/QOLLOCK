@@ -595,3 +595,30 @@ test("selected Minecraft healthbar in hideout uses an owned sample, preserves na
     f.onDisable(); env.clock.advance(1);
     assert.deepEqual(env.clock.errors, []);
 });
+
+test("Minecraft renders live health and animations in the hideout combat room without Customize", () => {
+    const env = fixture(), { q, tree } = env;
+    env.root.AddClass("joined_team");
+    env.root.AddClass("connectedToHideout");
+    const f = start(env, { HEALTHBAR_TYPE: 5 });
+    assert.equal(tree.mcPercent.text.trim(), "[50%]");
+    assert.equal(fills(tree, "HeartSlot").length, 10);
+    tree.current.text = "100";
+    env.clock.advance(150);
+    assert.equal(tree.mcPercent.text.trim(), "[10%]");
+    assert.equal(q.healthbar.mc.inspect().lowHealth, true);
+    env.clock.advance(150);
+    assert.equal(q.healthbar.mc.inspect().active, true, "animation guards must accept the same live combat HUD");
+    env.root.AddClass("InHideout");
+    env.clock.advance(100);
+    assert.equal(q.healthbar.mc.inspect().active, false);
+    assert.equal(fills(tree, "HeartSlot").length, 0);
+    assert.equal(q.healthbar.mc.inspect().pendingAnimations, 0);
+    env.root.RemoveClass("InHideout");
+    env.clock.advance(600);
+    assert.equal(tree.mcPercent.text.trim(), "[10%]");
+    assert.equal(q.healthbar.mc.inspect().active, true);
+    f.onDisable(); env.clock.advance(1000);
+    assert.equal(q.healthbar.mc.inspect().pendingAnimations, 0);
+    assert.deepEqual(env.clock.errors, []);
+});

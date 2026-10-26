@@ -47,18 +47,22 @@
                 const now = QOL.utils.PerfNowMs();
                 const hideout = QOL.core.hud.isInHideout(root);
                 const preview = QOL.presentation.preview.selected(P.findHud(root), "healthbar");
+                const mcGameplay = !hideout || QOL.core.hud.isGameplayHudShown(root);
                 shared.update(root, model.cfg, model.type === 1);
                 fg.update(root, model.cfg);
                 if (hideout && !preview) {
                     if (budhud.isActive()) budhud.release();
-                    if (mc.isActive()) mc.release();
                 } else {
                     budhud.update(root, model.cfg, model.type, now);
+                }
+                if (!mcGameplay && !preview) {
+                    if (mc.isActive()) mc.release();
+                } else {
                     mc.update(root, model.cfg, now, model.type === 5);
                 }
                 // rate-exempt: animated Minecraft hearts require 20Hz; FG keeps
                 // the existing live hero refresh cadence, Budhud renders at 10Hz.
-                if (loop) loop.reschedule(hideout || model.type === 0 || model.type === 1 || model.type === 3 ? 0.5 : 0.05);
+                if (loop) loop.reschedule((hideout && (model.type !== 5 || !mcGameplay)) || model.type === 0 || model.type === 1 || model.type === 3 ? 0.5 : 0.05);
             }
 
             function refreshSettings() {

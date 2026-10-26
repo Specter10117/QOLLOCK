@@ -201,7 +201,7 @@
 
         function McCanAnimate() {
             if (IsPanelValid(runtimeRoot) && belongs(runtimeRoot, contextRoot) &&
-                !QOL.core.hud.isInHideout(contextRoot) &&
+                (!QOL.core.hud.isInHideout(contextRoot) || QOL.core.hud.isGameplayHudShown(contextRoot)) &&
                 sourceGeneration.every(panel => !panel || belongs(panel, runtimeRoot)) &&
                 sources && rootResolver.resolve(healthResolver.resolve(contextRoot) || contextRoot) === sources.heartsRoot) return true;
             McResetRuntime();
@@ -853,7 +853,7 @@
 
         function UpdateMinecraftHealthbar(root, cfg, nowMs, enabled) {
             const preview = QOL.presentation.preview.selected(P.findHud(root), "healthbar");
-            if (!enabled || !P.isAlive(root) || (QOL.core.hud.isInHideout(root) && !preview)) { McResetRuntime(); return; }
+            if (!enabled || !P.isAlive(root) || (QOL.core.hud.isInHideout(root) && !QOL.core.hud.isGameplayHudShown(root) && !preview)) { McResetRuntime(); return; }
             if (runtimeRoot && (!P.isAlive(runtimeRoot) || !belongs(runtimeRoot, root))) McResetRuntime();
             const now = Number(nowMs) || 0;
             if (runtimeRoot === null && now < state.mcNextUpdateMs) return;

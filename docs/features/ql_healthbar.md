@@ -73,7 +73,12 @@ Minecraft Hearts has a different layout and animation path from the native
 bar. Do not generalize geometry or performance results from mode 0 to it.
 Every generated row, slot and heart image is tracked by the controller's owned trees. Reconciliation retires moved or destroyed descendants and rebuilds the affected grid; rebuilding or disabling preserves foreign children in the static containers. Blink, low-health jiggle
 and healing waves use feature-owned managed one-shots with generation guards.
-Hideout, source loss, replacement and disable cancel them and reset their state. Unavailable native health bindings release derived HP/barrier content and animations, then retry at a bounded cadence; the last valid HP is never presented as current data.
+Outside the native combat HUD, hideout cancels them and resets their state;
+the hideout combat room retains live hearts and animation cadence despite its
+`connectedToHideout` class. Source loss, replacement and disable also reset them.
+Minecraft suppresses the native whole-container mid/low-health animations so the
+hotbar stays stationary; individual heart jiggle and healing waves remain owned
+by the renderer. Unavailable native health bindings release derived HP/barrier content and animations, then retry at a bounded cadence; the last valid HP is never presented as current data.
 A leased Customize selection can render static Minecraft content in hideout;
 missing native health uses renderer-owned sample data without modifying native
 number bindings. Withdrawal or expiry returns to the ordinary hideout release.
