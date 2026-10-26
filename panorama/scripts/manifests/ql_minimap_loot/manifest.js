@@ -36,10 +36,10 @@
             }
             const tree = P.createOwnedTree();
             const built = new Map();
-            const signatures = new Map();
-            let model = null, modelSignature = "", owner = null, rootOwner = null, layer = null, loop = null, active = false;
+            let signatures = new WeakMap();
+            let model = null, owner = null, rootOwner = null, layer = null, loop = null, active = false;
 
-            function clear() { tree.clear(); built.clear(); signatures.clear(); layer = owner = null; }
+            function clear() { tree.clear(); built.clear(); signatures = new WeakMap(); layer = owner = null; }
             function shown(panel, visible) { if (P.isAlive(panel) && panel.visible !== visible) panel.visible = visible; }
             function style(panel, values) {
                 const result = P.syncStyles(panel, values, signatures.get(panel));
@@ -146,14 +146,25 @@
                 if (!active) return;
                 const config = ctx.config.view();
                 const next = Object.fromEntries([...toggles, ...numbers].map(key => [key, Q.settings.readNumber(key, config[key])]));
-                const signature = JSON.stringify(next);
-                if (signature !== modelSignature) { clear(); model = next; modelSignature = signature; }
+                if (model) {
+                    // Static geometry changes independently of opacity and gates.
+                    // Reuse marker handles; hidden groups refresh before reveal.
+                    if (next.MINIMAP_LOOT_MARKER_SCALE !== model.MINIMAP_LOOT_MARKER_SCALE) {
+                        for (const key of ["tough_crates", "snacks", "statues", "names"]) built.delete(key);
+                    }
+                    if (next.MINIMAP_ROUTE_SCALE !== model.MINIMAP_ROUTE_SCALE) built.delete("runs");
+                    if (next.MINIMAP_CAMP_NAMES !== model.MINIMAP_CAMP_NAMES) {
+                        built.delete("names");
+                        tree.remove("QOLMapLoot_names");
+                    }
+                }
+                model = next;
                 update();
             }
             return {
                 onEnable() { active = true; refresh(); loop = Q.core.Scheduler.createPollLoop(update, 0.5, id); },
                 onSettingsChanged: refresh,
-                onDisable() { active = false; loop?.stop(); loop = null; clear(); tree.dispose(); rootOwner = model = null; modelSignature = ""; }
+                onDisable() { active = false; loop?.stop(); loop = null; clear(); tree.dispose(); rootOwner = model = null; }
             };
         }
     });

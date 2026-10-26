@@ -65,6 +65,35 @@ test("independent static loot groups use supplied points, native renderer ancest
     e.clean(); assert.ok(!e.renderer.FindChild("QOLMinimapLootRoot"), "retired renderer must not keep a loot tree");
 });
 
+test("loot opacity and toggles preserve marker trees while geometry refreshes only affected groups", () => {
+    const e = fixture();
+    e.configure({ ENABLE_MINIMAP_TOUGH_CRATES: 1, ENABLE_MINIMAP_HEALING_SNACKS: 1, ENABLE_MINIMAP_CRATE_ROUTES: 1,
+        MINIMAP_CAMP_NAMES: 1, MINIMAP_LOOT_MARKER_SCALE: 100, MINIMAP_ROUTE_SCALE: 100 });
+    const layer = e.renderer.FindChild("QOLMinimapLootRoot");
+    const crates = layer.FindChild("QOLMapLoot_tough_crates"), names = layer.FindChild("QOLMapLoot_names");
+    const routes = layer.FindChild("QOLMapLoot_runs"), dot = crates.GetChild(0), segment = routes.GetChild(0);
+    let creates = 0;
+    const create = e.$.CreatePanel;
+    e.$.CreatePanel = (...args) => { creates++; return create(...args); };
+    e.configure({ MINIMAP_LOOT_OPACITY: 0.35, ENABLE_MINIMAP_TOUGH_CRATES: 0 });
+    assert.ok(e.renderer.FindChild("QOLMinimapLootRoot") === layer, "opacity updates retain the existing layer");
+    assert.equal(layer.style.opacity, "0.35"); assert.equal(crates.visible, false);
+    assert.equal(creates, 0, "appearance and group gates must not reconstruct static markers");
+    e.configure({ MINIMAP_LOOT_MARKER_SCALE: 150 });
+    assert.equal(dot.IsValid(), true); assert.equal(segment.IsValid(), true);
+    assert.equal(segment.style.height, "2.00px", "marker scale leaves route geometry alone");
+    e.configure({ ENABLE_MINIMAP_TOUGH_CRATES: 1 });
+    assert.ok(crates.GetChild(0) === dot); assert.equal(dot.style.width, "10.10px");
+    e.configure({ MINIMAP_ROUTE_SCALE: 150 });
+    assert.ok(routes.GetChild(0) === segment); assert.equal(segment.style.height, "3.00px");
+    assert.ok(crates.GetChild(0) === dot); assert.equal(creates, 0);
+    e.configure({ MINIMAP_CAMP_NAMES: 2 });
+    assert.equal(layer.FindChild("QOLMapLoot_names").GetChildCount(), 4);
+    assert.ok(layer.FindChild("QOLMapLoot_runs") === routes); assert.ok(layer.FindChild("QOLMapLoot_tough_crates") === crates);
+    assert.equal(names.IsValid(), false, "name-set changes retire only the obsolete name group");
+    e.clean();
+});
+
 test("crate routes and crates follow their toggles at every game time, ignoring retired minute windows", () => {
     const e = fixture();
     e.configure({ ENABLE_MINIMAP_TOUGH_CRATES: 1, ENABLE_MINIMAP_CRATE_OVERLAY: 1, ENABLE_MINIMAP_CRATE_ROUTES: 1,

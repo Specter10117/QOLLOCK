@@ -20,8 +20,10 @@ tracking. Discovery follows direct native owner breadcrumbs and waits when they
 are absent. A positive native Midtown class is required for these new layers.
 Native district tokens supply HUD translations, independently of the settings
 language. Routes have a separate match-time window; appearance settings never
-move the map-relative coordinates. Changing appearance rebuilds only this owner's
-created tree, and disable/replacement retires all owned children.
+move the map-relative coordinates. Opacity and visibility changes reuse the
+created groups and markers. Marker and route scale changes refresh only their
+affected geometry, including hidden groups before reveal; district-name selection
+retires only the name group. Disable/replacement retires all owned children.
 
 
 Draw-over-UI behavior uses a stacking override without reparenting
