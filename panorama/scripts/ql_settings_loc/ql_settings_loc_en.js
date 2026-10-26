@@ -1246,6 +1246,13 @@
     "Could not load personal presets. Reopen this tab to retry.": "Could not load personal presets. Reopen this tab to retry.",
     "Save and load your own presets.": "Save and load your own presets.",
     "Preset configuration has not been added yet.": "Preset configuration has not been added yet.",
-    "Replace": "Replace"
+    "Replace": "Replace",
+    "Save updates Default. Default loads when the game starts.": "Save updates Default. Default loads when the game starts.",
+    "Save Preset": "Save Preset",
+    "Set as Default": "Set as Default",
+    "Default preset updated.": "Default preset updated.",
+    "Active": "Active",
+    "Reset to Defaults": "Reset to Defaults",
+    "No personal presets yet.": "No personal presets yet."
 };
 })();

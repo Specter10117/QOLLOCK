@@ -1246,6 +1246,13 @@
     "Could not load personal presets. Reopen this tab to retry.": "Не удалось загрузить личные пресеты. Открой вкладку заново, чтобы повторить.",
     "Save and load your own presets.": "Сохраняй и загружай собственные пресеты.",
     "Preset configuration has not been added yet.": "Конфиг пресета пока не добавлен.",
-    "Replace": "Перезаписать"
+    "Replace": "Перезаписать",
+    "Save updates Default. Default loads when the game starts.": "Кнопка «Сохранить» обновляет Default. Он загружается при запуске игры.",
+    "Save Preset": "Сохранить пресет",
+    "Set as Default": "Сделать основным",
+    "Default preset updated.": "Основной пресет обновлён.",
+    "Active": "Активен",
+    "Reset to Defaults": "Сбросить настройки",
+    "No personal presets yet.": "Личных пресетов пока нет."
 };
 })();

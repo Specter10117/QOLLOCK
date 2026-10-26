@@ -6,8 +6,7 @@
     const P = Q.core.panel;
     const id = "ql_minimap_loot";
     const toggles = ["ENABLE_MINIMAP_TOUGH_CRATES", "ENABLE_MINIMAP_HEALING_SNACKS", "ENABLE_MINIMAP_STATUES", "ENABLE_MINIMAP_CRATE_ROUTES"];
-    const numbers = ["MINIMAP_CAMP_NAMES", "MINIMAP_LOOT_MARKER_SCALE", "MINIMAP_LOOT_OPACITY", "MINIMAP_ROUTE_SCALE",
-        "MINIMAP_ROUTE_FROM_MINUTE", "MINIMAP_ROUTE_UNTIL_MINUTE", "MINIMAP_CRATE_FROM_MINUTE", "MINIMAP_CRATE_UNTIL_MINUTE"];
+    const numbers = ["MINIMAP_CAMP_NAMES", "MINIMAP_LOOT_MARKER_SCALE", "MINIMAP_LOOT_OPACITY", "MINIMAP_ROUTE_SCALE"];
     const groups = [
         ["tough_crates", toggles[0], 5.4, "#3b82f6"],
         ["snacks", toggles[1], 3.5, "#4ade80"],
@@ -18,7 +17,6 @@
     const minimalNames = new Set(["#map_district_theater", "#map_district_chinatown", "#map_district_fairfax", "#map_district_haunted_slums"]);
     const pct = value => (value * 100).toFixed(3) + "%";
     const px = value => value.toFixed(2) + "px";
-    const windowOpen = (from, until, second) => (from <= 0 || second >= from * 60) && (until >= 90 || second < until * 60);
 
     Q.core.FeatureRegistry.register({
         id, enabledByDefault: false, enableKeys: toggles,
@@ -130,14 +128,11 @@
                 if (!P.isAlive(layer)) return;
                 if (layer !== previousLayer) shown(layer, false);
                 if (!style(layer, { width: "100%", height: "100%", ignoreParentFlow: "true", overflow: "noclip", opacity: String(model.MINIMAP_LOOT_OPACITY), zIndex: "10" })) { shown(layer, false); return; }
-                const second = Q.core.time.readObservedGameTime(root);
                 for (const spec of groups) {
                     const [key, setting] = spec;
                     const group = tree.child(layer, "Panel", "QOLMapLoot_" + key, { hittest: "false", hittestchildren: "false" });
                     if (!P.isAlive(group)) continue;
-                    let wanted = key === "names" ? model[setting] > 0 : model[setting] === 1;
-                    if (key === "tough_crates") wanted = wanted && windowOpen(model.MINIMAP_CRATE_FROM_MINUTE, model.MINIMAP_CRATE_UNTIL_MINUTE, second);
-                    if (key === "runs") wanted = wanted && windowOpen(model.MINIMAP_ROUTE_FROM_MINUTE, model.MINIMAP_ROUTE_UNTIL_MINUTE, second);
+                    const wanted = key === "names" ? model[setting] > 0 : model[setting] === 1;
                     if (!wanted) { shown(group, false); continue; }
                     if (built.get(key) === group) { shown(group, true); continue; }
                     shown(group, false);

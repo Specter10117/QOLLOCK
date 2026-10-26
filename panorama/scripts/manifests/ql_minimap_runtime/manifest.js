@@ -41,8 +41,6 @@
             { key: "ENABLE_MINIMAP_CRATE_OVERLAY", type: "toggle" },
             { key: "MINIMAP_LOOT_MARKER_SCALE", type: "slider" },
             { key: "MINIMAP_LOOT_OPACITY", type: "slider" },
-            { key: "MINIMAP_CRATE_FROM_MINUTE", type: "slider" },
-            { key: "MINIMAP_CRATE_UNTIL_MINUTE", type: "slider" },
             { key: "ENABLE_MINIMAP_REM_TUNNELS", type: "toggle" },
             { key: "MINIMAP_REM_TUNNELS_OPACITY", type: "slider" },
             { key: "ENABLE_ALT_ZOOM_REM_TUNNELS", type: "toggle" },
@@ -96,7 +94,6 @@
                 return { alt: enabled("ENABLE_ALT_ZOOM"), tab: enabled("ENABLE_TAB_ZOOM"), fixedIcons: enabled("MINIMAP_FIXED_ICON_SIZE"),
                     minimalist: enabled("MINIMAL_MINIMAP"), minimalOpacity: U.NormalizeOpacityNumber(number("MINIMAL_MINIMAP_OPACITY", 0.9), 0.9),
                     crateMarkerScale: number("MINIMAP_LOOT_MARKER_SCALE", 100) / 100, crateOpacity: number("MINIMAP_LOOT_OPACITY", 1),
-                    crateFrom: number("MINIMAP_CRATE_FROM_MINUTE", 0), crateUntil: number("MINIMAP_CRATE_UNTIL_MINUTE", 90),
                     crates: enabled("ENABLE_MINIMAP_CRATE_OVERLAY"), iconColor: P.resolvePaletteColor(cfg.MINIMAP_ICON_COLOR),
                     base: view(""), altView: view("ALT"), tabView: view("TAB") };
             }
@@ -181,9 +178,6 @@
                 if (!model.crates || Q.core.hud.isInHideout(rootOwner) || Q.isStreetBrawlModeActive?.(rootOwner)) {
                     show(crates, false); return;
                 }
-                const second = Q.core.time.readObservedGameTime(rootOwner);
-                if ((model.crateFrom > 0 && second < model.crateFrom * 60) ||
-                    (model.crateUntil < 90 && second >= model.crateUntil * 60)) { show(crates, false); return; }
                 const next = ensure(renderer, "minimap_overlay_root", crates);
                 if (next !== crates) {
                     for (const panel of [crates, markers, ...markerPanels]) owned.delete(panel);

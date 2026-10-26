@@ -42,8 +42,7 @@
             }, fields: [
                 f("MINIMAP_LOOT_MARKER_SCALE", "Marker Size"), opacity("MINIMAP_LOOT_"), f("MINIMAP_ROUTE_SCALE", "Route Size"),
                 ...["ENABLE_MINIMAP_TOUGH_CRATES", "ENABLE_MINIMAP_HEALING_SNACKS", "ENABLE_MINIMAP_STATUES", "ENABLE_MINIMAP_CRATE_ROUTES"].map(key => t(key, "Enable", true)),
-                f("MINIMAP_CAMP_NAMES", "Camp Names", null, { hidden: true }),
-                ...["MINIMAP_ROUTE_FROM_MINUTE", "MINIMAP_ROUTE_UNTIL_MINUTE", "MINIMAP_CRATE_FROM_MINUTE", "MINIMAP_CRATE_UNTIL_MINUTE"].map(key => f(key, "Time", null, { hidden: true }))
+                f("MINIMAP_CAMP_NAMES", "Camp Names", null, { hidden: true })
             ] },
         { id: "shop", name: "Shop", group: "Shop", path: [...core, "CitadelHudHeroShop", "Shop", "MainPanel"], fields: [
             toggle("HUD_SHOP_ENABLED"), f("SHOP_OFFSET_X", "Horizontal Offset", null, { axis: "x" }),

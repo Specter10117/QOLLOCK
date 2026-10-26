@@ -72,7 +72,9 @@ Minimap objective timers remain ordinary gameplay toggles. Their producer owns
 plate placement, size, content and visibility; text plates have no separate
 Customize entries. Map References exposes marker size, route size and layer
 opacity while map-relative coordinates stay attached to the native renderer.
-Camp name and minute-range controls are absent from the ordinary Minimap tab.
+Camp name controls are absent from the ordinary Minimap tab. Crates and routes
+follow their toggles throughout the match; retired minute-window values in older
+configs no longer suppress them.
 Inspector panel descriptions are omitted for every selection.
 
 The settings-only modules in `ui/customize/` separate the session, measured geometry,

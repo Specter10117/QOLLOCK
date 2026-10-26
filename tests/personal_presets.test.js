@@ -129,8 +129,8 @@ test("personal UI waits for acknowledgment, confirms replacement/deletion and ig
 test("personal UI localizes English/Russian, falls back for missing locales, and keeps names as data", async () => {
     const e = setup(), g = e.global;
     await e.p.savePersonalPreset("Cancel", g.MOD_CONFIG);
-    for (const [language, title, load] of [
-        [0, "Personal Presets", "Load"], [1, "Личные пресеты", "Загрузить"], [13, "Personal Presets", "Load"]
+    for (const [language, title, load, startup] of [
+        [0, "Personal Presets", "Load", "Set as Default"], [1, "Личные пресеты", "Загрузить", "Сделать основным"], [13, "Personal Presets", "Load", "Set as Default"]
     ]) {
         g.MOD_CONFIG.LANGUAGE = language;
         e.list.RemoveAndDeleteChildren();
@@ -140,6 +140,7 @@ test("personal UI localizes English/Russian, falls back for missing locales, and
         assert.equal(section.FindChildrenWithClassTraverse("SectionTitle")[0].text, title);
         assert.equal(section.FindChildrenWithClassTraverse("PersonalPresetLoad")[0].Children()[0].text, load);
         assert.equal(section.FindChildrenWithClassTraverse("PersonalPresetTitle").at(-1).text, "Cancel");
+        assert.equal(section.FindChildrenWithClassTraverse("PersonalPresetStartup")[0].GetChild(0).text, startup);
     }
 });
 
@@ -182,6 +183,56 @@ test("startup action replaces Replace and saves the selected snapshot rather tha
     assert.equal(section.FindChildTraverse("PersonalPresetsStatus").text, "Working...");
     acknowledge({ ok: true });
     await flush();
-    assert.equal(section.FindChildTraverse("PersonalPresetsStatus").text, "Preset saved for startup.");
+    assert.equal(section.FindChildTraverse("PersonalPresetsStatus").text, "Default preset updated.");
     assert.deepEqual(e.doc.eventErrors, []);
+});
+
+test("Default loads the main saved snapshot and personal selection clears after a config edit", async () => {
+    const e = setup(), g = e.global;
+    g.MOD_CONFIG.SOULS_X_OFFSET = 123;
+    e.disk.set("qollock_settings", g.WrapConfigForStorage(g.MOD_CONFIG));
+    g.MOD_CONFIG.SOULS_X_OFFSET = 456;
+    await e.p.savePersonalPreset("Mine", g.MOD_CONFIG);
+    let preview;
+    g.OpenConfigDiffPreviewModal = options => { preview = options; };
+    e.p.renderPresetsTab(e.list); await flush();
+    const section = e.list.FindChildTraverse("PersonalPresetsSection");
+    section.FindChildTraverse("PersonalPresetDefaultLoad").activate();
+    assert.equal(g.MOD_CONFIG.SOULS_X_OFFSET, 456);
+    assert.equal(preview.onApply(), true);
+    assert.equal(g.MOD_CONFIG.SOULS_X_OFFSET, 123);
+    assert.equal(section.FindChildTraverse("PersonalPresetDefault").BHasClass("PresetActive"), true);
+    section.FindChildrenWithClassTraverse("PersonalPresetLoad")[0].activate();
+    assert.equal(preview.onApply(), true);
+    const personalRow = section.FindChildrenWithClassTraverse("PersonalPresetLoad")[0].GetParent();
+    assert.equal(personalRow.BHasClass("PresetActive"), true);
+    assert.equal(section.FindChildTraverse("PersonalPresetDefault").BHasClass("PresetActive"), false);
+    g.MOD_CONFIG.SOULS_X_OFFSET = 789;
+    e.p.refreshActivePresetHighlight();
+    assert.equal(personalRow.BHasClass("PresetActive"), false);
+    e.p.onDefaultSaved(g.WrapConfigForStorage(g.MOD_CONFIG));
+    assert.equal(section.FindChildTraverse("PersonalPresetDefault").BHasClass("PresetActive"), true);
+    section.FindChildTraverse("PersonalPresetDefaultLoad").activate();
+    g.MOD_CONFIG.SOULS_X_OFFSET = 900;
+    assert.equal(preview.onApply(), true);
+    assert.equal(g.MOD_CONFIG.SOULS_X_OFFSET, 789);
+    assert.deepEqual(e.clock.errors, []); assert.deepEqual(e.doc.eventErrors, []);
+});
+
+test("a delayed Default read cannot replace a newer acknowledged save", async () => {
+    const e = setup(), g = e.global;
+    g.MOD_CONFIG.SOULS_X_OFFSET = 123;
+    const oldRaw = g.WrapConfigForStorage(g.MOD_CONFIG);
+    let finishRead;
+    e.Q.core.storageBridge.load = key => key === "qollock_settings" ? new Promise(resolve => { finishRead = resolve; }) : Promise.resolve(null);
+    e.p.renderPresetsTab(e.list);
+    g.MOD_CONFIG.SOULS_X_OFFSET = 789;
+    e.p.onDefaultSaved(g.WrapConfigForStorage(g.MOD_CONFIG));
+    finishRead(oldRaw); await flush();
+    let preview;
+    g.OpenConfigDiffPreviewModal = options => { preview = options; };
+    e.list.FindChildTraverse("PersonalPresetDefaultLoad").activate();
+    g.MOD_CONFIG.SOULS_X_OFFSET = 999;
+    assert.equal(preview.onApply(), true);
+    assert.equal(g.MOD_CONFIG.SOULS_X_OFFSET, 789);
 });

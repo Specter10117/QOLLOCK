@@ -65,21 +65,22 @@ test("independent static loot groups use supplied points, native renderer ancest
     e.clean(); assert.ok(!e.renderer.FindChild("QOLMinimapLootRoot"), "retired renderer must not keep a loot tree");
 });
 
-test("crate and route windows use shared game seconds and keep the end exclusive", () => {
+test("crate routes and crates follow their toggles at every game time, ignoring retired minute windows", () => {
     const e = fixture();
     e.configure({ ENABLE_MINIMAP_TOUGH_CRATES: 1, ENABLE_MINIMAP_CRATE_OVERLAY: 1, ENABLE_MINIMAP_CRATE_ROUTES: 1,
         MINIMAP_ROUTE_FROM_MINUTE: 3, MINIMAP_ROUTE_UNTIL_MINUTE: 10, MINIMAP_CRATE_FROM_MINUTE: 2, MINIMAP_CRATE_UNTIL_MINUTE: 5 });
-    const tough = () => e.renderer.FindChildTraverse("QOLMapLoot_tough_crates");
-    const routes = () => e.renderer.FindChildTraverse("QOLMapLoot_runs");
-    assert.equal(tough().visible, false); assert.equal(routes().visible, false);
-    e.setSecond(180); e.clock.advance(700);
-    assert.equal(tough().visible, true); assert.equal(routes().visible, true);
-    assert.ok(routes().GetChildCount() > 100);
-    assert.equal(e.renderer.FindChild("minimap_overlay_root").BHasClass("qol-hidden"), false);
-    e.setSecond(300); e.clock.advance(700);
-    assert.equal(tough().visible, false); assert.equal(routes().visible, true);
-    assert.equal(e.renderer.FindChild("minimap_overlay_root").BHasClass("qol-hidden"), true);
-    e.setSecond(600); e.clock.advance(700); assert.equal(routes().visible, false);
+    for (const second of [-30, 0, 180, 600, 1800]) {
+        e.setSecond(second); e.clock.advance(700);
+        const routes = e.renderer.FindChildTraverse("QOLMapLoot_runs");
+        assert.equal(routes.visible, true, `routes at ${second}s`);
+        assert.ok(routes.GetChildCount() > 100);
+        assert.equal(e.renderer.FindChildTraverse("QOLMapLoot_tough_crates").visible, true);
+        assert.equal(e.renderer.FindChild("minimap_overlay_root").BHasClass("qol-hidden"), false);
+    }
+    e.configure({ ENABLE_MINIMAP_CRATE_ROUTES: 0 });
+    assert.equal(e.renderer.FindChildTraverse("QOLMapLoot_runs").visible, false);
+    e.configure({ ENABLE_MINIMAP_CRATE_ROUTES: 1 });
+    assert.equal(e.renderer.FindChildTraverse("QOLMapLoot_runs").visible, true);
     e.clean();
 });
 

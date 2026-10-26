@@ -1088,3 +1088,22 @@ for (const rejectCancellation of [false, true]) {
         assert.equal(env.clock.errors.length, 0);
     });
 }
+
+test("storage_bridge: Default view updates only after acknowledged main saves", async () => {
+    const env = createTestEnvironment(), bridge = env.sandbox.QOL.core.storageBridge;
+    const storage = new Map(), browser = connectEmbeddedPage(env, storage), updates = [];
+    env.sandbox.QOL.ui = { presets: { onDefaultSaved: raw => updates.push(raw) } };
+    const saving = bridge.saveSettings({ BRIDGE_BUFF_START: 15 });
+    assert.equal(updates.length, 0);
+    env.clock.advance(0); await saving;
+    assert.equal(updates.length, 1);
+    assert.equal(JSON.parse(updates[0]).data.BRIDGE_BUFF_START, 15);
+    browser.localStorage.setItem = () => { throw Error("QuotaExceededError"); };
+    const failed = bridge.saveSettings({ BRIDGE_BUFF_START: 20 });
+    env.clock.advance(0); await assert.rejects(failed, /QuotaExceededError/);
+    assert.equal(updates.length, 1);
+    const clearing = bridge.clearSettings();
+    env.clock.advance(0); await clearing;
+    assert.equal(updates.length, 2);
+    assert.equal(updates[1], null);
+});

@@ -8553,7 +8553,8 @@ CitadelHudEscapeMenu.QOLCustomizeActive { background-color: #0000; }
 	border-color: #a6a6a6;
 }
 
-.PersonalPresetTitle
+.PersonalPresetTitle,
+.PersonalPresetDefaultTitle
 {
 	width: fill-parent-flow(1);
 	vertical-align: center;
@@ -8561,6 +8562,20 @@ CitadelHudEscapeMenu.QOLCustomizeActive { background-color: #0000; }
 	color: #d4d4d4;
 	text-overflow: ellipsis;
 	margin-right: 8px;
+}
+
+.PersonalPresetRow.PresetActive
+{
+    background-color: rgba(90, 210, 150, 0.08);
+    border-left: 2px solid #8adeb0;
+}
+
+.PersonalPresetActiveBadge
+{
+    vertical-align: center;
+    color: #8adeb0;
+    font-size: 12px;
+    margin-right: 8px;
 }
 
 .PersonalPresetsList

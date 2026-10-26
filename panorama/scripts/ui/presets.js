@@ -41,6 +41,17 @@
     const PERSONAL_PRESETS_KEY = "qollock_personal_presets";
     let personalWritePending = false;
     let personalRenderGeneration = 0;
+    let savedDefaultConfig = null;
+    let savedDefaultGeneration = 0;
+    let personalView = null;
+    let selectedPersonalName = "";
+    const onDefaultSaved = raw => {
+        savedDefaultConfig = raw ? Q.parseStoredConfig(raw) : null;
+        savedDefaultGeneration++;
+        personalView?.refresh();
+    };
+    const matchesSnapshot = config => config && Object.keys(globalThis.DEFAULT_CONFIG || globalThis.QOL_DEFAULT_CONFIG).every(key =>
+        PRESET_MATCH_EXCLUDED_KEYS.has(key) || isPresetValueMatch(globalThis.MOD_CONFIG[key], config[key]));
     const compareLabels = (a, b) => {
         const left = a.toLowerCase(), right = b.toLowerCase();
         return left < right ? -1 : left > right ? 1 : 0;
@@ -261,6 +272,7 @@
     };
 
     const applyPresetByName = (presetName) => {
+        selectedPersonalName = "";
         let normName = normalizeBreadPresetName(presetName);
         const presets = getPresetsMap();
         const defConfig = globalThis.DEFAULT_CONFIG || globalThis.QOL_DEFAULT_CONFIG || {};
@@ -345,6 +357,7 @@
     };
 
     const refreshActivePresetHighlight = () => {
+        personalView?.refresh();
         let matchedPreset = null;
         if (_lastAppliedPresetName) {
             const entry = _presetButtonRegistry.get(_lastAppliedPresetName);
@@ -571,8 +584,7 @@
             return panel;
         };
         label(section, "Personal Presets", "SectionTitle");
-        label(section, "Save your current settings under a name, then load them whenever you need.", "PersonalPresetsHint");
-        label(section, "Use at Startup saves this snapshot for the next launch. The main Save button can overwrite it.", "PersonalPresetsHint");
+        label(section, "Save updates Default. Default loads when the game starts.", "PersonalPresetsHint");
         label(section, "Preset name", "PersonalPresetsHint");
         const form = $.CreatePanel("Panel", section, "");
         form.AddClass("PersonalPresetRow");
@@ -580,7 +592,7 @@
         nameInput.AddClass("PersonalPresetName");
         nameInput.maxchars = 48;
         nameInput.multiline = false;
-        const saveButton = button(form, "Save Current", "PersonalPresetSave", () => saveCurrent(), "PersonalPresetSave");
+        const saveButton = button(form, "Save Preset", "PersonalPresetSave", () => saveCurrent(), "PersonalPresetSave");
         const status = label(section, "Loading personal presets...", "PersonalPresetsStatus", "PersonalPresetsStatus");
         const confirmation = $.CreatePanel("Panel", section, "PersonalPresetConfirmation");
         confirmation.AddClass("PersonalPresetRow");
@@ -650,29 +662,62 @@
                 feedback(error.message, true);
             }
         };
+        let rows = [];
+        const refreshSelection = () => {
+            if (!current()) return;
+            const active = rows.find(item => item.name === selectedPersonalName && matchesSnapshot(item.config())) ||
+                rows.find(item => matchesSnapshot(item.config()));
+            for (const item of rows) {
+                item.row.SetHasClass("PresetActive", item === active);
+                item.badge.visible = item === active;
+            }
+        };
+        const loadSnapshot = (config, name) => {
+            if (busy || !current() || !config) return;
+            const candidate = Object.assign({}, config, preservedUiPreferences(globalThis.MOD_CONFIG));
+            globalThis.OpenConfigDiffPreviewModal({
+                title: localize("Settings Changes", true), details: name,
+                rows: globalThis.BuildConfigDiffRows(globalThis.MOD_CONFIG, candidate),
+                applyText: localize("Confirm", true), cancelText: localize("Cancel", true),
+                onApply: () => {
+                    if (!current() || !applyPresetSnapshot(config, config.ACTIVE_PRESET_NAME)) return false;
+                    selectedPersonalName = name;
+                    refreshActivePresetHighlight();
+                    return true;
+                }
+            });
+        };
         const draw = () => {
             list.RemoveAndDeleteChildren();
+            rows = [];
+            const addSelection = (row, name, config) => {
+                const badge = label(row, "Active", "PersonalPresetActiveBadge");
+                badge.visible = false;
+                rows.push({ row, name, config, badge });
+            };
+            const defaultRow = $.CreatePanel("Panel", list, "PersonalPresetDefault");
+            defaultRow.AddClass("PersonalPresetRow");
+            label(defaultRow, "Default", "PersonalPresetDefaultTitle");
+            addSelection(defaultRow, "Default", () => savedDefaultConfig);
+            const loadDefault = button(defaultRow, "Load", "PersonalPresetDefaultLoad", () =>
+                loadSnapshot(savedDefaultConfig && { ...savedDefaultConfig }, "Default"), "PersonalPresetDefaultLoad");
+            loadDefault.enabled = !!savedDefaultConfig;
             for (const entry of entries) {
                 const row = $.CreatePanel("Panel", list, "");
                 row.AddClass("PersonalPresetRow");
                 const title = label(row, "", "PersonalPresetTitle");
                 title.text = entry.name;
+                const config = Q.parseStoredConfig(entry.raw);
+                addSelection(row, entry.name, () => config);
                 button(row, "Load", "PersonalPresetLoad", () => {
-                    if (busy || !current()) return;
-                    const config = Q.parseStoredConfig(entry.raw);
-                    const candidate = Object.assign({}, config, preservedUiPreferences(globalThis.MOD_CONFIG));
-                    globalThis.OpenConfigDiffPreviewModal({
-                        title: localize("Settings Changes", true), details: entry.name,
-                        rows: globalThis.BuildConfigDiffRows(globalThis.MOD_CONFIG, candidate),
-                        applyText: localize("Confirm", true), cancelText: localize("Cancel", true),
-                        onApply: () => current() && applyPresetSnapshot(config, config.ACTIVE_PRESET_NAME)
-                    });
+                    loadSnapshot(config, entry.name);
                 });
-                button(row, "Use at Startup", "PersonalPresetStartup", () => {
+                button(row, "Set as Default", "PersonalPresetStartup", () => {
                     void run(async () => {
                         await personalStorage().saveStartupSettings(entry.raw);
+                        onDefaultSaved(entry.raw);
                         return entries;
-                    }, "Preset saved for startup.");
+                    }, "Default preset updated.");
                 });
                 button(row, "Delete", "PersonalPresetDelete", () => {
                     if (busy || !current()) return;
@@ -681,14 +726,24 @@
                     });
                 });
             }
+            refreshSelection();
         };
+        personalView = { refresh() {
+            if (!current()) return;
+            const loadDefault = list.FindChildTraverse("PersonalPresetDefaultLoad");
+            if (isAlive(loadDefault)) loadDefault.enabled = !!savedDefaultConfig;
+            refreshSelection();
+        } };
         const load = async () => {
+            const defaultGeneration = savedDefaultGeneration;
             try {
-                const result = await readPersonalPresets();
+                const storage = personalStorage();
+                const [result, defaultRaw] = await Promise.all([readPersonalPresets(), storage.load("qollock_settings")]);
                 if (!current()) return;
+                if (defaultGeneration === savedDefaultGeneration) savedDefaultConfig = defaultRaw ? Q.parseStoredConfig(defaultRaw) : null;
                 entries = result;
                 draw();
-                feedback(entries.length ? "Load a preset now or choose it for startup." : "No personal presets yet. Save your current settings above.");
+                feedback(entries.length ? "" : "No personal presets yet.");
                 busy = false;
                 saveButton.enabled = true;
             } catch (error) {
@@ -706,7 +761,7 @@
         const presetsTitle = localize("Presets", true);
 
         const basePresetEntries = [
-            { label: "Default", preset: "Default", variant: "base" },
+            { label: localize("Reset to Defaults", true), preset: "Default", variant: "base" },
             { label: "16:10", preset: "16:10", variant: "base" },
             { label: "4:3", preset: "4:3", variant: "base" },
             { label: "Clean", preset: "Clean", variant: "base" },
@@ -740,6 +795,7 @@
 
     // Export API on Q.ui.presets
     Q.ui.presets = {
+        onDefaultSaved,
         readPersonalPresets,
         savePersonalPreset,
         deletePersonalPreset,

@@ -54,13 +54,19 @@ realm; this collection has no cross-client concurrent editing protocol.
 
 Load presents the existing settings diff before applying the validated
 snapshot through the preset application path, including preserved UI preferences
-and live HUD publication. It does not overwrite the main durable settings save;
-the footer Save action saves the current session. Use at Startup instead writes
-the chosen snapshot to that main durable save without changing the live config;
-the existing HUD autoload restores it on the next launch. A later footer Save or
-another Use at Startup replaces that startup snapshot. Editing or deleting the
-named personal entry does not change the already saved startup snapshot. To
-overwrite a personal entry, save current settings under the same name and confirm.
+and live HUD publication. It does not overwrite the main durable settings save.
+The Default row represents that main save (`qollock_settings`), not factory
+settings. The footer Save updates Default from the current session. Set as
+Default writes a personal snapshot to the same slot without changing the live
+config; startup restores that slot on the next launch. Each acknowledged save
+updates the open Default row. Loading Default previews a captured copy, so a
+later save cannot silently change an already open confirmation.
+The factory configuration remains available as Reset to Defaults in the base
+preset grid. Active highlights compare current values against saved snapshots,
+ignoring the same local preferences as community preset matching. They clear
+when settings no longer match; loading an identical named snapshot gives that
+selection priority. Editing or deleting a personal entry does not change Default.
+To overwrite a personal entry, save current settings under the same name and confirm.
 Stale section callbacks cannot
 render into a replaced section or apply a closed confirmation. Storage transport
 and full-client restart limitations are the same as for the main settings save.
