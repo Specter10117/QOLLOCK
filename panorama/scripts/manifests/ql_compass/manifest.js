@@ -121,8 +121,9 @@
         if (!_isAlive(panel)) return null;
         let preRotate = "";
         try {
-            if (panel.style && typeof panel.style.preTransformRotate2d === "string") {
-                preRotate = panel.style.preTransformRotate2d;
+            const value = panel.style && panel.style.preTransformRotate2d;
+            if (typeof value === "string") {
+                preRotate = value;
             }
         } catch (e) {}
         const preVal = _parsePlainRotateDegrees(preRotate);
@@ -130,8 +131,9 @@
 
         let transformText = "";
         try {
-            if (panel.style && typeof panel.style.transform === "string") {
-                transformText = panel.style.transform;
+            const value = panel.style && panel.style.transform;
+            if (typeof value === "string") {
+                transformText = value;
             }
         } catch (e2) {}
         let tVal = _parseRotateTransformDegrees(transformText);

@@ -774,3 +774,23 @@ test("compass resumes the same heading after its image is unavailable", () => {
     assert.equal(e.root.FindChildTraverse("QOLCompassDegree").text, "40°");
     e.clean();
 });
+
+for (const property of ["preTransformRotate2d", "transform"]) test(`compass reads native ${property} once per heading observation`, () => {
+    const e = fixture();
+    const source = localPlayer(e, e.renderer, 40);
+    const { feature } = directCompass(e, { ENABLE_COMPASS_SPEED: 0, MINIMAP_ROTATE_WITH_PLAYER: 1 });
+    let degrees = 40, reads = 0;
+    Object.defineProperty(source.image.style, "preTransformRotate2d", {
+        configurable: true,
+        get() { reads++; return property === "transform" ? `rotateZ(${degrees}deg)` : degrees + "deg"; }
+    });
+    feature.onEnable();
+    assert.equal(e.root.FindChildTraverse("QOLCompassDegree").text, "40°");
+    assert.equal(e.renderer.style.preTransformRotate2d, "-130.00deg");
+    assert.equal(reads, 2, "compass and rotation each observe the native value once");
+    degrees = 75;
+    e.clock.advance(1200);
+    assert.equal(e.root.FindChildTraverse("QOLCompassDegree").text, "75°");
+    assert.ok(Math.abs(parseFloat(e.renderer.style.preTransformRotate2d) + 165) < 0.02, "rotation converges on the changed native heading");
+    feature.onDisable(); e.clean();
+});
