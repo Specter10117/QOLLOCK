@@ -6,7 +6,7 @@
     const P = Q.core.panel;
     const scaled = new Set(["souls", "items", "stamina", "playerStats", "statsList", "speed", "abilityPoints", "damageReport"]);
     const opacityOwners = ["activeItems", "abilityPoints", "ammo", "stamina", "playerStats", "statsList", "compass", "speed", "zipBoost",
-        "statBonuses", "combatStatus", "unsecuredTimer", "unsecuredSouls", "keyboard", "damageReport", "chat"];
+        "combatStatus", "unsecuredTimer", "unsecuredSouls", "keyboard", "damageReport", "chat"];
     const elements = [...new Set([...scaled, ...opacityOwners])].map(id => Q.presentation.elements.find(element => element.id === id));
     const opacityKeys = new Map(opacityOwners.map(id => [id,
         elements.find(element => element.id === id).fields.find(field => Q.settings.get(field.key).role === "opacity").key]));

@@ -122,7 +122,6 @@ test("Player Stats hide-only keeps dormant offsets and the mirrored data source 
 
 for (const [id, ownerId, enabled, targetId] of [
     ["zipBoost", "ql_zipboost", { ENABLE_ZIP_BOOST: 1 }, "QOLZipBoostOverlay"],
-    ["statBonuses", "ql_stat_bonuses", { ENABLE_STAT_BONUSES: 1 }, "QOLStatBonusesOverlay"],
     ["combatStatus", "ql_combat_status", { ENABLE_COMBAT_STATUS: 1 }, "QOLCombatStatusOverlay"],
     ["unsecuredTimer", "ql_unsecured_souls_timer", { ENABLE_UNSECURED_SOUL_TIMER: 1 }, "QOLUnsecuredSoulsOverlay"],
     ["unsecuredSouls", "ql_better_unsecured_hud", { ENABLE_BETTER_UNSECURED: 1 }, "QOLBetterUnsecuredOverlay"],

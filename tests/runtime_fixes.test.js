@@ -913,24 +913,6 @@ test("item layout and tint follow a recreated inventory without another settings
     assert.strictEqual(inventory.container.style.washColor, Q.core.panel.resolvePaletteColor(13));
 });
 
-test("stat bonuses hide in the lobby and return on match reentry", () => {
-    const hud = sim.createHud({ inHideout: false });
-    hud.assertLoaded();
-    const { $, QOL: Q } = hud.sandbox.global;
-    $.CreatePanel("Panel", hud.root, "gameplay_hud");
-    Q.core.ConfigAdapter.loadFromFlat({ ENABLE_STAT_BONUSES: 1 });
-    hud.clock.advance(300);
-    const overlay = hud.root.FindChildTraverse("QOLStatBonusesOverlay");
-    assert.strictEqual(overlay.style.visibility, "visible");
-    hud.root.AddClass("InHideout");
-    hud.clock.advance(300);
-    assert.strictEqual(overlay.BHasClass("qol-hidden"), true);
-    assert.strictEqual(overlay.style.visibility, "collapse");
-    hud.root.RemoveClass("InHideout");
-    hud.clock.advance(300);
-    assert.strictEqual(overlay.BHasClass("qol-hidden"), false);
-    assert.strictEqual(overlay.style.visibility, "visible");
-});
 
 test("recent purchases preserve engine-owned history on entering the lobby", () => {
     const hud = sim.createHud({ inHideout: false });

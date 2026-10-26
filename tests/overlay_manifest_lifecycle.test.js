@@ -392,38 +392,6 @@ test("unsecured timer measures complete native update intervals and counts down 
     env.clean();
 });
 
-test("stat bonuses preserve integer zeros, react to native values and rebind their layout without altering stat sources", () => {
-    const env = fixture();
-    const { Q, hud, core, add, label, config, find } = env;
-    const owner = add(core, "HeroStatsDisplay");
-    const health = add(owner, "StatContainer_MaxHealth");
-    const modified = label(health, "ModifiedLabel", "220");
-    label(health, "BaseLabel", "100"); label(health, "ValueFromModsLabel", "10"); label(health, "StatScalingLabel", "10");
-    config({ ENABLE_STAT_BONUSES: 1, STAT_BONUSES_SCALE: 125, STAT_BONUSES_X_OFFSET: 80, STAT_BONUSES_Y_OFFSET: 50 });
-    assert.equal(find("QOLStatBonusesMaxHealth").text, "Max Health: 100");
-    modified.text = "320"; hud.clock.advance(250);
-    assert.equal(find("QOLStatBonusesMaxHealth").text, "Max Health: 200");
-    const breakdown = add(health, "StatsBreakdownContainer");
-    const row = add(breakdown, ""); label(row, "", "#citadel_shopstats_goldenstatues", ["StatName"]);
-    const bonus = label(row, "", "+350", ["StatValue"]); hud.clock.advance(250);
-    assert.equal(find("QOLStatBonusesMaxHealth").text, "Max Health: +350");
-    const first = find("QOLStatBonusesOverlay");
-    first.DeleteAsync(0); hud.clock.advance(250);
-    const overlay = find("QOLStatBonusesOverlay");
-    assert.notEqual(overlay, first);
-    assert.equal(overlay.style.uiScale, "125%"); assert.equal(overlay.style.x, "80px"); assert.equal(overlay.style.y, "-50px");
-    assert.equal(find("QOLStatBonusesMaxHealth").text, "Max Health: +350");
-    bonus.text = "0"; hud.clock.advance(250); assert.equal(find("QOLStatBonusesMaxHealth").BHasClass("is_zero"), true);
-    owner.DeleteAsync(0); hud.clock.advance(1);
-    const replacement = add(core, "HeroStatsDisplay");
-    const newHealth = add(replacement, "StatContainer_MaxHealth");
-    label(newHealth, "ModifiedLabel", "400"); label(newHealth, "BaseLabel", "100"); hud.clock.advance(250);
-    assert.equal(find("QOLStatBonusesMaxHealth").text, "Max Health: 300", "replacement source releases old explicit-value cache");
-    Q.core.ConfigStore.set("ql_stat_bonuses", "ENABLE_STAT_BONUSES", false); hud.clock.advance(1);
-    assert.equal(find("QOLStatBonusesOverlay"), null);
-    assert.equal(newHealth.IsValid(), true);
-    env.clean();
-});
 
 test("unsecured mirrors rebind still-live native sources and reset the timer estimate", () => {
     const env = fixture();
@@ -575,23 +543,4 @@ test("zip boost cannot retain a living class-fallback hint outside the current h
     env.hud.clock.advance(500);
     assert.equal(env.find("QOLZipBoostState").text, "READY");
     env.Q.core.FeatureRegistry.disable("ql_zipboost"); env.hud.clock.advance(20); env.clean();
-});
-
-test("stat source replacement within a living owner releases the previous explicit bonus", () => {
-    const env = fixture();
-    const { hud, $, core, add, label, config, find } = env;
-    const owner = add(core, "HeroStatsDisplay");
-    const oldHealth = add(owner, "StatContainer_MaxHealth");
-    const breakdown = add(oldHealth, "StatsBreakdownContainer");
-    const row = add(breakdown, ""); label(row, "", "#citadel_shopstats_goldenstatues", ["StatName"]);
-    label(row, "", "+350", ["StatValue"]);
-    config({ ENABLE_STAT_BONUSES: 1 });
-    assert.equal(find("QOLStatBonusesMaxHealth").text, "Max Health: +350");
-    oldHealth.SetParent($.CreatePanel("Panel", null, "DetachedHealthStat"));
-    const current = add(owner, "StatContainer_MaxHealth");
-    label(current, "ModifiedLabel", "400"); label(current, "BaseLabel", "100");
-    hud.clock.advance(1800);
-    assert.equal(find("QOLStatBonusesMaxHealth").text, "Max Health: 300");
-    assert.equal(oldHealth.IsValid(), true); assert.equal(owner.IsValid(), true);
-    env.clean();
 });

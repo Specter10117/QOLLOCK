@@ -22,7 +22,6 @@
             ...geometry("COMPASS_", true), opacity("COMPASS_"), f("COMPASS_STRETCH_X", "Width"), f("COMPASS_STRETCH_Y", "Height")]),
         Object.assign(overlay("speed", "Speed", "QOLSpeedRoot", [toggle("ENABLE_COMPASS_SPEED"), ...geometry("COMPASS_SPEED_", true), opacity("COMPASS_SPEED_")]), { scaleKey: "COMPASS_SPEED_SCALE" }),
         overlay("zipBoost", "Zipline Boost", "QOLZipBoostOverlay", [toggle("ENABLE_ZIP_BOOST"), ...geometry("ZIP_BOOST_", true), opacity("ZIP_BOOST_")]),
-        overlay("statBonuses", "Stat Bonuses", "QOLStatBonusesOverlay", [toggle("ENABLE_STAT_BONUSES"), ...geometry("STAT_BONUSES_", true), opacity("STAT_BONUSES_")]),
         overlay("combatStatus", "Combat Status", "QOLCombatStatusOverlay", [toggle("ENABLE_COMBAT_STATUS"), f("ENABLE_COMBAT_INDICATOR", "Combat Indicator", "toggle", { hidden: true }), ...geometry("COMBAT_STATUS_", true), opacity("COMBAT_STATUS_")]),
         overlay("unsecuredTimer", "Unsecured Souls Timer", "QOLUnsecuredSoulsOverlay", [toggle("ENABLE_UNSECURED_SOUL_TIMER"),
             ...geometry("UNSECURED_SOUL_TIMER_", true).map(item => item.axis === "x" ? { ...item, movementRatio: 0.5 } : item), opacity("UNSECURED_SOUL_TIMER_")]),

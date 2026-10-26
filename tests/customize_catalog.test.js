@@ -8,6 +8,24 @@ const activate = (env, id) => { const p = env.em.FindChildTraverse(id); assert.o
 const input = (env, key, value) => { const p = env.em.FindChildTraverse("QOLCustomize_" + key); assert.ok(p, key); p.text = String(value); p._fire("oninputsubmit"); return p; };
 const add = (env, parent, id, classes = []) => parent.addChild(env.doc.create("Panel", { id, classes }));
 
+test("retired Stat Bonuses cannot be activated by old config or exposed in Customize", () => {
+    const env = setup(), g = env.global;
+    const Q = env.hud.sandbox.global.QOL;
+    assert.equal(Q.core.FeatureRegistry.getRegisteredIds().includes("ql_stat_bonuses"), false);
+    assert.equal(g.QOL.presentation.elements.some(element => element.id === "statBonuses"), false);
+    for (const key of ["ENABLE_STAT_BONUSES", "STAT_BONUSES_SCALE", "STAT_BONUSES_X_OFFSET", "STAT_BONUSES_Y_OFFSET",
+        "STAT_BONUSES_OPACITY", "STAT_BONUSES_HIDE_NORMAL", "STAT_BONUSES_HIDE_SCOREBOARD"]) {
+        assert.equal(Object.hasOwn(g.QOL_DEFAULT_CONFIG, key), false, key);
+        assert.equal(g.QOL.presentation.settingFields.has(key), false, key);
+        assert.equal(g.QOL.presentation.fieldMap.has(key), false, key);
+    }
+    Q.core.ConfigAdapter.loadFromFlat({ ENABLE_STAT_BONUSES: 1 });
+    env.hud.clock.advance(1000);
+    assert.equal(env.hud.root.FindChildTraverse("QOLStatBonusesOverlay"), null);
+    assert.equal(env.hud.root.BHasClass("stat_bonuses_overlay_active"), false);
+    assert.deepEqual(env.hud.clock.errors, []);
+});
+
 test("Active Stats retires unavailable controls from settings, Customize and current defaults", () => {
     const env = setup(), g = env.global;
     g.QOL.ui.window.setActiveTabAndRefresh("Crosshair"); env.clock.advance(300);

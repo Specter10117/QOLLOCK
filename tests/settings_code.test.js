@@ -21,6 +21,22 @@ const sampleChanges = {
 const plain = value => JSON.parse(JSON.stringify(value));
 const frozenCode = "[QOL-4-0-5-C]:UQGsA2lm9DIYHLkBkAMBkAMBlAIJhgIEDTVpmAEBHwGEAQEfSREADTIsEOACqQK8AQGG_YcQWAA0BIAB7StP9w";
 
+test("published Stat Bonuses codes import unrelated settings without reviving retired controls", () => {
+    const { global: g } = load();
+    const code = "[QOL-4-0-5-C]:UQHMA5nicYsHogMEMC40NYIEBDIuNzO8AQFkAaoLAZ8GxAOIpJEu";
+    const decoded = g.QOL.settingsCode.deserialize(g.QOL.persistence.fromBase64Url(code.split(":")[1]));
+    assert.equal(decoded.ENABLE_STAT_BONUSES, 1);
+    assert.equal(decoded.STAT_BONUSES_SCALE, 150);
+    assert.equal(decoded.STAT_BONUSES_Y_OFFSET, -400);
+    const imported = g.QOL.ui.modal.tryApplyImportStringWithDiagnostics(code);
+    assert.equal(imported.ok, true);
+    assert.equal(imported.candidateConfig.TOP_BAR_SCALE, 2.73);
+    for (const key of ["ENABLE_STAT_BONUSES", "STAT_BONUSES_SCALE", "STAT_BONUSES_X_OFFSET", "STAT_BONUSES_Y_OFFSET",
+        "STAT_BONUSES_OPACITY", "STAT_BONUSES_HIDE_NORMAL", "STAT_BONUSES_HIDE_SCOREBOARD"]) {
+        assert.equal(Object.hasOwn(imported.candidateConfig, key), false, key);
+    }
+});
+
 test("published Active Stats IDs still decode while retired fields stay out of imported current settings", () => {
     const { global: g } = load();
     const raw = g.QOL.persistence.fromBase64Url(frozenCode.split(":")[1]);

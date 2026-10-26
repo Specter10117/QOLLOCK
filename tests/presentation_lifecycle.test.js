@@ -130,7 +130,6 @@ for (const scenario of [
     { id: "ql_rejuv_hud", config: { ENABLE_REJUV_HUD: 1 }, className: "rejuv_hud_disabled", active: false },
     { id: "ql_minimap_timers", config: { ENABLE_MINIMAP_BUFF_TIMER: 1 }, className: "minimap_buff_timer_disabled", active: false },
     { id: "ql_zipboost", config: { ENABLE_ZIP_BOOST: 1 }, className: "zip_boost_overlay_active" },
-    { id: "ql_stat_bonuses", config: { ENABLE_STAT_BONUSES: 1 }, className: "stat_bonuses_overlay_active" },
     { id: "ql_ult_cooldowns", config: { ENABLE_ULT_COOLDOWNS: 1 }, className: "ult_cooldowns_active" },
     { id: "ql_keyboard", config: { ENABLE_KEYBOARD_OVERLAY: 1 }, className: "keyboard_overlay_active" },
     { id: "ql_better_unsecured_hud", config: { ENABLE_BETTER_UNSECURED: 1 }, className: "better_unsecured_active" },

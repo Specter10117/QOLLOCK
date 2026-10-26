@@ -60,7 +60,7 @@ function setup() {
     Q.core.ConfigAdapter.loadFromFlat({ ...env.sandbox.evalJson("QOL.buildDefaultConfig()"),
         HEALTHBAR_TYPE: 2, SUPPORT_4_3: 1, ENABLE_HIDE_AMMO_ALL: 1,
         ENABLE_HIDE_FAILED_HINT: 1, ENABLE_ZIP_BOOST: 1,
-        ENABLE_UNSECURED_SOUL_TIMER: 1, ENABLE_STAT_BONUSES: 1,
+        ENABLE_UNSECURED_SOUL_TIMER: 1,
         ENABLE_COMBAT_INDICATOR: 1
     });
     return { ...env, Q, $ };
@@ -107,10 +107,9 @@ test("whole-HUD refresh observes hideout gates and the live combat recovery cloc
     assert.equal(env.root.BHasClass("combat_indicator_active"), true, "recent combat uses a real clock in settings refresh");
     assert.equal(env.root.BHasClass("zip_boost_overlay_active"), true);
     assert.equal(env.root.BHasClass("unsecured_souls_overlay_active"), true);
-    assert.equal(env.root.BHasClass("stat_bonuses_overlay_active"), true);
     env.root.AddClass("connectedToHideout");
     env.Q.core.hud.refreshRootClasses(env.root);
-    for (const name of ["zip_boost_overlay_active", "unsecured_souls_overlay_active", "stat_bonuses_overlay_active"]) {
+    for (const name of ["zip_boost_overlay_active", "unsecured_souls_overlay_active"]) {
         assert.equal(env.root.BHasClass(name), false, `${name} is gated immediately in hideout`);
     }
     env.clock.advance(5000);

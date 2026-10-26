@@ -67,7 +67,7 @@ with a second writer or reset persistent values to make cleanup work. Damage-num
 
 Use `QOL.core.hud.isInHideout(root)` for the shared two-class predicate.
 Compass, cursor, zipboost, urn timer, Rejuvenator, minimap timers, legacy passive
-audio, item mirror, stat bonuses, stats position and recent purchases call this
+audio, item mirror, stats position and recent purchases call this
 helper directly or through a local function reference. HUD discovery is cached;
 the helper reads current classes on each call rather than caching mode state.
 Do not duplicate the predicate through two `isClassActive` calls or legacy
@@ -77,7 +77,7 @@ unsecured-souls timer intentionally has no hideout suppression.
 The former always-true custom-context predicate and gameplay-root fallback are
 removed. Content owners resolve their verified native parents and wait when
 those parents are absent; a menu/loading root is not a gameplay anchor. Zip
-boost, unsecured readouts, stat bonuses and combat text own their complete
+boost, unsecured readouts and combat text own their complete
 created trees through the panel helper, including moved children and rapid
 disable/re-enable generations. New HUDs reset their private observation history.
 

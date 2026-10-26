@@ -4,7 +4,7 @@ const assert = require("node:assert/strict");
 const load = require("./load_settings_environment");
 
 const IDS = ["activeItems", "abilityPoints", "ammo", "stamina", "playerStats", "compass", "speed", "zipBoost",
-    "statBonuses", "combatStatus", "unsecuredTimer", "unsecuredSouls", "keyboard", "damageReport", "chat"];
+    "combatStatus", "unsecuredTimer", "unsecuredSouls", "keyboard", "damageReport", "chat"];
 function setup() {
     const env = load(), q = env.hud.sandbox.global.QOL;
     q.core.App.shutdown();

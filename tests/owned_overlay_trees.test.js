@@ -7,7 +7,6 @@ const owners = [
     { id: "ql_zipboost", key: "ENABLE_ZIP_BOOST", overlay: "QOLZipBoostOverlay", child: "QOLZipBoostState" },
     { id: "ql_better_unsecured_hud", key: "ENABLE_BETTER_UNSECURED", overlay: "QOLBetterUnsecuredOverlay", child: "QOLBetterUnsecuredMirrorLabel" },
     { id: "ql_unsecured_souls_timer", key: "ENABLE_UNSECURED_SOUL_TIMER", overlay: "QOLUnsecuredSoulsOverlay", child: "QOLUnsecuredSoulsState" },
-    { id: "ql_stat_bonuses", key: "ENABLE_STAT_BONUSES", overlay: "QOLStatBonusesOverlay", child: "QOLStatBonusesMaxHealth" }
 ];
 
 function fixture(owner) {

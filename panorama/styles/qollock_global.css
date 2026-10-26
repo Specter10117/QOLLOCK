@@ -253,7 +253,6 @@ CitadelHud.gShopOpen #minimap_persp
 
 .InHideout #QOLKeyboardOverlayRoot,
 .InHideout #QOLZipBoostOverlay,
-.InHideout #QOLStatBonusesOverlay,
 .InHideout #QOLCompassRoot
 {
     opacity: 0;

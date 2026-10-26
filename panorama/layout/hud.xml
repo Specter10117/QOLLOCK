@@ -96,7 +96,6 @@
 		<include src="s2r://panorama/scripts/manifests/ql_recent_purchases/manifest.vjs_c" />
 		<include src="s2r://panorama/scripts/manifests/ql_target_shapes/manifest.vjs_c" />
 		<include src="s2r://panorama/scripts/manifests/ql_souls/manifest.vjs_c" />
-		<include src="s2r://panorama/scripts/manifests/ql_stat_bonuses/manifest.vjs_c" />
 		<include src="s2r://panorama/scripts/manifests/ql_stats_position/manifest.vjs_c" />
 		<include src="s2r://panorama/scripts/manifests/ql_damage_impact/manifest.vjs_c" />
 		<include src="s2r://panorama/scripts/manifests/ql_sigflash/manifest.vjs_c" />
