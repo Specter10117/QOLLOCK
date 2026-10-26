@@ -148,8 +148,16 @@
                 const spawn = Boolean(rejuvState?.spawnWaiting);
                 const rejuvRemaining = Number(rejuvState?.counter) || 0;
                 const activeBuffs = { left: false, right: false };
-                const spawners = model.bridge && renderer?.FindChildrenWithClassTraverse
-                    ? renderer.FindChildrenWithClassTraverse("powerup_spawn") || [] : [];
+                const spawners = [];
+                if (model.bridge && P.isAlive(renderer)) {
+                    // hud_minimap.xml snippets and the October 3 capture put
+                    // native marker roots directly under the renderer.
+                    const count = renderer.GetChildCount();
+                    for (let index = 0; index < count; index++) {
+                        const panel = renderer.GetChild(index);
+                        if (P.hasClassToken(panel, "powerup_spawn")) spawners.push(panel);
+                    }
+                }
                 for (const spawner of spawners) {
                     if (!P.isAlive(spawner) || !(powerupClasses.some(cls => spawner.BHasClass(cls)) || spawner.BHasClass("active"))) continue;
                     let side = bridgeSide(spawner);

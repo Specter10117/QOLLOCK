@@ -67,6 +67,34 @@ function addNativeMinimap(env) {
     return env.add(owner, "hud_minimap");
 }
 
+test("bridge timers observe immediate native spawners and ignore nested marker lookalikes", () => {
+    const env = fixture(), renderer = addNativeMinimap(env);
+    addTopbar(env, "12:10");
+    const marker = (parent, position, classes = []) => {
+        const panel = env.add(parent, "", ["map_button", "powerup_spawn", ...classes]);
+        panel.style.position = position;
+        return panel;
+    };
+    const left = marker(renderer, "25% 50% 0px"), right = marker(renderer, "75% 50% 0px");
+    const unrelated = env.add(renderer, "OtherMarkerContent");
+    marker(unrelated, "25% 50% 0px", ["active"]);
+    env.config({ ENABLE_MINIMAP_BUFF_TIMER: 1, ENABLE_MINIMAP_BUFF_TIMER_ON_BRIDGE: 1 });
+    env.hud.clock.advance(400);
+    const leftTimer = env.find("QOLMinimapBuffBridgeLeftTimer"), rightTimer = env.find("QOLMinimapBuffBridgeRightTimer");
+    assert.equal(leftTimer.BHasClass("qol-hidden"), false, "nested generated content is not a native spawner root");
+    assert.equal(rightTimer.BHasClass("qol-hidden"), false);
+    right.AddClass("powerup_gun"); left.AddClass("active"); env.hud.clock.advance(400);
+    assert.equal(leftTimer.BHasClass("qol-hidden"), true); assert.equal(rightTimer.BHasClass("qol-hidden"), true);
+    left.SetParent(unrelated); right.RemoveClass("powerup_gun"); env.hud.clock.advance(400);
+    assert.equal(leftTimer.BHasClass("qol-hidden"), false, "living moved spawners leave the native source set immediately");
+    assert.equal(rightTimer.BHasClass("qol-hidden"), false);
+    marker(renderer, "25% 50% 0px", ["powerup_movement"]); env.hud.clock.advance(400);
+    assert.equal(leftTimer.BHasClass("buff_spawned"), true, "late current spawners are sampled without retaining native lists");
+    assert.equal(rightTimer.BHasClass("buff_spawned"), false);
+    env.Q.core.FeatureRegistry.disable("ql_minimap_timers"); env.hud.clock.advance(20);
+    assert.ok(!env.find("QOLMinimapTimersRoot")); assert.deepEqual(env.hud.clock.errors, []);
+});
+
 function addRoster(env, top) {
     const teams = env.add(top, "TeamsContainer");
     const team = env.add(teams, "TeamFriendly");

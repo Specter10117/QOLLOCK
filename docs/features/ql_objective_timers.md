@@ -28,6 +28,11 @@ helper. Partial construction stays hidden; moved children and prior instances
 awaiting asynchronous deletion are retired. Stopped settings hooks cannot
 recreate timer UI. The native map and the producer's scalar snapshot remain
 outside that tree's ownership.
+Bridge-buff observations enumerate immediate native `hud_minimap` children, as
+declared by the map marker snippets and confirmed by the captured renderer.
+Nested overlay content cannot act as a spawner. The current direct children,
+their live classes and positions are sampled again each update, so moved or
+late markers do not leave a cached spawn state.
 
 Capture countdowns distinguish missing native sources from explicit cleared
 signals. Source replacement must not terminate a running capture merely because
