@@ -1,6 +1,6 @@
 // OWNS: Rift warning/cooldown model and the QOL RiftTimer overlay.
 // DOES NOT OWN: Native capture-point classes, minimap, match clock or topbar.
-// Native source IDs/class priority are retained from the existing verified owner.
+// Native hud.xml/hud_minimap.xml and the October 3 capture verify marker owners.
 (() => {
     "use strict";
     const FEATURE_ID = "ql_urn_timer";
@@ -9,7 +9,6 @@
     const RESPAWN_INTERVAL = 7 * 60;
     const EARLY_WARNING = 20;
     const SPAWN_JITTER = 60;
-    const MAP_IDS = ["hud_minimap", "minimap_persp", "minimap_container", "minimap_frame", "HudMinimapContainer"];
 
     QOL.core.FeatureRegistry.register({
         id: FEATURE_ID,
@@ -21,11 +20,8 @@
             const tree = P.createOwnedTree();
             const time = QOL.core.time;
             const makeResolver = id => QOL.panelCache.createIdResolver(id, {
-                retryMs: 2000, refreshMs: 2000,
-                ownerPath: id === "hud_minimap" ? [{ id: "Hud", optional: true }, { className: "HudCore" },
-                    "gameplay_hud", { className: "clamp_width" }, "minimap_persp", "minimap_container", "HudMinimapContainer"] : []
+                retryMs: 2000, refreshMs: 2000
             });
-            const mapResolvers = MAP_IDS.map(makeResolver);
             const topResolver = makeResolver("TopBar");
             const legacyTopResolver = makeResolver("CitadelHudTopBar");
             let active = false, enabled = false, loop = null, unsubscribe = null;
@@ -51,19 +47,21 @@
             function release() {
                 retireOverlay();
                 overlay = null; label = null; parent = null;
-                for (const resolver of [...mapResolvers, topResolver, legacyTopResolver]) resolver.reset();
+                topResolver.reset(); legacyTopResolver.reset();
             }
 
             function readSource(currentRoot) {
-                let minimap = null;
-                for (const resolver of mapResolvers) {
-                    minimap = resolver.resolve(currentRoot);
-                    if (P.isAlive(minimap)) break;
-                }
+                const core = P.findChildByClass(currentRoot, "HudCore");
+                const gameplay = P.findChild(core, "gameplay_hud");
+                const host = P.findChild(P.findChildByClass(gameplay, "clamp_width"), "minimap_persp");
+                const native = P.findChild(P.findChild(host, "minimap_container"), "HudMinimapContainer");
+                const minimap = P.findChild(native, "hud_minimap");
                 if (!P.isAlive(minimap)) return { warning: false, active: false };
                 let warning = false, isActive = false;
-                for (const button of QOL.utils.FindPanelsByClass(minimap, "capture_point")) {
-                    if (!P.isAlive(button) || !button.BHasClass("map_button")) continue;
+                const count = minimap.GetChildCount();
+                for (let index = 0; index < count; index++) {
+                    const button = minimap.GetChild(index);
+                    if (!P.hasClassToken(button, "capture_point") || !button.BHasClass("map_button")) continue;
                     // A warning button wins over an unrelated active capture point.
                     if (button.BHasClass("koth_warning")) warning = true;
                     else if (button.BHasClass("active")) isActive = true;
@@ -134,7 +132,6 @@
                 if (!enabled || QOL.core.hud.isInHideout(root)) {
                     tree.sweep();
                     hideOverlay(); state = resetModel();
-                    for (const resolver of mapResolvers) resolver.reset();
                     return;
                 }
                 const gameSec = time.readObservedGameTime(root);

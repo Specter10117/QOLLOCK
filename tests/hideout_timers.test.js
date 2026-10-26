@@ -38,12 +38,16 @@ test("urn retries missing minimap and restores replaced timer and hideout transi
     let searches = 0;
     hud.root.FindChildTraverse = id => { if (id === "hud_minimap") searches++; return find(id); };
     tick();
-    assert.equal(searches, 1);
+    assert.equal(searches, 0, "missing native owners never require a full-HUD lookup");
     const first = find("RiftTimer");
     const text = find("RiftTimerLabel").text;
     tick();
-    assert.equal(searches, 1, "missing source must not be rescanned on every callback");
-    const map = $.CreatePanel("Panel", hud.root, "hud_minimap");
+    assert.equal(searches, 0, "missing sources wait on their local breadcrumbs");
+    const core = $.CreatePanel("Panel", hud.root, ""); core.AddClass("HudCore");
+    const gameplay = $.CreatePanel("Panel", core, "gameplay_hud");
+    let owner = $.CreatePanel("Panel", gameplay, ""); owner.AddClass("clamp_width");
+    for (const id of ["minimap_persp", "minimap_container", "HudMinimapContainer"]) owner = $.CreatePanel("Panel", owner, id);
+    const map = $.CreatePanel("Panel", owner, "hud_minimap");
     const cp = $.CreatePanel("Panel", map, "test_capture_point");
     cp.AddClass("map_button");
     cp.AddClass("capture_point");
@@ -52,7 +56,7 @@ test("urn retries missing minimap and restores replaced timer and hideout transi
     searches = 0;
     tick();
     assert.equal(find("RiftTimer").BHasClass("rift_warning"), true);
-    assert.equal(searches, 1);
+    assert.equal(searches, 0);
     cp.RemoveClass("koth_warning");
     hud.clock.advance(500);
     tick();
@@ -97,20 +101,12 @@ test("urn discovers the native minimap through its owner and follows a living re
     unrelated.AddClass("capture_point"); unrelated.AddClass("koth_warning");
     const warning = $.CreatePanel("Panel", map, "");
     for (const name of ["map_button", "capture_point", "koth_warning"]) warning.AddClass(name);
-    let enumerations = 0, returnedReferences = 0;
-    const enumerate = map.FindChildrenWithClassTraverse;
-    map.FindChildrenWithClassTraverse = function (name) {
-        const result = enumerate.call(this, name);
-        enumerations++; returnedReferences += result.length;
-        return result;
-    };
     const find = hud.root.FindChildTraverse.bind(hud.root);
     let searches = 0;
     hud.root.FindChildTraverse = id => { if (id === "hud_minimap") searches++; return find(id); };
     for (let i = 0; i < 4; i++) { tick(); hud.clock.advance(2100); }
     assert.equal(find("RiftTimer").BHasClass("rift_warning"), true);
     assert.equal(searches, 0, "periodic minimap refresh must not scan the whole HUD with a verified owner");
-    assert.equal(returnedReferences, enumerations * 2, "only capture-point candidates need a returned reference");
     warning.RemoveClass("koth_warning"); warning.AddClass("active"); tick();
     assert.equal(find("RiftTimer").BHasClass("rift_active"), true, "capture_point without map_button cannot become a native warning");
     warning.RemoveClass("active"); warning.AddClass("koth_warning"); tick();

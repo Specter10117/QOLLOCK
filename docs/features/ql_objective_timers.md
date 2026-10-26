@@ -43,7 +43,11 @@ capture duration even while a charge token remains.
 [Rift/urn timer](../../panorama/scripts/manifests/ql_urn_timer/manifest.js) has an
 independent instance-local warning/spawn-window model derived from the observed
 match clock and native minimap capture-point classes. It does not publish shared
-timer state. A native source or topbar replacement rebinds the readout while
+timer state. Capture-point evidence follows the current renderer's direct native
+breadcrumbs and immediate marker roots; nested content and minimaps in other
+components cannot supply warning/active signals. Missing native renderers supply
+neither signal, preserving the timer's estimated-window fallback.
+A native source or topbar replacement rebinds the readout while
 retaining an active warning deadline. A new match or hideout resets that model.
 Its dynamic QOL-created readout and all tracked children are removed on disable
 or parent replacement, including children moved outside their former container.

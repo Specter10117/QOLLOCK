@@ -61,8 +61,8 @@ function addCapture(env, top, nativeBuff = true) {
     return { charges, friendly, timer, panel, label };
 }
 
-function addNativeMinimap(env) {
-    let owner = env.add(env.gameplay, "", ["clamp_width"]);
+function addNativeMinimap(env, gameplay = env.gameplay) {
+    let owner = env.add(gameplay, "", ["clamp_width"]);
     for (const id of ["minimap_persp", "minimap_container", "HudMinimapContainer"]) owner = env.add(owner, id);
     return env.add(owner, "hud_minimap");
 }
@@ -119,6 +119,29 @@ test("compass samples immediate native marker roots while preserving cone priori
     assert.ok(!env.find("QOLCompassRoot")); assert.deepEqual(env.hud.clock.errors, []);
 });
 
+test("Rift evidence stays in the current native renderer and its immediate capture-point roots", () => {
+    const env = fixture(); addTopbar(env, "12:00");
+    const foreign = env.add(env.hud.root, "hud_minimap");
+    env.add(foreign, "", ["map_button", "capture_point", "koth_warning"]);
+    env.config({ ENABLE_URN_TIMER: 1 }); env.hud.clock.advance(600);
+    const read = () => env.find("RiftTimer");
+    assert.equal(read().BHasClass("rift_idle"), true, "a different component cannot supply native capture-point evidence");
+    const renderer = addNativeMinimap(env);
+    const current = env.add(renderer, "", ["map_button", "capture_point", "active"]);
+    const nested = env.add(renderer, "OtherMarkerContent");
+    env.add(nested, "", ["map_button", "capture_point", "koth_warning"]);
+    env.hud.clock.advance(600);
+    assert.equal(read().BHasClass("rift_active"), true, "nested marker content cannot outrank a current native root");
+    current.AddClass("koth_warning"); env.hud.clock.advance(600);
+    assert.equal(read().BHasClass("rift_warning"), true, "native warning still wins over the active class");
+    current.RemoveClass("koth_warning"); env.hud.clock.advance(600);
+    assert.equal(read().BHasClass("rift_active"), true);
+    current.SetParent(nested); env.hud.clock.advance(600);
+    assert.equal(read().BHasClass("rift_idle"), true, "a living moved marker leaves the current source set");
+    env.Q.core.FeatureRegistry.disable("ql_urn_timer"); env.hud.clock.advance(20);
+    assert.ok(!env.find("RiftTimer")); assert.deepEqual(env.hud.clock.errors, []);
+});
+
 function addRoster(env, top) {
     const teams = env.add(top, "TeamsContainer");
     const team = env.add(teams, "TeamFriendly");
@@ -153,7 +176,7 @@ function directCreatedOwner(env, def) {
     env.config({ [def.key]: 1, CROSSHAIR_STATS_SHOW_FIRERATE: 1, CROSSHAIR_STATS_SHOW_BUFFS: 1 });
     const create = () => env.Q.core.FeatureRegistry.getManifest(def.id).create({ events: env.Q.core.EventBus, id: def.id, config: { view: () => env.Q.core.ConfigStore.view(def.id) } });
     const source = addFire(env, env.core, "+12");
-    const { top, gameTime } = addTopbar(env, "12:00"), map = env.add(env.hud.root, "hud_minimap");
+    const { top, gameTime } = addTopbar(env, "12:00"), map = addNativeMinimap(env);
     env.add(map, "TestCapturePoint", ["map_button", "capture_point", "koth_warning"]);
     return { feature: create(), create, source, top, gameTime };
 }
@@ -190,10 +213,10 @@ for (const def of createdOwners) {
         if (def.id === "ql_urn_timer") assert.equal(env.find(def.label).text, "0:15");
         const previous = createdTree(env.find(def.overlay));
         env.hud.doc.root = env.$.CreatePanel("CitadelHud", null, "Hud"); env.hud.doc.root.AddClass("joined_team");
-        const core = env.add(env.hud.doc.root, "", ["HudCore"]); env.add(core, "gameplay_hud");
+        const core = env.add(env.hud.doc.root, "", ["HudCore"]), gameplay = env.add(core, "gameplay_hud");
         addFire(env, core, "+36");
         const top = env.add(core, "TopBar"); env.text(top, "GameTime", "12:05");
-        const map = env.add(env.hud.doc.root, "hud_minimap"); env.add(map, "NextCapturePoint", ["map_button", "capture_point", "koth_warning"]);
+        const map = addNativeMinimap(env, gameplay); env.add(map, "NextCapturePoint", ["map_button", "capture_point", "koth_warning"]);
         feature.onSettingsChanged(); env.hud.clock.advance(600);
         const label = env.hud.doc.root.FindChildTraverse(def.label);
         assert.equal(label.text, def.id === "ql_urn_timer" ? "0:20" : "+36%");
@@ -479,14 +502,14 @@ test("rejuv retries a rejected native text write without freezing the phase rend
 test("urn rebinds live minimap and topbar owners without changing its warning deadline", () => {
     const env = fixture();
     const { top, gameTime } = addTopbar(env, "12:00");
-    const map = env.add(env.hud.root, "hud_minimap");
+    const map = addNativeMinimap(env), native = map.GetParent();
     const button = env.add(map, "TestCapturePoint", ["map_button", "capture_point", "koth_warning"]);
     env.config({ ENABLE_URN_TIMER: 1 });
     env.hud.clock.advance(500);
     const first = env.find("RiftTimer");
     assert.equal(env.find("RiftTimerLabel").text, "0:20");
     map.SetParent(env.retired);
-    const replacementMap = env.add(env.hud.root, "hud_minimap");
+    const replacementMap = env.add(native, "hud_minimap");
     env.add(replacementMap, "NextCapturePoint", ["map_button", "capture_point", "koth_warning"]);
     gameTime.text = "12:05";
     env.hud.clock.advance(500);
