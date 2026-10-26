@@ -686,11 +686,13 @@
             return { deferredDamage: deferredDamage, trueCurrentHealth: trueCurrentHealth, healingHealth: healingHealth, currentHalfSegments: currentHalfSegments, effectiveHalfSegments: effectiveHalfSegments, hasIncomingHeal: hasIncomingHeal };
         }
 
-        function McResolveChargesContainer(root) {
+        function McReadCharges(root) {
             const native = QOL.presentation.findPath(root, stamina.path);
             const dash = P.isAlive(native) ? native.GetParent() : null;
-            if (P.hasClassToken(dash, "ability_element_charges") && dash.paneltype === "Citadel_AbilityHUDElement_Dash" &&
-                U.FindPanelsByClass(native, "charge").length) return native;
+            if (P.hasClassToken(dash, "ability_element_charges") && dash.paneltype === "Citadel_AbilityHUDElement_Dash") {
+                const charges = U.FindPanelsByClass(native, "charge");
+                if (charges.length) return charges;
+            }
             // Prefer the live crosshair; a settings preview must not become the
             // player's stamina source. The class/ID pair is verified native markup.
             const crosshair = P.findTraverse(root, "crosshair");
@@ -699,20 +701,19 @@
             let fallback = null;
             for (const element of elements) {
                 const container = element.id === "charges_container" ? element : P.findTraverse(element, "charges_container");
-                if (!P.isAlive(container) || !(U.FindPanelsByClass(container, "charge") || []).length) continue;
+                const charges = U.FindPanelsByClass(container, "charge");
+                if (!charges.length) continue;
                 // The debugger capture distinguishes native dash from ability charges.
-                if (element.paneltype === "Citadel_AbilityHUDElement_Dash") return container;
-                if (!fallback) fallback = container;
+                if (element.paneltype === "Citadel_AbilityHUDElement_Dash") return charges;
+                if (!fallback) fallback = charges;
             }
             if (fallback) return fallback;
             const direct = P.findTraverse(search, "charges_container");
-            return P.isAlive(direct) && (U.FindPanelsByClass(direct, "charge") || []).length ? direct : null;
+            return U.FindPanelsByClass(direct, "charge");
         }
 
         function McParseChargesForHunger(root) {
-            const container = McResolveChargesContainer(root);
-            if (!container) return null;
-            const activeCharges = (U.FindPanelsByClass(container, "charge") || []).filter(charge => charge.BHasClass("has_charge"));
+            const activeCharges = McReadCharges(root).filter(charge => charge.BHasClass("has_charge"));
             const maxCharges = activeCharges.length;
             if (!maxCharges) return null;
             const maxAngle = MC_CHARGE_MAX_ANGLES[maxCharges] || 26;

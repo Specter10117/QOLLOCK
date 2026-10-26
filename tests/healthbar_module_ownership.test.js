@@ -73,9 +73,15 @@ test("Minecraft food reads signed native stamina arcs and prefers dash over abil
     const env = fixture();
     for (const food of env.tree.food.Children()) food.SetImage = image => { food._image = image; };
     const crosshair = env.add(env.add(env.gameplay, "gameplay_hud_alive"), "crosshair");
+    let chargeLookups = 0;
     const charges = (type, angle) => {
         const element = env.add(crosshair, type === "Citadel_AbilityHUDElement_Dash" ? "dash" : "", ["ability_element_charges"], type);
         const container = env.add(element, "charges_container");
+        const enumerate = container.FindChildrenWithClassTraverse;
+        container.FindChildrenWithClassTraverse = function (name) {
+            if (name === "charge") chargeLookups++;
+            return enumerate.call(this, name);
+        };
         return Array.from({ length: 3 }, () => {
             const charge = env.add(container, "", ["charge", "has_charge"]);
             const foreground = env.add(charge, "", ["charge_fg"]);
@@ -114,6 +120,7 @@ test("Minecraft food reads signed native stamina arcs and prefers dash over abil
     update(200);
     assert.equal(fullFood(), 10, "living old dash generations cannot mask current stamina");
     assert.equal(broadLookups, 0, "verified Dash breadcrumbs need no crosshair or ability-tree search");
+    assert.equal(chargeLookups, 5, "each hunger observation reuses its discovered charge list");
     mc.release();
 });
 
