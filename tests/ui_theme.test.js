@@ -23,12 +23,10 @@ function createTestEnvironment(initialConfig = {}) {
     const logo = doc.create("Image", { id: "SettingsHeaderMogLogo" });
     const title = doc.create("Label", { id: "SettingsTitle" });
     const accent = doc.create("Label", { id: "SettingsTitleAccent" });
-    const moglockLink = doc.create("Button", { id: "ModVersionLabelTop" });
 
     header.addChild(logo);
     header.addChild(title);
     header.addChild(accent);
-    header.addChild(moglockLink);
     settingsWin.addChild(header);
     rootPanel.addChild(settingsWin);
 
@@ -82,7 +80,7 @@ function createTestEnvironment(initialConfig = {}) {
     );
     vm.runInNewContext(themeScript, ctx);
 
-    return { ctx, doc, rootPanel, settingsWin, header, logo, title, titleAccent: accent, moglockLink };
+    return { ctx, doc, rootPanel, settingsWin, header, logo, title, titleAccent: accent };
 }
 
 test("ui/theme: exports public API on QOL.ui.theme and globalThis", () => {
@@ -163,18 +161,16 @@ test("ui/theme: LocalizeSettingsText translates text using dictionaries", () => 
 });
 
 test("ui/theme: ApplySettingsThemeClasses applies theme class and logo", () => {
-    const { ctx, settingsWin, logo, titleAccent, moglockLink } = createTestEnvironment({ SETTINGS_THEME: 6 }); // Munfins
+    const { ctx, settingsWin, logo, titleAccent } = createTestEnvironment({ SETTINGS_THEME: 6 }); // Munfins
     ctx.QOL.ui.theme.ApplySettingsThemeClasses(settingsWin);
 
     assert.strictEqual(settingsWin.BHasClass("SettingsThemeMunfins"), true);
     assert.strictEqual(settingsWin.BHasClass("SettingsThemeDefault"), false);
     assert.strictEqual(titleAccent.text, "Munfins");
-    assert.strictEqual(moglockLink.style.visibility, "collapse");
 
     // Switch to Cream (1)
     ctx.MOD_CONFIG.SETTINGS_THEME = 1;
     ctx.QOL.ui.theme.ApplySettingsThemeClasses(settingsWin);
     assert.strictEqual(settingsWin.BHasClass("SettingsThemeCream"), true);
     assert.strictEqual(settingsWin.BHasClass("SettingsThemeMunfins"), false);
-    assert.strictEqual(moglockLink.style.visibility, "visible");
 });

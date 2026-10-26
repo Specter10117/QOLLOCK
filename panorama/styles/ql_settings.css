@@ -10242,46 +10242,6 @@ CitadelHudEscapeMenu.QOLCustomizeActive { background-color: #0000; }
 	margin-right: 6px;
 }
 
-#ModVersionLabelTop.HeaderMoglockLinkButton
-{
-	flow-children: right;
-	width: fit-children;
-	height: fit-children;
-	margin-left: 4px;
-	margin-right: 10px;
-	vertical-align: center;
-	background-color: transparent;
-	border: 0px solid transparent;
-	padding: 0px;
-}
-
-#ModVersionLabelTopPrefix
-{
-	color: #879196;
-	font-family: oracle;
-	font-size: 17px;
-	font-weight: normal;
-	letter-spacing: 0.25px;
-	text-transform: none;
-	text-shadow: none;
-	vertical-align: center;
-	margin-top: 0px;
-	margin-right: 5px;
-}
-
-#ModVersionLabelTopDomain
-{
-	color: #6be8a2;
-	font-family: oracle;
-	font-size: 17px;
-	font-weight: normal;
-	letter-spacing: 0.3px;
-	text-transform: none;
-	text-shadow: 0px 0px 6px rgba(107, 232, 162, 0.16);
-	vertical-align: center;
-	margin-top: 0px;
-}
-
 #SettingsWindow #MogTabSiteLinkLabel
 {
 	color: #6be8a2;
@@ -10292,13 +10252,6 @@ CitadelHudEscapeMenu.QOLCustomizeActive { background-color: #0000; }
 	text-transform: none;
 	text-shadow: 0px 0px 6px rgba(107, 232, 162, 0.16);
 }
-
-#ModVersionLabelTop.HeaderMoglockLinkButton:hover #ModVersionLabelTopPrefix
-{
-	color: #95a0a4;
-}
-
-#ModVersionLabelTop.HeaderMoglockLinkButton:hover #ModVersionLabelTopDomain,
 #SettingsWindow #MogTabSiteLink:hover #MogTabSiteLinkLabel
 {
 	color: #6be8a2;
@@ -13849,12 +13802,10 @@ CitadelHudEscapeMenu.QOLCustomizeActive { background-color: #0000; }
 #SettingsHeaderCenterHost #SettingsSearchWrap,
 #SettingsHeaderCenterHost .SettingsHeaderSearchWrap
 {
-	/* Widen the search bar leftward by 25px to equalize spacing:
-	   distance from moglock.gg to lupa icon (31px) equals
-	   distance from search bar right edge to close button X (31px). */
+	/* Center search within the space between the wordmark and close button. */
 	width: 480px;
 	max-width: 480px;
-	margin-right: 53px;
+	margin-right: 0px;
 }
 
 #SettingsTabRailFooter
@@ -19554,8 +19505,6 @@ CitadelHudEscapeMenu.QOLCustomizeActive { background-color: #0000; }
 }
 
 #SettingsWindow.SettingsThemeCream #SettingsTitleAccent,
-#SettingsWindow.SettingsThemeCream #ModVersionLabelTopDomain,
-#SettingsWindow.SettingsThemeCream #ModVersionLabelTop.HeaderMoglockLinkButton:hover #ModVersionLabelTopDomain,
 #SettingsWindow.SettingsThemeCream #MogTabSiteLinkLabel,
 #SettingsWindow.SettingsThemeCream #MogTabSiteLink:hover #MogTabSiteLinkLabel
 {
@@ -19564,8 +19513,6 @@ CitadelHudEscapeMenu.QOLCustomizeActive { background-color: #0000; }
 }
 
 #SettingsWindow.SettingsThemeKitten #SettingsTitleAccent,
-#SettingsWindow.SettingsThemeKitten #ModVersionLabelTopDomain,
-#SettingsWindow.SettingsThemeKitten #ModVersionLabelTop.HeaderMoglockLinkButton:hover #ModVersionLabelTopDomain,
 #SettingsWindow.SettingsThemeKitten #MogTabSiteLinkLabel,
 #SettingsWindow.SettingsThemeKitten #MogTabSiteLink:hover #MogTabSiteLinkLabel
 {
@@ -19574,8 +19521,6 @@ CitadelHudEscapeMenu.QOLCustomizeActive { background-color: #0000; }
 }
 
 #SettingsWindow.SettingsThemeEmo #SettingsTitleAccent,
-#SettingsWindow.SettingsThemeEmo #ModVersionLabelTopDomain,
-#SettingsWindow.SettingsThemeEmo #ModVersionLabelTop.HeaderMoglockLinkButton:hover #ModVersionLabelTopDomain,
 #SettingsWindow.SettingsThemeEmo #MogTabSiteLinkLabel,
 #SettingsWindow.SettingsThemeEmo #MogTabSiteLink:hover #MogTabSiteLinkLabel
 {
@@ -19584,8 +19529,6 @@ CitadelHudEscapeMenu.QOLCustomizeActive { background-color: #0000; }
 }
 
 #SettingsWindow.SettingsThemeOcean #SettingsTitleAccent,
-#SettingsWindow.SettingsThemeOcean #ModVersionLabelTopDomain,
-#SettingsWindow.SettingsThemeOcean #ModVersionLabelTop.HeaderMoglockLinkButton:hover #ModVersionLabelTopDomain,
 #SettingsWindow.SettingsThemeOcean #MogTabSiteLinkLabel,
 #SettingsWindow.SettingsThemeOcean #MogTabSiteLink:hover #MogTabSiteLinkLabel
 {
@@ -19594,25 +19537,11 @@ CitadelHudEscapeMenu.QOLCustomizeActive { background-color: #0000; }
 }
 
 #SettingsWindow.SettingsThemePsycho #SettingsTitleAccent,
-#SettingsWindow.SettingsThemePsycho #ModVersionLabelTopDomain,
-#SettingsWindow.SettingsThemePsycho #ModVersionLabelTop.HeaderMoglockLinkButton:hover #ModVersionLabelTopDomain,
 #SettingsWindow.SettingsThemePsycho #MogTabSiteLinkLabel,
 #SettingsWindow.SettingsThemePsycho #MogTabSiteLink:hover #MogTabSiteLinkLabel
 {
 	color: #008a5a;
 	text-shadow: 0px 0px 5px rgba(0, 138, 90, 0.16);
-}
-
-#SettingsWindow.SettingsThemeCream #ModVersionLabelTopPrefix,
-#SettingsWindow.SettingsThemeCream #ModVersionLabelTop.HeaderMoglockLinkButton:hover #ModVersionLabelTopPrefix
-{
-	color: #6a4a22;
-}
-
-#SettingsWindow.SettingsThemePsycho #ModVersionLabelTopPrefix,
-#SettingsWindow.SettingsThemePsycho #ModVersionLabelTop.HeaderMoglockLinkButton:hover #ModVersionLabelTopPrefix
-{
-	color: #2c3a32;
 }
 
 /* Theme readability pass: keep non-default themes decorative, but force the
@@ -25784,12 +25713,6 @@ CitadelHudEscapeMenu.QOLCustomizeActive { background-color: #0000; }
 {
 	color: #ffffff;
 	text-shadow: 0px 0px 8px rgba(255, 255, 255, 0.18);
-}
-
-#SettingsWindow.SettingsThemeMunfins #ModVersionLabelTop
-{
-	visibility: collapse;
-	opacity: 0;
 }
 
 #SettingsWindow.SettingsThemeMunfins #SettingsHeaderMogLogo

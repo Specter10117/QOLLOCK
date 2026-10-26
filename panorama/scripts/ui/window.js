@@ -1569,33 +1569,6 @@
                 }
             }
 
-            let headerVer = header.FindChildTraverse("ModVersionLabelTop");
-            if (!headerVer) {
-                headerVer = createPanel("Button", header, "ModVersionLabelTop");
-                if (headerVer) {
-                    headerVer.AddClass("HeaderMoglockLinkButton");
-                    headerVer.hittest = true;
-                    headerVer.hittestchildren = true;
-                    headerVer.style.zIndex = "7";
-                    headerVer.SetPanelEvent("onactivate", () => {
-                        try { $.DispatchEvent("ExternalBrowserGoToURL", "https://moglock.gg/"); } catch (_) {}
-                    });
-                    const headerVerPrefix = createPanel("Label", headerVer, "ModVersionLabelTopPrefix");
-                    if (headerVerPrefix) headerVerPrefix.text = localize("by", true);
-                    const headerVerDomain = createPanel("Label", headerVer, "ModVersionLabelTopDomain");
-                    if (headerVerDomain) headerVerDomain.text = localize("moglock.gg", true);
-                }
-            } else {
-                const headerVerPrefix = headerVer.FindChildTraverse("ModVersionLabelTopPrefix");
-                if (headerVerPrefix) headerVerPrefix.text = localize("by", true);
-                const headerVerDomain = headerVer.FindChildTraverse("ModVersionLabelTopDomain");
-                if (headerVerDomain) headerVerDomain.text = localize("moglock.gg", true);
-            }
-            if (headerVer) {
-                headerVer.visible = !isMunfins;
-                headerVer.style.visibility = isMunfins ? "collapse" : "visible";
-            }
-
             if (typeof ApplySettingsHeaderLogoTheme === "function") {
                 ApplySettingsHeaderLogoTheme(theme);
             } else if (Q.ui?.theme?.applyHeaderLogoTheme) {
@@ -1623,13 +1596,10 @@
             }
 
             // Ensure header children ordering:
-            // [Logo] [Accent: QOL] [Title: LOCK] [by moglock.gg] [CenterHost: Search] [CloseBtn: X]
+            // [Logo] [Accent: QOL] [Title: LOCK] [CenterHost: Search] [CloseBtn: X]
             if (header.MoveChildBefore) {
                 if (headerCenterHost && closeBtnHeader) {
                     try { header.MoveChildBefore(headerCenterHost, closeBtnHeader); } catch (_) {}
-                }
-                if (headerVer && headerCenterHost) {
-                    try { header.MoveChildBefore(headerVer, headerCenterHost); } catch (_) {}
                 }
             }
 

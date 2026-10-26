@@ -168,13 +168,8 @@ function ApplySettingsHeaderLogoTheme(theme) {
 
     var title = header.FindChildTraverse("SettingsTitle");
     var titleAccent = header.FindChildTraverse("SettingsTitleAccent");
-    var moglockLink = header.FindChildTraverse("ModVersionLabelTop");
     if (title) title.text = _Localize("LOCK", true);
     if (titleAccent) titleAccent.text = theme === SETTINGS_THEME_MUNFINS ? "Munfins" : _Localize("QOL", true);
-    if (moglockLink) {
-        moglockLink.visible = theme !== SETTINGS_THEME_MUNFINS;
-        moglockLink.style.visibility = theme === SETTINGS_THEME_MUNFINS ? "collapse" : "visible";
-    }
 }
 
 function ApplySettingsThemeClasses(settingsWindow) {

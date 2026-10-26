@@ -214,13 +214,8 @@
 
         const title = header.FindChildTraverse("SettingsTitle");
         const titleAccent = header.FindChildTraverse("SettingsTitleAccent");
-        const moglockLink = header.FindChildTraverse("ModVersionLabelTop");
         if (title) title.text = LocalizeSettingsText("LOCK", true);
         if (titleAccent) titleAccent.text = theme === SETTINGS_THEME_MUNFINS ? "Munfins" : LocalizeSettingsText("QOL", true);
-        if (moglockLink) {
-            moglockLink.visible = theme !== SETTINGS_THEME_MUNFINS;
-            moglockLink.style.visibility = theme === SETTINGS_THEME_MUNFINS ? "collapse" : "visible";
-        }
     }
 
     function ApplySettingsThemeClasses(settingsWindow) {

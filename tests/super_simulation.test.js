@@ -11,7 +11,7 @@
 //      toggle, responsive CSS overrides cleared when default, properly hidden
 //      only when explicitly disabled (HUD_TOP_BAR_ENABLED: 0).
 // 2. Settings Window & Preset Execution Lifecycle:
-//    - Settings window creation and header structure (Logo, QOL LOCK by moglock.gg).
+//    - Settings window creation and header structure (Logo, QOL LOCK).
 //    - Presets tab rendering with all community buttons.
 //    - Clicking a preset opens the Diff Preview Modal with accurate diff rows.
 //    - Confirming preset updates MOD_CONFIG and invokes SaveAndSync().
@@ -236,7 +236,7 @@ test("SUPER TEST 2: Settings Window header, Presets tab click, diff modal, and a
     sandbox.globalThis.BuildUI();
 
     // 2. Validate Header Layout
-    // Expected: [Logo] [Accent: QOL] [Title: LOCK] [by moglock.gg] [CenterHost: Search] [CloseBtn: X]
+    // Expected: [Logo] [Accent: QOL] [Title: LOCK] [CenterHost: Search] [CloseBtn: X]
     const headerLogo = header.FindChildTraverse("SettingsHeaderMogLogo");
     const headerAccent = header.FindChildTraverse("SettingsTitleAccent");
     const headerTitle = header.FindChildTraverse("SettingsTitle");
@@ -247,13 +247,9 @@ test("SUPER TEST 2: Settings Window header, Presets tab click, diff modal, and a
     assert.ok(headerLogo, "Header must contain SettingsHeaderMogLogo");
     assert.ok(headerAccent, "Header must contain SettingsTitleAccent (QOL)");
     assert.ok(headerTitle, "Header must contain SettingsTitle (LOCK)");
-    assert.ok(headerMoglock, "Header must contain ModVersionLabelTop link button");
+    assert.strictEqual(headerMoglock, null, "Header must not contain the removed attribution link");
     assert.ok(searchHost, "Header must contain SettingsHeaderCenterHost for search");
     assert.ok(closeButton, "Header must contain CloseBtn");
-
-    const moglockDomain = headerMoglock.FindChildTraverse("ModVersionLabelTopDomain");
-    assert.ok(moglockDomain, "ModVersionLabelTop must contain moglock.gg domain label");
-    assert.strictEqual(moglockDomain.text, "moglock.gg", "Domain text must be moglock.gg");
 
     // 3. Open Presets Tab
     const windowApi = sandbox.QOL.ui.window;
