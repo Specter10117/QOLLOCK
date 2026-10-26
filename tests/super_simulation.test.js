@@ -339,7 +339,7 @@ test("SUPER TEST 3: Cross-isolate bridge synchronization (Settings -> #Hud -> HU
     assert.strictEqual(topBar.style.uiScale, "125%", "TopBar inline style uiScale must reflect synced config");
 });
 
-test("SUPER TEST 4: All 90+ community presets resolve cleanly with complete schemas", () => {
+test("SUPER TEST 4: All configured community presets resolve cleanly with complete schemas", () => {
     const sandbox = {
         $: { Msg: () => {} },
         QOL: { core: {}, ui: { presets: null } },
@@ -366,7 +366,9 @@ test("SUPER TEST 4: All 90+ community presets resolve cleanly with complete sche
     assert.ok(p, "QOL.ui.presets must exist");
 
     const entries = p.buildCommunityPresetEntries();
-    assert.strictEqual(entries.length, 90, "Must contain exactly 90 entries");
+    assert.strictEqual(entries.length, 84, "Community roster has no Available padding");
+    assert.strictEqual(p.resolvePresetConfigByName("Predi"), null, "Predi has no config yet");
+    assert.strictEqual(p.resolvePresetConfigByName("Synthronix"), null, "Removed preset cannot be applied");
 
     const validCommunityEntries = entries.filter(e => e.preset && e.available !== false);
     assert.ok(validCommunityEntries.length >= 70, `Expected at least 70 valid community presets, got ${validCommunityEntries.length}`);

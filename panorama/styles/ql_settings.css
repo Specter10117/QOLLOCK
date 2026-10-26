@@ -8498,6 +8498,96 @@ CitadelHudEscapeMenu.QOLCustomizeActive { background-color: #0000; }
 	text-shadow: 0px 0px 5px rgba(255, 255, 255, 0.18);
 }
 
+.PersonalPresetsSection
+{
+	width: 100%;
+	flow-children: down;
+	margin-top: 28px;
+	margin-bottom: 20px;
+	padding: 20px 10px 0px;
+	border-top: 1px solid rgba(160, 160, 160, 0.18);
+}
+
+.PersonalPresetsHint,
+.PersonalPresetsStatus
+{
+	width: 100%;
+	font-size: 13px;
+	color: #a6a6a6;
+	margin-bottom: 12px;
+}
+
+.PersonalPresetsStatus
+{
+	margin-top: 8px;
+	font-size: 12px;
+}
+
+.PersonalPresetsStatus.FailureState
+{
+	color: #ff8a8a;
+}
+
+.PersonalPresetRow
+{
+	width: 100%;
+	flow-children: right;
+	margin-bottom: 6px;
+}
+
+.PersonalPresetName
+{
+	width: fill-parent-flow(1);
+	height: 34px;
+	margin-right: 8px;
+	padding: 5px 8px;
+	font-size: 15px;
+	color: #eeeeee;
+	background-color: rgba(0, 0, 0, 0.25);
+	border: 1px solid rgba(160, 160, 160, 0.35);
+	border-radius: 3px;
+}
+
+.PersonalPresetName:focus
+{
+	border-color: #a6a6a6;
+}
+
+.PersonalPresetTitle
+{
+	width: fill-parent-flow(1);
+	vertical-align: center;
+	font-size: 14px;
+	color: #d4d4d4;
+	text-overflow: ellipsis;
+	margin-right: 8px;
+}
+
+.PersonalPresetsList
+{
+	width: 100%;
+	flow-children: down;
+}
+
+#SettingsWindow .PersonalPresetRow .SettingActionBtn
+{
+	width: fit-children;
+	min-width: 70px;
+	height: 34px;
+	margin-left: 4px;
+	padding: 4px 10px;
+}
+
+#SettingsWindow .PersonalPresetRow .SettingActionBtnLabel
+{
+	font-size: 12px;
+}
+
+#SettingsWindow .PersonalPresetRow .SettingActionBtn:disabled
+{
+	opacity: 0.4;
+}
+
 .CommunityPresetHintRow
 {
 	width: 100%;

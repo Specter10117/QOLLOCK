@@ -32,6 +32,33 @@ updates the runtime preset name, calls `SaveAndSync` and refreshes language UI.
 `ACTIVE_PRESET_NAME` has special Bread matching behavior; it is not a general
 persistent record of whichever preset button was last clicked.
 
+Community entries are ordered by displayed name, case-insensitively. Base
+presets retain their separate first row. An entry without a supplied configuration
+is a non-applying tile with an explanatory tooltip, not a substitute configuration.
+
+## Personal presets
+
+The Presets tab has a separate personal section below the community grid.
+It saves named snapshots in the existing CEF bridge under
+`qollock_personal_presets`, independently of `qollock_settings`. The stored
+collection is an array of `{ name, raw }` entries; `raw` uses the existing
+versioned settings envelope. Names are trimmed, case-insensitively unique,
+and limited to 48 characters without control characters.
+
+Saving captures settings at the click. Replacing or deleting a snapshot requires
+inline confirmation. The UI reports success only after the bridge acknowledges
+the write. A failed initial read disables writes so it cannot silently overwrite
+an unread collection; reopen the tab to retry. Invalid data is rejected through
+the side-effect-free settings parser. Writes are serialized within the settings
+realm; this collection has no cross-client concurrent editing protocol.
+
+Loading presents the existing settings diff before applying the validated
+snapshot through the preset application path, including preserved UI preferences
+and live HUD publication. It does not overwrite the main durable settings save;
+the footer Save action still owns that operation. Stale section callbacks cannot
+render into a replaced section or apply a closed confirmation. Storage transport
+and full-client restart limitations are the same as for the main settings save.
+
 ## Maintenance
 
 1. Change values in `QOL_PRESETS`, not a second Markdown table of preset data.

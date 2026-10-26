@@ -157,14 +157,17 @@ test("presets: backward compatibility globals are registered", () => {
     assert.strictEqual(typeof gt.CreatePresetGrid, "function");
 });
 
-test("presets: buildCommunityPresetEntries returns 90 entries", () => {
+test("presets: community roster is alphabetized without empty placeholders", () => {
     const env = createTestEnvironment();
     const entries = env.sandbox.QOL.ui.presets.buildCommunityPresetEntries();
 
     assert.ok(Array.isArray(entries), "Entries should be an array");
-    assert.strictEqual(entries.length, 90, "Should contain exactly 90 entries");
+    assert.strictEqual(entries.length, 84);
     assert.ok(entries.some(e => e.preset === "Bread"), "Should contain Bread preset");
-    assert.ok(entries.some(e => e.label === "Available" && e.available === false), "Should contain Available placeholders");
+    assert.ok(!entries.some(e => e.label === "Available" || e.preset === "Synthronix"));
+    assert.strictEqual(entries.find(e => e.label === "Predi").available, false);
+    const labels = Array.from(entries, e => e.label.toLowerCase());
+    assert.deepStrictEqual(labels, labels.slice().sort());
 });
 
 test("presets: resolvePresetConfigByName merges default with preset", () => {
@@ -236,5 +239,6 @@ test("presets: renderPresetsTab builds preset grid and controls", () => {
 
     assert.ok(titles.length > 0, "Section title should be rendered");
     assert.ok(grids.length > 0, "Preset grid should be rendered");
-    assert.ok(hintRow, "Community hint row should be rendered");
+    assert.ok(!hintRow, "Community request link is removed");
+    assert.ok(container.FindChildTraverse("PersonalPresetsSection"));
 });

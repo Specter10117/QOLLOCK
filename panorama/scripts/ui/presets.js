@@ -38,7 +38,72 @@
 
     const localize = Q.ui.renderer.localize;
 
-    const isRussian = Q.ui.renderer.isRussian;
+    const PERSONAL_PRESETS_KEY = "qollock_personal_presets";
+    let personalWritePending = false;
+    let personalRenderGeneration = 0;
+    const compareLabels = (a, b) => {
+        const left = a.toLowerCase(), right = b.toLowerCase();
+        return left < right ? -1 : left > right ? 1 : 0;
+    };
+
+    const validatePersonalName = name => {
+        if (typeof name !== "string" || /[\x00-\x1f\x7f]/.test(name) || !name.trim() || name.trim().length > 48) {
+            throw new Error("Enter a preset name (1–48 characters).");
+        }
+        return name.trim();
+    };
+
+    const personalStorage = () => {
+        const bridge = Q.core.storageBridge;
+        if (!bridge) throw new Error("Preset storage is unavailable.");
+        return bridge;
+    };
+
+    const readPersonalPresets = async () => {
+        const raw = await personalStorage().load(PERSONAL_PRESETS_KEY);
+        if (raw === null || raw === undefined || raw === "") return [];
+        const entries = JSON.parse(raw);
+        if (!Array.isArray(entries)) throw new Error("Invalid personal preset data.");
+        const names = new Set();
+        for (const entry of entries) {
+            if (!entry || typeof entry.raw !== "string" || validatePersonalName(entry.name) !== entry.name || names.has(entry.name.toLowerCase())) {
+                throw new Error("Invalid personal preset data.");
+            }
+            Q.parseStoredConfig(entry.raw);
+            names.add(entry.name.toLowerCase());
+        }
+        return entries.sort((a, b) => compareLabels(a.name, b.name));
+    };
+
+    const writePersonalPresets = async change => {
+        if (personalWritePending) throw new Error("A preset operation is already in progress.");
+        personalWritePending = true;
+        try {
+            const entries = change(await readPersonalPresets());
+            await personalStorage().save(PERSONAL_PRESETS_KEY, JSON.stringify(entries));
+            return entries.sort((a, b) => compareLabels(a.name, b.name));
+        } finally {
+            personalWritePending = false;
+        }
+    };
+
+    const savePersonalPreset = async (name, config, replace = false) => {
+        name = validatePersonalName(name);
+        const raw = globalThis.WrapConfigForStorage(Q.parseStoredConfig(globalThis.WrapConfigForStorage(config)));
+        return writePersonalPresets(entries => {
+            const existing = entries.findIndex(entry => entry.name.toLowerCase() === name.toLowerCase());
+            if (existing >= 0 && !replace) throw new Error("A preset with this name already exists.");
+            const entry = { name, raw };
+            if (existing >= 0) entries[existing] = entry;
+            else entries.push(entry);
+            return entries;
+        });
+    };
+
+    const deletePersonalPreset = async name => {
+        name = validatePersonalName(name);
+        return writePersonalPresets(entries => entries.filter(entry => entry.name.toLowerCase() !== name.toLowerCase()));
+    };
 
     const NORMALIZERS = [
         "NormalizeNeutralCampFlags",
@@ -79,7 +144,7 @@
             BREAD_PRESET_NAME, "Saintmxsm", "Tuna", "Sneed", "iKaritzu", "Scuffed",
             "Gyzeh", "bonclide", "Zer0", "Pops", "Wouwei", "Nairshark", "Satanael",
             "Kr1stux", "Wrvth", "Jared", "Profitable", "Bubsito", "Gambler", "Hikyo",
-            "Chjcago", "Starjadian", "Synthronix", "Shark", "Neonvoid", "Fenmore",
+            "Chjcago", "Starjadian", "Predi", "Shark", "Neonvoid", "Fenmore",
             "Deethirty", "Jerboa", "RiChew", "Soramikali", "Jaundice", "Xavier",
             "Spookyy", "Specty", "Wirdly", "Radiant", "Chumba", "FakeThread", "7eventy7",
             "XD_HECTICC", "Enova", "Boredom", "PrivateProf", "Munfins", "Gmanc2", "Keta",
@@ -102,13 +167,11 @@
             return {
                 label,
                 preset,
+                available: name !== "Predi",
             };
         });
 
-        for (let i = entries.length; i < 90; i++) {
-            entries.push({ label: "Available", available: false });
-        }
-        return entries;
+        return entries.sort((a, b) => compareLabels(a.label, b.label));
     };
 
     const resolvePresetConfigByName = (presetName) => {
@@ -213,8 +276,11 @@
         }
 
         const presetData = normName === "Default" ? defConfig : presets[normName];
-        const prevLang = typeof globalThis.GetSettingsLanguage === "function" ? globalThis.GetSettingsLanguage() : "english";
+        return applyPresetSnapshot(presetData, normName);
+    };
 
+    const applyPresetSnapshot = (presetData, normName = "") => {
+        const prevLang = typeof globalThis.GetSettingsLanguage === "function" ? globalThis.GetSettingsLanguage() : "english";
         if (!applyPresetConfig(presetData)) return false;
 
         if (globalThis.MOD_CONFIG) {
@@ -434,11 +500,10 @@
 
                     if (entry.available === false) {
                         btn.AddClass("PresetGridBtnUnavailable");
-                        btn.SetPanelEvent("onactivate", () => {
-                            if (typeof globalThis.OpenAvailableModal === "function") {
-                                globalThis.OpenAvailableModal();
-                            }
+                        btn.SetPanelEvent("onmouseover", () => {
+                            $.DispatchEvent("UIShowTextTooltip", btn, localize("Preset configuration has not been added yet.", true));
                         });
+                        btn.SetPanelEvent("onmouseout", () => $.DispatchEvent("UIHideTextTooltip"));
                     } else {
                         if (entry.preset) {
                             registerPresetButton(entry.preset, btn, lbl, entry.label);
@@ -486,13 +551,156 @@
     // Dedicated Tab Renderer for "Presets"
     // =========================================================================
 
+    const renderPersonalPresets = container => {
+        const generation = ++personalRenderGeneration;
+        const section = $.CreatePanel("Panel", container, "PersonalPresetsSection");
+        section.AddClass("PersonalPresetsSection");
+        const current = () => generation === personalRenderGeneration && isAlive(section) && section.GetParent() === container;
+        const label = (parent, text, className, id = "") => {
+            const panel = $.CreatePanel("Label", parent, id);
+            panel.AddClass(className);
+            panel.text = localize(text, true);
+            return panel;
+        };
+        const button = (parent, text, className, action, id = "") => {
+            const panel = $.CreatePanel("Button", parent, id);
+            panel.AddClass("SettingActionBtn");
+            panel.AddClass(className);
+            label(panel, text, "SettingActionBtnLabel");
+            panel.SetPanelEvent("onactivate", action);
+            return panel;
+        };
+        label(section, "Personal Presets", "SectionTitle");
+        label(section, "Save your current settings under a name, then load them whenever you need.", "PersonalPresetsHint");
+        label(section, "Preset name", "PersonalPresetsHint");
+        const form = $.CreatePanel("Panel", section, "");
+        form.AddClass("PersonalPresetRow");
+        const nameInput = $.CreatePanel("TextEntry", form, "PersonalPresetName");
+        nameInput.AddClass("PersonalPresetName");
+        nameInput.maxchars = 48;
+        nameInput.multiline = false;
+        const saveButton = button(form, "Save Current", "PersonalPresetSave", () => saveCurrent(), "PersonalPresetSave");
+        const status = label(section, "Loading personal presets...", "PersonalPresetsStatus", "PersonalPresetsStatus");
+        const confirmation = $.CreatePanel("Panel", section, "PersonalPresetConfirmation");
+        confirmation.AddClass("PersonalPresetRow");
+        confirmation.visible = false;
+        const confirmationText = label(confirmation, "", "PersonalPresetTitle");
+        let pendingAction = null;
+        button(confirmation, "Confirm", "PersonalPresetConfirm", () => {
+            const action = pendingAction;
+            pendingAction = null;
+            confirmation.visible = false;
+            if (action) action();
+        });
+        button(confirmation, "Cancel", "PersonalPresetCancel", () => {
+            pendingAction = null;
+            confirmation.visible = false;
+        });
+        const list = $.CreatePanel("Panel", section, "PersonalPresetsList");
+        list.AddClass("PersonalPresetsList");
+        let entries = [], busy = true;
+        saveButton.enabled = false;
+        const feedback = (text, failed = false) => {
+            status.text = localize(text, true);
+            status.SetHasClass("FailureState", failed);
+        };
+        const confirm = (text, action) => {
+            confirmationText.text = text;
+            pendingAction = action;
+            confirmation.visible = true;
+        };
+        const run = async (operation, successText) => {
+            if (busy || !current()) return;
+            busy = true;
+            saveButton.enabled = false;
+            list.enabled = false;
+            confirmation.visible = false;
+            feedback("Working...");
+            try {
+                const result = await operation();
+                if (!current()) return;
+                entries = result;
+                draw();
+                feedback(successText);
+            } catch (error) {
+                if (current()) feedback("Preset operation failed. Your saved presets were not replaced in this view.", true);
+                $.Msg(`[QOLLock][presets] ${error.message || error}`);
+            } finally {
+                if (current()) {
+                    busy = false;
+                    saveButton.enabled = true;
+                    list.enabled = true;
+                }
+            }
+        };
+        const saveCurrent = () => {
+            if (busy || !current()) return;
+            try {
+                const name = validatePersonalName(nameInput.text);
+                // Capture at the click, so confirmation cannot save later edits by accident.
+                const snapshot = Object.assign({}, globalThis.MOD_CONFIG);
+                const save = () => { void run(() => savePersonalPreset(name, snapshot, true), "Personal preset saved."); };
+                if (entries.some(entry => entry.name.toLowerCase() === name.toLowerCase())) {
+                    confirm(Q.ui.theme.FormatSettingsText('Replace preset "{name}"?', { name }), save);
+                } else {
+                    void run(() => savePersonalPreset(name, snapshot), "Personal preset saved.");
+                }
+            } catch (error) {
+                feedback(error.message, true);
+            }
+        };
+        const draw = () => {
+            list.RemoveAndDeleteChildren();
+            for (const entry of entries) {
+                const row = $.CreatePanel("Panel", list, "");
+                row.AddClass("PersonalPresetRow");
+                const title = label(row, "", "PersonalPresetTitle");
+                title.text = entry.name;
+                button(row, "Load", "PersonalPresetLoad", () => {
+                    if (busy || !current()) return;
+                    const config = Q.parseStoredConfig(entry.raw);
+                    const candidate = Object.assign({}, config, preservedUiPreferences(globalThis.MOD_CONFIG));
+                    globalThis.OpenConfigDiffPreviewModal({
+                        title: localize("Settings Changes", true), details: entry.name,
+                        rows: globalThis.BuildConfigDiffRows(globalThis.MOD_CONFIG, candidate),
+                        applyText: localize("Confirm", true), cancelText: localize("Cancel", true),
+                        onApply: () => current() && applyPresetSnapshot(config, config.ACTIVE_PRESET_NAME)
+                    });
+                });
+                button(row, "Replace", "PersonalPresetReplace", () => {
+                    nameInput.text = entry.name;
+                    saveCurrent();
+                });
+                button(row, "Delete", "PersonalPresetDelete", () => {
+                    if (busy || !current()) return;
+                    confirm(Q.ui.theme.FormatSettingsText('Delete preset "{name}"?', { name: entry.name }), () => {
+                        void run(() => deletePersonalPreset(entry.name), "Personal preset deleted.");
+                    });
+                });
+            }
+        };
+        const load = async () => {
+            try {
+                const result = await readPersonalPresets();
+                if (!current()) return;
+                entries = result;
+                draw();
+                feedback(entries.length ? "Choose a preset to load or replace." : "No personal presets yet. Save your current settings above.");
+                busy = false;
+                saveButton.enabled = true;
+            } catch (error) {
+                if (current()) feedback("Could not load personal presets. Reopen this tab to retry.", true);
+                $.Msg(`[QOLLock][presets] ${error.message || error}`);
+            }
+        };
+        void load();
+    };
+
     const renderPresetsTab = (container) => {
         const collecting = globalThis.gSearchCollectMode && globalThis.gSearchCollectState;
         if (!collecting && !isAlive(container)) return;
 
-        const isRu = isRussian();
-        const presetsTitle = isRu ? "Пресеты" : "Presets";
-        const requestPresetText = "Request a Community Preset";
+        const presetsTitle = localize("Presets", true);
 
         const basePresetEntries = [
             { label: "Default", preset: "Default", variant: "base" },
@@ -510,37 +718,14 @@
                 if (!entry || entry.available === false) continue;
                 Q.ui.controls.createRow(container, entry.label, entry.preset ? "SEARCH_PRESET:" + entry.preset : "SEARCH_TAB:Presets", "actionbutton", null, null, null, [{ label: entry.preset ? "Apply" : "Open" }], "Preset");
             }
-            Q.ui.controls.createRow(container, requestPresetText, "OPEN_COMMISSIONS", "actionbutton", null, null, null, [{ label: "Open" }], "Request a community preset");
+            Q.ui.controls.createRow(container, "Personal Presets", "SEARCH_TAB:Presets", "actionbutton", null, null, null, [{ label: "Open" }], "Save and load your own presets.");
             return;
         }
         resetPresetButtonRegistry();
 
         createPresetGrid(container, presetsTitle, customEntries, 6, "custom");
 
-        // Community preset commission link
-        const communityHintRow = $.CreatePanel("Panel", container, "CommunityPresetHintRow");
-        if (communityHintRow) {
-            communityHintRow.AddClass("CommunityPresetHintRow");
-            const hintInner = $.CreatePanel("Panel", communityHintRow, "CommunityPresetHintInner");
-            if (hintInner) {
-                hintInner.AddClass("CommunityPresetHintInner");
-                const hintLink = $.CreatePanel("Button", hintInner, "CommunityPresetHintLink");
-                if (hintLink) {
-                    hintLink.AddClass("CommunityPresetHintLink");
-                    const hintIcon = $.CreatePanel("Image", hintLink, "CommunityPresetHintIcon", {
-                        src: "s2r://panorama/images/icons/icon_feedback.vsvg",
-                    });
-                    if (hintIcon) hintIcon.AddClass("CommunityPresetHintIcon");
-
-                    const hintLabel = $.CreatePanel("Label", hintLink, "CommunityPresetHintLinkLabel");
-                    if (hintLabel) hintLabel.text = requestPresetText;
-
-                    hintLink.SetPanelEvent("onactivate", () => {
-                        $.DispatchEvent("ExternalBrowserGoToURL", "https://ko-fi.com/civocivocivo/commissions");
-                    });
-                }
-            }
-        }
+        renderPersonalPresets(container);
 
         refreshActivePresetHighlight();
     };
@@ -552,6 +737,9 @@
 
     // Export API on Q.ui.presets
     Q.ui.presets = {
+        readPersonalPresets,
+        savePersonalPreset,
+        deletePersonalPreset,
         applyPresetConfig,
         applyPresetByName,
         buildCommunityPresetEntries,
