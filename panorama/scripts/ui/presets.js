@@ -572,6 +572,7 @@
         };
         label(section, "Personal Presets", "SectionTitle");
         label(section, "Save your current settings under a name, then load them whenever you need.", "PersonalPresetsHint");
+        label(section, "Use at Startup saves this snapshot for the next launch. The main Save button can overwrite it.", "PersonalPresetsHint");
         label(section, "Preset name", "PersonalPresetsHint");
         const form = $.CreatePanel("Panel", section, "");
         form.AddClass("PersonalPresetRow");
@@ -667,9 +668,11 @@
                         onApply: () => current() && applyPresetSnapshot(config, config.ACTIVE_PRESET_NAME)
                     });
                 });
-                button(row, "Replace", "PersonalPresetReplace", () => {
-                    nameInput.text = entry.name;
-                    saveCurrent();
+                button(row, "Use at Startup", "PersonalPresetStartup", () => {
+                    void run(async () => {
+                        await personalStorage().saveStartupSettings(entry.raw);
+                        return entries;
+                    }, "Preset saved for startup.");
                 });
                 button(row, "Delete", "PersonalPresetDelete", () => {
                     if (busy || !current()) return;
@@ -685,7 +688,7 @@
                 if (!current()) return;
                 entries = result;
                 draw();
-                feedback(entries.length ? "Choose a preset to load or replace." : "No personal presets yet. Save your current settings above.");
+                feedback(entries.length ? "Load a preset now or choose it for startup." : "No personal presets yet. Save your current settings above.");
                 busy = false;
                 saveButton.enabled = true;
             } catch (error) {

@@ -41,6 +41,10 @@ The API is available as `QOL.core.storageBridge`, `QOL.core.storage`, and `QOLSt
 - `init(parent, options)`, `isReady()`, `getPanel()`, `enableAutoload(flag)` manage connection and startup restore.
 - `save(key, value, callback)`, `load(key, callback)`, `remove(key, callback)` are low-level key/value transport operations returning Promises.
 - `saveSettings(configOrRaw, callback)` writes the validated configuration under `qollock_settings`.
+- `saveStartupSettings(configOrRaw, callback)` writes the same validated startup slot
+  without publishing or changing live settings. Like Save, it invalidates older
+  pending restores and reports success only after CEF acknowledgment. The existing
+  startup restore reads this slot; a later save replaces its contents.
 - `loadSettings(callback)` restores settings subject to the captured change stamp.
 - `clearSettings(callback)` removes `qollock_settings` from CEF storage.
 

@@ -627,7 +627,7 @@
     };
 
     /** Save a validated snapshot. Acknowledgment confirms CEF, not just UI sync. */
-    const saveSettings = (configOrRaw, callback) => {
+    const _saveSettings = (configOrRaw, publish, callback) => {
         let rawToSave;
         try {
             const config = configOrRaw === undefined
@@ -637,16 +637,21 @@
             rawToSave = WrapConfigForStorage(_parseStoredSettings(rawToSave));
             const root = _findRootPanel();
             _markSettingsIntent(root);
-            if (_isPanelAlive(root)) Q.core.persistence.writeStorageConfigRawToUi(root, rawToSave);
+            if (publish && _isPanelAlive(root)) Q.core.persistence.writeStorageConfigRawToUi(root, rawToSave);
         } catch (err) {
             return _withCallback(Promise.reject(err), callback);
         }
         const promise = save(SETTINGS_STORAGE_KEY, rawToSave).then(() => {
-            _log(`saveSettings succeeded (${rawToSave.length} characters).`);
+            _log(`${publish ? "saveSettings" : "saveStartupSettings"} succeeded (${rawToSave.length} characters).`);
             return { ok: true, timestamp: Date.now() };
         });
         return _withCallback(promise, callback);
     };
+
+    const saveSettings = (configOrRaw, callback) => _saveSettings(configOrRaw, true, callback);
+
+    // Use the existing startup save slot without applying it to this session.
+    const saveStartupSettings = (configOrRaw, callback) => _saveSettings(configOrRaw, false, callback);
 
     // Validation and normalization happen before publishing any attributes or
     // changing MOD_CONFIG/State. Parsing failures cannot reset a live session.
@@ -705,6 +710,7 @@
         load,
         remove,
         saveSettings,
+        saveStartupSettings,
         loadSettings,
         clearSettings,
         _onHtmlTitle,

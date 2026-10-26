@@ -90,12 +90,12 @@ test("personal UI waits for acknowledgment, confirms replacement/deletion and ig
     assert.equal(section.FindChildTraverse("PersonalPresetsStatus").text, "Personal preset saved.");
     const original = Array.from(e.disk.values())[0];
     g.MOD_CONFIG.SOULS_X_OFFSET = 300;
-    section.FindChildrenWithClassTraverse("PersonalPresetReplace")[0].activate();
+    section.FindChildTraverse("PersonalPresetSave").activate();
     const confirmation = section.FindChildTraverse("PersonalPresetConfirmation");
     assert.equal(confirmation.visible, true);
     confirmation.FindChildrenWithClassTraverse("PersonalPresetCancel")[0].activate();
     assert.equal(Array.from(e.disk.values())[0], original);
-    section.FindChildrenWithClassTraverse("PersonalPresetReplace")[0].activate();
+    section.FindChildTraverse("PersonalPresetSave").activate();
     g.MOD_CONFIG.SOULS_X_OFFSET = 600;
     confirmation.FindChildrenWithClassTraverse("PersonalPresetConfirm")[0].activate();
     await flush();
@@ -160,4 +160,28 @@ test("failed initial read disables saving and stale load confirmations cannot ap
     await flush();
     assert.equal(e.list.FindChildTraverse("PersonalPresetSave").enabled, false);
     assert.equal(e.list.FindChildTraverse("PersonalPresetsStatus").BHasClass("FailureState"), true);
+});
+
+test("startup action replaces Replace and saves the selected snapshot rather than current settings", async () => {
+    const e = setup(), g = e.global;
+    g.MOD_CONFIG.SOULS_X_OFFSET = 123;
+    await e.p.savePersonalPreset("Mine", g.MOD_CONFIG);
+    g.MOD_CONFIG.SOULS_X_OFFSET = 456;
+    let saved, acknowledge;
+    e.Q.core.storageBridge.saveStartupSettings = raw => new Promise(resolve => {
+        saved = raw;
+        acknowledge = resolve;
+    });
+    e.p.renderPresetsTab(e.list);
+    await flush();
+    const section = e.list.FindChildTraverse("PersonalPresetsSection");
+    assert.equal(section.FindChildrenWithClassTraverse("PersonalPresetReplace").length, 0);
+    section.FindChildrenWithClassTraverse("PersonalPresetStartup")[0].activate();
+    assert.equal(e.Q.parseStoredConfig(saved).SOULS_X_OFFSET, 123);
+    assert.equal(g.MOD_CONFIG.SOULS_X_OFFSET, 456);
+    assert.equal(section.FindChildTraverse("PersonalPresetsStatus").text, "Working...");
+    acknowledge({ ok: true });
+    await flush();
+    assert.equal(section.FindChildTraverse("PersonalPresetsStatus").text, "Preset saved for startup.");
+    assert.deepEqual(e.doc.eventErrors, []);
 });

@@ -52,10 +52,16 @@ an unread collection; reopen the tab to retry. Invalid data is rejected through
 the side-effect-free settings parser. Writes are serialized within the settings
 realm; this collection has no cross-client concurrent editing protocol.
 
-Loading presents the existing settings diff before applying the validated
+Load presents the existing settings diff before applying the validated
 snapshot through the preset application path, including preserved UI preferences
 and live HUD publication. It does not overwrite the main durable settings save;
-the footer Save action still owns that operation. Stale section callbacks cannot
+the footer Save action saves the current session. Use at Startup instead writes
+the chosen snapshot to that main durable save without changing the live config;
+the existing HUD autoload restores it on the next launch. A later footer Save or
+another Use at Startup replaces that startup snapshot. Editing or deleting the
+named personal entry does not change the already saved startup snapshot. To
+overwrite a personal entry, save current settings under the same name and confirm.
+Stale section callbacks cannot
 render into a replaced section or apply a closed confirmation. Storage transport
 and full-client restart limitations are the same as for the main settings save.
 

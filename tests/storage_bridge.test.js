@@ -263,6 +263,57 @@ test("storage_bridge: disk-backed saved buff lead 15 survives simulated restart 
     assert.deepEqual(next.clock.errors, []);
 });
 
+test("storage_bridge: selected startup snapshot leaves this session unchanged and restores after simulated restart", async t => {
+    const reopenStorage = diskStorage(t), env = createTestEnvironment();
+    connectEmbeddedPage(env, reopenStorage());
+    const before = JSON.stringify(env.sandbox.MOD_CONFIG);
+    const published = env.rootPanel.GetAttributeString("Deadlock_Mod_Settings_v1", "");
+    const saving = env.sandbox.QOL.core.storageBridge.saveStartupSettings({ BRIDGE_BUFF_START: 15 });
+    assert.equal(reopenStorage().has("qollock_settings"), false, "not saved before CEF acknowledgment");
+    env.clock.advance(0);
+    assert.equal((await saving).ok, true);
+    assert.equal(JSON.stringify(env.sandbox.MOD_CONFIG), before);
+    assert.equal(env.rootPanel.GetAttributeString("Deadlock_Mod_Settings_v1", ""), published);
+    const next = createTestEnvironment();
+    next.sandbox.QOL.core.storageBridge.enableAutoload(true);
+    connectEmbeddedPage(next, reopenStorage());
+    await Promise.resolve();
+    await Promise.resolve();
+    assert.equal(next.sandbox.MOD_CONFIG.BRIDGE_BUFF_START, 15);
+    assert.deepEqual(next.clock.errors, []);
+});
+
+test("storage_bridge: startup selection rejects invalid data and quota failures without altering this session", async () => {
+    const env = createTestEnvironment(), bridge = env.sandbox.QOL.core.storageBridge;
+    const storage = new Map([["qollock_settings", "previous"]]);
+    const browser = connectEmbeddedPage(env, storage);
+    const before = JSON.stringify(env.sandbox.MOD_CONFIG);
+    const published = env.rootPanel.GetAttributeString("Deadlock_Mod_Settings_v1", "");
+    await assert.rejects(bridge.saveStartupSettings("broken"));
+    assert.equal(storage.get("qollock_settings"), "previous");
+    browser.localStorage.setItem = () => { throw Error("QuotaExceededError"); };
+    const saving = bridge.saveStartupSettings({ BRIDGE_BUFF_START: 15 });
+    env.clock.advance(0);
+    await assert.rejects(saving, /QuotaExceededError/);
+    assert.equal(storage.get("qollock_settings"), "previous");
+    assert.equal(JSON.stringify(env.sandbox.MOD_CONFIG), before);
+    assert.equal(env.rootPanel.GetAttributeString("Deadlock_Mod_Settings_v1", ""), published);
+});
+
+test("storage_bridge: choosing a startup snapshot invalidates a preceding pending restore", async () => {
+    const env = createTestEnvironment(), bridge = env.sandbox.QOL.core.storageBridge;
+    const storage = new Map([["qollock_settings", env.sandbox.WrapConfigForStorage({ BRIDGE_BUFF_START: 30 })]]);
+    connectEmbeddedPage(env, storage);
+    const before = JSON.stringify(env.sandbox.MOD_CONFIG);
+    const loading = bridge.loadSettings();
+    const saving = bridge.saveStartupSettings({ BRIDGE_BUFF_START: 15 });
+    env.clock.advance(0);
+    assert.equal((await loading).skipped, "newer-edits");
+    assert.equal((await saving).ok, true);
+    assert.equal(JSON.stringify(env.sandbox.MOD_CONFIG), before);
+    assert.equal(JSON.parse(storage.get("qollock_settings")).data.BRIDGE_BUFF_START, 15);
+});
+
 test("storage_bridge: quota failure reaches callback and Promise without replacing stored data", async () => {
     const env = createTestEnvironment();
     const storage = new Map([["qollock_settings", "previous"]]);
