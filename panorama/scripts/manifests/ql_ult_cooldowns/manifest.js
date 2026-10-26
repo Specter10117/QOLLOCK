@@ -46,21 +46,25 @@
                 const list = [];
                 const currentTeams = new Set();
                 if (P.isAlive(teams)) {
-                    for (let i = 0; i < Math.min(4, teams.GetChildCount()); i++) {
+                    const teamCount = Math.min(4, teams.GetChildCount());
+                    for (let i = 0; i < teamCount; i++) {
                         const team = teams.GetChild(i);
                         if (!P.isAlive(team)) continue;
                         currentTeams.add(team);
                         if (!teamResolvers.has(team)) teamResolvers.set(team, resolver("PlayersContainer", ["PlayerContents"]));
                         const players = teamResolvers.get(team).resolve(team);
                         if (!P.isAlive(players)) continue;
-                        for (let j = 0; j < Math.min(12, players.GetChildCount()); j++) {
+                        const playerCount = Math.min(12, players.GetChildCount());
+                        for (let j = 0; j < playerCount; j++) {
                             const player = players.GetChild(j);
                             if (P.isAlive(player) && !list.includes(player)) list.push(player);
                         }
                     }
                 }
                 for (const team of teamResolvers.keys()) if (!currentTeams.has(team)) teamResolvers.delete(team);
-                if (list.length) return list;
+                // An empty native roster is a loading state, not evidence for
+                // legacy slots inside unrelated topbar components.
+                if (P.isAlive(teams)) { fallbackPlayers = []; nextFallback = 0; return list; }
                 const now = QOL.utils.PerfNowMs();
                 if (now >= nextFallback || fallbackPlayers.some(player => !belongsTo(player, top))) {
                     nextFallback = now + 2000;

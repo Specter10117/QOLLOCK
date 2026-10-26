@@ -161,6 +161,36 @@ function addUlt(env, players, cooldown) {
     return { player, status, background, hidden, shown };
 }
 
+test("ultimate mirror waits within an empty native roster without searching unrelated topbar slots", () => {
+    const env = fixture(); env.Q.core.App.shutdown();
+    const { top } = addTopbar(env), roster = addRoster(env, top);
+    const unrelated = env.add(top, "OtherTopbarComponent");
+    const decoy = addUlt(env, unrelated, "99"); decoy.player.id = "TopBarPlayer1";
+    let searches = 0;
+    const traverse = top.FindChildTraverse.bind(top);
+    top.FindChildTraverse = id => { if (/^TopBarPlayer/.test(id)) searches++; return traverse(id); };
+    const cfg = { ENABLE_ULT_COOLDOWNS: 1 };
+    const feature = env.Q.core.FeatureRegistry.getManifest("ql_ult_cooldowns").create({ config: { view: () => cfg } });
+    feature.onEnable(); env.hud.clock.advance(2500);
+    assert.equal(searches, 0); assert.equal(decoy.shown.text, "");
+    const current = addUlt(env, roster.players, "21"); env.hud.clock.advance(300);
+    assert.equal(current.shown.text, "21", "late native slots still appear at the existing cadence");
+    current.player.SetParent(env.retired); env.hud.clock.advance(300);
+    assert.equal(current.shown.text, ""); assert.equal(current.player.BHasClass("ult_cooldowns_active"), false);
+    assert.equal(searches, 0);
+    feature.onDisable(); assert.deepEqual(env.hud.clock.errors, []);
+});
+
+test("ultimate mirror retains legacy slot discovery when native team owners are absent", () => {
+    const env = fixture(); env.Q.core.App.shutdown();
+    const { top } = addTopbar(env), slot = addUlt(env, top, "13"); slot.player.id = "TopBarPlayer1";
+    const feature = env.Q.core.FeatureRegistry.getManifest("ql_ult_cooldowns").create({
+        config: { view: () => ({ ENABLE_ULT_COOLDOWNS: 1 }) }
+    });
+    feature.onEnable(); env.hud.clock.advance(300); assert.equal(slot.shown.text, "13");
+    feature.onDisable(); assert.equal(slot.shown.text, ""); assert.deepEqual(env.hud.clock.errors, []);
+});
+
 function createdTree(panel) {
     const result = [], queue = [panel];
     while (queue.length) { const current = queue.shift(); if (!current) continue; result.push(current); queue.push(...current.Children()); }
