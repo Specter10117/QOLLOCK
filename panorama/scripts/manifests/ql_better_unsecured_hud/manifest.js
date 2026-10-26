@@ -4,7 +4,6 @@
 // Native hud.xml places StatsAndModsContainer and gameplay_hud under HudCore.
 (() => {
     "use strict";
-    const SEARCH_MS = 2000;
     QOL.core.FeatureRegistry.register({
         id: "ql_better_unsecured_hud",
         enableKey: "ENABLE_BETTER_UNSECURED",
@@ -23,20 +22,8 @@
             const P = QOL.core.panel;
             const tree = P.createOwnedTree();
             const presentation = P.createNativeStyleOwner();
-            const parentResolver = QOL.panelCache.createIdResolver("StatsAndModsContainer", {
-                retryMs: SEARCH_MS, ownerPath: [{ id: "Hud", optional: true }, { className: "HudCore" }]
-            });
-            const gameplayResolver = QOL.panelCache.createIdResolver("gameplay_hud", {
-                retryMs: SEARCH_MS, ownerPath: [{ id: "Hud", optional: true }, { className: "HudCore" }]
-            });
-            const goldResolver = QOL.panelCache.createIdResolver("gold_and_ap_container", {
-                retryMs: SEARCH_MS,
-                ownerPath: [{ id: "Hud", optional: true }, { className: "HudCore" }, "StatsAndModsContainer", "LowerLeft"]
-            });
-            const amountResolver = QOL.panelCache.createIdResolver("hudDeathGoldLabel", { retryMs: SEARCH_MS });
-            const rootAmountResolver = QOL.panelCache.createIdResolver("hudDeathGoldLabel", { retryMs: SEARCH_MS });
             let running = false, loop = null, rootOwner = null, model = null, overlay = null;
-            let container = null, source = null, mirror = null, icon = null, text = null, nextSearchMs = 0;
+            let mirror = null, icon = null, text = null;
 
             function readModel() {
                 const cfg = QOL.presentation.captureVisibility(ctx, ctx.config.view());
@@ -65,32 +52,15 @@
                 return Number.isFinite(number) ? Math.max(0, Math.round(number)) : 0;
             }
 
-            function findContainer(root) {
-                const gold = goldResolver.resolve(root);
-                return QOL.utils.FindFirstPanelByClass(gold, "hudDeathGoldContainer") ||
-                    QOL.utils.FindFirstPanelByClass(root, "hudDeathGoldContainer");
-            }
-
-            function findSource(root) {
-                const byId = amountResolver.resolve(container || root) || rootAmountResolver.resolve(root);
-                const label = byId || QOL.utils.FindFirstPanelByClass(container, "death_penalty_gold");
-                return P.isAlive(label) && label.BHasClass("death_penalty_gold") ? label : null;
-            }
-
-            function release(resetSource = true) {
+            function release(resetRoot = true) {
                 presentation.clear();
                 tree.clear();
                 overlay = null; mirror = null; icon = null; text = null;
-                if (resetSource) {
-                    container = null; source = null; nextSearchMs = 0; rootOwner = null;
-                    goldResolver.reset(); amountResolver.reset(); rootAmountResolver.reset();
-                    parentResolver.reset(); gameplayResolver.reset();
-                }
+                if (resetRoot) rootOwner = null;
             }
 
-            function ensureOverlay(root) {
+            function ensureOverlay(parent) {
                 tree.sweep();
-                const parent = parentResolver.resolve(root) || gameplayResolver.resolve(root);
                 if (!P.isAlive(parent)) { release(false); return false; }
                 if (!P.isAlive(overlay) || overlay.GetParent() !== parent) {
                     release(false);
@@ -113,17 +83,15 @@
                 if (!P.isAlive(root) || (root.id !== "Hud" && root.paneltype !== "CitadelHud") || !model.enabled) { release(); return; }
                 if (rootOwner !== root) { release(); rootOwner = root; }
                 const preview = QOL.presentation.preview.selected(root, "unsecuredSouls");
-                const now = QOL.utils.PerfNowMs();
-                if ((container && !P.isAlive(container)) || now >= nextSearchMs) {
-                    const current = findContainer(root);
-                    if (current !== container) { source = null; amountResolver.reset(); }
-                    container = current;
-                    nextSearchMs = now + SEARCH_MS;
-                }
+                const core = P.findChildByClass(root, "HudCore");
+                const stats = P.findChild(core, "StatsAndModsContainer");
+                const gold = P.findChild(P.findChild(stats, "LowerLeft"), "gold_and_ap_container");
+                const body = P.findChild(gold, "hudGoldContainer");
+                const container = P.findChildByClass(body, "hudDeathGoldContainer");
                 if (!container && !preview) { release(false); return; }
-                source = findSource(root);
-                if (!ensureOverlay(root)) return;
-                const sourceText = P.isAlive(source) && typeof source.text === "string" ? source.text : "";
+                const source = P.findChild(container, "hudDeathGoldLabel");
+                if (!ensureOverlay(stats || P.findChild(core, "gameplay_hud"))) return;
+                const sourceText = P.hasClassToken(source, "death_penalty_gold") && typeof source.text === "string" ? source.text : "";
                 const hasAmount = parseSouls(sourceText) > 0;
                 const shown = hasAmount || preview;
                 P.setClass(overlay, "qol-hidden", !shown);
@@ -132,7 +100,7 @@
                 P.setClass(icon, "qol-hidden", !model.showIcon);
                 P.setClass(text, "qol-hidden", !model.showText);
                 P.setClass(mirror, "qol-hidden", false);
-                const nativeText = P.findTraverse(container, "hudUnsecuredLabel") || P.findTraverse(root, "hudUnsecuredLabel");
+                const nativeText = P.findChild(container, "hudUnsecuredLabel");
                 const caption = nativeText && typeof nativeText.text === "string" && nativeText.text ? nativeText.text : "UNSECURED";
                 if (text.text !== caption) text.text = caption;
                 // The selected editor sample belongs only to this mirror; the

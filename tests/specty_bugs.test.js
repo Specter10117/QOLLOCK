@@ -241,9 +241,12 @@ test("Unsecured Plus recovers after zero souls and a late native label", () => {
     const root = hud.root;
     // IDs/classes from Valve's hud.xml and hud_gold_and_ap_container.xml.
     // This fixture checks JS visibility transitions, not Panorama rendering.
-    const stats = create("Panel", root, "StatsAndModsContainer");
-    const gold = create("Panel", stats, "gold_and_ap_container");
-    const container = create("Panel", gold, "");
+    const core = create("Panel", root, ""); core.AddClass("HudCore");
+    const stats = create("Panel", core, "StatsAndModsContainer");
+    const lower = create("Panel", stats, "LowerLeft");
+    const gold = create("Panel", lower, "gold_and_ap_container");
+    const body = create("Panel", gold, "hudGoldContainer");
+    const container = create("Panel", body, "");
     container.AddClass("hudDeathGoldContainer");
     const config = Object.assign({}, hud.sandbox.global.QOL_DEFAULT_CONFIG, {
         ENABLE_BETTER_UNSECURED: 1
@@ -253,7 +256,7 @@ test("Unsecured Plus recovers after zero souls and a late native label", () => {
     const overlay = root.FindChildTraverse("QOLBetterUnsecuredOverlay");
     assert.ok(overlay.BHasClass("qol-hidden"), "No source yet: overlay stays hidden");
 
-    const label = create("Label", container, "hudDealthGoldLabel");
+    const label = create("Label", container, "hudDeathGoldLabel");
     label.AddClass("death_penalty_gold");
     const mirror = overlay.FindChildTraverse("QOLBetterUnsecuredMirrorLabel");
     for (const value of ["125", "0", "250", "0", "125"]) {

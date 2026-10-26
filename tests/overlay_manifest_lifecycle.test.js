@@ -214,8 +214,8 @@ test("better unsecured retains component scale, down-positive offsets and legacy
     const env = fixture();
     const { Q, hud, core, add, label, config, find } = env;
     const stats = add(core, "StatsAndModsContainer");
-    const gold = add(stats, "gold_and_ap_container");
-    const native = add(gold, "", ["hudDeathGoldContainer"]);
+    const gold = add(add(stats, "LowerLeft"), "gold_and_ap_container");
+    const native = add(add(gold, "hudGoldContainer"), "", ["hudDeathGoldContainer"]);
     const source = label(native, "hudDeathGoldLabel", "1.2k", ["death_penalty_gold"]);
     const caption = label(native, "hudUnsecuredLabel", "Native caption");
     const defaults = hud.sandbox.global.QOL_DEFAULT_CONFIG;
@@ -247,8 +247,8 @@ test("better unsecured retains component scale, down-positive offsets and legacy
 test("only selected Unsecured Souls previews a zero amount in its owned mirror and retires the sample", () => {
     const env = fixture();
     const { hud, Q, core, add, label, config, find } = env;
-    const stats = add(core, "StatsAndModsContainer"), gold = add(stats, "gold_and_ap_container");
-    const native = add(gold, "", ["hudDeathGoldContainer"]);
+    const stats = add(core, "StatsAndModsContainer"), gold = add(add(stats, "LowerLeft"), "gold_and_ap_container");
+    const native = add(add(gold, "hudGoldContainer"), "", ["hudDeathGoldContainer"]);
     const source = label(native, "hudDeathGoldLabel", "0", ["death_penalty_gold"]);
     const caption = label(native, "hudUnsecuredLabel", "Native caption");
     config({ ENABLE_BETTER_UNSECURED: 1, UNSECURED_SOULS_HUD_SCALE: 150, UNSECURED_SOULS_HUD_X_OFFSET: 55 });
@@ -427,6 +427,35 @@ test("unsecured source discovery follows the native gold owner without full HUD 
     hud.clock.advance(20);
     assert.equal(find("QOLBetterUnsecuredOverlay"), null);
     assert.equal(find("QOLUnsecuredSoulsOverlay"), null);
+    env.clean();
+});
+
+test("better unsecured uses current native amount and caption owners through gaps and live replacements", () => {
+    const env = fixture(), { hud, Q, core, add, label, config, find } = env;
+    const stats = add(core, "StatsAndModsContainer"), lower = add(stats, "LowerLeft");
+    const body = add(add(lower, "gold_and_ap_container"), "hudGoldContainer");
+    const previous = add(body, "", ["hudDeathGoldContainer"]);
+    label(previous, "hudDeathGoldLabel", "500", ["death_penalty_gold"]);
+    label(previous, "hudUnsecuredLabel", "Retired caption");
+    config({ ENABLE_BETTER_UNSECURED: 1 });
+    assert.equal(find("QOLBetterUnsecuredMirrorLabel").text, "500");
+    previous.SetParent(add(body, "RetiredGoldComponent"));
+    hud.clock.advance(250);
+    assert.ok(!find("QOLBetterUnsecuredOverlay"), "a living retired component cannot supply a mirror");
+    const current = add(body, "", ["hudDeathGoldContainer"]);
+    const amount = label(current, "hudDeathGoldLabel", "250", ["death_penalty_gold"]);
+    hud.clock.advance(250);
+    assert.equal(find("QOLBetterUnsecuredMirrorLabel").text, "250");
+    assert.equal(find("QOLBetterUnsecuredMirrorText").text, "UNSECURED", "another gold component's caption is not a fallback");
+    const caption = label(current, "hudUnsecuredLabel", "Current caption");
+    amount.SetParent(previous);
+    label(current, "hudDeathGoldLabel", "700", ["death_penalty_gold"]);
+    hud.clock.advance(250);
+    assert.equal(find("QOLBetterUnsecuredMirrorLabel").text, "700");
+    assert.equal(find("QOLBetterUnsecuredMirrorText").text, "Current caption");
+    assert.equal(caption.text, "Current caption");
+    Q.core.FeatureRegistry.disable("ql_better_unsecured_hud"); hud.clock.advance(20);
+    assert.equal(find("QOLBetterUnsecuredOverlay"), null);
     env.clean();
 });
 
