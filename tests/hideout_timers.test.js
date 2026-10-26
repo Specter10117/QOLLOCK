@@ -92,14 +92,29 @@ test("urn discovers the native minimap through its owner and follows a living re
     const viewport = $.CreatePanel("Panel", host, "minimap_container");
     const native = $.CreatePanel("Panel", viewport, "HudMinimapContainer");
     const map = $.CreatePanel("Panel", native, "hud_minimap");
+    for (let index = 0; index < 12; index++) $.CreatePanel("Panel", map, "").AddClass("map_button");
+    const unrelated = $.CreatePanel("Panel", map, "");
+    unrelated.AddClass("capture_point"); unrelated.AddClass("koth_warning");
     const warning = $.CreatePanel("Panel", map, "");
     for (const name of ["map_button", "capture_point", "koth_warning"]) warning.AddClass(name);
+    let enumerations = 0, returnedReferences = 0;
+    const enumerate = map.FindChildrenWithClassTraverse;
+    map.FindChildrenWithClassTraverse = function (name) {
+        const result = enumerate.call(this, name);
+        enumerations++; returnedReferences += result.length;
+        return result;
+    };
     const find = hud.root.FindChildTraverse.bind(hud.root);
     let searches = 0;
     hud.root.FindChildTraverse = id => { if (id === "hud_minimap") searches++; return find(id); };
     for (let i = 0; i < 4; i++) { tick(); hud.clock.advance(2100); }
     assert.equal(find("RiftTimer").BHasClass("rift_warning"), true);
     assert.equal(searches, 0, "periodic minimap refresh must not scan the whole HUD with a verified owner");
+    assert.equal(returnedReferences, enumerations * 2, "only capture-point candidates need a returned reference");
+    warning.RemoveClass("koth_warning"); warning.AddClass("active"); tick();
+    assert.equal(find("RiftTimer").BHasClass("rift_active"), true, "capture_point without map_button cannot become a native warning");
+    warning.RemoveClass("active"); warning.AddClass("koth_warning"); tick();
+    assert.equal(find("RiftTimer").BHasClass("rift_warning"), true);
 
     native.id = "RetiredMinimapContainer";
     const replacement = $.CreatePanel("Panel", viewport, "HudMinimapContainer");

@@ -62,8 +62,8 @@
                 }
                 if (!P.isAlive(minimap)) return { warning: false, active: false };
                 let warning = false, isActive = false;
-                for (const button of QOL.utils.FindPanelsByClass(minimap, "map_button")) {
-                    if (!P.isAlive(button) || !button.BHasClass("capture_point")) continue;
+                for (const button of QOL.utils.FindPanelsByClass(minimap, "capture_point")) {
+                    if (!P.isAlive(button) || !button.BHasClass("map_button")) continue;
                     // A warning button wins over an unrelated active capture point.
                     if (button.BHasClass("koth_warning")) warning = true;
                     else if (button.BHasClass("active")) isActive = true;
