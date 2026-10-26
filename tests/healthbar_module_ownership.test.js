@@ -48,14 +48,14 @@ function fixture() {
         const level = add(heartsRoot, "MinecraftXPLevelLabel", [], "Label");
         const totem = add(heartsRoot, "MinecraftTotemContainer");
         const progress = id => {
-            const panel = add(bars, id);
+            const panel = add(border, id);
             panel.actuallayoutheight = 400;
             const middle = add(panel, "", ["ProgressBarMiddle"]);
             middle.actuallayoutheight = 0;
             return middle;
         };
         const heal = progress("pending_incoming_heal"), damage = progress("pending_incoming_damage");
-        return { health, canvas, numbers, group, current, total, frame, backer, bars, heartsRoot,
+        return { health, canvas, numbers, group, current, total, frame, backer, bars, border, heartsRoot,
             hearts, food, shields, bulletCurrent, bulletMax, shieldBox, shieldHearts, xp, level, totem, mcPercent, heal, damage };
     }
     const tree = healthTree();
@@ -160,7 +160,7 @@ test("Minecraft armor follows the native middle fraction and retires its own ico
     const box = env.add(tree.heartsRoot, "MinecraftArmorHeartsContainer");
     const armor = env.add(box, "MinecraftArmorHearts");
     const foreign = env.add(armor, "ForeignArmorChild");
-    const bar = env.add(tree.bars, "ratking_armor_bar");
+    const bar = env.add(tree.border, "ratking_armor_bar");
     bar.actuallayoutheight = 400;
     const middle = env.add(bar, "", ["ProgressBarMiddle"]);
     middle.actuallayoutheight = 100;
@@ -376,6 +376,17 @@ test("Minecraft reads verified native pending bars and keeps damage, healing and
     assert.equal(env.q.healthbar.mc.inspect().healing, true);
     tree.bulletMax.text = "/ 300"; env.clock.advance(80);
     assert.equal(tree.shieldHearts.FindChildrenWithClassTraverse("HeartSlot").filter(panel => panel.style.visibility === "visible").length, 3);
+    const line = tree.border.GetParent();
+    tree.border.SetParent(env.other);
+    const border = env.add(line, "", ["health_bar_border"]);
+    env.clock.advance(80);
+    assert.equal(tree.border.IsValid(), true, "the old native feedback generation remains alive");
+    assert.equal(fills(tree, "HeartFill").filter(panel => panel.BHasClass("full")).length, 5);
+    assert.equal(env.q.healthbar.mc.inspect().healing, false, "missing current bars cannot retain the old healing wave");
+    const damage = env.add(border, "pending_incoming_damage"); damage.actuallayoutheight = 400;
+    env.add(damage, "", ["ProgressBarMiddle"]).actuallayoutheight = 40;
+    env.clock.advance(80);
+    assert.equal(fills(tree, "HeartFill").filter(panel => panel.BHasClass("full")).length, 4, "late feedback binds inside the current native border");
     f.onDisable(); env.clock.advance(1);
     assert.equal(tree.hearts.GetChildCount(), 0);
     assert.equal(tree.shieldHearts.GetChildCount(), 0);

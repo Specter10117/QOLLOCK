@@ -74,7 +74,10 @@ for runtime diagnostics, without exposing mutable controller bookkeeping.
 
 Deferred-damage and incoming-heal fractions use the verified native
 `ProgressBarWithMiddle` parents and their `.ProgressBarMiddle` children. The
-fraction is the child's measured height divided by its parent height (or a
+parents are direct children of `hud_health_bars > .health_bar_line >
+.health_bar_border`, shared by pending damage, pending healing and Rat King armor.
+Replacing this native owner invalidates the previous feedback generation.
+The fraction is the child's measured height divided by its parent height (or a
 percentage height before layout). Historical guessed `*_Middle` IDs are no longer
 queried. Verify both overlays and their healing/blink timing after compilation;
 offline tests prove source routing and lifecycle, not native progress rendering.

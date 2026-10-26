@@ -129,6 +129,9 @@
             const xpBox = P.findChild(heartsRoot, "MinecraftXPBarContainer");
             const hotbar = P.findChild(heartsRoot, "MinecraftHotbarContainer");
             const content = P.findChild(canvas, "HealthBarContent");
+            const bars = P.findChild(content || canvas, "hud_health_bars");
+            const barLine = P.findChildByClass(bars, "health_bar_line");
+            const barBorder = P.findChildByClass(barLine, "health_bar_border");
             const numbersBox = P.findChild(heartsBox, "MinecraftHeartsHealthNumbersContainer");
             const numbers = P.findChild(numbersBox, "MinecraftHeartsHealthNumbers");
             return {
@@ -138,7 +141,7 @@
                 shieldHearts: P.findChild(shieldBox, "MinecraftShieldHearts"),
                 food: P.findChild(heartsBox, "MinecraftFoodContainer") || P.findChild(heartsRoot, "MinecraftFoodContainer"),
                 nativeNumbers: P.findChild(canvas, "HealthRegenAndTotal"),
-                bars: P.findChild(content || canvas, "hud_health_bars"),
+                bars, barBorder,
                 shields: P.findChild(content || canvas, "HudShieldsContainer"),
                 percent: P.findChild(numbers || heartsBox || canvas, "MinecraftHealthPercent"),
                 xpFill: P.findChild(xpBox || heartsRoot, "MinecraftXPBarFill"),
@@ -604,8 +607,8 @@
         // their .ProgressBarMiddle children in native hud_health.css. Historical
         // guessed "*_Middle" IDs are not a Panorama contract.
         function readPendingFraction(hudRoot, id) {
-            const bar = P.findChild(sources && sources.bars, id);
-            const middle = U.FindFirstPanelByClass(bar, "ProgressBarMiddle");
+            const bar = P.findChild(sources && sources.barBorder, id);
+            const middle = P.findChildByClass(bar, "ProgressBarMiddle");
             if (!P.isAlive(bar) || !P.isAlive(middle)) return 0;
             const part = Number(middle.actuallayoutheight);
             const whole = Number(bar.actuallayoutheight);

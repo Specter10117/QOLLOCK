@@ -22,8 +22,11 @@ function healthTree(env, healing) {
     $.CreatePanel("Label", health, "totalHealthOverHearts").text = "1000";
     $.CreatePanel("Panel", health, "HudShieldsContainer");
     $.CreatePanel("Panel", health, "MinecraftTotemContainer");
-    $.CreatePanel("Panel", health, "hud_health_bars");
-    const healBar = healing ? $.CreatePanel("Panel", health.FindChild("hud_health_bars"), "pending_incoming_heal") : null;
+    const content = $.CreatePanel("Panel", health, "HealthBarContent");
+    const bars = $.CreatePanel("Panel", content, "hud_health_bars");
+    const line = $.CreatePanel("Panel", bars, ""); line.AddClass("health_bar_line");
+    const border = $.CreatePanel("Panel", line, ""); border.AddClass("health_bar_border");
+    const healBar = healing ? $.CreatePanel("Panel", border, "pending_incoming_heal") : null;
     if (healBar) healBar.actuallayoutheight = 400;
     const heal = healing ? $.CreatePanel("Panel", healBar, "") : null;
     if (heal) { heal.AddClass("ProgressBarMiddle"); heal.actuallayoutheight = 0; }
