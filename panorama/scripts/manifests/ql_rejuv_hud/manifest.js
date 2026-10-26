@@ -39,10 +39,6 @@
             const chargesResolver = makeResolver("RejuvenatorCharges", [{ id: "TopBar", optional: true }]);
             const mapResolvers = ["hud_minimap", "minimap_persp"].map(id => makeResolver(id, [], 10000));
             const outputs = new Map();
-            const outputResolvers = new Map(Object.keys(OUTPUTS).map(key => {
-                const path = OUTPUTS[key];
-                return [key, makeResolver(path[path.length - 1], path.slice(0, -1), 2500)];
-            }));
             let active = false, settings = null, root = null, loop = null, unsubscribe = null;
             let chargeOwner = null, mapOwner = null, midBoss = null, nextMidBossSearch = 0;
             let tracker = resetTracker();
@@ -184,13 +180,14 @@
             function release() {
                 for (const [key, panel] of outputs) releaseOutput(key, panel);
                 outputs.clear();
-                for (const resolver of [...outputResolvers.values(), ...mapResolvers, topResolver, legacyTopResolver, chargesResolver]) resolver.reset();
+                for (const resolver of [...mapResolvers, topResolver, legacyTopResolver, chargesResolver]) resolver.reset();
                 chargeOwner = null; mapOwner = null; midBoss = null; nextMidBossSearch = 0;
                 presentation = null;
             }
 
             function resolveOutput(key, top) {
-                const panel = outputResolvers.get(key).resolve(top || root);
+                let panel = top;
+                for (const id of OUTPUTS[key]) panel = P.findChild(panel, id);
                 const previous = outputs.get(key);
                 if (previous !== panel) { releaseOutput(key, previous); outputs.set(key, panel); }
                 return panel;

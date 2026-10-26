@@ -12,6 +12,10 @@ It must not mutate the snapshot or retain the producer's native handles.
 The minimap rejuvenator toggle also enables the producer when its HUD toggles
 are off; root presentation classes govern those HUD panels independently.
 Hideout, Street Brawl, disable and a new match reset the published phase.
+Rejuvenator and buff readouts follow the shipped direct-child paths under the
+current TopBar. Missing parents or labels wait for that local subtree; similarly
+named panels in other components cannot become readout fallbacks. Living
+replacement labels receive the current phase text and presentation.
 
 The minimap timer instance derives geometry settings in its settings hooks and
 reconciles native objective/clock evidence at its existing cadence. It waits for

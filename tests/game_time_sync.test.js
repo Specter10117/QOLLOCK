@@ -12,7 +12,7 @@ test("buff, minimap and Rift countdowns update on the same observed game second"
     const top = $.CreatePanel("Panel", hud.root, "TopBar");
     const clockLabel = $.CreatePanel("Label", top, "GameTime");
     clockLabel.text = "12:00";
-    const buffLabel = $.CreatePanel("Label", top, "BuffTime");
+    const buffLabel = $.CreatePanel("Label", $.CreatePanel("Panel", top, "Buff"), "BuffTime");
     const persp = $.CreatePanel("Panel", hud.root, "minimap_persp");
     const container = $.CreatePanel("Panel", persp, "minimap_container");
     $.CreatePanel("Panel", container, "hud_minimap");

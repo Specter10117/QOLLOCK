@@ -302,6 +302,33 @@ test("rejuv retains a capture through an unknown charge-source gap and updates a
     assert.deepEqual(env.hud.clock.errors, []);
 });
 
+test("rejuv readouts follow shipped owners and ignore same-ID panels in another component", () => {
+    const env = fixture(), { top, gameTime } = addTopbar(env);
+    const source = addCapture(env, top);
+    source.panel.SetParent(env.add(top, "UnrelatedTimerComponent")); source.label.text = "foreign";
+    let broadLookups = 0;
+    const find = top.FindChildTraverse;
+    top.FindChildTraverse = function (id) {
+        if (id === "RejuvBuff" || id === "RejuvTimeBuff") broadLookups++;
+        return find.call(this, id);
+    };
+    env.config({ ENABLE_BUFF_HUD: 1 }); env.hud.clock.advance(300);
+    assert.equal(source.label.text, "foreign", "another component's same-ID readout is never adopted");
+    assert.equal(source.panel.style.opacity, undefined);
+    const panel = env.add(top, "RejuvBuff"), label = env.text(panel, "RejuvTimeBuff", "pending");
+    env.hud.clock.advance(300);
+    assert.equal(label.text, "3:00"); assert.equal(panel.style.opacity, "1.00");
+    label.SetParent(env.retired);
+    const replacement = env.text(panel, "RejuvTimeBuff", "pending"); gameTime.text = "20:01";
+    env.hud.clock.advance(600);
+    assert.equal(replacement.text, "2:59"); assert.equal(label.text, "3:00");
+    assert.equal(source.label.text, "foreign");
+    assert.equal(broadLookups, 0, "late and replaced readouts stay inside their shipped direct owners");
+    env.config({ ENABLE_BUFF_HUD: 0 });
+    assert.equal(panel.style.opacity, "0.00"); assert.equal(source.panel.style.opacity, undefined);
+    assert.deepEqual(env.hud.clock.errors, []);
+});
+
 test("rejuv publishes scalar phase state for the minimap-only consumer and resets at match transitions", () => {
     const env = fixture();
     const { top, gameTime } = addTopbar(env);
