@@ -52,7 +52,8 @@
         let window = emptyWindow();
         let stopped = false;
         const entry = id => {
-            const key = rows.has(id) || rows.size < 127 ? (id || "<anonymous>") : "<other>";
+            const owner = id || "<anonymous>";
+            const key = rows.has(owner) || rows.size < 127 ? owner : "<other>";
             if (!rows.has(key)) rows.set(key, { id: key, polls: 0, once: 0, callbackMs: 0,
                 maxCallbackMs: 0, maxDelayMs: 0, errors: 0, startPolls: 0, peakPolls: 0,
                 endPolls: 0, startOnce: 0, peakOnce: 0, endOnce: 0 });

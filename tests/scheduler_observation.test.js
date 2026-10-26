@@ -108,3 +108,20 @@ test("observation bounds owner cardinality and preserves overflow totals", () =>
     assert.equal(rows.length, 128);
     assert.equal(rows.reduce((total, row) => total + row.once, 0), 200);
 });
+
+test("observation retains the anonymous owner after reaching its row limit", () => {
+    const env = setup();
+    const observation = env.S.startWorkObservation();
+    env.S.scheduleOnce(() => {}, 0);
+    env.fire(0);
+    for (let i = 0; i < 126; i++) env.S.scheduleOnce(() => {}, 0, `owner_${i}`);
+    env.S.scheduleOnce(() => {}, 0);
+    env.S.scheduleOnce(() => {}, 0, "");
+    env.S.scheduleOnce(() => {}, 0, "overflow");
+    for (let i = 1; i <= 129; i++) env.fire(i);
+    const rows = observation.stop();
+    assert.equal(rows.length, 128);
+    assert.equal(rows.find(row => row.id === "<anonymous>").once, 3);
+    assert.equal(rows.find(row => row.id === "<other>").once, 1);
+    assert.equal(rows.reduce((total, row) => total + row.once, 0), 130);
+});
