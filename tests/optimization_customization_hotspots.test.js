@@ -190,3 +190,35 @@ test("stat batch discovery keeps native duplicate priority and recovers from int
     assert.equal(read(), "Max Health: 400", "partial enumeration cannot freeze or publish a false miss");
     env.feature.onDisable(); assert.deepEqual(env.hud.clock.errors, []);
 });
+
+test("stat bonus breakdown reads each row name once while following live boon values", () => {
+    const env = fixture("ql_stat_bonuses", { ENABLE_STAT_BONUSES: 1 });
+    const owner = env.add(env.core, "CitadelHudHeroShop");
+    const health = env.add(owner, "StatContainer_MaxHealth");
+    const breakdown = env.add(health, "StatsBreakdownContainer");
+    const row = (name, value) => {
+        const panel = env.add(breakdown, "");
+        env.add(panel, "", ["StatName"], "Label").text = name;
+        const amount = env.add(panel, "", ["StatValue"], "Label");
+        amount.text = value;
+        return { panel, amount };
+    };
+    row("Items", "+900");
+    const boons = row("Boons", "+25");
+    let nameReads = 0;
+    const find = env.Q.utils.FindFirstPanelByClass;
+    env.Q.utils.FindFirstPanelByClass = (panel, cls) => {
+        if (panel?.GetParent() === breakdown && cls === "StatName") nameReads++;
+        return find(panel, cls);
+    };
+    env.feature.onEnable();
+    const read = () => env.hud.root.FindChildTraverse("QOLStatBonusesMaxHealth").text;
+    assert.equal(read(), "Max Health: +25");
+    nameReads = 0;
+    boons.amount.text = "+30";
+    env.feature.onSettingsChanged();
+    assert.equal(read(), "Max Health: +30", "the cached keys never cache native row content");
+    assert.equal(nameReads, 2, "each unrelated/boon row needs only one native name lookup");
+    env.feature.onDisable();
+    assert.deepEqual(env.hud.clock.errors, []);
+});

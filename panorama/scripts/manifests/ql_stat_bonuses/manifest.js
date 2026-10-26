@@ -6,7 +6,7 @@
     "use strict";
     const P = QOL.core.panel;
     const BREAKDOWN_ID = "StatsBreakdownContainer";
-    const GOLDEN_KEYS = ["#citadel_shopstats_goldenstatues", "golden statues", "#citadel_shopstats_boons", "boons"];
+    const GOLDEN_KEYS = ["goldenstatues", "boons"];
     const STAT_DEFS = [
         { key: "fireRate", ids: ["StatContainer_FireRate"], labelId: "QOLStatBonusesFireRate", prefix: "Fire Rate: " },
         { key: "abilityCooldown", ids: ["StatContainer_TechCooldown", "StatContainer_AbilityCooldown",
@@ -58,7 +58,10 @@
     const textById = (panel, id) => text(P.findTraverse(panel, id));
     const textByClass = (panel, cls) => text(QOL.utils.FindFirstPanelByClass(panel, cls));
     const normalizeKey = value => String(value || "").toLowerCase().replace(/[^a-z0-9#]+/g, "");
-    const goldenRow = row => GOLDEN_KEYS.some(key => normalizeKey(textByClass(row, "StatName")).includes(normalizeKey(key)));
+    const goldenRow = row => {
+        const name = normalizeKey(textByClass(row, "StatName"));
+        return GOLDEN_KEYS.some(key => name.includes(key));
+    };
 
     function tokenFromTree(panel, maxNodes = 25) {
         const queue = [panel];
