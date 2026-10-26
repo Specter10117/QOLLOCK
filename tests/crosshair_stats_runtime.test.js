@@ -117,19 +117,35 @@ test("crosshair reconciles row siblings in one pass and replaces a moved owned r
     enableActiveStats(Q); hud.clock.advance(300);
     const overlay = hud.root.FindChildTraverse("QOLCrosshairStatsOverlay");
     const find = overlay.FindChild;
-    let individualLookups = 0;
+    let individualLookups = 0, overlayLookups = 0, contentReads = 0;
+    const findOverlay = hud.gameplay.FindChild, findSource = hud.core.FindChild;
+    hud.gameplay.FindChild = function (id) {
+        if (id === "QOLCrosshairStatsOverlay") overlayLookups++;
+        return findOverlay.call(this, id);
+    };
+    hud.core.FindChild = function (id) {
+        if (id === "hudActivePlayerStats") contentReads++;
+        return findSource.call(this, id);
+    };
     overlay.FindChild = function (id) {
         if (id.startsWith("QOLCrosshairStatRow_")) individualLookups++;
         return find.call(this, id);
     };
     hud.clock.advance(500);
     assert.equal(individualLookups, 0, "row construction must not search the same sibling list once per stat");
+    assert.ok(contentReads > 0, "the normal live update path was exercised");
+    assert.equal(overlayLookups, contentReads, "the owned tree resolves the overlay once per content update");
     const old = row(hud.root, "fireRate");
     old.SetParent($.CreatePanel("Panel", null, "RetiredRows"));
     hud.clock.advance(200);
     assert.equal(old.IsValid(), false);
     assert.notEqual(row(hud.root, "fireRate"), old);
     assert.equal(value(hud.root, "fireRate").text, "+10%");
+    overlay.SetParent($.CreatePanel("Panel", null, "RetiredOverlay"));
+    hud.clock.advance(200);
+    assert.equal(overlay.IsValid(), false, "the owned tree retires a moved overlay without an extra lookup");
+    assert.notEqual(hud.root.FindChildTraverse("QOLCrosshairStatsOverlay"), overlay);
+    assert.equal(value(hud.root, "fireRate").text, "+10%", "the replacement receives the current native content");
     Q.core.FeatureRegistry.disable("ql_crosshair_stats"); hud.clock.advance(20);
     assert.equal(hud.root.FindChildTraverse("QOLCrosshairStatsOverlay"), null);
     assert.deepEqual(hud.clock.errors, []);

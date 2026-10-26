@@ -293,7 +293,7 @@
                 tree.sweep();
                 const parent = P.findChild(core, "gameplay_hud");
                 if (!_isAlive(parent)) { removeOverlay(); return false; }
-                if (overlayParent !== parent || !_isDirectChild(overlay, parent)) {
+                if (overlayParent !== parent) {
                     removeOverlay();
                     overlayParent = parent;
                 }
