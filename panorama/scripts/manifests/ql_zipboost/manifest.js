@@ -27,10 +27,8 @@
             const presentation = P.createNativeStyleOwner();
             const hintResolvers = ["citadel_ability_zipline_boost_", "citadel_ability_zipline_boost"].map(id =>
                 QOL.panelCache.createIdResolver(id, { retryMs: SEARCH_MS }));
-            const effectsResolver = QOL.panelCache.createIdResolver("StatusEffects", { retryMs: SEARCH_MS });
-            const rootEffectsResolver = QOL.panelCache.createIdResolver("StatusEffects", { retryMs: SEARCH_MS });
             let running = false, rootOwner = null, loop = null, model = null, overlay = null, titleLabel = null, stateLabel = null;
-            let source = null, sourceScope = null, fallbackSource = null, statusEffects = null, nextSourceSearchMs = 0;
+            let sourceScope = null, fallbackSource = null, nextSourceSearchMs = 0;
             let activeEndMs = 0, cooldownEndMs = 0, wasInUse = false, lastState = null, readyFlashUntilMs = 0;
 
             function readModel() {
@@ -47,6 +45,13 @@
                 for (const resolver of hintResolvers) {
                     const current = resolver.resolve(scope);
                     if (current) return current;
+                }
+                if (fallbackSource) {
+                    let owner = fallbackSource;
+                    for (let depth = 0; depth < 64 && P.isAlive(owner) && owner !== scope; depth++) owner = owner.GetParent();
+                    if (owner !== scope || !P.hasClassToken(fallbackSource, "citadel_ability_zipline_boost")) {
+                        fallbackSource = null; nextSourceSearchMs = 0;
+                    }
                 }
                 if (now >= nextSourceSearchMs) {
                     fallbackSource = QOL.utils.FindFirstPanelByClass(scope, "citadel_ability_zipline_boost");
@@ -90,16 +95,15 @@
                 tree.clear();
                 overlay = null; titleLabel = null; stateLabel = null;
                 if (resetTracking) {
-                    rootOwner = null; source = null; sourceScope = null; fallbackSource = null; statusEffects = null; nextSourceSearchMs = 0;
-                    gameplayResolver.reset(); effectsResolver.reset(); rootEffectsResolver.reset();
+                    rootOwner = null; sourceScope = null; fallbackSource = null; nextSourceSearchMs = 0;
+                    gameplayResolver.reset();
                     for (const resolver of hintResolvers) resolver.reset();
                     activeEndMs = 0; cooldownEndMs = 0; wasInUse = false; lastState = null; readyFlashUntilMs = 0;
                 }
             }
 
-            function ensureOverlay(root) {
+            function ensureOverlay(parent) {
                 tree.sweep();
-                const parent = gameplayResolver.resolve(root);
                 if (!P.isAlive(parent)) { release(false); return false; }
                 if (!P.isAlive(overlay) || overlay.GetParent() !== parent) {
                     release(false);
@@ -118,7 +122,8 @@
                 const root = P.findHud($.GetContextPanel());
                 if (!P.isAlive(root) || (root.id !== "Hud" && root.paneltype !== "CitadelHud") || !model.enabled) { release(); return; }
                 if (rootOwner !== root) { release(); rootOwner = root; }
-                if (!ensureOverlay(root)) return;
+                const gameplay = gameplayResolver.resolve(root);
+                if (!ensureOverlay(gameplay)) return;
                 const inHideout = H.isInHideout(root);
                 P.setClass(overlay, "qol-hidden", inHideout);
                 if (inHideout) {
@@ -128,9 +133,12 @@
                 }
                 presentation.apply(overlay, QOL.presentation.visibilityStyles("zipBoost", QOL.presentation.visibilityConfig(ctx), root, model.styles));
                 const now = QOL.utils.PerfNowMs();
-                const gameplay = gameplayResolver.resolve(root) || root;
-                source = findSource(gameplay, now);
-                statusEffects = effectsResolver.resolve(gameplay) || rootEffectsResolver.resolve(root);
+                // hud.xml and the October 3 capture place these owners under
+                // the alive HUD. Hint placement within its buckets is dynamic.
+                const alive = P.findChild(gameplay, "gameplay_hud_alive");
+                const hints = P.findChild(P.findChild(alive, "crosshair"), "button_hints_container");
+                const source = findSource(hints, now);
+                const statusEffects = P.findChild(alive, "StatusEffects");
                 const buff = P.findTraverse(statusEffects, "status_citadel_ability_zipline_boost");
                 const buttonReady = P.isAlive(source) && source.BHasClass("active");
                 const buttonInUse = P.isAlive(source) && source.BHasClass("in_use");

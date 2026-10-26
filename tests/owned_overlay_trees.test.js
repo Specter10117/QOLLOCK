@@ -23,7 +23,10 @@ function fixture(owner) {
     const scene = (root = env.doc.root) => {
         const core = add(root, ""); core.AddClass("HudCore");
         const gameplay = add(core, "gameplay_hud"), top = add(core, "TopBar"); label(top, "GameTime", "0:00");
-        const hint = add(gameplay, "citadel_ability_zipline_boost_"); hint.AddClass("active"); add(gameplay, "StatusEffects");
+        const alive = add(gameplay, "gameplay_hud_alive"), crosshair = add(alive, "crosshair");
+        const hints = add(crosshair, "button_hints_container", "Citadel_AbilityHUDElement_ButtonHint");
+        const bucket = add(add(hints, "RightContainer"), ""); bucket.AddClass("priority_bucket");
+        const hint = add(bucket, "citadel_ability_zipline_boost_"); hint.AddClass("active"); add(alive, "StatusEffects");
         const stats = add(core, "StatsAndModsContainer"), lower = add(stats, "LowerLeft"), gold = add(lower, "gold_and_ap_container");
         const container = add(add(gold, "hudGoldContainer"), ""); container.AddClass("hudDeathGoldContainer");
         const amount = label(container, "hudDeathGoldLabel", "500"); amount.AddClass("death_penalty_gold");

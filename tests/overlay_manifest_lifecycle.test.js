@@ -27,6 +27,14 @@ function fixture() {
     return { hud, Q, $, core, gameplay, add, label, config, find, clean };
 }
 
+function zipSources(env) {
+    const alive = env.add(env.gameplay, "gameplay_hud_alive");
+    const crosshair = env.add(alive, "crosshair");
+    const hints = env.$.CreatePanel("Citadel_AbilityHUDElement_ButtonHint", crosshair, "button_hints_container");
+    const bucket = env.add(env.add(hints, "RightContainer"), "", ["priority_bucket"]);
+    return { alive, crosshair, hints, bucket, effects: env.add(alive, "StatusEffects") };
+}
+
 test("small CSS features project the complete configuration and add no feature polls", () => {
     const env = fixture();
     const { Q, hud, core, add, config } = env;
@@ -177,10 +185,11 @@ test("combat overlay preserves indicator history, recovers owned labels and tran
 
 test("zip boost distinguishes a ready hint from active buff and preserves cooldown through overlay replacement", () => {
     const env = fixture();
-    const { hud, Q, gameplay, add, label, config, find } = env;
-    const hint = add(gameplay, "citadel_ability_zipline_boost_", ["active"]);
+    const { hud, Q, add, label, config, find } = env;
+    const native = zipSources(env);
+    const hint = add(native.bucket, "citadel_ability_zipline_boost_", ["active"]);
     const context = label(hint, "context_label", "42s");
-    const effects = add(gameplay, "StatusEffects");
+    const effects = native.effects;
     config({ ENABLE_ZIP_BOOST: 1, ZIP_BOOST_SCALE: 150, ZIP_BOOST_X_OFFSET: 80, ZIP_BOOST_Y_OFFSET: 60 });
     const first = find("QOLZipBoostOverlay");
     assert.equal(first.BHasClass("in_use"), false);
@@ -461,21 +470,61 @@ test("better unsecured uses current native amount and caption owners through gap
 
 test("zip boost replaces living hints and status containers with the current gameplay sources", () => {
     const env = fixture();
-    const { hud, $, gameplay, add, label, config, find } = env;
-    const oldHint = add(gameplay, "citadel_ability_zipline_boost_", ["on_cooldown"]);
+    const { hud, $, add, label, config, find } = env;
+    const native = zipSources(env);
+    const oldHint = add(native.bucket, "citadel_ability_zipline_boost_", ["on_cooldown"]);
     label(oldHint, "context_label", "42s");
-    const oldEffects = add(gameplay, "StatusEffects");
+    const oldEffects = native.effects;
     add(oldEffects, "status_citadel_ability_zipline_boost");
     config({ ENABLE_ZIP_BOOST: 1 });
     assert.match(find("QOLZipBoostState").text, /^ACTIVE /);
     const detached = $.CreatePanel("Panel", null, "DetachedZipSources");
     oldHint.SetParent(detached); oldEffects.SetParent(detached);
-    add(gameplay, "citadel_ability_zipline_boost_", ["active"]);
-    add(gameplay, "StatusEffects");
+    add(native.bucket, "citadel_ability_zipline_boost_", ["active"]);
+    add(native.alive, "StatusEffects");
     hud.clock.advance(1800);
     assert.equal(find("QOLZipBoostState").text, "READY");
     assert.equal(oldHint.IsValid(), true); assert.equal(oldEffects.IsValid(), true);
     env.clean();
+});
+
+test("zip boost ignores other components and follows the current native hint and effect owners", () => {
+    const env = fixture(), { hud, gameplay, add, label, config, find } = env;
+    const foreign = add(gameplay, "OtherComponent");
+    add(foreign, "citadel_ability_zipline_boost_", ["in_use"]);
+    add(add(foreign, "StatusEffects"), "status_citadel_ability_zipline_boost");
+    const native = zipSources(env);
+    config({ ENABLE_ZIP_BOOST: 1 });
+    assert.equal(find("QOLZipBoostState").text, "READY", "unrelated hints and status containers cannot supply active evidence");
+    const hint = add(native.bucket, "citadel_ability_zipline_boost_", ["on_cooldown"]);
+    label(hint, "context_label", "42s");
+    hud.clock.advance(1800);
+    assert.equal(find("QOLZipBoostState").text, "COOLDOWN 42s");
+    add(native.effects, "status_citadel_ability_zipline_boost"); hud.clock.advance(500);
+    assert.equal(find("QOLZipBoostOverlay").BHasClass("in_use"), true);
+    const retired = add(gameplay, "RetiredHintAndEffects");
+    native.hints.SetParent(retired); native.effects.SetParent(retired);
+    const hints = env.$.CreatePanel("Citadel_AbilityHUDElement_ButtonHint", native.crosshair, "button_hints_container");
+    // Placement can move between the XML's directional containers/buckets.
+    const bucket = add(add(hints, "LeftContainer"), "", ["priority_bucket"]);
+    add(bucket, "citadel_ability_zipline_boost_", ["active"]);
+    add(native.alive, "StatusEffects"); hud.clock.advance(500);
+    assert.equal(find("QOLZipBoostState").text, "READY");
+    assert.equal(find("QOLZipBoostOverlay").BHasClass("in_use"), false);
+    env.Q.core.FeatureRegistry.disable("ql_zipboost"); hud.clock.advance(20);
+    assert.ok(!find("QOLZipBoostOverlay")); env.clean();
+});
+
+test("zip boost cannot retain a living class-fallback hint outside the current hint owner", () => {
+    const env = fixture(), native = zipSources(env);
+    const old = env.add(native.bucket, "", ["citadel_ability_zipline_boost", "in_use"]);
+    env.config({ ENABLE_ZIP_BOOST: 1 });
+    assert.equal(env.find("QOLZipBoostOverlay").BHasClass("in_use"), true);
+    old.SetParent(env.add(env.gameplay, "RetiredClassHint"));
+    env.add(native.bucket, "", ["citadel_ability_zipline_boost", "active"]);
+    env.hud.clock.advance(500);
+    assert.equal(env.find("QOLZipBoostState").text, "READY");
+    env.Q.core.FeatureRegistry.disable("ql_zipboost"); env.hud.clock.advance(20); env.clean();
 });
 
 test("stat source replacement within a living owner releases the previous explicit bonus", () => {

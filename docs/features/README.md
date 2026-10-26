@@ -40,7 +40,7 @@ tables, CSS values, test history or general verification caveats into it.
 | [ql_stats_position](../../panorama/scripts/manifests/ql_stats_position/manifest.js) | Native stats placement and separate normal/scoreboard visibility. |
 | [ql_damage_impact](../../panorama/scripts/manifests/ql_damage_impact/manifest.js) | Native directional damage indicator styling. |
 | [ql_sigflash](../../panorama/scripts/manifests/ql_sigflash/manifest.js) | Flash on pressing an unavailable signature ability; shares `ENABLE_PASSIVE_COOLDOWN` and has no public Sigflash toggle. |
-| [ql_zipboost](../../panorama/scripts/manifests/ql_zipboost/manifest.js) | Zip boost state/countdown; preserve distinction between hint visibility and active boost. |
+| [ql_zipboost](../../panorama/scripts/manifests/ql_zipboost/manifest.js) | Zip boost state/countdown; preserve distinction between hint visibility and active boost. Hints stay within the current `gameplay_hud_alive > crosshair > button_hints_container`; effects use the same alive owner's direct `StatusEffects`. Directional/priority placement remains dynamic, and living retired hint/effect components cannot supply evidence. |
 | [ql_spm](../../panorama/scripts/manifests/ql_spm/manifest.js) | Intentionally inactive souls-per-minute compatibility manifest. |
 | [ql_combat_status](../../panorama/scripts/manifests/ql_combat_status/manifest.js) | Text combat status/timer, independent of the healthbar indicator. |
 | [ql_combat_indicator](../../panorama/scripts/manifests/ql_combat_indicator/manifest.js) | Native healthbar/root indicator classes with private recovery history and source retirement. |
