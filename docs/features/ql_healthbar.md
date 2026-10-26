@@ -53,9 +53,13 @@ must reset image and style signatures. Hideout can still display FG in hero
 testing. Shared native healthbar position, scale, opacity and accent settings
 also apply there, while animated variant work that needs match health data stops.
 Replaced native frame panels must receive the current accent even when its value
-is unchanged. FG and Klutz hide native health division lines. FG also hides the
-health-container modifier icons; the native crosshair statuses keep their own
-presentation.
+is unchanged. Accent discovery follows the native `HealthBarContent > hud_health_bars >
+.health_bar_line > .health_bar_border > health_bar_frame` and
+`HealthRegenAndTotal > .healthContainer > .healthBacker` owners directly, including
+the shipped geometry canvas and the captured native number-container placement.
+Generated heart content is outside those owners. FG and Klutz hide native health
+division lines. FG also hides the health-container modifier icons; the native
+crosshair statuses keep their own presentation.
 
 Minecraft Hearts has a different layout and animation path from the native
 bar. Do not generalize geometry or performance results from mode 0 to it.

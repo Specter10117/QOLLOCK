@@ -24,7 +24,8 @@ function fixture() {
         const canvas = add(health, "QOLHealthbarGeometry");
         const content = add(canvas, "HealthBarContent");
         const bars = add(content, "hud_health_bars");
-        const border = add(bars, "", ["health_bar_border"]);
+        const line = add(bars, "", ["health_bar_line"]);
+        const border = add(line, "", ["health_bar_border"]);
         const frame = add(border, "health_bar_frame");
         const shields = add(content, "HudShieldsContainer");
         const numbers = add(canvas, "HealthRegenAndTotal");
@@ -68,6 +69,36 @@ function start(env, cfg) {
     return f;
 }
 function fills(tree, className) { return tree.hearts.FindChildrenWithClassTraverse(className); }
+
+for (const layout of ["geometry", "captured"]) test(`accent follows native ${layout} owners without walking heart content`, () => {
+    const env = fixture(), { tree } = env;
+    if (layout === "captured") {
+        const content = tree.canvas.FindChild("HealthBarContent");
+        content.SetParent(tree.health); tree.numbers.SetParent(content); tree.canvas.SetParent(env.other);
+    }
+    const foreign = env.add(tree.heartsRoot, "", ["healthBacker"]);
+    let broadLookups = 0;
+    for (const method of ["FindChildTraverse", "FindChildrenWithClassTraverse"]) {
+        const find = tree.health[method];
+        tree.health[method] = function (...args) { broadLookups++; return find.apply(this, args); };
+    }
+    const accent = env.q.healthbar.accent.create({ id: "ql_healthbar" });
+    const cfg = { PLAYER_HEALTHBAR_ACCENT_COLOR: 3 }, color = env.q.core.panel.resolvePaletteColor(3);
+    accent.update(env.root, cfg, tree.health); env.clock.advance(20);
+    assert.equal(tree.frame.style.washColor, color); assert.equal(tree.backer.style.washColor, color);
+    assert.equal(foreign.style.washColor, undefined, "generated content is outside the native accent owners");
+    const border = tree.frame.GetParent();
+    tree.frame.SetParent(env.other); tree.backer.SetParent(env.other);
+    accent.update(env.root, cfg, tree.health); env.clock.advance(20);
+    assert.equal(tree.frame.style.washColor, undefined); assert.equal(tree.backer.style.washColor, undefined);
+    const frame = env.add(border, "health_bar_frame"), backer = env.add(tree.group, "", ["healthBacker"]);
+    accent.update(env.root, cfg, tree.health); env.clock.advance(20);
+    assert.equal(frame.style.washColor, color); assert.equal(backer.style.washColor, color);
+    assert.equal(broadLookups, 0, "native target replacement stays on the verified direct paths");
+    accent.release();
+    assert.equal(frame.style.washColor, undefined); assert.equal(backer.style.washColor, undefined);
+    assert.deepEqual(env.clock.errors, []);
+});
 
 test("Minecraft food reads signed native stamina arcs and prefers dash over ability charges", () => {
     const env = fixture();

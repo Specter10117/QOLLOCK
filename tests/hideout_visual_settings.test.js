@@ -9,7 +9,11 @@ test("healthbar accent and native position react in hideout and reset", () => {
     hud.assertLoaded();
     const { $, QOL: Q } = hud.sandbox.global;
     const container = $.CreatePanel("Panel", hud.root, "health_and_abilities_container");
-    const frame = $.CreatePanel("Panel", container, "health_bar_frame");
+    const content = $.CreatePanel("Panel", container, "HealthBarContent");
+    const bars = $.CreatePanel("Panel", content, "hud_health_bars");
+    const line = $.CreatePanel("Panel", bars, ""); line.AddClass("health_bar_line");
+    const border = $.CreatePanel("Panel", line, ""); border.AddClass("health_bar_border");
+    const frame = $.CreatePanel("Panel", border, "health_bar_frame");
     Q.core.ConfigStore.set("ql_healthbar", "PLAYER_HEALTHBAR_X_OFFSET", 100);
     Q.core.ConfigStore.set("ql_healthbar", "PLAYER_HEALTHBAR_ACCENT_COLOR", 3);
     hud.clock.advance(600);
@@ -18,7 +22,7 @@ test("healthbar accent and native position react in hideout and reset", () => {
 
     frame.DeleteAsync(0);
     hud.clock.advance(1);
-    const replacement = $.CreatePanel("Panel", container, "health_bar_frame");
+    const replacement = $.CreatePanel("Panel", border, "health_bar_frame");
     hud.clock.advance(600);
     assert.equal(replacement.style.washColor, Q.core.panel.resolvePaletteColor(3));
 

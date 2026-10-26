@@ -15,7 +15,12 @@ function setup() {
         const core = add(env.root, ""); core.AddClass("HudCore");
         const gameplay = add(core, "gameplay_hud");
         const panel = add(gameplay, "health_and_abilities_container");
-        return { core, panel, frame: add(panel, "health_bar_frame") };
+        const content = add(panel, "HealthBarContent"), bars = add(content, "hud_health_bars");
+        const line = add(bars, ""); line.AddClass("health_bar_line");
+        const border = add(line, ""); border.AddClass("health_bar_border");
+        const numbers = add(content, "HealthRegenAndTotal");
+        const group = add(numbers, ""); group.AddClass("healthContainer");
+        return { core, panel, group, frame: add(border, "health_bar_frame") };
     };
     const cursor = () => { GameUI.GetCursorPosition = () => ({ x: 200, y: 300 }); env.doc.root.AddClass("gShopOpen"); };
     return { ...env, Q, add, feature, health, cursor };
@@ -41,7 +46,7 @@ function rejectCursor(panel) {
 }
 
 test("accent resolves unchanged configuration once while native targets remain reactive", () => {
-    const env = setup(), { panel, frame } = env.health();
+    const env = setup(), { panel, frame, group } = env.health();
     const accent = env.Q.healthbar.accent.create({ id: "ql_healthbar" });
     const cfg = { PLAYER_HEALTHBAR_ACCENT_COLOR: env.Q.utils.EncodeHexColor("#123ABC") };
     const resolve = env.Q.core.panel.resolvePaletteColor;
@@ -54,7 +59,7 @@ test("accent resolves unchanged configuration once while native targets remain r
     frame.style.washColor = "native";
     accent.update(env.root, cfg, panel);
     assert.equal(frame.style.washColor, "#123ABC");
-    const backer = env.add(panel, "LateBacker"); backer.AddClass("healthBacker");
+    const backer = env.add(group, "LateBacker"); backer.AddClass("healthBacker");
     accent.update(env.root, cfg, panel); env.clock.advance(20);
     assert.equal(backer.style.washColor, "#123ABC");
     assert.equal(resolutions, 1);

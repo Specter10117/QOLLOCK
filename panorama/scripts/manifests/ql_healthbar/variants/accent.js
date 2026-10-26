@@ -28,13 +28,16 @@
 
         function discover(health) {
             if (!P.isAlive(health)) return [];
-            const panels = new Set();
-            const frame = P.findTraverse(health, "health_bar_frame");
-            if (P.isAlive(frame)) panels.add(frame);
-            for (const backer of QOL.utils.FindPanelsByClass(health, "healthBacker") || []) {
-                if (P.isAlive(backer)) panels.add(backer);
-            }
-            return Array.from(panels);
+            // Shipped geometry canvas and October 3 native layout share these
+            // owners; native number bindings moved out of HealthBarContent.
+            const canvas = H.getPlayerScalePanel(health) || health;
+            const content = P.findChild(canvas, "HealthBarContent");
+            const bars = P.findChild(content, "hud_health_bars");
+            const line = P.findChildByClass(bars, "health_bar_line");
+            const border = P.findChildByClass(line, "health_bar_border");
+            const numbers = P.findChild(canvas, "HealthRegenAndTotal") || P.findChild(content, "HealthRegenAndTotal");
+            const group = P.findChildByClass(numbers, "healthContainer");
+            return [P.findChild(border, "health_bar_frame"), P.findChildByClass(group, "healthBacker")].filter(P.isAlive);
         }
 
         function update(root, cfg, health) {
