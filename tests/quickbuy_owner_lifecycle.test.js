@@ -128,6 +128,66 @@ test("quickbuy preserves upgrade recipe credits, aliases, sell credits and passi
     e.clean();
 });
 
+test("quickbuy tracks live souls promptly and slows down in hideout or while disabled", () => {
+    const e = fixture({ notify: false }); const row = e.entry(e.queue); e.load();
+    e.souls.text = "200"; e.clock.advance(100);
+    assert.equal(row.remaining.text, "300");
+    e.hud.AddClass("connectedToHideout"); e.refresh(); e.clock.advance(50);
+    const before = e.clock.stats.fired;
+    e.clock.advance(1000);
+    assert.equal(e.clock.stats.fired - before, 2);
+    e.hud.RemoveClass("connectedToHideout"); e.flags(false, false); e.clock.advance(50);
+    const disabled = e.clock.stats.fired;
+    e.clock.advance(1000);
+    assert.equal(e.clock.stats.fired - disabled, 2);
+    e.clean();
+});
+
+test("quickbuy notify-only mode keeps the idle cadence for passive souls", () => {
+    const e = fixture({ enhanced: false, notify: true }); const row = e.entry(e.queue); e.load();
+    e.souls.text = "200";
+    e.clock.advance(100);
+    assert.equal(row.remaining.text, "400", "notify-only does not enable enhanced preview polling");
+    e.clock.advance(400);
+    assert.equal(row.remaining.text, "300", "notify amounts still follow passive souls at idle cadence");
+    e.clean();
+});
+
+test("quickbuy coalesces an event follow-up after native leaves refresh and cancels it on replacement", () => {
+    const e = fixture({ notify: false }); const row = e.entry(e.queue); e.load();
+    for (let i = 0; i < 20; i++) e.refresh();
+    row.costLabel.text = "800";
+    e.clock.advance(50);
+    assert.equal(e.total.text, "800", "event can precede the native label write");
+    assert.equal(e.clock.pendingCount(), 1);
+    e.refresh();
+    e.host.SetParent(e.retired);
+    e.add(e.lower, "CitadelHudQuickbuy");
+    e.clock.advance(50);
+    assert.equal(e.total.text, "0");
+    assert.equal(e.clock.pendingCount(), 0);
+    e.clean();
+});
+
+test("quickbuy previews reject native none images and resolve renamed and localized catalog icons", () => {
+    const e = fixture({ notify: false }); e.entry(e.queue);
+    const source = e.entry(e.queue, { name: "Aerial Supremacy", iconPath: "none" });
+    const target = e.preview(e.previewContainer, 2); e.load();
+    assert.equal(target.image.renderedImage, "s2r://panorama/images/items/brawl/aerial_mastery_psd.vtex");
+    assert.equal(target.image.style.visibility, "visible", "manual previews do not depend on native hasAbility binding");
+    source.namePanel.FindChild("ModName").text = "Мистическое расширение";
+    e.refresh();
+    assert.equal(target.image.renderedImage, "s2r://panorama/images/items/spirit/mystic_reach_psd.vtex");
+    source.image.SetAttributeString("defaultsrc", "native_default_icon"); e.refresh();
+    assert.equal(target.image.renderedImage, "native_default_icon");
+    source.image.SetAttributeString("src", "native_current_icon"); e.refresh();
+    assert.equal(target.image.renderedImage, "native_current_icon");
+    e.flags(false, false);
+    assert.equal(target.image.renderedImage, "");
+    assert.equal(target.image.style.visibility, undefined);
+    e.clean();
+});
+
 test("quickbuy drag cleanup follows an entry reused by the native sell queue", () => {
     const e = fixture(); const row = e.entry(e.queue); e.load();
     row.panel.SetParent(e.sales); e.refresh();

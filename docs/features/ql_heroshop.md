@@ -35,8 +35,10 @@ The [quickbuy companion](../../panorama/scripts/hud_quickbuy_total_summary.js)
 runs under `hud_quickbuy.xml`, outside the HUD JavaScript context and its
 Scheduler. It owns one raw polling callback at a time. A queue event
 refreshes immediately, cancels the pending poll and schedules one replacement;
-inactive features return to one idle poll, and destroyed context handles stop the
-loop. Never let an event burst create parallel polls.
+that replacement also catches native leaves updated after the event. Nonempty
+enhanced queues refresh live values more often; empty/disabled queues, notify-only
+mode and hideout use the idle cadence. Destroyed context handles stop the loop. Never let an event
+burst create parallel polls.
 
 The companion has private discovery, settings/queue calculations, presentation
 records and release paths. Verified native host membership, rather than a living
@@ -54,6 +56,11 @@ Quickbuy previews apply the final state directly. Their image path is
 reasserted because the native `CitadelModIcon` may update the same Image
 instance; a JavaScript-only path signature cannot detect that. Empty or disabled
 slots still clear. Check native preview binding in a repacked client.
+The quickbuy layout also loads the shared read-only item-image catalog from
+`ql_recent_purchases_data.js`. Preview images prefer a native `src` or `defaultsrc`
+other than `none`, then use the localized catalog name instead of guessing an
+asset filename from display text. Only manually populated preview images receive
+an owned visibility override; disabling or clearing the slot releases it.
 
 `tests/heroshop_module_lifecycle.test.js` exercises native baseline preservation,
 closed-shop reactivity, late and living replacement, partial native writes,

@@ -37,13 +37,6 @@ const QUICKBUY_ITEM_NAME_ALIASES={
 	'sharp shooter':'sharpshooter',
 	'spellslinger headshots':'spirit rend'
 };
-const QUICKBUY_ICON_OVERRIDES={
-	'compress cooldown':'s2r://panorama/images/items/spirit/improved_cooldown_psd.vtex',
-	'mystic expansion':'s2r://panorama/images/items/spirit/mystic_reach_psd.vtex',
-	'mystic regeneration':'s2r://panorama/images/items/spirit/mystic_regen_psd.vtex',
-	'debuff reducer':'s2r://panorama/images/items/vitality/debuff_reducer_psd.vtex',
-	'dispel magic':'s2r://panorama/images/items/vitality/debuff_remover_psd.vtex'
-};
 const QUICKBUY_RAW_RECIPE_COMPONENTS={
 	'Aerial Supremacy':['Stamina Mastery'],
 	'Apex Combat':['Ricochet'],
@@ -208,6 +201,8 @@ function BuildQuickbuyQueueCostProgress(quickbuyQueueEntries,currentSoulsAmount,
 
 
     const POLL_SECONDS = 0.5;
+    const ACTIVE_POLL_SECONDS = 0.1;
+    const EVENT_REFRESH_SECONDS = 0.05;
     const CHAT_COOLDOWN_MS = 1000;
     const CHAT_RETRY_DELAYS = [0, 0.008, 0.012, 0.016, 0.032];
     const QUICKBUY_RECIPE_COMPONENTS = {};
@@ -317,7 +312,7 @@ function BuildQuickbuyQueueCostProgress(quickbuyQueueEntries,currentSoulsAmount,
         }
         return { enhanced: active('enhanced_quickbuy_active'), notify: active('shop_click_to_notify_active'),
             count: Math.max(1, Math.min(quickbuyUpcomingPreviewSlots.length + 1, Math.round(Number(count)) || 3)),
-            shopOpen: !!host?.BHasClass('gShopOpen') };
+            shopOpen: !!host?.BHasClass('gShopOpen'), hideout: active('connectedToHideout') };
     }
 
     function record(panel) {
@@ -627,13 +622,22 @@ function BuildQuickbuyQueueCostProgress(quickbuyQueueEntries,currentSoulsAmount,
         if (!isAlive(icon)) return;
         for (const name of ICON_CLASSES) cls(icon, name, !!source?.BHasClass(name));
         const sourceImage = resolve(source, 'ModIconImage');
-        let path = sourceImage?.GetAttributeString('src', '') || '';
-        if (!path && itemName) {
-            const name = CanonicalizeQuickbuyItemName(itemName);
-            const folder = source?.BHasClass('isArmor') ? 'vitality' : source?.BHasClass('isTech') ? 'spirit' : 'weapon';
-            path = QUICKBUY_ICON_OVERRIDES[name] || (name ? 's2r://panorama/images/items/' + folder + '/' + name.replace(/\s+/g, '_') + '_psd.vtex' : '');
+        // Native Debugger captures use "none" for an unset image. It is not a path.
+        let path = '';
+        for (const attribute of ['src', 'defaultsrc']) {
+            const candidate = sourceImage?.GetAttributeString(attribute, '') || '';
+            if (candidate && candidate !== 'none') { path = candidate; break; }
         }
-        image(resolve(icon, 'ModIconImage'), path);
+        if (!path && itemName) {
+            // Shared read-only catalog loaded in this context; display names are
+            // localized and do not reliably match native resource filenames.
+            path = MOD_ICONS[itemName]?.match(/^url\("([^"]+)"\)$/)?.[1] || '';
+        }
+        const targetImage = resolve(icon, 'ModIconImage');
+        image(targetImage, path);
+        // Native CSS reveals this image only with hasAbility. Our unbound preview
+        // owns a manually supplied image, without changing the native source.
+        if (path) style(targetImage, 'visibility', 'visible');
         const sourceTier = resolve(source, 'mod_tier_label'), tier = resolve(icon, 'mod_tier_label');
         for (const name of TIER_CLASSES) cls(tier, name, !!sourceTier?.BHasClass(name));
     }
@@ -648,9 +652,10 @@ function BuildQuickbuyQueueCostProgress(quickbuyQueueEntries,currentSoulsAmount,
         }
     }
 
-    function update() {
+    function update(followup = false) {
         if (!running) return;
         cancelPoll();
+        let pollSeconds = POLL_SECONDS;
         try {
             if (!discover()) return;
             frame++;
@@ -662,6 +667,7 @@ function BuildQuickbuyQueueCostProgress(quickbuyQueueEntries,currentSoulsAmount,
             lastShopOpen = active && model.shopOpen;
             const queue = resolve(context, 'QuickbuyQueue'), sellQueue = resolve(context, 'QuickbuySellQueue');
             const entries = active ? readEntries(queue) : [];
+            if (model.enhanced && entries.length && !model.hideout) pollSeconds = ACTIVE_POLL_SECONDS;
             const sales = active ? collect(sellQueue).map(panel => ({ itemPanel: panel, sellSoulsCredit: Math.floor(ParseQuickbuySoulsCost(resolve(panel, 'ModCost')?.text || '') / 2) })) : [];
             const total = BuildQuickbuyQueueCostProgress(entries, readSouls(), sales);
             text(resolve(context, 'QuickbuyShopTotalCostLabel'), total);
@@ -674,13 +680,15 @@ function BuildQuickbuyQueueCostProgress(quickbuyQueueEntries,currentSoulsAmount,
             sweep();
         } catch (e) { $.Msg('[QOLLock][QuickBuy] update: ' + String(e)); }
         finally {
-            if (running) pollHandle = $.Schedule(POLL_SECONDS, () => { pollHandle = null; update(); });
+            if (running) pollHandle = $.Schedule(followup ? EVENT_REFRESH_SECONDS : pollSeconds, () => { pollHandle = null; update(); });
         }
     }
 
     InitializeQuickbuyRecipeComponents();
     if (typeof $.RegisterForUnhandledEvent === 'function') {
-        eventHandle = $.RegisterForUnhandledEvent('CitadelQuickbuyItemsChanged', update);
+        // Keep the immediate refresh and coalesce a follow-up in the same polling
+        // slot: native queue labels/images can still be refreshing at event time.
+        eventHandle = $.RegisterForUnhandledEvent('CitadelQuickbuyItemsChanged', () => update(true));
     }
     pollHandle = $.Schedule(0, () => { pollHandle = null; update(); });
 

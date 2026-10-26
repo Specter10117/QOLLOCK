@@ -8,6 +8,7 @@
 	<!-- QOLLOCK CUSTOM: Total Summary Script -->
 	<!-- ============================================================= -->
 	<scripts>
+		<include src="s2r://panorama/scripts/ql_recent_purchases_data.vjs_c" />
 		<include src="s2r://panorama/scripts/hud_quickbuy_total_summary.vjs_c" />
 	</scripts>
 	<!-- ============================================================= -->
