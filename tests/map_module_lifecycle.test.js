@@ -674,22 +674,22 @@ test("compass speed regression, quantization and calibration survive the module 
     e.clean();
 });
 
-test("compass skips local-player enumeration when the preferred active cone already resolves heading", () => {
+test("compass keeps active-cone priority without inspecting a later local-player fallback", () => {
     const e = fixture(), cone = localPlayer(e, e.renderer, 70);
     cone.player.AddClass("active"); cone.player.AddClass("client_cone_fov");
     const fallback = localPlayer(e, e.renderer, 20);
-    const enumerate = e.renderer.FindChildrenWithClassTraverse;
-    let fallbackScans = 0;
-    e.renderer.FindChildrenWithClassTraverse = name => {
-        if (name === "localplayer") fallbackScans++;
-        return enumerate.call(e.renderer, name);
+    const hasClass = fallback.player.BHasClass;
+    let fallbackReads = 0;
+    fallback.player.BHasClass = name => {
+        if (name === "player") fallbackReads++;
+        return hasClass.call(fallback.player, name);
     };
     const { feature } = directCompass(e); feature.onEnable(); e.clock.advance(1000);
     assert.equal(e.root.FindChildTraverse("QOLCompassDegree").text, "70°");
-    assert.equal(fallbackScans, 0, "an unused fallback must not enumerate the minimap");
+    assert.equal(fallbackReads, 0, "a later unused fallback needs no native class reads");
     cone.player.SetParent(e.orphan); e.clock.advance(300);
     assert.equal(e.root.FindChildTraverse("QOLCompassDegree").text, "20°");
-    assert.ok(fallbackScans > 0, "fallback remains available after preferred source loss");
+    assert.ok(fallbackReads > 0, "fallback remains available after preferred source loss");
     assert.equal(fallback.player.IsValid(), true);
     feature.onDisable(); e.clean();
 });

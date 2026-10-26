@@ -95,6 +95,30 @@ test("bridge timers observe immediate native spawners and ignore nested marker l
     assert.ok(!env.find("QOLMinimapTimersRoot")); assert.deepEqual(env.hud.clock.errors, []);
 });
 
+test("compass samples immediate native marker roots while preserving cone priority and local fallback", () => {
+    const env = fixture(), renderer = addNativeMinimap(env);
+    const marker = (parent, degrees, classes) => {
+        const panel = env.add(parent, "", ["player", ...classes]);
+        env.$.CreatePanel("Image", panel, "MainImage").style.preTransformRotate2d = degrees + "deg";
+        return panel;
+    };
+    const generated = env.add(renderer, "NestedMarkerContent");
+    marker(generated, 120, ["active", "client_cone_fov"]);
+    const local = marker(renderer, 40, ["localplayer"]);
+    env.config({ ENABLE_COMPASS: 1, ENABLE_COMPASS_SPEED: 0, MINIMAP_ROTATE_WITH_PLAYER: 0 });
+    env.hud.clock.advance(300);
+    const read = () => env.find("QOLCompassDegree").text;
+    assert.equal(read(), "40°", "a nested lookalike cannot outrank the native local marker");
+    const cone = marker(renderer, 75, ["active", "client_cone_fov"]); env.hud.clock.advance(300);
+    assert.equal(read(), "75°", "the preferred active cone still outranks an earlier local marker");
+    cone.SetParent(generated); env.hud.clock.advance(100);
+    assert.equal(read(), "40°", "a living source moved under another component leaves the source set immediately");
+    local.SetParent(generated); marker(renderer, 95, ["localplayer"]); env.hud.clock.advance(100);
+    assert.equal(read(), "95°", "a late current marker replaces the living old source");
+    env.Q.core.FeatureRegistry.disable("ql_compass"); env.hud.clock.advance(20);
+    assert.ok(!env.find("QOLCompassRoot")); assert.deepEqual(env.hud.clock.errors, []);
+});
+
 function addRoster(env, top) {
     const teams = env.add(top, "TeamsContainer");
     const team = env.add(teams, "TeamFriendly");

@@ -388,12 +388,20 @@
             function _findLocalMinimapPlayerPanel(hud, nowMs, aggressiveScan) {
                 const matches = panel => _isAlive(panel) && panel.BHasClass("player") &&
                     (panel.BHasClass("localplayer") || panel.BHasClass("active") && panel.BHasClass("client_cone_fov"));
-                if (matches(_minimapLocalPlayerPanel) && belongsTo(_minimapLocalPlayerPanel, minimapScope) && nowMs < _localPlayerPanelNextScanMs) return _minimapLocalPlayerPanel;
+                if (matches(_minimapLocalPlayerPanel) && _minimapLocalPlayerPanel.GetParent() === minimapScope && nowMs < _localPlayerPanelNextScanMs) return _minimapLocalPlayerPanel;
                 const cooldown = aggressiveScan ? MINIMAP_LOCAL_PLAYER_SCAN_COOLDOWN_FAST_MS : MINIMAP_LOCAL_PLAYER_SCAN_COOLDOWN_MS;
                 if (!_minimapLocalPlayerPanel && nowMs < _localPlayerPanelNextScanMs) return null;
-                const cones = minimapScope?.FindChildrenWithClassTraverse?.("client_cone_fov") || [];
-                const next = cones.find(panel => matches(panel) && panel.BHasClass("active")) ||
-                    (minimapScope?.FindChildrenWithClassTraverse?.("localplayer") || []).find(matches) || null;
+                let next = null;
+                // Native player/FOV snippets are immediate renderer children.
+                // Keep the first local marker unless a preferred active cone
+                // appears, without walking other markers' generated content.
+                const count = _isAlive(minimapScope) ? minimapScope.GetChildCount() : 0;
+                for (let index = 0; index < count; index++) {
+                    const panel = minimapScope.GetChild(index);
+                    if (!matches(panel)) continue;
+                    if (panel.BHasClass("client_cone_fov") && panel.BHasClass("active")) { next = panel; break; }
+                    if (!next && panel.BHasClass("localplayer")) next = panel;
+                }
                 if (_minimapLocalPlayerPanel !== next) resetSamples();
                 _minimapLocalPlayerPanel = next;
                 _localPlayerPanelScanBackoffMs = next ? 0 : _nextScanBackoff(_localPlayerPanelScanBackoffMs, cooldown);

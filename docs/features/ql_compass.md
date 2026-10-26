@@ -10,6 +10,11 @@ panel replacement invalidation.
 When the native renderer exists, heading/player discovery stays inside
 `hud_minimap`, excluding its viewport frame and decorations. Renderer replacement
 also invalidates the player binding and motion samples.
+Player/FOV roots are immediate native renderer children, as confirmed by the
+map snippets and captured tree. Discovery samples those children in order,
+preferring the first active cone over the first local-player fallback, without
+walking nested marker/overlay content. A living marker moved out of that direct
+owner invalidates its cached binding immediately.
 
 Heading samples, motion history and presentation signatures belong to the
 feature instance. A replacement renderer, local-player image or overlay parent
