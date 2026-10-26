@@ -20,6 +20,19 @@ const sampleChanges = {
 };
 const plain = value => JSON.parse(JSON.stringify(value));
 const frozenCode = "[QOL-4-0-5-C]:UQGsA2lm9DIYHLkBkAMBkAMBlAIJhgIEDTVpmAEBHwGEAQEfSREADTIsEOACqQK8AQGG_YcQWAA0BIAB7StP9w";
+
+test("published Active Stats IDs still decode while retired fields stay out of imported current settings", () => {
+    const { global: g } = load();
+    const raw = g.QOL.persistence.fromBase64Url(frozenCode.split(":")[1]);
+    const decoded = g.QOL.settingsCode.deserialize(raw);
+    const result = g.QOL.ui.modal.tryApplyImportStringWithDiagnostics(frozenCode);
+    assert.equal(result.ok, true);
+    for (const key of ["CROSSHAIR_STATS_SHOW_DAMAGEAMP", "CROSSHAIR_STATS_SHOW_BULLETEVASION"]) {
+        assert.equal(decoded[key], 1, "published dictionary slots retain their original reference");
+        assert.equal(Object.hasOwn(result.candidateConfig, key), false);
+        assert.equal(Object.hasOwn(g.MOD_CONFIG, key), false);
+    }
+});
 const codeSource = fs.readFileSync(path.resolve(__dirname, "../panorama/scripts/ql_settings_code.js"), "utf8");
 const withChecksum = bytes => {
     const checksum = Buffer.alloc(4); checksum.writeUInt32LE(crc32(bytes));

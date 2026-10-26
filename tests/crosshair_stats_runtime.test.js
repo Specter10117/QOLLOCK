@@ -84,6 +84,31 @@ function value(root, key) {
     return root.FindChildTraverse(`QOLCrosshairStatRow_${key}_value`);
 }
 
+test("crosshair ignores retired damage amplification and bullet evasion rows from old configs", () => {
+    const hud = createCrosshairHud();
+    const { $, QOL: Q } = hud.sandbox.global;
+    const source = $.CreatePanel("Panel", hud.core, "hudActivePlayerStats");
+    addModifier($, source, "fireRateContainer", { number: "+10", postfix: "%", classes: ["shouldShow", "isPositive"] });
+    const retired = ["damageAmpContainer", "bulletEvasionContainer"];
+    for (const id of retired) addModifier($, source, id, { number: "+99", classes: ["shouldShow", "isPositive"] });
+    const probes = [];
+    for (const method of ["FindChild", "FindChildTraverse"]) {
+        const find = source[method];
+        source[method] = function (id) {
+            if (retired.includes(id)) probes.push(id);
+            return find.call(this, id);
+        };
+    }
+    enableActiveStats(Q);
+    Q.core.ConfigAdapter.loadFromFlat({ CROSSHAIR_STATS_SHOW_DAMAGEAMP: 1, CROSSHAIR_STATS_SHOW_BULLETEVASION: 1 });
+    hud.clock.advance(2200);
+    assert.strictEqual(value(hud.root, "fireRate").text, "+10%");
+    assert.strictEqual(row(hud.root, "damageAmp") === null, true);
+    assert.strictEqual(row(hud.root, "bulletEvasion") === null, true);
+    assert.deepStrictEqual(probes, []);
+    assert.deepStrictEqual(hud.clock.errors, []);
+});
+
 test("crosshair reconciles row siblings in one pass and replaces a moved owned row", () => {
     const hud = createCrosshairHud();
     const { $, QOL: Q } = hud.sandbox.global;
@@ -241,25 +266,25 @@ test("crosshair missing-row discovery waits while cached values keep updating", 
         number: "+10", postfix: "%", classes: ["shouldShow", "isPositive"]
     });
     enableActiveStats(Q);
-    Q.core.ConfigAdapter.loadFromFlat({ CROSSHAIR_STATS_SHOW_DAMAGEAMP: 1 });
+    Q.core.ConfigAdapter.loadFromFlat({ CROSSHAIR_STATS_SHOW_CLIPSIZE: 1 });
     hud.clock.advance(100);
     const scanTimes = [];
     const traverse = source.FindChildTraverse.bind(source);
     source.FindChildTraverse = id => {
-        if (id === "damageAmpContainer") scanTimes.push(hud.clock.now());
+        if (id === "clipSizeContainer") scanTimes.push(hud.clock.now());
         return traverse(id);
     };
     hud.clock.advance(2000);
     assert.ok(scanTimes.length >= 2 && scanTimes.length <= 3);
     assert.ok(scanTimes.every((time, index) => index === 0 || time - scanTimes[index - 1] >= 800));
-    addModifier($, owners.vitality, "damageAmpContainer", {
+    addModifier($, owners.weapon, "clipSizeContainer", {
         number: "+7", classes: ["shouldShow", "isPositive"]
     });
     fire.FindChildrenWithClassTraverse("statNumber")[0].text = "+11";
     hud.clock.advance(100);
     assert.strictEqual(value(hud.root, "fireRate").text, "+11%");
     hud.clock.advance(800);
-    assert.strictEqual(value(hud.root, "damageAmp").text, "+7");
+    assert.strictEqual(value(hud.root, "clipSize").text, "+7");
 });
 
 test("crosshair resolves direct modifier cores without enumerating their descendants and retains nested values", () => {
@@ -302,7 +327,7 @@ test("crosshair skips a detached first class candidate and retains the next curr
     assert.deepStrictEqual(hud.clock.errors, []);
 });
 
-test("crosshair discovers conditional rows in narrow owners and recovers from row/owner replacement", () => {
+test("crosshair discovers late rows in narrow owners and recovers from row/owner replacement", () => {
     const hud = createCrosshairHud();
     const { $, QOL: Q } = hud.sandbox.global;
     enableActiveStats(Q);
@@ -319,18 +344,16 @@ test("crosshair discovers conditional rows in narrow owners and recovers from ro
     hud.clock.advance(800);
     assert.strictEqual(value(hud.root, "fireRate").text, "+10%");
 
-    // No column is asserted for damageAmp: this synthetic conditional row
-    // verifies discovery without treating its snapshot absence as invalidity.
-    Q.core.ConfigAdapter.loadFromFlat({ CROSSHAIR_STATS_SHOW_DAMAGEAMP: 1 });
+    Q.core.ConfigAdapter.loadFromFlat({ CROSSHAIR_STATS_SHOW_HEALAMP: 1 });
     hud.clock.advance(200);
-    const damage = addModifier($, owners.vitality, "damageAmpContainer", {
-        number: "+7", classes: ["shouldShow", "isPositive"]
+    const healing = addModifier($, owners.vitality, "healingAmpContainer", {
+        number: "+7", postfix: "%", classes: ["shouldShow", "isPositive"]
     });
     hud.clock.advance(800);
-    assert.strictEqual(value(hud.root, "damageAmp").text, "+7");
-    damage.DeleteAsync(0);
+    assert.strictEqual(value(hud.root, "healAmp").text, "+7%");
+    healing.DeleteAsync(0);
     hud.clock.advance(100);
-    assert.strictEqual(row(hud.root, "damageAmp").BHasClass("qol-hidden"), true);
+    assert.strictEqual(row(hud.root, "healAmp").BHasClass("qol-hidden"), true);
 
     // A live row moved out of the active owner must not retain cached values.
     const retired = $.CreatePanel("Panel", hud.doc.absRoot, "RetiredTestPanels");
@@ -369,19 +392,19 @@ test("crosshair compatibility search finds late rows outside verified paths and 
     const source = $.CreatePanel("Panel", hud.core, "hudActivePlayerStats");
     nativeOwners($, source);
     enableActiveStats(Q);
-    Q.core.ConfigAdapter.loadFromFlat({ CROSSHAIR_STATS_SHOW_BULLETEVASION: 1 });
+    Q.core.ConfigAdapter.loadFromFlat({ CROSSHAIR_STATS_SHOW_CLIPSIZE: 1 });
     hud.clock.advance(300);
     // Intentionally unfamiliar test structure, not an inferred native path.
     const unexpected = $.CreatePanel("Panel", source, "TestUnfamiliarLayout");
-    const evasion = addModifier($, unexpected, "bulletEvasionContainer", {
+    const clip = addModifier($, unexpected, "clipSizeContainer", {
         number: "+4", classes: ["shouldShow", "isPositive"]
     });
     hud.clock.advance(800);
-    assert.strictEqual(value(hud.root, "bulletEvasion").text, "+4");
-    const number = evasion.FindChildrenWithClassTraverse("statNumber")[0];
+    assert.strictEqual(value(hud.root, "clipSize").text, "+4");
+    const number = clip.FindChildrenWithClassTraverse("statNumber")[0];
     number.text = "+5";
     hud.clock.advance(100);
-    assert.strictEqual(value(hud.root, "bulletEvasion").text, "+5", "fallback discovery must not slow value updates");
+    assert.strictEqual(value(hud.root, "clipSize").text, "+5", "fallback discovery must not slow value updates");
 
     Q.core.ConfigAdapter.loadFromFlat({ ENABLE_CROSSHAIR_STATS: 0 });
     hud.clock.advance(200);
@@ -389,7 +412,7 @@ test("crosshair compatibility search finds late rows outside verified paths and 
     assert.strictEqual(Q.getCachedPanel("crosshairStatsOverlay"), null);
     Q.core.ConfigAdapter.loadFromFlat({ ENABLE_CROSSHAIR_STATS: 1 });
     hud.clock.advance(100);
-    assert.strictEqual(value(hud.root, "bulletEvasion").text, "+5");
+    assert.strictEqual(value(hud.root, "clipSize").text, "+5");
 });
 
 test("crosshair Active Stats reads the renamed source and current value classes", () => {

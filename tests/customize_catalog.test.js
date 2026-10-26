@@ -8,6 +8,18 @@ const activate = (env, id) => { const p = env.em.FindChildTraverse(id); assert.o
 const input = (env, key, value) => { const p = env.em.FindChildTraverse("QOLCustomize_" + key); assert.ok(p, key); p.text = String(value); p._fire("oninputsubmit"); return p; };
 const add = (env, parent, id, classes = []) => parent.addChild(env.doc.create("Panel", { id, classes }));
 
+test("Active Stats retires unavailable controls from settings, Customize and current defaults", () => {
+    const env = setup(), g = env.global;
+    g.QOL.ui.window.setActiveTabAndRefresh("Crosshair"); env.clock.advance(300);
+    assert.ok(env.list.FindChildrenWithClassTraverse("SettingRow_CROSSHAIR_STATS_SHOW_FIRERATE").length);
+    for (const key of ["CROSSHAIR_STATS_SHOW_DAMAGEAMP", "CROSSHAIR_STATS_SHOW_BULLETEVASION"]) {
+        assert.equal(env.list.FindChildrenWithClassTraverse("SettingRow_" + key).length, 0);
+        assert.equal(g.QOL.presentation.fieldMap.has(key), false);
+        assert.equal(Object.hasOwn(g.QOL_DEFAULT_CONFIG, key), false);
+        assert.equal(g.QOL.presentation.settingFields.has(key), false);
+    }
+});
+
 test("catalog covers current visual manifest controls, with explicit compatibility and diagnostic exclusions", () => {
     const env = setup();
     const catalog = env.global.QOL.presentation;

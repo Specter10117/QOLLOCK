@@ -14,8 +14,8 @@
                 ["DEBUFFS", "Debuffs"], ["BUFFS", "Buffs"], ["FIRERATE", "Fire Rate"], ["MOVESPEED", "Move Speed"],
                 ["HEALAMP", "Healing Amplification"], ["BULLETRESIST", "Bullet Resist"], ["TECHRESIST", "Spirit Resist"],
                 ["BULLETLIFESTEAL", "Bullet Lifesteal"], ["TECHLIFESTEAL", "Spirit Lifesteal"], ["WEAPONPOWER", "Weapon Damage"],
-                ["SPIRIT", "Spirit Power"], ["RANGE", "Range"], ["DURATION", "Duration"], ["DAMAGEAMP", "Damage Amplification"],
-                ["CLIPSIZE", "Ammo Capacity"], ["REGEN", "Health Regen"], ["BULLETEVASION", "Bullet Evasion"]
+                ["SPIRIT", "Spirit Power"], ["RANGE", "Range"], ["DURATION", "Duration"],
+                ["CLIPSIZE", "Ammo Capacity"], ["REGEN", "Health Regen"]
             ].map(([suffix, label]) => f("CROSSHAIR_STATS_SHOW_" + suffix, label, "toggle", { hidden: true }))
         ]),
         overlay("compass", "Compass", "QOLCompassRoot", [toggle("ENABLE_COMPASS"), f("ENABLE_SIMPLIFY_COMPASS", "Minimalist", "toggle", { hidden: true }),

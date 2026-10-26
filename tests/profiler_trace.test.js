@@ -282,7 +282,7 @@ test("production crosshair trace excludes warm-up and agrees with independent op
     for (const result of [short, long]) {
         assert.deepEqual(result.callbackErrors, []);
         assert.equal(result.features.length, 1);
-        for (const target of ["damageAmpContainer", "bulletEvasionContainer"]) {
+        for (const target of ["clipSizeContainer", "healingAmpContainer"]) {
             const searches = result.events.filter(e => e.target === target);
             if (result.seconds >= 0.8) assert.ok(searches.length > 0);
             assert.ok(searches.filter(e => e.type === "FindChild").length <= Math.ceil(result.seconds / 0.8),
@@ -331,7 +331,7 @@ test("CLI emits parseable JSON even with a feature and verbose, without a local 
     assert.equal(cli.error, undefined, cli.error && cli.error.message);
     assert.equal(cli.status, 0, cli.stderr);
     const result = JSON.parse(cli.stdout);
-    assert.ok(result.features[0].missedTargets.damageAmpContainer >= 1);
+    assert.ok(result.features[0].missedTargets.clipSizeContainer >= 1);
     assert.ok(result.events.length > 0);
     assert.match(result.scope, /no native timings or FPS/);
 });

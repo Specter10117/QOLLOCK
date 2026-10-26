@@ -273,7 +273,10 @@ function compareDecodedAgainstSchema(decoded, effectiveConfig, defaultConfig, sc
     const comparableSchema = schemaToComparable(schema);
     for (const field of comparableSchema) {
         const decodedKey = field.key === "DEFAULT_HERO_INDEX" ? "DEFAULT_HERO" : field.key;
-        const expected = getExpectedFieldValue(field.key, effectiveConfig, defaultConfig);
+        const currentValue = getExpectedFieldValue(field.key, effectiveConfig, defaultConfig);
+        // Retired fields still occupy frozen wire slots. The fixture encoder
+        // writes the schema minimum when no current config/default owns a key.
+        const expected = currentValue === undefined ? field.min : currentValue;
         const actual = decoded[decodedKey];
         if (expected !== actual) {
             mismatches.push(`${decodedKey}: expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`);

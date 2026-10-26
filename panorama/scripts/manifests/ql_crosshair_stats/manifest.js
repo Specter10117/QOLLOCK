@@ -28,10 +28,8 @@
             { key: "CROSSHAIR_STATS_SHOW_SPIRIT", type: "toggle" },
             { key: "CROSSHAIR_STATS_SHOW_RANGE", type: "toggle" },
             { key: "CROSSHAIR_STATS_SHOW_DURATION", type: "toggle" },
-            { key: "CROSSHAIR_STATS_SHOW_DAMAGEAMP", type: "toggle" },
             { key: "CROSSHAIR_STATS_SHOW_CLIPSIZE", type: "toggle" },
-            { key: "CROSSHAIR_STATS_SHOW_REGEN", type: "toggle" },
-            { key: "CROSSHAIR_STATS_SHOW_BULLETEVASION", type: "toggle" }
+            { key: "CROSSHAIR_STATS_SHOW_REGEN", type: "toggle" }
         ],
         create(ctx) {
             const P = QOL.core.panel;
@@ -51,10 +49,8 @@
                 { id: "spiritContainer",          key: "spirit",        icon: "Spirit",                  cfg: "CROSSHAIR_STATS_SHOW_SPIRIT", deltaSelector: true, deltaPrefix: "+" },
                 { id: "abilityRangeContainer",    key: "range",         icon: "Range",                   cfg: "CROSSHAIR_STATS_SHOW_RANGE", expectsPostfix: true },
                 { id: "abilityDurationContainer", key: "duration",      icon: "Duration",                cfg: "CROSSHAIR_STATS_SHOW_DURATION", expectsPostfix: true },
-                { id: "damageAmpContainer",       key: "damageAmp",     icon: "DamageAmplification",     cfg: "CROSSHAIR_STATS_SHOW_DAMAGEAMP" },
                 { id: "clipSizeContainer",        key: "clipSize",      icon: "AmmoClipSize",            cfg: "CROSSHAIR_STATS_SHOW_CLIPSIZE" },
-                { id: "regenPerSecondContainer",  key: "regen",         icon: "HealthRegen",             cfg: "CROSSHAIR_STATS_SHOW_REGEN", expectsPostfix: true },
-                { id: "bulletEvasionContainer",   key: "bulletEvasion", icon: "MoveDodge",               cfg: "CROSSHAIR_STATS_SHOW_BULLETEVASION" }
+                { id: "regenPerSecondContainer",  key: "regen",         icon: "HealthRegen",             cfg: "CROSSHAIR_STATS_SHOW_REGEN", expectsPostfix: true }
             ];
 
             const SOURCE_PATHS = [
