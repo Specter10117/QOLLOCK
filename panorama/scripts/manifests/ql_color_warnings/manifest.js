@@ -139,7 +139,8 @@
                 if (!P.isAlive(fill) || fill.id !== "HeroHealth_Left") continue;
                 const parent = fill.GetParent(), owner = P.isAlive(parent) ? parent.GetParent() : null;
                 if (!P.isAlive(parent) || parent.id !== "HeroHealth" || !P.isAlive(owner) || owner.id !== "HealthBar") continue;
-                entries.push({ fill, parent, owner });
+                const entry = { fill, parent, owner };
+                if (isCurrent(entry, scope)) entries.push(entry);
             }
             nextScanMs = now + (entries.length ? 1200 : 2000);
         };
@@ -155,7 +156,6 @@
                 discover(root, now, force);
                 const values = { enemy: [], ally: [] };
                 for (const entry of entries) {
-                    if (!isCurrent(entry, rootOwner)) continue;
                     const enemy = U.HasClassInHierarchy(entry.fill, "enemy"), ally = U.HasClassInHierarchy(entry.fill, "friend");
                     if (enemy === ally) continue;
                     const name = enemy ? "enemy" : "ally", percent = readPercent(entry);

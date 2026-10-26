@@ -232,3 +232,26 @@ test("top-bar warnings discover within the current TopBar and retire a living ol
     assert.equal(replacement.fill.style.backgroundColor, undefined);
     assert.deepEqual(env.clock.errors, []);
 });
+
+test("top-bar warning ticks validate each current native fill once before reading live health", () => {
+    const env = setup({ ENABLE_TOPBAR_ENEMY_HP_WARNING_65: 1 });
+    const slot = topbarHealth(env);
+    env.feature.onEnable();
+    let lookups = 0, samples = 0, health = 500;
+    const find = slot.parent.FindChild;
+    slot.parent.FindChild = function (id) {
+        if (id === "HeroHealth_Left") lookups++;
+        return find.call(this, id);
+    };
+    Object.defineProperty(slot.parent, "value", { configurable: true, get() { samples++; return health; } });
+    env.clock.advance(1000);
+    assert.ok(samples >= 5, "recurring live-health updates ran");
+    assert.equal(lookups, samples, "a current cached fill needs one ownership check per health sample");
+    assert.equal(slot.fill.style.backgroundColor, "rgb(255, 123, 0)");
+    health = 900;
+    env.clock.advance(300);
+    assert.equal(slot.fill.style.backgroundColor, "rgb(255, 86, 86)");
+    env.feature.onDisable();
+    assert.equal(slot.fill.style.backgroundColor, undefined);
+    assert.deepEqual(env.clock.errors, []);
+});
