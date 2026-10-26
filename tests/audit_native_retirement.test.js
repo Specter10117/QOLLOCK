@@ -158,7 +158,7 @@ for (const mode of ["false", "throw"]) {
         const foreign = env.add(env.root, "ReusedNativeGlyph"); glyph.SetParent(foreign);
         const clear = glyph.ClearPropertyFromCode.bind(glyph); let reject = true, attempts = 0;
         glyph.ClearPropertyFromCode = property => {
-            if (property === "font-size") { attempts++; if (reject) { if (mode === "throw") throw Error("native clear unavailable"); return false; } }
+            if (property === "font") { attempts++; if (reject) { if (mode === "throw") throw Error("native clear unavailable"); return false; } }
             return clear(property);
         };
         feature.onDisable(); assert.equal(glyph.style.fontSize, "24px");

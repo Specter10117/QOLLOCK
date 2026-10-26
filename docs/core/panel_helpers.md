@@ -177,3 +177,20 @@ finds nothing. Clearing a color alias therefore cannot be treated as evidence
 that the override was released. The simulator models this composite boundary;
 the Default-preset bridge regression exercises the resulting stamina cleanup.
 Native rendering still requires a compiled/repacked client check.
+
+Font and margin component setters likewise store one `font` or `margin` code
+property. Both clear helpers map their CSS/camelCase aliases to those native
+symbols through `QOL_UTILS.NativeStylePropertyName`. Clearing `font-size` or
+`margin-left` directly is a void no-op, even though no error is reported.
+The native-style owner leases these composites across instance handoffs,
+reapplies still-requested components after a component retires, and preserves
+original code components it never claimed. It reads code-style fields as with
+`preserveStyles`, without querying computed CSS or pinning stylesheet defaults.
+Rejected clears or restoration writes remain retryable.
+
+This boundary was checked in the installed `panorama.dll` on 2026-10-26:
+`CStylePropertyFont` construction at RVA `0x174D80` copies the registered `font`
+symbol into the property; `CStylePropertyMargin` construction at RVA `0x176F30`
+does the same for `margin`. Their component parsers create these shared types.
+Ammo retires the previous standard/Tokamak owner before styling the new layout,
+so the new owner cannot inherit stale components from the previous layout.

@@ -146,12 +146,14 @@
 
             function renderTexts(sources) {
                 const retained = new Map([...textStyles.keys()].map(fontSize => [fontSize, []]));
+                for (const [target, { fontSize }] of sources) retained.get(fontSize).push(target);
+                // Retire the previous layout before the new owner claims the
+                // same native composite font/margin properties.
+                for (const [fontSize, owner] of textStyles) owner.retain(retained.get(fontSize));
                 for (const [target, { styles: plan, fontSize }] of sources) {
                     const styles = Object.fromEntries(Object.entries(plan).filter(([, value]) => value !== null));
                     textStyles.get(fontSize).apply(target, styles);
-                    retained.get(fontSize).push(target);
                 }
-                for (const [fontSize, owner] of textStyles) owner.retain(retained.get(fontSize));
             }
 
             function discoverClips(owner) {

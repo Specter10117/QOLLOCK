@@ -307,6 +307,13 @@ class Panel {
             // CStylePropertyBorder stores color/width/style aliases as one
             // `border` code property. Clearing an alias is a native void no-op.
             if (/^border-(?:color|width|style)$/.test(prop)) return;
+            if (/^font-(?:size|family|weight|style)$/.test(prop) || /^margin-(?:left|right|top|bottom)$/.test(prop)) return;
+            if (prop === "font" || prop === "margin") {
+                const components = prop === "font" ? ["font", "fontSize", "fontFamily", "fontWeight", "fontStyle"] :
+                    ["margin", "marginLeft", "marginRight", "marginTop", "marginBottom"];
+                for (const key of components) delete this.style[key];
+                return;
+            }
             if (prop === "border") {
                 for (const key of ["border", "borderColor", "borderWidth", "borderStyle"]) delete this.style[key];
                 return;

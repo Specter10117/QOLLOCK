@@ -334,8 +334,8 @@ test(`${id}: Reset/Undo/presets exercise the margin retirement protocol in nativ
     });
     const clear = target.ClearPropertyFromCode.bind(target);
     target.ClearPropertyFromCode = key => {
-        // Retain modeled flow displacement after clearing a code record.
-        // Retirement must explicitly neutralize it before release.
+        // The native margin composite releases all four components together.
+        if (key === "margin") physical.x = physical.y = 0;
         return clear(key);
     };
     const g = env.global;
@@ -399,12 +399,16 @@ test("Current and Max can shrink independently and Cancel releases font override
 });
 
 for (const mirrored of [false, true])
-test(`Max Ammo Reset restores the resolved font from a saved size (${mirrored ? "Tokamak" : "standard"})`, () => {
+for (const [id, label, scaleKey, sibling, siblingKey, scale, siblingScale] of [
+    ["ammoMax", "max", "AMMO_TOTAL_SCALE", "current", "AMMO_CURRENT_SCALE", 200, 150],
+    ["ammoCurrent", "current", "AMMO_CURRENT_SCALE", "max", "AMMO_TOTAL_SCALE", 150, 200]
+]) test(`${id} Reset restores the native font from a saved size (${mirrored ? "Tokamak" : "standard"})`, () => {
     const env = setup(), g = env.global;
     const nativeFont = mirrored ? 18 : 16;
     if (mirrored) env.add(env.ammo.GetParent(), "clip_status_mirrored");
     let resolvedFont = nativeFont;
-    env.max.style = new Proxy(env.max.style, {
+    const target = env[label];
+    target.style = new Proxy(target.style, {
         set(target, key, value) {
             target[key] = value;
             if (key === "fontSize") resolvedFont = parseFloat(value);
@@ -416,22 +420,24 @@ test(`Max Ammo Reset restores the resolved font from a saved size (${mirrored ? 
     // this test; it checks an explicit neutral write before release.
     Object.assign(g.MOD_CONFIG, { AMMO_TOTAL_SCALE: 200, AMMO_CURRENT_SCALE: 150, AMMO_PANEL_SCALE: 150 });
     g.SaveAndSync(); env.clock.advance(1200);
-    assert.equal(resolvedFont, nativeFont * 2);
-    assert.equal(env.current.style.fontSize, Math.round(nativeFont * 1.5) + "px");
-    assert.equal(g.QOL.ui.customize.start(null, { elementId: "ammoMax" }), true);
+    assert.equal(resolvedFont, Math.round(nativeFont * scale / 100));
+    assert.equal(env[sibling].style.fontSize, Math.round(nativeFont * siblingScale / 100) + "px");
+    assert.equal(g.QOL.ui.customize.start(null, { elementId: id }), true);
     activate(env, "QOLCustomizeReset"); env.clock.advance(1200);
     assert.equal(resolvedFont, nativeFont);
-    assert.equal(env.max.style.fontSize, undefined);
-    assert.equal(env.em.FindChildTraverse("QOLCustomize_AMMO_TOTAL_SCALE").text, "100");
-    assert.equal(env.current.style.fontSize, Math.round(nativeFont * 1.5) + "px", "Max reset preserves Current");
+    assert.equal(target.style.fontSize, undefined);
+    assert.equal(target.style.width, undefined);
+    assert.equal(target.style.marginLeft, undefined, "the native gap returns with the margin code slot released");
+    assert.equal(env.em.FindChildTraverse("QOLCustomize_" + scaleKey).text, "100");
+    assert.equal(env[sibling].style.fontSize, Math.round(nativeFont * siblingScale / 100) + "px", "digit reset preserves its sibling");
     activate(env, "QOLCustomizeUndo"); env.clock.advance(1200);
-    assert.equal(resolvedFont, nativeFont * 2);
+    assert.equal(resolvedFont, Math.round(nativeFont * scale / 100));
     activate(env, "QOLCustomizeRedo"); env.clock.advance(1200);
     assert.equal(resolvedFont, nativeFont);
     g.QOL.core.storageBridge.saveSettings = (_config, callback) => callback(null);
     activate(env, "QOLCustomizeApply"); env.clock.advance(1200);
-    assert.equal(g.MOD_CONFIG.AMMO_TOTAL_SCALE, 100);
-    assert.equal(g.MOD_CONFIG.AMMO_CURRENT_SCALE, 150);
+    assert.equal(g.MOD_CONFIG[scaleKey], 100);
+    assert.equal(g.MOD_CONFIG[siblingKey], siblingScale);
     assert.equal(resolvedFont, nativeFont);
     assert.deepEqual(env.doc.eventErrors, []);
     assert.deepEqual(env.clock.errors, []);

@@ -315,11 +315,20 @@
     /**
      * Release a native code style override before trying legacy fallbacks.
      */
+    const NativeStylePropertyName = property => {
+        const name = String(property).replace(/[A-Z]/g, c => "-" + c.toLowerCase());
+        if (/^border-(?:color|width|style)$/.test(name)) return "border";
+        if (/^font-(?:size|family|weight|style)$/.test(name)) return "font";
+        if (/^margin-(?:left|right|top|bottom)$/.test(name)) return "margin";
+        return name;
+    };
+    exports.NativeStylePropertyName = NativeStylePropertyName;
+
     function ClearStyleSafe(panel, prop) {
         if (!panel || !prop) return;
         try {
             if (typeof panel.ClearPropertyFromCode === "function") {
-                if (panel.ClearPropertyFromCode(String(prop).replace(/[A-Z]/g, function(c) { return "-" + c.toLowerCase(); })) !== false) return;
+                if (panel.ClearPropertyFromCode(NativeStylePropertyName(prop)) !== false) return;
             }
         } catch (e) { /* Older/stale native handles may not support clearing. */ }
         try { delete panel.style[prop]; } catch (e0) { /* delete panel.style[prop] may throw in strict mode */ }

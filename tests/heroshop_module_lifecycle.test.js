@@ -235,7 +235,7 @@ test("shop source replacement retries failed release and does not rewrite stable
     const clear = e.main.ClearPropertyFromCode;
     let releaseAttempts = 0;
     e.main.ClearPropertyFromCode = function(name) {
-        if (name === "margin-left" && releaseAttempts++ < 2) return false;
+        if (name === "margin" && releaseAttempts++ < 2) return false;
         return clear.call(this, name);
     };
     e.body.SetParent(e.orphan);
@@ -257,7 +257,7 @@ test("shop restores native defaults and retries a transient ClearPropertyFromCod
     const clear = e.main.ClearPropertyFromCode;
     let clears = 0;
     e.main.ClearPropertyFromCode = function(name) {
-        if (name === "margin-left" && clears++ === 0) return false;
+        if (name === "margin" && clears++ === 0) return false;
         return clear.call(this, name);
     };
     e.configure(baseline);

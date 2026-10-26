@@ -187,7 +187,7 @@ test("digit reset retains rejected font retirement after the observation loop st
     env.feature.onEnable();
     const clear = panel.ClearPropertyFromCode.bind(panel);
     let reject = true;
-    panel.ClearPropertyFromCode = key => key === "font-size" && reject ? false : clear(key);
+    panel.ClearPropertyFromCode = key => key === "font" && reject ? false : clear(key);
     panel.style = new Proxy(panel.style, {
         deleteProperty(target, key) { if (key === "fontSize" && reject) throw Error("native retirement rejected"); return Reflect.deleteProperty(target, key); },
         set(target, key, value) { if (key === "fontSize" && reject && !value) throw Error("native retirement rejected"); target[key] = value; return true; }
@@ -201,13 +201,20 @@ test("digit reset retains rejected font retirement after the observation loop st
     assert.deepEqual(env.clock.errors, []);
 });
 
-test("digit margin retirement retries a rejected neutral write after Ammo stops", () => {
+test("digit margin retirement retries a rejected composite clear after Ammo stops", () => {
     const env = setup(), source = env.native(env.root), panel = source.current;
     const physical = { x: 0, y: 0 };
     let reject = false;
+    const clear = panel.ClearPropertyFromCode.bind(panel);
+    panel.ClearPropertyFromCode = key => {
+        if (key === "margin") {
+            if (reject) return false;
+            physical.x = physical.y = 0;
+        }
+        return clear(key);
+    };
     panel.style = new Proxy(panel.style, { set(target, key, value) {
         if (key === "marginRight") {
-            if (reject && value === "0px") throw Error("native margin unavailable");
             physical.x = -parseFloat(value) || 0;
         }
         target[key] = value; return true;
@@ -215,7 +222,7 @@ test("digit margin retirement retries a rejected neutral write after Ammo stops"
     env.feature.onEnable();
     assert.deepEqual(physical, { x: 20, y: 0 });
     reject = true; env.feature.onDisable();
-    assert.equal(panel.style.marginRight, "-20px");
+    assert.equal(panel.style.marginRight, "0px", "neutral margins remain owned until the composite clear succeeds");
     const reads = env.reads();
     reject = false; env.clock.advance(700);
     assert.deepEqual(physical, { x: 0, y: 0 });

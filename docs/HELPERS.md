@@ -25,6 +25,7 @@ which numeric label, or which live HUD instance is authoritative.
 | Change one style if different | `QOL_UTILS.SetStyleIfChanged(panel, property, value)` | Only when native read-back semantics suit comparison. |
 | Reassert one style | `QOL_UTILS.SetStyleSafe(panel, property, value)` | Use when a native owner may overwrite the value; do not make deliberate reassertion conditional. |
 | Normalize opacity / clear style | `QOL_UTILS.SetPanelOpacitySafe(panel, value, fallback)` / `QOL.core.panel.clearStyleProperty(panel, property)` | Opacity clamps and formats; clearing uses native ClearPropertyFromCode. |
+| Resolve a native code style key | `QOL_UTILS.NativeStylePropertyName(property)` | Converts camelCase aliases and native border/font/margin components to the stored composite symbol used by both clear helpers. |
 | Apply a style map | `QOL.core.panel.syncStyles(panel, styles, lastSig)` | Caller owns signature and invalidation; writes the whole map when signature changes. |
 | Own native code styles/classes | `QOL.core.panel.createNativeStyleOwner(options?)` | Instance `apply(panel, styles, classes?)`, `retain(panels)`, `clear()` and optional preserved-style `baseline(panel, property)` track attempted writes, native readback and rejected retirement. Caller selects sources, neutral `resetValues`, or explicitly preserved native code/class baselines; see [panel API](core/panel_helpers.md). |
 | Set a class / visibility | `QOL.core.panel.setClass(panel, className, active)` / `QOL.core.panel.setVisible(panel, visible)` | Class setter compares before writing; visible setter does not. |
@@ -143,6 +144,9 @@ both places would conceal a failed return to CSS defaults.
 The core helper also clears border color/width/style through their native
 composite `border` key and leases that composite; see the
 [native evidence and ownership boundary](core/panel_helpers.md).
+Font and margin components use their native `font`/`margin` composite keys too.
+Their native-style ownership retains unclaimed original code components while
+releasing owned overrides; see the same ownership reference.
 
 Presentation state visibility uses the current settings metadata in
 `ql_customize_data.js`. `captureVisibility(ctx, config)` retains the settings

@@ -145,13 +145,7 @@
         return { changed: true, sig: succeeded ? sig : null };
     };
 
-    const nativeStylePropertyName = property => {
-        const name = property.replace(/[A-Z]/g, c => "-" + c.toLowerCase());
-        // CStylePropertyBorder uses the `border` symbol for these aliases.
-        // ClearPropertyFromCode only removes an exact stored symbol, and its
-        // void return also occurs when an alias did not remove anything.
-        return name === "border-color" || name === "border-width" || name === "border-style" ? "border" : name;
-    };
+    const nativeStylePropertyName = QOL_UTILS.NativeStylePropertyName;
     const clearStyleProperty = (panel, prop) => {
         if (!isPanelAlive(panel) || typeof prop !== "string") return false;
         try {
@@ -164,6 +158,11 @@
     const nativeStyleLeases = new Map();
     const nativeClassBaselines = new Map();
     const nativeCodeBaselines = new Map();
+    const compositeCodeBaselines = new Map();
+    const compositeComponents = {
+        "style:font": ["fontSize", "fontFamily", "fontWeight", "fontStyle"],
+        "style:margin": ["marginLeft", "marginRight", "marginTop", "marginBottom"]
+    };
     const styleKey = property => "style:" + nativeStylePropertyName(property);
     const positionKeys = ["style:x", "style:y", "style:position"];
     // Own only attempted code properties/classes; native discovery and lifetime
@@ -174,7 +173,23 @@
         const preserved = new Set(preserveStyles.map(styleKey));
         const identity = {};
         let pending = null, generation = 0;
-        const claim = (panel, key) => {
+        const claim = (panel, key, property) => {
+            if (compositeComponents[key]) {
+                if (!compositeCodeBaselines.has(panel)) compositeCodeBaselines.set(panel, new Map());
+                const groups = compositeCodeBaselines.get(panel);
+                if (!groups.has(key)) {
+                    const values = new Map();
+                    for (const component of compositeComponents[key]) {
+                        const value = panel.style[component];
+                        if (value !== undefined && value !== null && value !== "") values.set(component, value);
+                    }
+                    groups.set(key, { values, owned: new Set() });
+                }
+                const fields = groups.get(key).owned;
+                if (key === "style:" + property) {
+                    for (const component of compositeComponents[key]) fields.add(component);
+                } else fields.add(property.replace(/-([a-z])/g, (_, c) => c.toUpperCase()));
+            }
             if (!nativeStyleLeases.has(panel)) nativeStyleLeases.set(panel, new Map());
             nativeStyleLeases.get(panel).set(key, identity);
         };
@@ -190,6 +205,9 @@
                 const code = nativeCodeBaselines.get(panel);
                 code?.delete(key);
                 if (code && !code.size) nativeCodeBaselines.delete(panel);
+                const groups = compositeCodeBaselines.get(panel);
+                groups?.delete(key);
+                if (groups && !groups.size) compositeCodeBaselines.delete(panel);
                 if (key.startsWith("class:")) {
                     const baselines = nativeClassBaselines.get(panel);
                     baselines?.delete(key);
@@ -242,8 +260,19 @@
                     const original = preserved.has(key) ? baseline(panel, property) : "";
                     if (original) panel.style[property] = original;
                     else {
-                        if (Object.prototype.hasOwnProperty.call(resets, property)) panel.style[property] = resets[property];
+                        for (const component of record.properties) {
+                            if (styleKey(component) === key && !record.wantedProperties.has(component) &&
+                                Object.prototype.hasOwnProperty.call(resets, component)) panel.style[component] = resets[component];
+                        }
                         if (!clearStyleProperty(panel, property)) return false;
+                        const group = compositeCodeBaselines.get(panel)?.get(key);
+                        if (group) {
+                            // Component setters share one native code slot. Keep
+                            // original code fields never claimed by these owners.
+                            for (const [component, value] of group.values) {
+                                if (!group.owned.has(component)) panel.style[component] = value;
+                            }
+                        }
                     }
                     // An axis assignment and position share native storage.
                     // Clear the aggregate only after the last desired axis,
@@ -254,7 +283,9 @@
                         !clearStyleProperty(panel, "position")) return false;
                 }
                 drop(panel, key);
-                record.properties.delete(property);
+                for (const component of record.properties) {
+                    if (styleKey(component) === key && !record.wantedProperties.has(component)) record.properties.delete(component);
+                }
                 record.signature = null;
                 return true;
             } catch (_) { return false; }
@@ -266,10 +297,14 @@
         const cleanup = (panel) => {
             const record = records.get(panel);
             if (!record) return true;
-            if (!isPanelAlive(panel)) { records.delete(panel); nativeStyleLeases.delete(panel); nativeClassBaselines.delete(panel); nativeCodeBaselines.delete(panel); return true; }
+            if (!isPanelAlive(panel)) { records.delete(panel); nativeStyleLeases.delete(panel); nativeClassBaselines.delete(panel); nativeCodeBaselines.delete(panel); compositeCodeBaselines.delete(panel); return true; }
             let complete = true;
+            const attempted = new Set();
             for (const property of record.properties) {
-                if (!record.wantedProperties.has(property) && !clearProperty(panel, record, property)) complete = false;
+                const key = styleKey(property);
+                if (record.wantedProperties.has(property) || attempted.has(key)) continue;
+                attempted.add(key);
+                if (!clearProperty(panel, record, property)) complete = false;
             }
             for (const name of record.classes) {
                 if (record.wantedClasses.has(name)) continue;
@@ -346,7 +381,7 @@
                 }
                 record.properties.add(property);
                 if (property === "position") for (const key of positionKeys) claim(panel, key);
-                else claim(panel, styleKey(property));
+                else claim(panel, styleKey(property), property);
             }
             const result = syncStyles(panel, styles, previous);
             record.signature = result.sig;

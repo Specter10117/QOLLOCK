@@ -27,6 +27,30 @@ test("border tint retirement cannot clear the next owner's composite border leas
     assert.deepEqual(env.clock.errors, []);
 });
 
+for (const [property, sibling, value, nextValue, original, originalValue] of [
+    ["fontSize", "fontWeight", "32px", "bold", "fontFamily", "serif"],
+    ["marginLeft", "marginTop", "80px", "-40px", "marginBottom", "12px"]
+]) test(`${property} retirement releases the native composite and preserves a current sibling`, () => {
+    const env = setup(), panel = env.add("NativeComposite");
+    panel.style[original] = originalValue;
+    const owner = env.P.createNativeStyleOwner();
+    owner.apply(panel, { [property]: value, [sibling]: nextValue });
+    owner.apply(panel, { [sibling]: nextValue });
+    assert.equal(panel.style[property], undefined, "removed component returns to native CSS");
+    assert.equal(panel.style[sibling], nextValue, "still-customized component survives composite retirement");
+    owner.clear();
+    assert.equal(panel.style[sibling], undefined);
+    assert.equal(panel.style[original], originalValue, "unowned original code component survives retirement");
+    const first = env.P.createNativeStyleOwner(), next = env.P.createNativeStyleOwner();
+    first.apply(panel, { [property]: value }); next.apply(panel, { [sibling]: nextValue });
+    first.clear();
+    assert.equal(panel.style[sibling], nextValue, "older cleanup cannot retire a new composite lease");
+    next.clear();
+    assert.equal(panel.style[property], undefined); assert.equal(panel.style[sibling], undefined);
+    assert.equal(panel.style[original], originalValue, "original code survives instance handoff too");
+    assert.deepEqual(env.clock.errors, []);
+});
+
 test("preserved native class baselines survive rejected retirement and instance handoff", () => {
     const env = setup(), panel = env.add("ClassHandoff");
     panel.AddClass("nativePresent");

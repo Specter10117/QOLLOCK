@@ -370,7 +370,11 @@ function BuildQuickbuyQueueCostProgress(quickbuyQueueEntries,currentSoulsAmount,
     }
 
     function releaseProperty(panel, property) {
-        try { return panel.ClearPropertyFromCode(property.replace(/[A-Z]/g, c => '-' + c.toLowerCase())) !== false; }
+        // This independent context owns both font components on cost labels.
+        // Panorama stores them together; clearing either alias is a void no-op.
+        const name = property === 'fontSize' || property === 'fontWeight' ? 'font' :
+            property.replace(/[A-Z]/g, c => '-' + c.toLowerCase());
+        try { return panel.ClearPropertyFromCode(name) !== false; }
         catch (_) { return false; }
     }
 
