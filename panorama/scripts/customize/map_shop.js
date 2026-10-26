@@ -34,22 +34,6 @@
         ]),
         minimap("minimapAlt", "Minimap: Alt", zoomFields("ALT"), "alt"),
         minimap("minimapTab", "Minimap: Tab", zoomFields("TAB"), "tab"),
-        { id: "mapTimers", name: "Minimap Timers", group: "Minimap", path: [...mapPath, "QOLMinimapTimersRoot"], fields: [
-            t("ENABLE_MINIMAP_REJUV_TIMER", "Rejuvenator Timer"), t("ENABLE_MINIMAP_BUFF_TIMER", "Buff Timer"),
-            t("ENABLE_MINIMAP_BUFF_TIMER_ON_BRIDGE", "Bridge Buff Timer"), t("ENABLE_MINIMAP_ALWAYS_ON_MID_BOSS", "Always Show Mid Boss")
-        ] },
-        { id: "midBossTimer", name: "Mid Boss Timer", group: "Minimap", parentId: "mapTimers",
-            path: [...mapPath, "QOLMinimapTimersRoot", "QOLMinimapRejuvTimer"],
-            fields: [t("ENABLE_MINIMAP_REJUV_TIMER", "Enable"), ...geometry("MINIMAP_MID_BOSS_", true), opacity("MINIMAP_MID_BOSS_")] },
-        { id: "buffTimer", name: "Buff Timer", group: "Minimap", parentId: "mapTimers",
-            path: [...mapPath, "QOLMinimapTimersRoot", "QOLMinimapBuffTimer"],
-            fields: [t("ENABLE_MINIMAP_BUFF_TIMER", "Enable"), ...geometry("MINIMAP_BUFF_", true), opacity("MINIMAP_BUFF_")] },
-        { id: "bridgeBuffLeft", name: "Left Bridge Buff Timer", group: "Minimap", parentId: "mapTimers",
-            path: [...mapPath, "QOLMinimapTimersRoot", "QOLMinimapBuffBridgeLeftTimer"],
-            fields: [t("ENABLE_MINIMAP_BUFF_TIMER", "Enable"), ...geometry("MINIMAP_BRIDGE_LEFT_", true), opacity("MINIMAP_BRIDGE_LEFT_")] },
-        { id: "bridgeBuffRight", name: "Right Bridge Buff Timer", group: "Minimap", parentId: "mapTimers",
-            path: [...mapPath, "QOLMinimapTimersRoot", "QOLMinimapBuffBridgeRightTimer"],
-            fields: [t("ENABLE_MINIMAP_BUFF_TIMER", "Enable"), ...geometry("MINIMAP_BRIDGE_RIGHT_", true), opacity("MINIMAP_BRIDGE_RIGHT_")] },
         { id: "mapLoot", name: "Map References", group: "Minimap",
             path: [...mapPath, "HudMinimapContainer", "hud_minimap", "QOLMinimapLootRoot"],
             resolve(hud) {

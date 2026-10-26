@@ -555,11 +555,6 @@
 
         createSep(list);
         createTitle(list, "Addons");
-        createTitle(list, "Minimap Timers", null, "mapTimers");
-        createTitle(list, "Mid Boss Timer", null, "midBossTimer");
-        createTitle(list, "Buff Timer", null, "buffTimer");
-        createTitle(list, "Left Bridge Buff Timer", null, "bridgeBuffLeft");
-        createTitle(list, "Right Bridge Buff Timer", null, "bridgeBuffRight");
         if (createRow) {
             createRow(list, "Elevation Markers", "ENABLE_MINIMAP_ELEVATION_MARKERS", "toggle", null, null, null, null, "Shows relative elevation difference between you and players.");
         }
@@ -589,13 +584,7 @@
             createRow(list, "Tough Crates", "ENABLE_MINIMAP_TOUGH_CRATES", "toggle", null, null, null, null, "Static Midtown locations; markers do not track remaining loot.");
             createRow(list, "Healing Snacks", "ENABLE_MINIMAP_HEALING_SNACKS", "toggle", null, null, null, null, "Static Midtown locations; markers do not track remaining loot.");
             createRow(list, "Statues", "ENABLE_MINIMAP_STATUES", "toggle", null, null, null, null, "Static Midtown locations; markers do not track remaining loot.");
-            createRow(list, "Camp Names", "MINIMAP_CAMP_NAMES", "dropdown", null, null, null,
-                [{ label: "Off", value: 0 }, { label: "All", value: 1 }, { label: "Minimalist", value: 2 }], "");
             createRow(list, "Crate Routes", "ENABLE_MINIMAP_CRATE_ROUTES", "toggle", null, null, null, null, "Numbered reference routes for collecting crates on Midtown.");
-            createRow(list, "Routes From Minute", "MINIMAP_ROUTE_FROM_MINUTE", "slider", 0, 90, 1, null, "");
-            createRow(list, "Routes Until Minute", "MINIMAP_ROUTE_UNTIL_MINUTE", "slider", 0, 90, 1, null, "");
-            createRow(list, "Crates From Minute", "MINIMAP_CRATE_FROM_MINUTE", "slider", 0, 90, 1, null, "");
-            createRow(list, "Crates Until Minute", "MINIMAP_CRATE_UNTIL_MINUTE", "slider", 0, 90, 1, null, "");
             createRow(list, "Rem Tunnels", "ENABLE_MINIMAP_REM_TUNNELS", "toggle", null, null, null, null, "Show an overlay of the underground tunnels.");
         }
 

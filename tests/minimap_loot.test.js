@@ -134,12 +134,12 @@ test("late native sources, living replacements, reparented children and re-enabl
     e.clean();
 });
 
-test("new map controls and exact appearance values survive settings, HUD, export and import", () => {
+test("map toggles and saved appearance values survive settings, HUD, export and import", () => {
     const e = load(), g = e.global, Q = g.QOL;
     Q.ui.window.setOpen(true); e.clock.advance(500);
     Q.ui.window.setActiveTabAndRefresh("Minimap"); e.clock.advance(300);
-    for (const key of ["ENABLE_MINIMAP_TOUGH_CRATES", "ENABLE_MINIMAP_HEALING_SNACKS", "ENABLE_MINIMAP_STATUES", "MINIMAP_CAMP_NAMES",
-        "ENABLE_MINIMAP_CRATE_ROUTES", "MINIMAP_ROUTE_FROM_MINUTE", "MINIMAP_CRATE_FROM_MINUTE"]) {
+    for (const key of ["ENABLE_MINIMAP_TOUGH_CRATES", "ENABLE_MINIMAP_HEALING_SNACKS", "ENABLE_MINIMAP_STATUES",
+        "ENABLE_MINIMAP_CRATE_ROUTES"]) {
         assert.ok(e.list.FindChildrenWithClassTraverse("SettingRow_" + key).length, key);
     }
     Object.assign(g.MOD_CONFIG, { MINIMAP_CAMP_NAMES: 2, ENABLE_MINIMAP_HEALING_SNACKS: 1, MINIMAP_ROUTE_SCALE: 137,

@@ -19,17 +19,15 @@ function setup() {
     return { ...env, souls: panel, find: id => env.em.FindChildTraverse(id) };
 }
 
-test("catalog starts with all surfaces, filtering is optional, and a hidden selection can be restored", () => {
+test("catalog starts with available surfaces and All elements restores hidden selections", () => {
     const env = setup();
     const { global: g, clock, find, souls } = env;
     assert.equal(g.QOL.ui.customize.start(), true);
     assert.equal(find("QOLCustomizeSelect_souls").visible, true);
-    assert.equal(find("QOLCustomizeSelect_compass").visible, true);
+    assert.equal(find("QOLCustomizeSelect_compass").visible, false);
     for (const id of ["profileScreens", "mainMenu", "healthWarnings", "targetShapes", "nicknames"]) {
         assert.equal(find("QOLCustomizeSelect_" + id), null, id);
     }
-    find("QOLCustomizeAllElements")._fire("onactivate");
-    assert.equal(find("QOLCustomizeSelect_compass").visible, false);
     find("QOLCustomizeAllElements")._fire("onactivate");
     assert.equal(find("QOLCustomizeSelect_compass").visible, true);
     const toggle = find("QOLCustomize_HUD_SOULS_ENABLED");
@@ -101,6 +99,7 @@ for (const opacity of [0, 1]) test(`Souls remain recoverable from the full catal
     g.SaveAndSync(); clock.advance(1200);
     if (!opacity) souls.visible = false; // Native layout supplies no measurable visible content.
     g.QOL.ui.customize.start();
+    find("QOLCustomizeAllElements")._fire("onactivate");
     const row = find("QOLCustomizeSelect_souls");
     assert.equal(row.visible, true);
     row._fire("onactivate");

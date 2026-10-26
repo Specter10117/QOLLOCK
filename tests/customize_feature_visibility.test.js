@@ -30,7 +30,8 @@ for (const basic of [0, 1]) test(`disabled Item Cooldowns have no frame, catalog
     assert.equal(g.QOL.ui.customize.start(), true);
     const frame = env.find("QOLCustomizeFrame_cooldowns");
     assert.equal(frame.visible, false, "a surviving panel is not an enabled feature");
-    assert.equal(env.find("QOLCustomizeSelect_cooldowns").visible, true);
+    assert.equal(env.find("QOLCustomizeSelect_cooldowns").visible, false);
+    env.find("QOLCustomizeAllElements")._fire("onactivate");
     const entry = env.find("QOLCustomizeSelect_cooldowns");
     assert.equal(entry.visible, true);
     assert.equal(entry.BHasClass("Unavailable"), true);
@@ -85,4 +86,27 @@ test("HUD keeps feature Customize actions while AP and Active Items remain only 
     for (const id of ["abilityPoints", "activeItems"]) assert.ok(env.find("QOLCustomizeSelect_" + id), id);
     env.find("QOLCustomizeCancel")._fire("onactivate");
     assert.deepEqual(env.doc.eventErrors, []); assert.deepEqual(env.clock.errors, []);
+});
+
+test("preset to Default hides disabled retained surfaces on each Customize opening", () => {
+    const env = setup(), Q = env.global.QOL;
+    for (const id of ["compass", "unsecuredTimer"]) {
+        let parent = env.hud.root;
+        for (const segment of Q.presentation.elements.find(element => element.id === id).path) {
+            const child = typeof segment === "string" ? parent.FindChild(segment) : parent.Children().find(panel => panel.BHasClass(segment.className));
+            parent = child || env.add(parent, typeof segment === "string" ? segment : "", typeof segment === "string" ? [] : [segment.className]);
+        }
+    }
+    Q.ui.presets.applyPresetConfig({ ENABLE_COMPASS: 1, ENABLE_UNSECURED_SOUL_TIMER: 1 });
+    assert.equal(Q.ui.customize.start(), true);
+    assert.equal(env.find("QOLCustomizeSelect_unsecuredTimer").visible, true);
+    env.find("QOLCustomizeCancel")._fire("onactivate");
+    env.clock.advance(300);
+    Q.ui.presets.applyPresetByName("Default");
+    assert.equal(Q.ui.customize.start(), true);
+    for (const id of ["compass", "unsecuredTimer"]) assert.equal(env.find("QOLCustomizeSelect_" + id).visible, false, id);
+    env.find("QOLCustomizeAllElements")._fire("onactivate");
+    assert.equal(env.find("QOLCustomizeSelect_unsecuredTimer").visible, true, "explicit recovery remains available");
+    env.find("QOLCustomizeCancel")._fire("onactivate");
+    assert.deepEqual(env.clock.errors, []); assert.deepEqual(env.doc.eventErrors, []);
 });

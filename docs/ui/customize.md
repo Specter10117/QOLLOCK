@@ -13,9 +13,10 @@ fail before opening or changing HUD state.
 AP and Active Items have no empty standalone subsection in the ordinary HUD
 settings. They remain separate selections in the full Customize catalog.
 The standalone Customize tab lists editable HUD surfaces with independent frames.
-It shows all surfaces by default, including hidden or conditional surfaces, so
-zero opacity, state hiding and off-screen placement can be repaired without a
-configuration reset. Turning off All elements filters to available surfaces.
+It starts with available surfaces in a gameplay HUD. All elements exposes hidden
+or conditional surfaces so zero opacity, state hiding and off-screen placement
+can be repaired without a configuration reset. Menu-only sessions show all
+surfaces because there is no gameplay layout to filter.
 The current selection remains listed when hidden so it can
 be re-enabled. Search filters this list, including localized field names. Empty
 reference entries, separate-context screens and settings-only children do not
@@ -67,12 +68,12 @@ exposes appearance and actual visibility. Base minimap exposes its overall
 opacity and the Minimalist switch; its background opacity appears only while
 that draft mode is enabled, including after history changes.
 
-Minimap objective timers have independent selections for Mid Boss, the ordinary
-Buff plate and each Bridge Buff plate. Their existing timer producer still owns
-content and visibility; Customize changes only each plate's offset, scale and
-opacity. Map References exposes marker size, route size and layer opacity while
-map-relative coordinates stay attached to the native renderer. Inspector panel
-descriptions are omitted for every selection.
+Minimap objective timers remain ordinary gameplay toggles. Their producer owns
+plate placement, size, content and visibility; text plates have no separate
+Customize entries. Map References exposes marker size, route size and layer
+opacity while map-relative coordinates stay attached to the native renderer.
+Camp name and minute-range controls are absent from the ordinary Minimap tab.
+Inspector panel descriptions are omitted for every selection.
 
 The settings-only modules in `ui/customize/` separate the session, measured geometry,
 inspector, window chrome, overlay and tab. Native HUD owners remain under their original parents.

@@ -166,14 +166,14 @@ for (const mode of ["HUD", "menu", "scoped"]) {
         else activate(env, "QOLCustomizeOpen");
         assert.equal(Q.ui.customize.isRunning(), true, Q.ui.customize.failureText());
         assert.ok(visibilityWrites > 0);
-        assert.equal(env.em.FindChildTraverse("QOLCustomizeSelect_compass").visible, true);
+        assert.equal(env.em.FindChildTraverse("QOLCustomizeSelect_compass").visible, mode !== "HUD");
         env.clock.advance(500);
         assert.equal(Q.ui.customize.isRunning(), true, Q.ui.customize.failureText());
         if (mode === "HUD") {
             activate(env, "QOLCustomizeAllElements");
-            assert.equal(env.em.FindChildTraverse("QOLCustomizeSelect_compass").visible, false);
-            activate(env, "QOLCustomizeAllElements");
             assert.equal(env.em.FindChildTraverse("QOLCustomizeSelect_compass").visible, true);
+            activate(env, "QOLCustomizeAllElements");
+            assert.equal(env.em.FindChildTraverse("QOLCustomizeSelect_compass").visible, false);
         }
         activate(env, "QOLCustomizeCancel");
         assert.equal(Q.ui.customize.isRunning(), false);

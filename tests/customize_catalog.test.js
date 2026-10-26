@@ -35,6 +35,8 @@ test("catalog covers current visual manifest controls, with explicit compatibili
         // Split Alt/Tab fields own current map sizing; this is a legacy alias.
         "MINIMAP_LARGE_SIZE", "ENABLE_PERF_DEBUG", "ENABLE_PERF_DEBUG_DETAIL", "ENABLE_UPDATE_CHECKER",
         // Minimap gameplay addons and overlays remain in the Minimap settings tab
+        "ENABLE_MINIMAP_REJUV_TIMER", "ENABLE_MINIMAP_BUFF_TIMER",
+        "ENABLE_MINIMAP_BUFF_TIMER_ON_BRIDGE", "ENABLE_MINIMAP_ALWAYS_ON_MID_BOSS",
         "MINIMAP_FLIP", "MINIMAP_ROTATE_WITH_PLAYER", "ENABLE_MINIMAP_ELEVATION_MARKERS",
         "ENABLE_MINIMAP_CRATE_OVERLAY", "ENABLE_MINIMAP_REM_TUNNELS", "MINIMAP_REM_TUNNELS_OPACITY",
         "ENABLE_ALT_ZOOM_REM_TUNNELS", "ALT_ZOOM_REM_TUNNELS_OPACITY",
@@ -83,6 +85,7 @@ test("search retains absent conditional features and matches localized field nam
     const env = setup();
     env.global.MOD_CONFIG.LANGUAGE = env.global.QOL.ui.theme.SETTINGS_LANGUAGE_RUSSIAN;
     env.global.QOL.ui.customize.start();
+    activate(env, "QOLCustomizeAllElements");
     const search = env.em.FindChildTraverse("QOLCustomizeSearch");
     search.text = "fire rate";
     search._fire("ontextentrychange");

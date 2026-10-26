@@ -21,22 +21,6 @@
         enabledByDefault: false,
         enableKeys: ["ENABLE_MINIMAP_REJUV_TIMER", "ENABLE_MINIMAP_BUFF_TIMER"],
         settings: [
-            { key: "MINIMAP_MID_BOSS_X_OFFSET", type: "slider" },
-            { key: "MINIMAP_MID_BOSS_Y_OFFSET", type: "slider" },
-            { key: "MINIMAP_MID_BOSS_SCALE", type: "slider" },
-            { key: "MINIMAP_MID_BOSS_OPACITY", type: "slider" },
-            { key: "MINIMAP_BUFF_X_OFFSET", type: "slider" },
-            { key: "MINIMAP_BUFF_Y_OFFSET", type: "slider" },
-            { key: "MINIMAP_BUFF_SCALE", type: "slider" },
-            { key: "MINIMAP_BUFF_OPACITY", type: "slider" },
-            { key: "MINIMAP_BRIDGE_LEFT_X_OFFSET", type: "slider" },
-            { key: "MINIMAP_BRIDGE_LEFT_Y_OFFSET", type: "slider" },
-            { key: "MINIMAP_BRIDGE_LEFT_SCALE", type: "slider" },
-            { key: "MINIMAP_BRIDGE_LEFT_OPACITY", type: "slider" },
-            { key: "MINIMAP_BRIDGE_RIGHT_X_OFFSET", type: "slider" },
-            { key: "MINIMAP_BRIDGE_RIGHT_Y_OFFSET", type: "slider" },
-            { key: "MINIMAP_BRIDGE_RIGHT_SCALE", type: "slider" },
-            { key: "MINIMAP_BRIDGE_RIGHT_OPACITY", type: "slider" },
 
             { key: "ENABLE_MINIMAP_REJUV_TIMER", type: "toggle" },
             { key: "ENABLE_MINIMAP_BUFF_TIMER", type: "toggle" },
@@ -69,15 +53,6 @@
                     return Number.isFinite(value) && value > 0 ? value : baseSize;
                 };
                 return {
-                    presentation: Object.fromEntries([
-                        ["rejuv", "MINIMAP_MID_BOSS_"], ["buff", "MINIMAP_BUFF_"],
-                        ["left", "MINIMAP_BRIDGE_LEFT_"], ["right", "MINIMAP_BRIDGE_RIGHT_"]
-                    ].map(([role, prefix]) => [role, {
-                        x: Q.settings.readNumber(prefix + "X_OFFSET", cfg[prefix + "X_OFFSET"]),
-                        y: Q.settings.readNumber(prefix + "Y_OFFSET", cfg[prefix + "Y_OFFSET"]),
-                        scale: Q.settings.readNumber(prefix + "SCALE", cfg[prefix + "SCALE"]),
-                        opacity: Q.settings.readNumber(prefix + "OPACITY", cfg[prefix + "OPACITY"])
-                    }])),
                     buff, rejuv,
                     bridge: buff && U.IsCfgEnabled(cfg, "ENABLE_MINIMAP_BUFF_TIMER_ON_BRIDGE"),
                     midboss: rejuv && U.IsCfgEnabled(cfg, "ENABLE_MINIMAP_ALWAYS_ON_MID_BOSS"),
@@ -139,18 +114,6 @@
             function style(panel, values) {
                 if (!P.isAlive(panel)) return;
                 signatures.set(panel, P.syncStyles(panel, values, signatures.get(panel)).sig);
-            }
-
-            function styleTimer(role, values) {
-                const presentation = model.presentation[role];
-                const margin = values.margin === "0px 40px" ? 40 : 0;
-                style(panels[role], { ...values,
-                    marginLeft: (parseFloat(values.marginLeft) || 0) + presentation.x + "px",
-                    marginRight: margin - presentation.x + "px",
-                    marginTop: (parseFloat(values.marginTop) || 0) - presentation.y + "px",
-                    marginBottom: (parseFloat(values.marginBottom) || 0) + presentation.y + "px",
-                    uiScale: presentation.scale + "%", opacity: String(presentation.opacity)
-                });
             }
 
             function show(panel, visible) {
@@ -218,13 +181,13 @@
                 for (const role of ["buff", "rejuv"]) {
                     const midboss = role === "rejuv" && model.midboss;
                     const offset = role === "buff" ? (!model.rejuv || model.midboss ? 0 : -152) : (model.buff ? 152 : 0);
-                    styleTimer(role, bridgeMode ? { ...plate, margin: "0px", ignoreParentFlow: "true", verticalAlign: midboss ? "center" : "bottom",
+                    style(panels[role], bridgeMode ? { ...plate, margin: "0px", ignoreParentFlow: "true", verticalAlign: midboss ? "center" : "bottom",
                         marginBottom: midboss ? "0px" : "40px", marginLeft: (midboss ? 0 : offset) + "px" } : plate);
                     style(overlay[role + "Icon"], { width: "16px", height: "16px" });
                     style(overlay[role + "Time"], { fontSize: "14px" });
                 }
                 for (const [role, direction] of [["left", -1], ["right", 1]]) {
-                    styleTimer(role, { width: "48px", height: "18px", margin: "0px", padding: "0px 3px", borderRadius: "4px",
+                    style(panels[role], { width: "48px", height: "18px", margin: "0px", padding: "0px 3px", borderRadius: "4px",
                         horizontalAlign: "center", verticalAlign: "center", marginLeft: direction * 144 * observed.size / 400 + "px",
                         ignoreParentFlow: "true", marginTop: "0px", marginBottom: "0px" });
                     style(overlay[role + "Time"], { fontSize: "11px" });
