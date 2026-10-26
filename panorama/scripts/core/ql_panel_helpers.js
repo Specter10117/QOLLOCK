@@ -586,7 +586,14 @@
                 return panel;
             });
         };
-        const clear = () => { for (const id of [...nodes.keys()].reverse()) discard(id); sweep(); };
+        const clear = () => {
+            // Every owned descendant is already recorded, including moved handles.
+            // Bulk retirement needs no per-node branch discovery through discard().
+            const records = [...nodes.values()].reverse();
+            nodes.clear();
+            for (const record of records) retire(record.panel);
+            sweep();
+        };
         const dispose = () => { clear(); retryDeletion(); };
         return { create, child, children, sweep, remove: discard, clear, dispose };
     };
