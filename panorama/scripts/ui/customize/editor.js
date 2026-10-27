@@ -598,11 +598,15 @@
             const item = owner.frames.get(element.id);
             const matches = !owner.query || [element.name, element.group || "HUD", ...element.fields.map(field => field.label)]
                 .some(text => (text + " " + localize(text)).toLowerCase().includes(owner.query));
-            item.button.visible = matches && (owner.showAll || item.available || (owner.selectionPinned && owner.selected === element));
-            if (item.button.visible) count++;
+            const visible = matches && (owner.showAll || item.available || (owner.selectionPinned && owner.selected === element));
+            if (item.button.visible !== visible) item.button.visible = visible;
+            if (visible) count++;
         }
-        for (const { heading, ids } of owner.headings) heading.visible = !owner.query && ids.some(id => owner.frames.get(id).button.visible);
-        owner.empty.visible = !count;
+        for (const { heading, ids } of owner.headings) {
+            const visible = !owner.query && ids.some(id => owner.frames.get(id).button.visible);
+            if (heading.visible !== visible) heading.visible = visible;
+        }
+        if (owner.empty.visible !== !count) owner.empty.visible = !count;
     }
     function watch(owner) {
         if (current !== owner) return;
@@ -746,10 +750,16 @@
             catalog.AddClass("QOLUnifiedModalSurface");
             catalog.visible = !element || owner.elements.length > 1;
             owner.chrome.header(catalog, "QOLCustomizeDragCatalog", "HUD Elements");
-            I.label(catalog, "Search elements");
-            const search = P.create("TextEntry", catalog, "QOLCustomizeSearch");
+            const searchWrap = P.create("Panel", catalog, "QOLCustomizeSearchWrap");
+            searchWrap.AddClass("QOLCustomizeSearchWrap");
+            const search = P.create("TextEntry", searchWrap, "QOLCustomizeSearch", { placeholder: localize("Search elements") });
             search.AddClass("QOLCustomizeSearch");
-            search.AddClass("ValueInput");
+            const searchIcon = P.create("Image", searchWrap, "", {
+                src: "s2r://panorama/images/control_icons/24px/search.vsvg", scaling: "contain"
+            });
+            searchIcon.AddClass("QOLCustomizeSearchIcon");
+            searchIcon.hittest = false;
+            searchIcon.hittestchildren = false;
             const allElements = I.button(catalog, "QOLCustomizeAllElements", "All elements", () => {
                 if (current !== owner) return;
                 owner.showAll = !owner.showAll;

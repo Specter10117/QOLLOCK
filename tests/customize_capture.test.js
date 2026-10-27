@@ -53,6 +53,29 @@ function type(env, key, text) {
     input.text = text; input._fire("oninputsubmit");
 }
 
+test("catalog polling leaves unchanged visibility alone and one activation selects an element", () => {
+    const env = setup();
+    const catalog = env.find("QOLCustomizeCatalog");
+    const writes = [];
+    const track = panel => {
+        let visible = panel.visible;
+        Object.defineProperty(panel, "visible", {
+            configurable: true,
+            get: () => visible,
+            set: value => { writes.push(panel.id || panel.type); visible = value; }
+        });
+        panel.Children().forEach(track);
+    };
+    track(catalog);
+    env.clock.advance(1000);
+    assert.deepEqual(writes, [], "idle discovery must not rewrite the catalog's native visibility");
+    env.click("QOLCustomizeSelect_items");
+    assert.ok(env.find("QOLCustomize_ITEMS_X_OFFSET"), "one activation opens the requested inspector");
+    env.click("QOLCustomizeSelect_souls");
+    assert.ok(env.find("QOLCustomize_SOULS_X_OFFSET"));
+    env.clean();
+});
+
 // Exercise native Button callbacks with optional cursor coordinates, separately
 // from compositor motion. Native hit testing still requires client verification.
 function pointer(env, x, y) {

@@ -76,7 +76,52 @@ CitadelHudEscapeMenu.QOLCustomizeActive { background-color: #0000; }
 .QOLCustomizeChromeHandle:hover { brightness: 1.3; }
 .QOLCustomizeChoices { height: fill-parent-flow(1); overflow: squish scroll; }
 #QOLCustomizeFields { height: fit-children; max-height: 600px; overflow: squish scroll; }
-.QOLCustomizeCatalog .QOLCustomizeSearch.ValueInput { width: 100%; height: 28px; margin-left: 0px; margin-bottom: 6px; }
+.QOLCustomizeSearchWrap { width: 100%; height: 34px; margin-bottom: 8px; }
+.QOLCustomizeSearch
+{
+    width: 100%;
+    height: 100%;
+    background-color: gradient(linear, 0% 0%, 0% 100%, from(#171717), to(#111111));
+    border: 1px solid rgba(220, 225, 220, 0.16);
+    border-radius: 6px;
+    padding: 0px 8px 0px 28px;
+    font-family: oracle;
+    font-size: 13px;
+    color: #d8e0dc;
+    text-align: left;
+    transition-property: border, brightness;
+    transition-duration: 0.16s;
+}
+.QOLCustomizeSearch:hover { border: 1px solid rgba(220, 225, 220, 0.28); }
+.QOLCustomizeSearch:focus
+{
+    border: 1px solid rgba(106, 231, 154, 0.28);
+    box-shadow: fill rgba(106, 231, 154, 0.04) 0px 0px 5px 0px;
+}
+.QOLCustomizeSearch #Contents,
+.QOLCustomizeSearch #TextEntryContents { width: 100%; height: 100%; vertical-align: center; }
+.QOLCustomizeSearch > Label,
+.QOLCustomizeSearch #TextEntryContents,
+.QOLCustomizeSearch #PlaceholderText
+{
+    font-family: oracle;
+    font-size: 13px;
+    color: #d8e0dc;
+    text-align: left;
+    vertical-align: center;
+    margin: 0px;
+}
+.QOLCustomizeSearch #PlaceholderText { color: #a8adab; }
+.QOLCustomizeSearch #TextEntryCursor { vertical-align: center; }
+.QOLCustomizeSearchIcon
+{
+    width: 14px;
+    height: 14px;
+    vertical-align: center;
+    margin-left: 9px;
+    wash-color: #8e9491;
+    opacity: 0.75;
+}
 .QOLCustomizeField { flow-children: down; width: 100%; height: fit-children; margin: 0px; padding: 5px 0px; background-color: none; border: 0px solid transparent; border-bottom: 1px solid rgba(255, 255, 255, 0.06); }
 .QOLCustomizeField > Label { width: 100%; height: fit-children; white-space: normal; margin-bottom: 4px; font-size: 13px; letter-spacing: 0px; color: #d8e0dc; text-shadow: none; }
 .QOLCustomizeField.QOLCustomizeToggleRow {
