@@ -84,6 +84,36 @@ function value(root, key) {
     return root.FindChildTraverse(`QOLCrosshairStatRow_${key}_value`);
 }
 
+test("Active Stats scoreboard visibility is controlled by Customize", () => {
+    const hud = createCrosshairHud(), { $, QOL: Q } = hud.sandbox.global;
+    const source = $.CreatePanel("Panel", hud.core, "hudActivePlayerStats");
+    addModifier($, source, "fireRateContainer", { number: "+10", postfix: "%", classes: ["shouldShow", "isPositive"] });
+    enableActiveStats(Q); hud.clock.advance(300);
+    const overlay = hud.root.FindChildTraverse("QOLCrosshairStatsOverlay");
+    const scoreboard = open => {
+        hud.root.SetHasClass("gScoreboardOpen", open);
+        Q.core.EventBus.emit("engine:scoreboard_toggle");
+        hud.clock.advance(200);
+    };
+    scoreboard(true);
+    assert.equal(overlay.style.visibility, "visible", "TAB alone does not suppress Active Stats");
+    Q.core.ConfigAdapter.loadFromFlat({ CROSSHAIR_STATS_HIDE_SCOREBOARD: 1 });
+    hud.clock.advance(200);
+    assert.equal(overlay.style.visibility, "collapse", "Customize can suppress the scoreboard state");
+    scoreboard(false);
+    assert.equal(overlay.style.visibility, "visible", "scoreboard suppression does not hide normal gameplay");
+    scoreboard(true);
+    assert.equal(overlay.style.visibility, "collapse");
+    Q.core.ConfigAdapter.loadFromFlat({ CROSSHAIR_STATS_HIDE_SCOREBOARD: 0 });
+    hud.clock.advance(200);
+    assert.equal(overlay.style.visibility, "visible", "clearing Customize suppression restores content while TAB stays open");
+    Q.core.FeatureRegistry.disable("ql_crosshair_stats");
+    Q.core.FeatureRegistry.enable("ql_crosshair_stats"); hud.clock.advance(300);
+    assert.equal(hud.root.FindChildTraverse("QOLCrosshairStatsOverlay").style.visibility, "visible");
+    assert.equal(value(hud.root, "fireRate").text, "+10%");
+    assert.deepEqual(hud.clock.errors, []);
+});
+
 test("crosshair ignores retired damage amplification and bullet evasion rows from old configs", () => {
     const hud = createCrosshairHud();
     const { $, QOL: Q } = hud.sandbox.global;
@@ -192,6 +222,7 @@ test("crosshair retries partial owned children and retires moved or replaced liv
         assert.equal(icon.BHasClass("FireRate"), true, "cached children retain class reconciliation");
         assert.equal(icon.hittest, false, "cached children retain owned input flags");
     }
+    Q.core.ConfigAdapter.loadFromFlat({ CROSSHAIR_STATS_HIDE_SCOREBOARD: 1 });
     hud.root.AddClass("gScoreboardOpen"); hud.clock.advance(200);
     const hiddenChildren = row(hud.root, "fireRate").Children();
     for (const child of hiddenChildren) child.SetParent(detached);

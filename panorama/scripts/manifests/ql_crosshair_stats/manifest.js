@@ -373,7 +373,7 @@
                 if (!model.enabled) { removeOverlay(); return; }
                 const preview = QOL.presentation.preview.selected(root, "activeStats");
                 if (QOL.presentation.shouldHide("activeStats", QOL.presentation.visibilityConfig(ctx), root) ||
-                    (!preview && (!QOL.core.hud.isGameplayHudShown(root) || QOL.core.hud.isScoreboardOpen(root)))) {
+                    (!preview && !QOL.core.hud.isGameplayHudShown(root))) {
                     if (!tree.sweep()) rows.clear();
                     hideOverlay();
                     return;
