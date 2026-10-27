@@ -45,31 +45,58 @@ collection is an array of `{ name, raw }` entries; `raw` uses the existing
 versioned settings envelope. Names are trimmed, case-insensitively unique,
 and limited to 48 characters without control characters.
 
-Saving captures settings at the click. Replacing or deleting a snapshot requires
-inline confirmation. The UI reports success only after the bridge acknowledges
-the write. A failed initial read disables writes so it cannot silently overwrite
-an unread collection; reopen the tab to retry. Invalid data is rejected through
-the side-effect-free settings parser. Writes are serialized within the settings
-realm; this collection has no cross-client concurrent editing protocol.
+New Preset creates an ordinary named entry from the canonical factory settings,
+then opens it for editing after its storage write is acknowledged. It never
+copies the current HUD configuration or overwrites a duplicate name. A late
+creation cannot replace settings edited since the click. The row exposes Load
+and an upward-opening overflow menu for startup selection, renaming and deletion.
+The open menu is portalled into a SettingsWindow layer outside the scrolling
+list, positioned with native visual coordinates and host UI density. It returns
+to its row on dismissal and retires when its section or settings window closes.
+There is no separate Update from current settings action: the footer Save saves
+the edited profile, including after changing values away from its saved snapshot.
 
-Load presents the existing settings diff before applying the validated
-snapshot through the preset application path, including preserved UI preferences
-and live HUD publication. It does not overwrite the main durable settings save.
-The Default row represents that main save (`qollock_settings`), not factory
-settings. The footer Save updates Default from the current session. Set as
-Default writes a personal snapshot to the same slot without changing the live
-config; startup restores that slot on the next launch. Each acknowledged save
-updates the open Default row. Loading Default previews a captured copy, so a
-later save cannot silently change an already open confirmation.
-The factory configuration remains available as Reset to Defaults in the base
-preset grid. Active highlights compare current values against saved snapshots,
-ignoring the same local preferences as community preset matching. They clear
-when settings no longer match; loading an identical named snapshot gives that
-selection priority. Editing or deleting a personal entry does not change Default.
-To overwrite a personal entry, save current settings under the same name and confirm.
-Stale section callbacks cannot
-render into a replaced section or apply a closed confirmation. Storage transport
-and full-client restart limitations are the same as for the main settings save.
+Load presents the existing settings diff before applying the validated snapshot,
+including preserved UI preferences and live HUD publication. It does not replace
+the main durable settings save. The base grid's Default button resets factory
+settings. There is no synthetic startup row in the personal list.
+
+On a fresh install, the first footer Save creates My config even if Presets has
+never been opened. Later Saves update the loaded personal profile, falling back
+to the main/original profile when no personal profile was explicitly loaded.
+The bridge captures the target identity before its asynchronous disk write.
+Missing entries referenced by old metadata are repaired instead of preventing
+creation. Existing names are preserved; collisions receive a numeric suffix.
+Opening Presets after upgrading also recovers an existing main save without
+applying it or changing the main slot. An interrupted capture can reuse its
+already-written entry instead of creating another copy.
+
+The separate `qollock_personal_presets_state` metadata record contains
+`startupName` and `originalName`; collection and settings envelope formats stay
+unchanged. Tracked rename intent temporarily adds `renameFrom`/`renameTo` so
+subsequent reads can recover the identity from the committed collection before
+another mutation. Writes are serialized within the settings realm; there is no
+cross-client concurrent editing protocol. Invalid initial reads disable writes
+in the view. Reopen the tab after repairing the storage error.
+
+Use at Startup writes the selected snapshot to `qollock_settings` without
+changing live settings and records its name after acknowledgment. At startup
+appears only on that named entry while its contents match the saved slot.
+Identical snapshots do not receive duplicate badges. Rename follows the saved
+identity. Deleting the selected main preset clears the startup slot, resets live
+factory settings and UI preferences, and removes tracking metadata so the next
+footer Save creates My config again. Other personal presets are preserved.
+Its menu action is Delete and reset; ordinary Delete removes only that snapshot.
+Neither requires another confirmation. Live reset follows acknowledgment of the
+main-slot clear even if later collection cleanup fails. Failed cleanup can be
+retried; newer edits/saves and replacement contexts cannot receive a stale reset.
+
+Active highlights compare current values against saved snapshots, ignoring local
+UI preferences and retired default-hero metadata. Loading an identical named
+snapshot gives that selection priority. Choosing it for startup does not change
+the live active selection. Late view callbacks cannot render into a replaced
+section or apply a closed confirmation. Storage transport and full-client restart
+limitations are the same as for the main settings save.
 
 ## Maintenance
 

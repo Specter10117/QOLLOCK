@@ -35,10 +35,17 @@ Settings are structurally validated and normalized through the side-effect-free 
 `saveSettings()` validates and normalizes a snapshot, marks user intent, publishes its canonical envelope to panel attributes, and sends it to CEF. A realm-local intent generation also invalidates older restores when every native attribute write is rejected; explicit load and clear use that same guard. Success requires a CEF acknowledgment; updating live attributes alone is not disk-save success. A failed disk save may leave the chosen settings active for the current session. Clearing disk settings also invalidates older pending restores, but does not itself reset live settings.
 
 After an acknowledged main or startup save, the settings realm notifies the
-Presets view with the canonical snapshot through `QOL.ui.presets.onDefaultSaved`.
-The view treats it as the Default row; failed saves cannot update that row.
-A view refresh error is logged separately and cannot turn a completed disk write
-into a reported save failure.
+personal-presets owner with the canonical snapshot through
+`QOL.ui.presets.onDefaultSaved(raw, mainSave, saveTarget)`. Before writing,
+Main Save captures the loaded profile name and transient identity revision through
+`getSaveTarget()` and later passes
+true so the owner can create/update that profile. Startup selection and clearing
+pass false. The bridge awaits this operation before completing its high-level
+callback. Failed main writes do not notify it. A personal-profile write error is
+logged and rejects Main Save so the UI cannot claim that the complete save
+succeeded. The already-acknowledged main slot remains available for recovery;
+this is a partial save, not a rollback. Collection and selection persistence are described in
+[personal presets](../PRESET_BINDINGS.md#personal-presets).
 
 ## Interface
 

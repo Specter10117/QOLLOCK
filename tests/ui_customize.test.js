@@ -1,5 +1,6 @@
 "use strict";
 const test = require("node:test");
+const { setImmediate: flush } = require("node:timers/promises");
 const assert = require("node:assert/strict");
 const load = require("./load_settings_environment");
 const startDrag = require("./customize_drag_fixture");
@@ -63,6 +64,24 @@ function cef(env) {
     return { requests, respond };
 }
 
+async function finishPersonalCapture(env, protocol, start) {
+    let index = start, sequence = 1000;
+    for (let turn = 0; turn < 20 && env.global.QOL.ui.customize.isRunning(); turn++) {
+        await flush();
+        while (index < protocol.requests.length) {
+            const request = protocol.requests[index++];
+            if (request.f === "load") {
+                protocol.respond(request, { ok: true, data: null, _seq: ++sequence });
+            } else if (request.f === "saveChunk") {
+                protocol.respond(request, { ok: true, savePartAck: request.a[1], _seq: ++sequence });
+            } else {
+                assert.equal(request.f, "save");
+                protocol.respond(request, { ok: true, _seq: ++sequence });
+            }
+        }
+    }
+}
+
 test("Apply stays open until every real CEF save chunk is acknowledged", async () => {
     const env = setup();
     const protocol = cef(env);
@@ -83,7 +102,7 @@ test("Apply stays open until every real CEF save chunk is acknowledged", async (
     }
     assert.ok(chunks.length > 1);
     assert.equal(JSON.parse(chunks.join("")).data.SOULS_X_OFFSET, 125);
-    for (let i = 0; i < 6; i++) await Promise.resolve();
+    await finishPersonalCapture(env, protocol, protocol.requests.length);
     assert.equal(env.global.QOL.ui.customize.isRunning(), false);
     clean(env);
 });
@@ -110,7 +129,7 @@ test("failed CEF save keeps applied settings and supports Retry save without rea
         const request = protocol.requests[index];
         protocol.respond(request, { ok: true, savePartAck: request.a[1], _seq: ++sequence });
     }
-    for (let i = 0; i < 6; i++) await Promise.resolve();
+    await finishPersonalCapture(env, protocol, protocol.requests.length);
     assert.equal(env.global.QOL.ui.customize.isRunning(), false);
     assert.equal(saves, 1);
     clean(env);

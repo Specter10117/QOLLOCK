@@ -626,14 +626,18 @@
         return Q.parseStoredConfig(raw);
     };
 
-    const _refreshDefaultPreset = raw => {
-        try { Q.ui?.presets?.onDefaultSaved(raw); }
-        catch (error) { _log(`Default preset view refresh failed: ${error.message || error}`); }
+    const _refreshDefaultPreset = async (raw, mainSave, saveTarget) => {
+        try { await Q.ui?.presets?.onDefaultSaved(raw, mainSave, saveTarget); }
+        catch (error) {
+            _log(`Personal preset save tracking failed: ${error.message || error}`);
+            if (mainSave) throw error;
+        }
     };
 
     /** Save a validated snapshot. Acknowledgment confirms CEF, not just UI sync. */
     const _saveSettings = (configOrRaw, publish, callback) => {
         let rawToSave;
+        const saveTarget = publish ? Q.ui?.presets?.getSaveTarget?.() : undefined;
         try {
             const config = configOrRaw === undefined
                 ? ((typeof MOD_CONFIG !== "undefined" && MOD_CONFIG) || globalThis.MOD_CONFIG || {})
@@ -646,11 +650,12 @@
         } catch (err) {
             return _withCallback(Promise.reject(err), callback);
         }
-        const promise = save(SETTINGS_STORAGE_KEY, rawToSave).then(() => {
+        const promise = (async () => {
+            await save(SETTINGS_STORAGE_KEY, rawToSave);
             _log(`${publish ? "saveSettings" : "saveStartupSettings"} succeeded (${rawToSave.length} characters).`);
-            _refreshDefaultPreset(rawToSave);
+            await _refreshDefaultPreset(rawToSave, publish, saveTarget);
             return { ok: true, timestamp: Date.now() };
-        });
+        })();
         return _withCallback(promise, callback);
     };
 
@@ -704,10 +709,12 @@
     const clearSettings = (callback) => {
         // Clearing storage is also user intent: an older restore must not undo it.
         _markSettingsIntent(_findRootPanel());
-        return _withCallback(remove(SETTINGS_STORAGE_KEY).then(() => {
-            _refreshDefaultPreset(null);
+        const clearing = (async () => {
+            await remove(SETTINGS_STORAGE_KEY);
+            await _refreshDefaultPreset(null, false);
             return { ok: true };
-        }), callback);
+        })();
+        return _withCallback(clearing, callback);
     };
 
     const storageBridgeApi = {

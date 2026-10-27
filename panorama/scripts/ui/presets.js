@@ -20,7 +20,7 @@
 
     const BREAD_PRESET_NAME = "BreadRollius";
     const LEGACY_BREAD_PRESET_NAME = "Bread";
-    const PRESET_MATCH_EXCLUDED_KEYS = new Set(["DRAG_ENABLED", "PREVIEWS_ENABLED", "ACTIVE_PRESET_NAME", "ENABLE_UPDATE_CHECKER"]);
+    const PRESET_MATCH_EXCLUDED_KEYS = new Set(["DRAG_ENABLED", "PREVIEWS_ENABLED", "ACTIVE_PRESET_NAME", "ENABLE_UPDATE_CHECKER", "DEFAULT_HERO"]);
 
     let _presetButtonRegistry = new Map();
     let _lastAppliedPresetName = "";
@@ -39,19 +39,47 @@
     const localize = Q.ui.renderer.localize;
 
     const PERSONAL_PRESETS_KEY = "qollock_personal_presets";
-    let personalWritePending = false;
+    const PERSONAL_STATE_KEY = "qollock_personal_presets_state";
+    let personalWritePending = 0;
+    let personalWork = Promise.resolve();
+    let personalState = null;
+    const personalIdentityRevisions = new Map();
+    const identityRevision = name => personalIdentityRevisions.get(name.toLowerCase()) || 0;
+    const invalidateIdentity = name => personalIdentityRevisions.set(name.toLowerCase(), identityRevision(name) + 1);
+    const serializePersonalWrite = (operation, rejectBusy = false) => {
+        if (rejectBusy && personalWritePending) return Promise.reject(new Error("A preset operation is already in progress."));
+        personalWritePending++;
+        const previous = personalWork;
+        const result = (async () => {
+            await previous;
+            try { return await operation(); }
+            finally { personalWritePending--; }
+        })();
+        // The caller observes the error; the next operation can still retry.
+        personalWork = result.catch(() => {});
+        return result;
+    };
     let personalRenderGeneration = 0;
     let savedDefaultConfig = null;
     let savedDefaultGeneration = 0;
+    let originalCaptureEpoch = 0;
     let personalView = null;
     let selectedPersonalName = "";
-    const onDefaultSaved = raw => {
-        savedDefaultConfig = raw ? Q.parseStoredConfig(raw) : null;
-        savedDefaultGeneration++;
-        personalView?.refresh();
+    const getSaveTarget = () => {
+        const name = selectedPersonalName || personalState?.startupName || personalState?.originalName || "";
+        return { name, revision: identityRevision(name), explicit: !!selectedPersonalName };
     };
-    const matchesSnapshot = config => config && Object.keys(globalThis.DEFAULT_CONFIG || globalThis.QOL_DEFAULT_CONFIG).every(key =>
-        PRESET_MATCH_EXCLUDED_KEYS.has(key) || isPresetValueMatch(globalThis.MOD_CONFIG[key], config[key]));
+    const onDefaultSaved = (raw, mainSave = true, saveTarget = getSaveTarget()) => {
+        savedDefaultConfig = raw ? Q.parseStoredConfig(raw) : null;
+        if (!raw) originalCaptureEpoch++;
+        const generation = ++savedDefaultGeneration;
+        personalView?.refresh();
+        if (!mainSave || !raw) return Promise.resolve();
+        return captureOriginalPreset(raw, generation, false, originalCaptureEpoch, saveTarget);
+    };
+    const snapshotsMatch = (left, right) => left && right && Object.keys(globalThis.DEFAULT_CONFIG || globalThis.QOL_DEFAULT_CONFIG).every(key =>
+        PRESET_MATCH_EXCLUDED_KEYS.has(key) || isPresetValueMatch(left[key], right[key]));
+    const matchesSnapshot = config => snapshotsMatch(globalThis.MOD_CONFIG, config);
     const compareLabels = (a, b) => {
         const left = a.toLowerCase(), right = b.toLowerCase();
         return left < right ? -1 : left > right ? 1 : 0;
@@ -86,17 +114,90 @@
         return entries.sort((a, b) => compareLabels(a.name, b.name));
     };
 
-    const writePersonalPresets = async change => {
-        if (personalWritePending) throw new Error("A preset operation is already in progress.");
-        personalWritePending = true;
-        try {
-            const entries = change(await readPersonalPresets());
-            await personalStorage().save(PERSONAL_PRESETS_KEY, JSON.stringify(entries));
-            return entries.sort((a, b) => compareLabels(a.name, b.name));
-        } finally {
-            personalWritePending = false;
+    const readPersonalState = async () => {
+        const raw = await personalStorage().load(PERSONAL_STATE_KEY);
+        if (!raw) return null;
+        const state = JSON.parse(raw);
+        if (!state || typeof state !== "object" || Array.isArray(state) ||
+            typeof state.startupName !== "string" || typeof state.originalName !== "string") {
+            throw new Error("Invalid personal preset data.");
         }
+        if ((state.startupName && validatePersonalName(state.startupName) !== state.startupName) ||
+            (state.originalName && validatePersonalName(state.originalName) !== state.originalName)) {
+            throw new Error("Invalid personal preset data.");
+        }
+        if (state.renameFrom !== undefined || state.renameTo !== undefined) {
+            if (validatePersonalName(state.renameFrom) !== state.renameFrom ||
+                validatePersonalName(state.renameTo) !== state.renameTo || state.renameFrom === state.renameTo) {
+                throw new Error("Invalid personal preset data.");
+            }
+            const entries = await readPersonalPresets();
+            const completed = !entries.some(entry => entry.name === state.renameFrom);
+            const resolveName = name => completed && name === state.renameFrom ? state.renameTo : name;
+            const recovered = { startupName: resolveName(state.startupName), originalName: resolveName(state.originalName) };
+            await savePersonalState(recovered);
+            return recovered;
+        }
+        return state;
     };
+    const savePersonalState = async state => {
+        await personalStorage().save(PERSONAL_STATE_KEY, JSON.stringify(state));
+        personalState = state;
+    };
+    const writePersonalPresets = (change, name) => serializePersonalWrite(async () => {
+        await readPersonalState();
+        const entries = change(await readPersonalPresets());
+        await personalStorage().save(PERSONAL_PRESETS_KEY, JSON.stringify(entries));
+        invalidateIdentity(name);
+        return entries.sort((a, b) => compareLabels(a.name, b.name));
+    }, true);
+
+    const captureOriginalPreset = (raw, generation, migration, epoch = originalCaptureEpoch, saveTarget = null) => serializePersonalWrite(async () => {
+        const state = await readPersonalState();
+        const entries = await readPersonalPresets();
+        if (epoch !== originalCaptureEpoch || generation !== savedDefaultGeneration) return entries;
+        const targetName = saveTarget?.name || "";
+        if (targetName && saveTarget.revision !== identityRevision(targetName)) {
+            throw new Error("The preset changed while saving. Save again.");
+        }
+        let entry = entries.find(item => item.name === targetName);
+        if (saveTarget?.explicit && targetName && !entry) throw new Error("The preset changed while saving. Save again.");
+        if (!targetName) entry = entries.find(item => item.name === state?.startupName) ||
+            entries.find(item => item.name === state?.originalName);
+        if (!entry) {
+            const baseName = localize("My config", true);
+            entry = entries.find(item => item.raw === raw &&
+                (item.name === baseName || item.name.startsWith(`${baseName} `)));
+            if (!entry) {
+                let name = baseName, suffix = 2;
+                while (entries.some(item => item.name.toLowerCase() === name.toLowerCase())) name = `${baseName} ${suffix++}`;
+                entry = { name, raw };
+                entries.push(entry);
+            }
+        }
+        // Footer Save owns the selected profile; migration only recovers an unrepresented main save.
+        entry.raw = raw;
+        await personalStorage().save(PERSONAL_PRESETS_KEY, JSON.stringify(entries));
+        await savePersonalState({
+            startupName: generation === savedDefaultGeneration ? entry.name : (state?.startupName || ""),
+            originalName: entries.some(item => item.name === state?.originalName) ? state.originalName : entry.name
+        });
+        entries.sort((a, b) => compareLabels(a.name, b.name));
+        if (generation === savedDefaultGeneration) {
+            if (selectedPersonalName === targetName || (!selectedPersonalName && matchesSnapshot(Q.parseStoredConfig(raw)))) selectedPersonalName = entry.name;
+            personalView?.replace(entries);
+        }
+        return entries;
+    });
+
+    const savePersonalStartup = entry => serializePersonalWrite(async () => {
+        const generation = savedDefaultGeneration;
+        await personalStorage().saveStartupSettings(entry.raw);
+        if (generation === savedDefaultGeneration) await onDefaultSaved(entry.raw, false);
+        const state = await readPersonalState() || { startupName: "", originalName: "" };
+        await savePersonalState({ ...state, startupName: entry.name });
+        return readPersonalPresets();
+    }, true);
 
     const savePersonalPreset = async (name, config, replace = false) => {
         name = validatePersonalName(name);
@@ -108,12 +209,66 @@
             if (existing >= 0) entries[existing] = entry;
             else entries.push(entry);
             return entries;
-        });
+        }, name);
     };
 
     const deletePersonalPreset = async name => {
         name = validatePersonalName(name);
-        return writePersonalPresets(entries => entries.filter(entry => entry.name.toLowerCase() !== name.toLowerCase()));
+        const config = globalThis.MOD_CONFIG;
+        const snapshot = JSON.stringify(config);
+        const context = $.GetContextPanel();
+        return serializePersonalWrite(async () => {
+            const entries = (await readPersonalPresets()).filter(entry => entry.name.toLowerCase() !== name.toLowerCase());
+            const state = await readPersonalState();
+            const deletingStartup = state?.startupName.toLowerCase() === name.toLowerCase();
+            if (deletingStartup) {
+                const generation = savedDefaultGeneration;
+                await personalStorage().clearSettings();
+                if (generation === savedDefaultGeneration) await onDefaultSaved(null, false);
+                // Once main storage is cleared, reset immediately even if later collection cleanup fails.
+                // Newer edits, saves and replacement contexts keep ownership of their live settings.
+                if (!savedDefaultConfig && isAlive(context) && $.GetContextPanel() === context &&
+                    globalThis.MOD_CONFIG === config && JSON.stringify(config) === snapshot) {
+                    Object.assign(config, preservedUiPreferences(globalThis.DEFAULT_CONFIG || globalThis.QOL_DEFAULT_CONFIG));
+                    applyPresetByName("Default");
+                }
+                // Retain the entry if clearing its metadata fails, so deletion can be retried.
+                await personalStorage().remove(PERSONAL_STATE_KEY);
+                personalState = null;
+            }
+            await personalStorage().save(PERSONAL_PRESETS_KEY, JSON.stringify(entries));
+            invalidateIdentity(name);
+            if (selectedPersonalName.toLowerCase() === name.toLowerCase()) selectedPersonalName = "";
+            return entries;
+        }, true);
+    };
+
+    const renamePersonalPreset = async (oldName, newName) => {
+        oldName = validatePersonalName(oldName);
+        newName = validatePersonalName(newName);
+        return serializePersonalWrite(async () => {
+            const entries = await readPersonalPresets();
+            const entry = entries.find(item => item.name.toLowerCase() === oldName.toLowerCase());
+            if (!entry) throw new Error("Invalid personal preset data.");
+            if (entries.some(item => item !== entry && item.name.toLowerCase() === newName.toLowerCase())) {
+                throw new Error("A preset with this name already exists.");
+            }
+            const state = await readPersonalState();
+            const tracked = state && oldName !== newName && (state.startupName === oldName || state.originalName === oldName);
+            // Persist rename intent first; the collection tells recovery which name won.
+            if (tracked) await savePersonalState({ ...state, renameFrom: oldName, renameTo: newName });
+            entry.name = newName;
+            await personalStorage().save(PERSONAL_PRESETS_KEY, JSON.stringify(entries));
+            invalidateIdentity(oldName);
+            invalidateIdentity(newName);
+            if (tracked) {
+                await savePersonalState({
+                    startupName: state.startupName === oldName ? newName : state.startupName,
+                    originalName: state.originalName === oldName ? newName : state.originalName
+                });
+            }
+            return entries.sort((a, b) => compareLabels(a.name, b.name));
+        }, true);
     };
 
     const NORMALIZERS = [
@@ -403,6 +558,7 @@
     };
 
     const stopPresetHighlightPolling = () => {
+        personalView?.closeMenu();
         _highlightPollToken += 1;
         _highlightPollRunning = false;
     };
@@ -565,6 +721,7 @@
     // =========================================================================
 
     const renderPersonalPresets = container => {
+        personalView?.closeMenu();
         const generation = ++personalRenderGeneration;
         const section = $.CreatePanel("Panel", container, "PersonalPresetsSection");
         section.AddClass("PersonalPresetsSection");
@@ -584,7 +741,6 @@
             return panel;
         };
         label(section, "Personal Presets", "SectionTitle");
-        label(section, "Save updates Default. Default loads when the game starts.", "PersonalPresetsHint");
         label(section, "Preset name", "PersonalPresetsHint");
         const form = $.CreatePanel("Panel", section, "");
         form.AddClass("PersonalPresetRow");
@@ -592,23 +748,8 @@
         nameInput.AddClass("PersonalPresetName");
         nameInput.maxchars = 48;
         nameInput.multiline = false;
-        const saveButton = button(form, "Save Preset", "PersonalPresetSave", () => saveCurrent(), "PersonalPresetSave");
+        const saveButton = button(form, "New Preset", "PersonalPresetSave", () => createNew(), "PersonalPresetSave");
         const status = label(section, "Loading personal presets...", "PersonalPresetsStatus", "PersonalPresetsStatus");
-        const confirmation = $.CreatePanel("Panel", section, "PersonalPresetConfirmation");
-        confirmation.AddClass("PersonalPresetRow");
-        confirmation.visible = false;
-        const confirmationText = label(confirmation, "", "PersonalPresetTitle");
-        let pendingAction = null;
-        button(confirmation, "Confirm", "PersonalPresetConfirm", () => {
-            const action = pendingAction;
-            pendingAction = null;
-            confirmation.visible = false;
-            if (action) action();
-        });
-        button(confirmation, "Cancel", "PersonalPresetCancel", () => {
-            pendingAction = null;
-            confirmation.visible = false;
-        });
         const list = $.CreatePanel("Panel", section, "PersonalPresetsList");
         list.AddClass("PersonalPresetsList");
         let entries = [], busy = true;
@@ -617,26 +758,23 @@
             status.text = localize(text, true);
             status.SetHasClass("FailureState", failed);
         };
-        const confirm = (text, action) => {
-            confirmationText.text = text;
-            pendingAction = action;
-            confirmation.visible = true;
-        };
-        const run = async (operation, successText) => {
+        const run = async (operation, successText, onSuccess) => {
             if (busy || !current()) return;
             busy = true;
             saveButton.enabled = false;
             list.enabled = false;
-            confirmation.visible = false;
             feedback("Working...");
             try {
                 const result = await operation();
                 if (!current()) return;
                 entries = result;
+                if (onSuccess) onSuccess();
+                if (!current()) return;
                 draw();
                 feedback(successText);
             } catch (error) {
-                if (current()) feedback("Preset operation failed. Your saved presets were not replaced in this view.", true);
+                if (current()) feedback(error.message === "A preset with this name already exists." ? error.message :
+                    "Preset operation failed. Your saved presets were not replaced in this view.", true);
                 $.Msg(`[QOLLock][presets] ${error.message || error}`);
             } finally {
                 if (current()) {
@@ -646,30 +784,34 @@
                 }
             }
         };
-        const saveCurrent = () => {
+        const createNew = () => {
             if (busy || !current()) return;
             try {
                 const name = validatePersonalName(nameInput.text);
-                // Capture at the click, so confirmation cannot save later edits by accident.
-                const snapshot = Object.assign({}, globalThis.MOD_CONFIG);
-                const save = () => { void run(() => savePersonalPreset(name, snapshot, true), "Personal preset saved."); };
-                if (entries.some(entry => entry.name.toLowerCase() === name.toLowerCase())) {
-                    confirm(Q.ui.theme.FormatSettingsText('Replace preset "{name}"?', { name }), save);
-                } else {
-                    void run(() => savePersonalPreset(name, snapshot), "Personal preset saved.");
-                }
+                const defaults = Q.parseStoredConfig(globalThis.WrapConfigForStorage(globalThis.DEFAULT_CONFIG || globalThis.QOL_DEFAULT_CONFIG));
+                const config = globalThis.MOD_CONFIG, snapshot = JSON.stringify(config);
+                void run(() => savePersonalPreset(name, defaults), "Personal preset created.", () => {
+                    nameInput.text = "";
+                    // A delayed create cannot replace edits made since the click.
+                    if (globalThis.MOD_CONFIG === config && JSON.stringify(config) === snapshot) {
+                        applyPresetSnapshot(defaults, "Default");
+                        selectedPersonalName = name;
+                    }
+                });
             } catch (error) {
                 feedback(error.message, true);
             }
         };
         let rows = [];
         const refreshSelection = () => {
-            if (!current()) return;
-            const active = rows.find(item => item.name === selectedPersonalName && matchesSnapshot(item.config())) ||
+            if (!current()) { closeMenu(); return; }
+            if (openMenu && !positionMenu()) closeMenu();
+            const active = rows.find(item => item.name && item.name === selectedPersonalName && matchesSnapshot(item.config())) ||
                 rows.find(item => matchesSnapshot(item.config()));
             for (const item of rows) {
                 item.row.SetHasClass("PresetActive", item === active);
                 item.badge.visible = item === active;
+                item.startupBadge.visible = item.name === personalState?.startupName && !!snapshotsMatch(item.config(), savedDefaultConfig);
             }
         };
         const loadSnapshot = (config, name) => {
@@ -687,63 +829,178 @@
                 }
             });
         };
+        let openMenu = null, menuHome = null, menuAnchor = null, menuLayer = null;
+        const closeMenu = () => {
+            if (isAlive(openMenu)) {
+                openMenu.visible = false;
+                if (isAlive(menuHome)) openMenu.SetParent(menuHome);
+                else openMenu.DeleteAsync(0);
+            }
+            if (isAlive(menuLayer)) { menuLayer.visible = false; menuLayer.DeleteAsync(0); }
+            openMenu = menuHome = menuAnchor = menuLayer = null;
+        };
+        const menuHost = anchor => {
+            let foundSection = false;
+            for (let node = anchor, depth = 0; isAlive(node) && depth < 64; node = node.GetParent(), depth++) {
+                if (node === section) foundSection = true;
+                if (node.id === "SettingsWindow") return foundSection ? node : null;
+            }
+            return null;
+        };
+        const positionMenu = () => {
+            const host = menuHost(menuAnchor);
+            if (!host || !isAlive(menuLayer) || menuLayer.GetParent() !== host) return false;
+            // Match the tooltip owner's native visual-coordinate and host-density conversion.
+            const point = typeof menuAnchor.GetPositionWithinAncestor === "function"
+                ? menuAnchor.GetPositionWithinAncestor(host)
+                : QOL_UTILS.GetPanelPositionRelativeToAncestor(menuAnchor, host);
+            const x = Array.isArray(point) ? point[0] : point?.x;
+            const y = Array.isArray(point) ? point[1] : point?.y;
+            if (!Number.isFinite(x) || !Number.isFinite(y)) return false;
+            const scaleX = Number(host.actualuiscale_x) > 0 ? Number(host.actualuiscale_x) : 1;
+            const scaleY = Number(host.actualuiscale_y) > 0 ? Number(host.actualuiscale_y) : 1;
+            const anchorWidth = Number(menuAnchor.actuallayoutwidth) || 34 * scaleX;
+            openMenu.style.x = `${Math.round(Math.max(0, (x + anchorWidth) / scaleX - 250))}px`;
+            openMenu.style.y = `${Math.round(Math.max(0, y / scaleY - 112 - 4))}px`;
+            return true;
+        };
         const draw = () => {
+            closeMenu();
             list.RemoveAndDeleteChildren();
             rows = [];
             const addSelection = (row, name, config) => {
-                const badge = label(row, "Active", "PersonalPresetActiveBadge");
+                const badge = label(row, "In use", "PersonalPresetActiveBadge");
                 badge.visible = false;
-                rows.push({ row, name, config, badge });
+                const startupBadge = label(row, "At startup", "PersonalPresetStartupBadge");
+                rows.push({ row, name, config, badge, startupBadge });
             };
-            const defaultRow = $.CreatePanel("Panel", list, "PersonalPresetDefault");
-            defaultRow.AddClass("PersonalPresetRow");
-            label(defaultRow, "Default", "PersonalPresetDefaultTitle");
-            addSelection(defaultRow, "Default", () => savedDefaultConfig);
-            const loadDefault = button(defaultRow, "Load", "PersonalPresetDefaultLoad", () =>
-                loadSnapshot(savedDefaultConfig && { ...savedDefaultConfig }, "Default"), "PersonalPresetDefaultLoad");
-            loadDefault.enabled = !!savedDefaultConfig;
             for (const entry of entries) {
-                const row = $.CreatePanel("Panel", list, "");
+                const card = $.CreatePanel("Panel", list, "");
+                card.AddClass("PersonalPresetCard");
+                const row = $.CreatePanel("Panel", card, "");
                 row.AddClass("PersonalPresetRow");
                 const title = label(row, "", "PersonalPresetTitle");
                 title.text = entry.name;
                 const config = Q.parseStoredConfig(entry.raw);
                 addSelection(row, entry.name, () => config);
                 button(row, "Load", "PersonalPresetLoad", () => {
+                    closeMenu();
                     loadSnapshot(config, entry.name);
                 });
-                button(row, "Set as Default", "PersonalPresetStartup", () => {
-                    void run(async () => {
-                        await personalStorage().saveStartupSettings(entry.raw);
-                        onDefaultSaved(entry.raw);
-                        return entries;
-                    }, "Default preset updated.");
-                });
-                button(row, "Delete", "PersonalPresetDelete", () => {
+                const anchor = $.CreatePanel("Panel", row, "");
+                anchor.AddClass("PersonalPresetMenuAnchor");
+                const menu = $.CreatePanel("Panel", anchor, "");
+                menu.AddClass("PersonalPresetMenu");
+                menu.acceptsfocus = true;
+                menu.visible = false;
+                const more = button(anchor, "…", "PersonalPresetMore", () => {
                     if (busy || !current()) return;
-                    confirm(Q.ui.theme.FormatSettingsText('Delete preset "{name}"?', { name: entry.name }), () => {
-                        void run(() => deletePersonalPreset(entry.name), "Personal preset deleted.");
-                    });
+                    const opening = !menu.visible;
+                    closeMenu();
+                    if (!opening) return;
+                    const host = menuHost(more);
+                    if (!host) return;
+                    menuLayer = $.CreatePanel("Panel", host, "");
+                    menuLayer.AddClass("PersonalPresetMenuLayer");
+                    const backdrop = $.CreatePanel("Button", menuLayer, "");
+                    backdrop.AddClass("PersonalPresetMenuBackdrop");
+                    const dismiss = () => {
+                        closeMenu();
+                        if (current() && isAlive(more)) more.SetFocus();
+                    };
+                    backdrop.SetPanelEvent("onactivate", dismiss);
+                    backdrop.SetPanelEvent("onmousewheel", dismiss);
+                    menuLayer.SetPanelEvent("oncancel", dismiss);
+                    menuHome = anchor;
+                    menuAnchor = more;
+                    openMenu = menu;
+                    menu.SetParent(menuLayer);
+                    if (!positionMenu()) { closeMenu(); return; }
+                    menu.visible = true;
+                    menu.SetFocus();
+                });
+                more.SetPanelEvent("onmouseover", () => $.DispatchEvent("UIShowTextTooltip", more, localize("More actions", true)));
+                more.SetPanelEvent("onmouseout", () => $.DispatchEvent("UIHideTextTooltip"));
+                menu.SetPanelEvent("oncancel", () => {
+                    closeMenu();
+                    more.SetFocus();
+                });
+                button(menu, "Use at Startup", "PersonalPresetStartup", () => {
+                    if (busy || !current()) return;
+                    closeMenu();
+                    void run(() => savePersonalStartup(entry), "Preset saved for startup.");
+                });
+                const editor = $.CreatePanel("Panel", card, "");
+                editor.AddClass("PersonalPresetRow");
+                editor.visible = false;
+                const renameInput = $.CreatePanel("TextEntry", editor, "");
+                renameInput.AddClass("PersonalPresetName");
+                renameInput.AddClass("PersonalPresetRenameInput");
+                renameInput.maxchars = 48;
+                renameInput.multiline = false;
+                button(menu, "Rename", "PersonalPresetRename", () => {
+                    if (busy || !current()) return;
+                    closeMenu();
+                    renameInput.text = entry.name;
+                    row.visible = false;
+                    editor.visible = true;
+                    renameInput.SetFocus();
+                });
+                button(editor, "Save", "PersonalPresetRenameSave", () => {
+                    if (busy || !current()) return;
+                    try {
+                        const name = validatePersonalName(renameInput.text);
+                        void run(() => renamePersonalPreset(entry.name, name), "Personal preset renamed.", () => {
+                            if (selectedPersonalName === entry.name) selectedPersonalName = name;
+                        });
+                    } catch (error) {
+                        feedback(error.message, true);
+                    }
+                });
+                const cancelRename = () => {
+                    if (busy || !current()) return;
+                    editor.visible = false;
+                    row.visible = true;
+                    more.SetFocus();
+                };
+                button(editor, "Cancel", "PersonalPresetRenameCancel", cancelRename);
+                editor.SetPanelEvent("oncancel", cancelRename);
+                button(menu, personalState?.startupName === entry.name ? "Delete and reset" : "Delete", "PersonalPresetDelete", () => {
+                    if (busy || !current()) return;
+                    closeMenu();
+                    void run(() => deletePersonalPreset(entry.name), "Personal preset deleted.");
                 });
             }
             refreshSelection();
         };
-        personalView = { refresh() {
-            if (!current()) return;
-            const loadDefault = list.FindChildTraverse("PersonalPresetDefaultLoad");
-            if (isAlive(loadDefault)) loadDefault.enabled = !!savedDefaultConfig;
-            refreshSelection();
-        } };
+        personalView = {
+            closeMenu,
+            refresh: refreshSelection,
+            replace(result) {
+                if (!current() || busy) return;
+                entries = result;
+                draw();
+            }
+        };
         const load = async () => {
             const defaultGeneration = savedDefaultGeneration;
             try {
+                await personalWork;
                 const storage = personalStorage();
-                const [result, defaultRaw] = await Promise.all([readPersonalPresets(), storage.load("qollock_settings")]);
+                let [result, defaultRaw, state] = await Promise.all([readPersonalPresets(), storage.load("qollock_settings"), readPersonalState()]);
                 if (!current()) return;
-                if (defaultGeneration === savedDefaultGeneration) savedDefaultConfig = defaultRaw ? Q.parseStoredConfig(defaultRaw) : null;
+                if (defaultGeneration === savedDefaultGeneration) {
+                    savedDefaultConfig = defaultRaw ? Q.parseStoredConfig(defaultRaw) : null;
+                    if (defaultRaw && (!state || !result.some(entry => entry.name === state.startupName))) result = await captureOriginalPreset(defaultRaw, defaultGeneration, true);
+                    else personalState = state;
+                } else {
+                    await personalWork;
+                    result = await readPersonalPresets();
+                }
+                if (!current()) return;
                 entries = result;
                 draw();
-                feedback(entries.length ? "" : "No personal presets yet.");
+                feedback(entries.length ? "" : "No personal presets yet. Create a new preset or save your settings.");
                 busy = false;
                 saveButton.enabled = true;
             } catch (error) {
@@ -761,7 +1018,7 @@
         const presetsTitle = localize("Presets", true);
 
         const basePresetEntries = [
-            { label: localize("Reset to Defaults", true), preset: "Default", variant: "base" },
+            { label: localize("Default", true), preset: "Default", variant: "base" },
             { label: "16:10", preset: "16:10", variant: "base" },
             { label: "4:3", preset: "4:3", variant: "base" },
             { label: "Clean", preset: "Clean", variant: "base" },
@@ -796,6 +1053,7 @@
     // Export API on Q.ui.presets
     Q.ui.presets = {
         onDefaultSaved,
+        getSaveTarget,
         readPersonalPresets,
         savePersonalPreset,
         deletePersonalPreset,

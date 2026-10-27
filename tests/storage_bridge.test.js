@@ -7,6 +7,7 @@
 "use strict";
 
 const test = require("node:test");
+const { setImmediate: flush } = require("node:timers/promises");
 const assert = require("node:assert");
 const fs = require("node:fs");
 const path = require("node:path");
@@ -1106,4 +1107,44 @@ test("storage_bridge: Default view updates only after acknowledged main saves", 
     env.clock.advance(0); await clearing;
     assert.equal(updates.length, 2);
     assert.equal(updates[1], null);
+});
+
+
+test("storage_bridge: footer Save awaits personal capture and startup selection does not create an original", async () => {
+    const env = createTestEnvironment(), bridge = env.sandbox.QOL.core.storageBridge;
+    connectEmbeddedPage(env, new Map());
+    const calls = [];
+    let finishCapture;
+    env.sandbox.QOL.ui = { presets: { onDefaultSaved: (raw, mainSave) => {
+        calls.push(mainSave);
+        if (mainSave) return new Promise(resolve => { finishCapture = resolve; });
+    } } };
+    const saving = bridge.saveSettings({ BRIDGE_BUFF_START: 15 });
+    let completed = false;
+    const completion = (async () => { await saving; completed = true; })();
+    env.clock.advance(0);
+    await flush();
+    assert.equal(completed, false);
+    assert.equal(typeof finishCapture, "function");
+    finishCapture();
+    await completion;
+    assert.equal(completed, true);
+    const startup = bridge.saveStartupSettings({ BRIDGE_BUFF_START: 20 });
+    env.clock.advance(0); await startup;
+    assert.deepEqual(calls, [true, false]);
+});
+
+
+test("storage_bridge: footer save retains its personal target if selection changes before acknowledgment", async () => {
+    const env = createTestEnvironment(), bridge = env.sandbox.QOL.core.storageBridge;
+    connectEmbeddedPage(env, new Map());
+    let selected = "First", received;
+    env.sandbox.QOL.ui = { presets: {
+        getSaveTarget: () => ({ name: selected, revision: 7, explicit: true }),
+        onDefaultSaved: (_raw, _mainSave, targetName) => { received = targetName; }
+    } };
+    const saving = bridge.saveSettings({ BRIDGE_BUFF_START: 15 });
+    selected = "Second";
+    env.clock.advance(0); await saving;
+    assert.deepEqual(received, { name: "First", revision: 7, explicit: true });
 });
