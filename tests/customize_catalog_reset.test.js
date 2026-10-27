@@ -18,11 +18,14 @@ test("every scoped surface resets presentation, preserves switches and hidden op
         }
         assert.equal(session.edit(patch), true, element.id);
         const before = JSON.stringify(session.snapshot());
-        const hidden = element.fields.filter(field => field.type === "toggle" || (field.hidden && field.key !== "AMMO_PANEL_SCALE" && element.id !== "ammo"))
+        const hidden = element.fields.filter(field => field.type === "toggle" || field.reset === false || (field.hidden && field.key !== "AMMO_PANEL_SCALE" && element.id !== "ammo"))
             .map(field => [field.key, session.value(field.key)]);
         assert.equal(session.reset(element), true, element.id);
-        for (const field of element.fields.filter(field => field.type !== "toggle" && (!field.hidden || (element.id === "ammo" && field.key !== "AMMO_PANEL_SCALE"))))
-            assert.equal(session.value(field.key), g.QOL_DEFAULT_CONFIG[field.key], `${element.id}/${field.key}`);
+        const resetFields = element.fields.filter(field => field.type !== "toggle" && field.reset !== false &&
+            (!field.hidden || (element.id === "ammo" && field.key !== "AMMO_PANEL_SCALE")));
+        for (const field of resetFields) {
+            if (!field.when || field.when(session)) assert.equal(session.value(field.key), g.QOL_DEFAULT_CONFIG[field.key], `${element.id}/${field.key}`);
+        }
         for (const [key, value] of hidden) assert.equal(session.value(key), value, `preserve ${element.id}/${key}`);
         const reset = JSON.stringify(session.snapshot());
         if (reset !== before) {
@@ -43,8 +46,8 @@ test("Healthbar Reset preserves its selected type and health-number setting thro
     g.SaveAndSync(); env.clock.advance(1200);
     g.QOL.ui.window.setOpen(true); env.clock.advance(500);
     assert.equal(g.QOL.ui.customize.start(null, { elementId: "healthbar" }), true);
-    assert.equal(env.em.FindChildTraverse("QOLCustomize_HEALTHBAR_TYPE_0"), null);
-    assert.equal(env.em.FindChildTraverse("QOLCustomize_ENABLE_MINECRAFT_HEALTH_NUMBERS"), null);
+    assert.equal(env.em.FindChildTraverse("QOLCustomize_HEALTHBAR_TYPE").GetSelected().text, "Minecraft");
+    assert.ok(env.em.FindChildTraverse("QOLCustomize_ENABLE_MINECRAFT_HEALTH_NUMBERS"));
     env.em.FindChildTraverse("QOLCustomizeReset")._fire("onactivate");
     g.QOL.core.storageBridge.saveSettings = (_config, callback) => callback(null);
     env.em.FindChildTraverse("QOLCustomizeApply")._fire("onactivate"); env.clock.advance(1200);

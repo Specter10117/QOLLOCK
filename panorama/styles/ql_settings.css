@@ -21,7 +21,7 @@ CitadelHudEscapeMenu.QOLCustomizeActive { background-color: #0000; }
 .QOLCustomizeOverlay { width: 100%; height: 100%; z-index: 1000; }
 .QOLCustomizeTools
 {
-    width: 380px;
+    width: 400px;
     height: fit-children;
     max-height: 88%;
     overflow: squish squish;
@@ -39,17 +39,18 @@ CitadelHudEscapeMenu.QOLCustomizeActive { background-color: #0000; }
     opacity: 0.65;
 }
 .QOLCustomizeTitle { margin-bottom: 6px; }
-.QOLCustomizeSelectionHeader { flow-children: right; width: 100%; margin-bottom: 4px; padding-bottom: 4px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); }
+.QOLCustomizeSelectionHeader { flow-children: right; width: 100%; margin-bottom: 8px; padding-bottom: 12px; border-bottom: 1px solid rgba(255, 255, 255, 0.12); }
 .QOLCustomizeSelectionHeader > .QOLCustomizeTitle { width: fill-parent-flow(1); vertical-align: center; text-shadow: none; }
 .QOLCustomizeVisibility { vertical-align: center; horizontal-align: right; }
 .QOLCustomizeAvailability { width: 100%; height: fit-children; color: #bac6c0; }
-.QOLCustomizeSection { width: 100%; flow-children: down; margin-top: 8px; border-top: 1px solid #ffffff12; }
+.QOLCustomizeSection { width: 100%; height: fit-children; flow-children: down; margin-top: 12px; padding-top: 8px; border-top: 1px solid #ffffff12; }
+.QOLCustomizeSection:first-child { margin-top: 0px; padding-top: 0px; border-top: 0px solid transparent; }
 .QOLCustomizeSectionBody { width: 100%; flow-children: down; }
-.QOLCustomizePositionSection { width: 100%; height: fit-children; flow-children: down; }
+.QOLCustomizeSubsection { width: 100%; height: fit-children; flow-children: down; margin-top: 8px; }
+.QOLCustomizeSubheading { width: 100%; height: fit-children; margin: 4px 0px; font-size: 13px; font-weight: semi-bold; }
 .QOLCustomizeSectionBody > .ModalInstructions { width: 100%; white-space: normal; height: fit-children; }
-.QOLCustomizeSectionHeading { width: 100%; margin: 2px 0px 4px 0px; padding: 2px 0px; font-size: 11px; font-weight: semi-bold; letter-spacing: 0.5px; text-transform: uppercase; color: #bac6c0; text-shadow: none; }
-.QOLCustomizeSectionHeading > .QOLCustomizeButtonLabel { width: fill-parent-flow(1); text-align: left; font-size: 14px; }
-.QOLCustomizeDisclosure { width: 14px; text-align: center; vertical-align: center; opacity: 0.65; }
+.QOLCustomizeTools .QOLCustomizeSectionHeading.ModalTitle,
+.QOLCustomizeLaunch .QOLCustomizeSectionHeading.ModalTitle { width: 100%; height: fit-children; margin: 0px 0px 4px 0px; padding: 4px 0px; font-size: 14px; font-weight: semi-bold; letter-spacing: 0px; text-transform: none; text-align: left; text-shadow: none; }
 .QOLCustomizeChoices, #QOLCustomizeFields { flow-children: down; width: 100%; }
 .QOLCustomizeCatalog {
     width: 230px;
@@ -122,44 +123,43 @@ CitadelHudEscapeMenu.QOLCustomizeActive { background-color: #0000; }
     wash-color: #8e9491;
     opacity: 0.75;
 }
-.QOLCustomizeField { flow-children: down; width: 100%; height: fit-children; margin: 0px; padding: 5px 0px; background-color: none; border: 0px solid transparent; border-bottom: 1px solid rgba(255, 255, 255, 0.06); }
-.QOLCustomizeField > Label { width: 100%; height: fit-children; white-space: normal; margin-bottom: 4px; font-size: 13px; letter-spacing: 0px; color: #d8e0dc; text-shadow: none; }
+.QOLCustomizeField { flow-children: down; width: 100%; height: fit-children; margin: 0px; padding: 8px 0px; background-color: none; border: 0px solid transparent; }
+.QOLCustomizeTools .QOLCustomizeField > Label { width: 100%; height: fit-children; white-space: normal; margin-bottom: 4px; font-size: 14px; letter-spacing: 0px; text-shadow: none; }
 .QOLCustomizeField.QOLCustomizeToggleRow {
     flow-children: right;
     width: 100%;
-    min-height: 30px;
+    min-height: 36px;
     margin: 0px;
-    padding: 4px 0px;
+    padding: 8px 0px;
     background-color: none;
     border: 0px solid transparent;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 .QOLCustomizeField.QOLCustomizeToggleRow > Label {
     width: fill-parent-flow(1);
     vertical-align: center;
     margin-bottom: 0px;
-    font-size: 13px;
-    color: #d8e0dc;
+    font-size: 14px;
     text-shadow: none;
 }
 .QOLCustomizeValueGroup { width: 100%; height: 28px; flow-children: right; vertical-align: center; }
 .QOLCustomizeFieldColor > .QOLCustomizeValueGroup { height: fit-children; }
 .QOLCustomizeUnit { vertical-align: center; margin: 0px 4px; min-width: 14px; opacity: 0.65; font-size: 13px; }
-.QOLCustomizeField > .QOLCustomizeFieldError { width: 100%; color: #ed9898; margin: 3px 0px 0px 0px; font-size: 12px; }
+.QOLCustomizeTools .QOLCustomizeField > .QOLCustomizeFieldError { width: 100%; color: #ed9898; margin: 3px 0px 0px 0px; font-size: 12px; }
 .QOLCustomizeFieldColor { flow-children: down; }
 .QOLCustomizeFieldColor > Label { width: 100%; }
 .QOLCustomizeActions { flow-children: right; margin-top: 8px; width: 100%; }
-.QOLCustomizeEnum { flow-children: right-wrap; width: 100%; margin-top: 3px; }
-.QOLCustomizeEnum > .QOLCustomizeButton { min-width: 48px; height: 24px; padding: 2px 8px; margin: 2px; border-radius: 3px; }
-.QOLCustomizeEnum > .QOLCustomizeButton > Label { horizontal-align: center; vertical-align: center; font-size: 11px; letter-spacing: 0.5px; }
+.QOLCustomizeDropDown { background-image: url("s2r://panorama/images/control_icons/arrow_dropdown_png.vtex"); background-repeat: no-repeat; background-position: right 8px 50%; background-size: 16px 16px; }
+.QOLCustomizeDropDownItem.QOLSettingsDropDownItem { font-family: oracle; font-size: 14px; text-transform: none; letter-spacing: 0px; text-overflow: shrink; }
+.QOLCustomizeTools .QOLCustomizeFieldEnum > .QOLCustomizeDropDown { min-width: 0px; max-width: 10000px; width: 100%; height: 32px; min-height: 32px; max-height: 32px; margin: 4px 0px 0px 0px; padding: 4px 32px 4px 8px; text-align: left; }
+.QOLCustomizeTools .QOLCustomizeDropDown > .QOLCustomizeDropDownItem { text-align: left; horizontal-align: left; }
 .QOLCustomizeButton { padding: 5px 9px; margin: 2px; }
 .QOLCustomizeButton:disabled { opacity: 0.35; }
 .QOLCustomizeChoices .QOLCustomizeButton.Unavailable { opacity: 0.50; }
 .QOLCustomizeTools .QOLCustomizeInput.ValueInput {
-    width: 58px;
-    height: 24px;
+    width: 70px;
+    height: 28px;
     margin: 0px 2px;
-    padding: 1px 4px;
+    padding: 3px 4px;
     text-align: center;
     vertical-align: center;
 }
@@ -224,7 +224,6 @@ CitadelHudEscapeMenu.QOLCustomizeActive { background-color: #0000; }
 .QOLCustomizeOverlay .HorizontalSlider .SliderThumb,
 .QOLCustomizeOverlay .HorizontalSlider:hover .SliderThumb,
 .QOLCustomizeOverlay .HorizontalSlider:active .SliderThumb { box-shadow: none; }
-.QOLCustomizeTools .QOLCustomizeInput.ValueInput { width: 70px; vertical-align: center; text-align: center; }
 .QOLCustomizeTools .QOLCustomizeUnit { vertical-align: center; margin-left: 2px; }
 .QOLCustomizeResize { align: right bottom; width: 24px; height: 24px; z-index: 4; background-color: transparent; border: 0px; overflow: noclip; }
 .QOLCustomizeFrame, .QOLCustomizeCorners { overflow: noclip; }
@@ -256,6 +255,13 @@ CitadelHudEscapeMenu.QOLCustomizeActive { background-color: #0000; }
 .QOLCustomizeTools > .ModalInstructions,
 #QOLCustomizeFields > .ModalInstructions { width: 100%; white-space: normal; height: fit-children; }
 .QOLCustomizeLaunch { flow-children: down; width: 100%; }
+.QOLCustomizeLaunch > .ModalInstructions { width: 100%; height: fit-children; white-space: normal; margin-bottom: 8px; }
+.QOLCustomizeLaunchOpen { width: 100%; height: 40px; margin: 8px 0px; }
+.QOLCustomizeLaunchGrid { width: 100%; height: fit-children; flow-children: right-wrap; }
+.QOLCustomizeLaunchElement { width: 48%; min-height: 44px; margin: 4px 1%; padding: 8px 12px; }
+.QOLCustomizeLaunch .QOLCustomizeButtonLabel { width: 100%; height: fit-children; vertical-align: center; white-space: normal; font-size: 14px; letter-spacing: 0px; text-transform: none; }
+.QOLCustomizeLaunchElement > .QOLCustomizeButtonLabel { text-align: left; }
+.QOLCustomizeLaunchOpen > .QOLCustomizeButtonLabel { text-align: center; }
 
 .QOLCustomizeGuideLine {
     background-color: rgba(102, 204, 153, 0.75);
@@ -4145,6 +4151,26 @@ CitadelHudEscapeMenu.QOLCustomizeActive { background-color: #0000; }
 	width: 150px;
 	min-width: 150px;
 	max-width: 150px;
+}
+
+#QOLCustomize_HEALTHBAR_TYPEDropDownMenu,
+#QOLCustomize_KEYBOARD_OVERLAY_THEMEDropDownMenu,
+#QOLCustomize_KEYBOARD_OVERLAY_LAYOUTDropDownMenu,
+#QOLCustomize_AMMO_CURRENT_FONT_STYLEDropDownMenu,
+#QOLCustomize_AMMO_TOTAL_FONT_STYLEDropDownMenu
+{
+	width: 320px;
+	min-width: 320px;
+	max-width: 320px;
+}
+
+#DEFAULT_HERO_dropdownDropDownMenu,#HEALTHBAR_TYPE_dropdownDropDownMenu,#VOICE_TYPE_dropdownDropDownMenu,#VOICE_VOLUME_dropdownDropDownMenu,#LANGUAGE_dropdownDropDownMenu,
+#QOLCustomize_HEALTHBAR_TYPEDropDownMenu,
+#QOLCustomize_KEYBOARD_OVERLAY_THEMEDropDownMenu,
+#QOLCustomize_KEYBOARD_OVERLAY_LAYOUTDropDownMenu,
+#QOLCustomize_AMMO_CURRENT_FONT_STYLEDropDownMenu,
+#QOLCustomize_AMMO_TOTAL_FONT_STYLEDropDownMenu
+{
 	background-image: none;
 	background-color: #181716;
 	opacity: 0.0;
@@ -4156,7 +4182,12 @@ CitadelHudEscapeMenu.QOLCustomizeActive { background-color: #0000; }
 	border-radius: 6px;
 }
 
-#DEFAULT_HERO_dropdownDropDownMenu.DropDownMenuVisible,#HEALTHBAR_TYPE_dropdownDropDownMenu.DropDownMenuVisible,#VOICE_TYPE_dropdownDropDownMenu.DropDownMenuVisible,#VOICE_VOLUME_dropdownDropDownMenu.DropDownMenuVisible,#LANGUAGE_dropdownDropDownMenu.DropDownMenuVisible
+#DEFAULT_HERO_dropdownDropDownMenu.DropDownMenuVisible,#HEALTHBAR_TYPE_dropdownDropDownMenu.DropDownMenuVisible,#VOICE_TYPE_dropdownDropDownMenu.DropDownMenuVisible,#VOICE_VOLUME_dropdownDropDownMenu.DropDownMenuVisible,#LANGUAGE_dropdownDropDownMenu.DropDownMenuVisible,
+#QOLCustomize_HEALTHBAR_TYPEDropDownMenu.DropDownMenuVisible,
+#QOLCustomize_KEYBOARD_OVERLAY_THEMEDropDownMenu.DropDownMenuVisible,
+#QOLCustomize_KEYBOARD_OVERLAY_LAYOUTDropDownMenu.DropDownMenuVisible,
+#QOLCustomize_AMMO_CURRENT_FONT_STYLEDropDownMenu.DropDownMenuVisible,
+#QOLCustomize_AMMO_TOTAL_FONT_STYLEDropDownMenu.DropDownMenuVisible
 {
 	opacity: 1.0;
 	transform: translateY(0px);
@@ -4185,7 +4216,8 @@ CitadelHudEscapeMenu.QOLCustomizeActive { background-color: #0000; }
 	max-width: 130px;
 }
 
-#DEFAULT_HERO_dropdownDropDownMenu Label,#DEFAULT_HERO_dropdownDropDownMenu .DropDownChild,#DEFAULT_HERO_dropdownDropDownMenu .QOLSettingsDropDownItem,#HEALTHBAR_TYPE_dropdownDropDownMenu Label,#HEALTHBAR_TYPE_dropdownDropDownMenu .DropDownChild,#HEALTHBAR_TYPE_dropdownDropDownMenu .QOLSettingsDropDownItem,#VOICE_TYPE_dropdownDropDownMenu Label,#VOICE_TYPE_dropdownDropDownMenu .DropDownChild,#VOICE_TYPE_dropdownDropDownMenu .QOLSettingsDropDownItem,#VOICE_VOLUME_dropdownDropDownMenu Label,#VOICE_VOLUME_dropdownDropDownMenu .DropDownChild,#VOICE_VOLUME_dropdownDropDownMenu .QOLSettingsDropDownItem,#LANGUAGE_dropdownDropDownMenu Label,#LANGUAGE_dropdownDropDownMenu .DropDownChild,#LANGUAGE_dropdownDropDownMenu .QOLSettingsDropDownItem
+#DEFAULT_HERO_dropdownDropDownMenu Label,#DEFAULT_HERO_dropdownDropDownMenu .DropDownChild,#DEFAULT_HERO_dropdownDropDownMenu .QOLSettingsDropDownItem,#HEALTHBAR_TYPE_dropdownDropDownMenu Label,#HEALTHBAR_TYPE_dropdownDropDownMenu .DropDownChild,#HEALTHBAR_TYPE_dropdownDropDownMenu .QOLSettingsDropDownItem,#VOICE_TYPE_dropdownDropDownMenu Label,#VOICE_TYPE_dropdownDropDownMenu .DropDownChild,#VOICE_TYPE_dropdownDropDownMenu .QOLSettingsDropDownItem,#VOICE_VOLUME_dropdownDropDownMenu Label,#VOICE_VOLUME_dropdownDropDownMenu .DropDownChild,#VOICE_VOLUME_dropdownDropDownMenu .QOLSettingsDropDownItem,#LANGUAGE_dropdownDropDownMenu Label,#LANGUAGE_dropdownDropDownMenu .DropDownChild,#LANGUAGE_dropdownDropDownMenu .QOLSettingsDropDownItem,
+DropDownMenu .QOLCustomizeDropDownItem
 {
 	width: 100%;
 	padding: 7px 12px;
@@ -4202,7 +4234,8 @@ CitadelHudEscapeMenu.QOLCustomizeActive { background-color: #0000; }
 	brightness: 1.0;
 }
 
-#DEFAULT_HERO_dropdownDropDownMenu Label:hover,#DEFAULT_HERO_dropdownDropDownMenu .DropDownChild:hover,#DEFAULT_HERO_dropdownDropDownMenu .QOLSettingsDropDownItem:hover,#HEALTHBAR_TYPE_dropdownDropDownMenu Label:hover,#HEALTHBAR_TYPE_dropdownDropDownMenu .DropDownChild:hover,#HEALTHBAR_TYPE_dropdownDropDownMenu .QOLSettingsDropDownItem:hover,#VOICE_TYPE_dropdownDropDownMenu Label:hover,#VOICE_TYPE_dropdownDropDownMenu .DropDownChild:hover,#VOICE_TYPE_dropdownDropDownMenu .QOLSettingsDropDownItem:hover,#VOICE_VOLUME_dropdownDropDownMenu Label:hover,#VOICE_VOLUME_dropdownDropDownMenu .DropDownChild:hover,#VOICE_VOLUME_dropdownDropDownMenu .QOLSettingsDropDownItem:hover,#LANGUAGE_dropdownDropDownMenu Label:hover,#LANGUAGE_dropdownDropDownMenu .DropDownChild:hover,#LANGUAGE_dropdownDropDownMenu .QOLSettingsDropDownItem:hover
+#DEFAULT_HERO_dropdownDropDownMenu Label:hover,#DEFAULT_HERO_dropdownDropDownMenu .DropDownChild:hover,#DEFAULT_HERO_dropdownDropDownMenu .QOLSettingsDropDownItem:hover,#HEALTHBAR_TYPE_dropdownDropDownMenu Label:hover,#HEALTHBAR_TYPE_dropdownDropDownMenu .DropDownChild:hover,#HEALTHBAR_TYPE_dropdownDropDownMenu .QOLSettingsDropDownItem:hover,#VOICE_TYPE_dropdownDropDownMenu Label:hover,#VOICE_TYPE_dropdownDropDownMenu .DropDownChild:hover,#VOICE_TYPE_dropdownDropDownMenu .QOLSettingsDropDownItem:hover,#VOICE_VOLUME_dropdownDropDownMenu Label:hover,#VOICE_VOLUME_dropdownDropDownMenu .DropDownChild:hover,#VOICE_VOLUME_dropdownDropDownMenu .QOLSettingsDropDownItem:hover,#LANGUAGE_dropdownDropDownMenu Label:hover,#LANGUAGE_dropdownDropDownMenu .DropDownChild:hover,#LANGUAGE_dropdownDropDownMenu .QOLSettingsDropDownItem:hover,
+DropDownMenu .QOLCustomizeDropDownItem:hover
 {
 	background-image: none;
 	background-color: gradient( linear, 0% 0%, 0% 100%, from( #5FE6A2 ), to( #A3FFB7 ) );
@@ -4211,7 +4244,8 @@ CitadelHudEscapeMenu.QOLCustomizeActive { background-color: #0000; }
 	brightness: 1.08;
 }
 
-#DEFAULT_HERO_dropdownDropDownMenu Label:active,#DEFAULT_HERO_dropdownDropDownMenu .DropDownChild:active,#DEFAULT_HERO_dropdownDropDownMenu .QOLSettingsDropDownItem:active,#HEALTHBAR_TYPE_dropdownDropDownMenu Label:active,#HEALTHBAR_TYPE_dropdownDropDownMenu .DropDownChild:active,#HEALTHBAR_TYPE_dropdownDropDownMenu .QOLSettingsDropDownItem:active,#VOICE_TYPE_dropdownDropDownMenu Label:active,#VOICE_TYPE_dropdownDropDownMenu .DropDownChild:active,#VOICE_TYPE_dropdownDropDownMenu .QOLSettingsDropDownItem:active,#VOICE_VOLUME_dropdownDropDownMenu Label:active,#VOICE_VOLUME_dropdownDropDownMenu .DropDownChild:active,#VOICE_VOLUME_dropdownDropDownMenu .QOLSettingsDropDownItem:active,#LANGUAGE_dropdownDropDownMenu Label:active,#LANGUAGE_dropdownDropDownMenu .DropDownChild:active,#LANGUAGE_dropdownDropDownMenu .QOLSettingsDropDownItem:active
+#DEFAULT_HERO_dropdownDropDownMenu Label:active,#DEFAULT_HERO_dropdownDropDownMenu .DropDownChild:active,#DEFAULT_HERO_dropdownDropDownMenu .QOLSettingsDropDownItem:active,#HEALTHBAR_TYPE_dropdownDropDownMenu Label:active,#HEALTHBAR_TYPE_dropdownDropDownMenu .DropDownChild:active,#HEALTHBAR_TYPE_dropdownDropDownMenu .QOLSettingsDropDownItem:active,#VOICE_TYPE_dropdownDropDownMenu Label:active,#VOICE_TYPE_dropdownDropDownMenu .DropDownChild:active,#VOICE_TYPE_dropdownDropDownMenu .QOLSettingsDropDownItem:active,#VOICE_VOLUME_dropdownDropDownMenu Label:active,#VOICE_VOLUME_dropdownDropDownMenu .DropDownChild:active,#VOICE_VOLUME_dropdownDropDownMenu .QOLSettingsDropDownItem:active,#LANGUAGE_dropdownDropDownMenu Label:active,#LANGUAGE_dropdownDropDownMenu .DropDownChild:active,#LANGUAGE_dropdownDropDownMenu .QOLSettingsDropDownItem:active,
+DropDownMenu .QOLCustomizeDropDownItem:active
 {
 	background-image: none;
 	background-color: gradient( linear, 0% 0%, 0% 100%, from( #79d7ab ), to( #56b486 ) );

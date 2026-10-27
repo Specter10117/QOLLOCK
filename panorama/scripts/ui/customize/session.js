@@ -163,9 +163,9 @@
             const values = {};
             const config = Q.mergeConfig(Object.assign({}, baseline, draft));
             // Reset presentation without changing enable/hide switches or
-            // hidden modes/filters. Ammo includes independent digit geometry.
+            // content modes/filters. Ammo includes independent digit geometry.
             const fields = [...element.fields.filter(field => !field.hidden),
-                ...scopedElements(element).slice(1).flatMap(item => item.fields)].filter(field => field.type !== "toggle");
+                ...scopedElements(element).slice(1).flatMap(item => item.fields)].filter(field => field.type !== "toggle" && field.reset !== false);
             for (const field of fields) if (!field.when || field.when({ value: key => config[key] })) values[field.key] = QOL_DEFAULT_CONFIG[field.key];
             return edit(values, null, false);
         }

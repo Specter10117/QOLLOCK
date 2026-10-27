@@ -20,18 +20,21 @@ const clean = env => {
     assert.deepEqual(env.clock.errors, []);
 };
 
-test("Properties omit content modes and duplicate digit controls while retaining ordinary settings", () => {
+test("Properties expose content controls while independent digit geometry stays in its own selection", () => {
     const env = setup(), Q = env.global.QOL;
-    for (const [id, absent] of [
+    for (const [id, present] of [
         ["shop", ["ENABLE_SIMPLIFY_SHOP", "ENABLE_SIMPLIFY_ITEMS", "ENABLE_HERO_SCENE_PANEL", "ENABLE_SHOP_STATS"]],
         ["purchaseNotifications", ["ENABLE_HERO_PURCHASE_POPUPS", "RECENT_PURCHASES_QUICK_MAX", "RECENT_PURCHASES_QUICK_DISPLAY_SEC"]],
-        ["chat", ["ENABLE_IMAGES_IN_CHAT"]],
-        ["ammo", ["AMMO_CURRENT_SCALE", "AMMO_TOTAL_SCALE", "AMMO_CURRENT_X_OFFSET", "AMMO_MAX_X_OFFSET"]]
+        ["chat", ["ENABLE_IMAGES_IN_CHAT"]]
     ]) {
         assert.equal(Q.ui.customize.start(null, { elementId: id }), true);
-        for (const key of absent) assert.equal(env.em.FindChildTraverse("QOLCustomize_" + key), null, key);
+        for (const key of present) assert.ok(env.em.FindChildTraverse("QOLCustomize_" + key), key);
         activate(env, "QOLCustomizeCancel"); env.clock.advance(100);
     }
+    assert.equal(Q.ui.customize.start(null, { elementId: "ammo" }), true);
+    for (const key of ["AMMO_CURRENT_SCALE", "AMMO_TOTAL_SCALE", "AMMO_CURRENT_X_OFFSET", "AMMO_MAX_X_OFFSET"])
+        assert.equal(env.em.FindChildTraverse("QOLCustomize_" + key), null, key);
+    activate(env, "QOLCustomizeCancel"); env.clock.advance(100);
     Q.ui.window.setActiveTabAndRefresh("Shop"); env.clock.advance(300);
     assert.ok(env.list.FindChildrenWithClassTraverse("SettingRow_ENHANCED_QUICKBUY_COUNT")[0]);
     clean(env);

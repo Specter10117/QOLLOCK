@@ -12,8 +12,12 @@ key whitelist rejects edits and resets belonging to other elements. Unknown IDs
 fail before opening or changing HUD state.
 AP and Active Items have no empty standalone subsection in the ordinary HUD
 settings. They remain separate selections in the full Customize catalog.
-The standalone Customize tab lists editable HUD surfaces with independent frames.
-It starts with available surfaces in a gameplay HUD. All elements exposes hidden
+The Customize tab provides grouped shortcuts to feature inspectors, including
+settings-only and contextual selections. Empty references and inherited details
+are omitted from these shortcuts; Ammo and Player Stats open their child selections
+through their family editor. Open editor launches the shared canvas catalog of
+HUD surfaces with independent frames. That catalog starts with available surfaces
+in a gameplay HUD. All elements exposes hidden
 or conditional surfaces so zero opacity, state hiding and off-screen placement
 can be repaired without a configuration reset. Menu-only sessions show all
 surfaces because there is no gameplay layout to filter.
@@ -62,13 +66,15 @@ while storage keeps the JSON envelope. The catalog includes native
 HUD families, overlays, map/shop states and additions in other script contexts.
 
 The shop surface uses `Shop/MainPanel`, while recent purchases use the sibling
-`Shop/NavPanel/RecentPurchasesPanel` from the native shop layout. Content modes,
-filters and notification lifetime/count remain in ordinary settings; Properties
-exposes appearance and actual visibility. Base minimap exposes its overall
+`Shop/NavPanel/RecentPurchasesPanel` from the native shop layout. Properties exposes
+the feature's existing content modes, filters and notification lifetime/count
+alongside appearance and visibility. Quick Buy has a scoped action in Shop as well
+as a shortcut in Customize; it gains no independent canvas geometry. Base minimap exposes its overall
 opacity and the Minimalist switch; its background opacity appears only while
 that draft mode is enabled, including after history changes.
 
-Minimap objective timers remain ordinary gameplay toggles. Their producer owns
+Minimap objective timers are available in ordinary settings and Base Minimap's
+Content section. Their producer owns
 plate placement, size, content and visibility; text plates have no separate
 Customize entries. Map References exposes marker size, route size and layer
 opacity while map-relative coordinates stay attached to the native renderer.
@@ -194,6 +200,15 @@ objective content from the extracted top-bar layouts. They exclude the full-heig
 TopBar, TeamsContainer, PlayersContainer, chat and background owners. If no known
 content can be measured, no full-screen fallback frame is created.
 
+Every inspector groups fields into Content, Position & size, Appearance and
+Visibility, omitting empty sections. Threshold groups identify their owning health
+warning. Top Bar, Abilities and Healthbar include the existing controls of their
+inherited details through explicit `inspectorOwner` metadata, without extra frames.
+Enum fields use native DropDown panels and current shared setting options, the
+same source used by ordinary settings. Programmatic selection synchronization and
+retired dropdown callbacks cannot create draft edits. Conditional rows react to
+the draft, including Undo/Redo, without rebuilding controls or clearing their values.
+
 Panels, buttons and typography use the shared `QOLUnifiedModal*`, `ModalTitle`,
 `ModalInstructions` and `ValueInput` styles. Sliders and `SettingToggleBtn`
 switches reuse the settings controls' shared CSS in the sibling overlay.
@@ -211,10 +226,10 @@ for the selected element's visible presentation fields from source. Enable/hide
 switches and other toggles retain their current values, including normal/TAB
 visibility. Reset also clears pending field text
 when the accepted draft already equals defaults, without creating an Undo entry.
-Hidden feature modes and
-content filters remain unchanged; ordinary settings sections retain their full
-reset metadata. Healthbar type and Minecraft health numbers stay in ordinary
-settings. Minimap's Minimalist switch is also available beside its dependent
+Feature modes and content filters marked `reset: false` remain unchanged;
+ordinary settings sections retain their full reset metadata. Healthbar type is
+available in both settings and Customize; Minecraft health numbers appear only
+when the draft selects that variant. Minimap's Minimalist switch is also available beside its dependent
 background opacity in Properties. Undo reverses one accepted edit or gesture;
 Redo restores the edit reversed by Undo until a new edit replaces that branch.
 History actions accept valid pending entries first. Element selection, canvas
@@ -232,7 +247,7 @@ Enter and blur also accept it. Incomplete input stays in its field and does not
 overwrite the preview. Accepted typing preserves the caret until blur; history,
 reset, selection changes and closing cancel pending callbacks. Opacity and overall scales display percentages from explicit property metadata,
 while retaining their original stored units. Labels do not determine semantics.
-Horizontal and vertical fields appear directly without a position heading or
+Horizontal and vertical fields appear directly in Position & size without a
 disclosure; color presets can
 be expanded separately. Player Stats placement uses the same coordinates and
 canvas gestures as other surfaces; its legacy Side setting is absent from both

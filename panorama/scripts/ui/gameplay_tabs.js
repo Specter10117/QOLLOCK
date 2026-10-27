@@ -27,14 +27,8 @@
     // Options & Dropdown Definitions
     // =========================================================================
 
-    const HEALTHBAR_TYPE_DROPDOWN_OPTIONS = [
-        { label: "Default", value: 0 },
-        { label: "Minimalist", value: 1 },
-        { label: "Fighting Game", value: 2 },
-        { label: "Klutz's Bar", value: 3 },
-        { label: "Budhud", value: 4 },
-        { label: "Minecraft", value: 5 }
-    ];
+    const dropdownOptions = key => Q.settings.get(key).options.map(([value, label]) => ({ value, label }));
+    const HEALTHBAR_TYPE_DROPDOWN_OPTIONS = dropdownOptions("HEALTHBAR_TYPE");
 
     const COLOR_WARNING_THRESHOLD_OPTIONS = [
         { label: "25%", key: "ENABLE_COLOR_WARNING_25" },
@@ -353,7 +347,7 @@
         const createAnimatedToggle = getCreateAnimatedToggle();
         const createSecondaryCheckboxRow = getCreateSecondaryCheckboxRow();
 
-        createTitle(list, "Quick Buy");
+        createTitle(list, "Quick Buy", null, "quickbuy");
         if (createSecondaryCheckboxRow) {
             createSecondaryCheckboxRow(
                 list,
@@ -498,12 +492,10 @@
             createSep(list);
             createAnimatedToggle(list, "Keyboard", "ENABLE_KEYBOARD_OVERLAY", "Realtime Key Inputs", (sectionParent) => {
                 if (createRow) {
-                    createRow(sectionParent, "Keyboard Theme", "KEYBOARD_OVERLAY_THEME", "dropdown", null, null, null, [
-                        "Deadlock", "Citadel", "Keystrokes", "NohBoard", "KeyViewer", "Light", "Outline", "Minimal"
-                    ].map((label, value) => ({ label, value })), "Choose the keyboard overlay appearance.");
-                    createRow(sectionParent, "Keyboard Layout", "KEYBOARD_OVERLAY_LAYOUT", "dropdown", null, null, null, [
-                        { label: "Full", value: 0 }, { label: "Compact", value: 1 }, { label: "Grid", value: 2 }
-                    ], "Choose the keyboard overlay layout.");
+                    createRow(sectionParent, "Keyboard Theme", "KEYBOARD_OVERLAY_THEME", "dropdown", null, null, null,
+                        dropdownOptions("KEYBOARD_OVERLAY_THEME"), "Choose the keyboard overlay appearance.");
+                    createRow(sectionParent, "Keyboard Layout", "KEYBOARD_OVERLAY_LAYOUT", "dropdown", null, null, null,
+                        dropdownOptions("KEYBOARD_OVERLAY_LAYOUT"), "Choose the keyboard overlay layout.");
                     createRow(sectionParent, "Full Keys", "ENABLE_FULL_KEYBOARD_LAYOUT", "toggle", null, null, null, null, "");
                 }
                 if (createRow) {

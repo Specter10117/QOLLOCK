@@ -44,16 +44,32 @@
         host.AddClass("QOLCustomizeLaunch");
         host.AddClass("QOLUnifiedModalSurface");
         I.label(host, "Customize", "ModalTitle").AddClass("QOLCustomizeTitle");
-        I.label(host, "Move HUD elements on screen and edit their colors. Save keeps changes; Cancel discards the draft.");
+        I.label(host, "Choose an element to edit its content, layout and appearance. Save keeps changes; Cancel discards the draft.");
         const status = I.label(host, "");
         status.text = Q.ui.customize.failureText();
-        I.button(host, "QOLCustomizeOpen", "Open editor", () => {
+        const open = elementId => {
             status.text = "";
             const started = Q.ui.customize.start(message => {
                 if (message && Q.core.panel.isAlive(status)) status.text = Q.ui.theme.LocalizeSettingsText(message, true);
-            });
+            }, elementId ? { elementId } : undefined);
             if (!started) status.text = Q.ui.customize.failureText() || Q.ui.theme.LocalizeSettingsText("The editor could not open. Close other visual tools and try again.", true);
-        }, true);
+        };
+        I.button(host, "QOLCustomizeOpen", "Open editor", () => open(), true).AddClass("QOLCustomizeLaunchOpen");
+        const groups = new Map();
+        for (const element of Q.presentation.elements) {
+            if (element.inspectorOwner || element.parentId || !element.fields.some(field => !field.hidden)) continue;
+            const group = element.group || "HUD";
+            if (!groups.has(group)) {
+                const section = P.create("Panel", host, "");
+                section.AddClass("QOLCustomizeSection");
+                I.label(section, group, "ModalTitle").AddClass("QOLCustomizeSectionHeading");
+                const grid = P.create("Panel", section, "");
+                grid.AddClass("QOLCustomizeLaunchGrid");
+                groups.set(group, grid);
+            }
+            I.button(groups.get(group), "QOLCustomizeLaunch_" + element.id, element.name, () => open(element.id))
+                .AddClass("QOLCustomizeLaunchElement");
+        }
     }
     Q.ui.window.registerTabRenderer("Customize", render);
 })();

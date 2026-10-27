@@ -26,13 +26,13 @@
                 return panels.length ? panels : [target];
             },
             fields: [toggle("HUD_SOULS_ENABLED"), ...geometry("SOULS_"), opacity("SOULS_")] },
-        { id: "items", name: "Items", path: [...lower, "ModsContainer"], fields: [toggle("HUD_ITEMS_ENABLED"), ...geometry("ITEMS_"), opacity("ITEMS_"), color("ITEMS_WASH_COLOR")] },
+        { id: "items", name: "Items", path: [...lower, "ModsContainer"], fields: [toggle("HUD_ITEMS_ENABLED"), { key: "ENABLE_SIMPLIFY_ITEMS", label: "Minimalist Item Bar", type: "toggle" }, ...geometry("ITEMS_"), opacity("ITEMS_"), color("ITEMS_WASH_COLOR")] },
         { id: "topBar", name: "Top Bar", path: [...core, "TopBar"], fields: [toggle("HUD_TOP_BAR_ENABLED"), ...geometry("TOP_BAR_", true), opacity("TOP_BAR_")] },
         { id: "bottomBar", name: "Abilities", path: [...abilities, "hud_signature"], fields: [toggle("HUD_BOTTOM_BAR_ENABLED"), ...geometry("BOTTOM_BAR_", true), opacity("BOTTOM_BAR_"), { key: "BOTTOM_BAR_WASH_COLOR", label: "Color", type: "palette" }] },
         { id: "activeItems", name: "Active Items", path: [...abilities, "ActiveAbilitiesMenu"], fields: [...geometry("ACTIVE_ITEMS_", true), opacity("ACTIVE_ITEMS_")] },
         { id: "abilityPoints", name: "Ability Points", path: [...abilities, "APContainer"], frame: true,
             fields: [...geometry("AP_"), opacity("AP_")] },
-        { id: "ammo", name: "Ammo", path: [...crosshair, "gun", "gun_data", "ammo_panel"],
+        { id: "ammo", name: "Ammo", group: "Crosshair", path: [...crosshair, "gun", "gun_data", "ammo_panel"],
             resolve: resolveAmmo,
             measurePanels(target) {
                 const gun = Q.core.panel.isAlive(target) ? target.GetParent() : null;
@@ -50,7 +50,7 @@
             { key: "AMMO_MAX_Y_OFFSET", label: "Max Vertical Offset", unit: "px", hidden: true },
             { key: "AMMO_CLIP_ANGLE", label: "Rotation" }, opacity("AMMO_HUD_"), color("AMMO_TEXT_COLOR")
         ] },
-        { id: "stamina", name: "Stamina", path: [...crosshair, "dash", "charges_container"], frame: true, fields: [
+        { id: "stamina", name: "Stamina", group: "Crosshair", path: [...crosshair, "dash", "charges_container"], frame: true, fields: [
             ...geometry("STAMINA_"), { key: "STAMINA_SCALE", label: "Scale", resize: true }, opacity("STAMINA_"), { key: "STAMINA_CHARGE_ANGLE", label: "Rotation" }, color("STAMINA_CHARGE_COLOR")
         ] },
         { id: "playerStats", name: "Player Stats", path: [...lower, "hudPlayerStats"], fallbackPath: [...core, "hudActivePlayerStats"],
@@ -131,6 +131,13 @@
             element.available = (hud, config) => !shouldHide(element.id, config, hud) &&
                 (!element.parentId || !shouldHide(element.parentId, config, hud)) && (!available || available(hud, config));
             elements.push(element);
+            if (element.inspectorOwner) {
+                // Details keep their scoped actions but also belong to their
+                // visible family's inspector. This grants no extra canvas frame.
+                const owner = elements.find(item => item.id === element.inspectorOwner);
+                if (!owner) throw new Error("Unknown inspector owner: " + element.inspectorOwner);
+                for (const field of element.fields) if (!owner.fields.some(item => item.key === field.key)) owner.fields.push(field);
+            }
         }
     }
     for (const [id, prefix] of [["souls", "SOULS_"], ["items", "ITEMS_"], ["playerStats", "STATS_POSITION_"], ["ammo", "AMMO_HUD_"], ["abilityPoints", "AP_"]]) {
@@ -206,7 +213,8 @@
         ? Q.core.panel.findChild(target, "HudStatBlock") || target : target;
     const hasFrame = element => element.frame !== false && (element.frame === true || canDrag(element) || !!resizeField(element));
     const field = (key, label, type, extra = {}) => Object.assign({ key, label, ...(type ? { type } : {}) }, extra);
+    const content = (key, label, type = "toggle", extra = {}) => field(key, label, type, { section: "Content", reset: false, ...extra });
     Q.presentation = { stateSettings, captureVisibility, visibilityConfig, hasStateHiding, shouldHide, visibilityStyles, bindVisibility, elements, fieldMap, settingFields, normalize, resolve, findPath, register, canDrag, resizeField, hasFrame, chooseStatsPanel, scaleTarget, toDisplayValue, fromDisplayValue, displayBounds,
         paths: { core, lower, abilities, crosshair, gameplay: [...core, "gameplay_hud"] },
-        fields: { geometry, opacity, toggle, color, field } };
+        fields: { geometry, opacity, toggle, color, field, content } };
 })();

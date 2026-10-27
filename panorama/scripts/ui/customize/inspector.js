@@ -100,7 +100,7 @@
             syncs.push(() => {
                 const on = Number(session.value(field.key)) === 1;
                 const shown = field.inverted ? !on : on;
-                paint(title ? shown : on);
+                paint(shown);
             });
             if (title) {
                 const shown = () => {
@@ -117,35 +117,72 @@
         const main = P.create("Panel", parent, "QOLCustomizeMainProperties");
         main.AddClass("QOLCustomizeSectionBody");
 
-        const positions = visibleFields.filter(field => field.axis);
-        let positionBody = main;
-        if (positions.length) {
-            const posHost = P.create("Panel", main, "QOLCustomizePosition");
-            posHost.AddClass("QOLCustomizePositionSection");
-            const posBody = P.create("Panel", posHost, "QOLCustomizePositionBody");
-            posBody.AddClass("QOLCustomizeSectionBody");
-            posBody.visible = true;
-            positionBody = posBody;
+        const groupFor = field => {
+            if (field.section) return field.section;
+            const role = Q.settings.get(field.key).role;
+            if (role === "stateVisibility") return "Visibility";
+            if (field.axis || field.resize || ["position", "size", "referenceSize", "scale", "fontSize", "fontScale", "axisScale", "rotation", "distance"].includes(role)) return "Position";
+            return field.type === "toggle" ? "Content" : "Appearance";
+        };
+        const groups = new Map();
+        for (const [id, title] of [["Content", "Content"], ["Position", "Position & size"], ["Appearance", "Appearance"], ["Visibility", "Visibility"]]) {
+            const fields = visibleFields.filter(field => field !== primaryToggle && groupFor(field) === id);
+            if (!fields.length) continue;
+            const section = P.create("Panel", main, "QOLCustomize" + id + "Section");
+            section.AddClass("QOLCustomizeSection");
+            label(section, title, "ModalTitle").AddClass("QOLCustomizeSectionHeading");
+            const body = P.create("Panel", section, "QOLCustomize" + id + "Body");
+            body.AddClass("QOLCustomizeSectionBody");
+            groups.set(id, body);
+            syncs.push(() => { section.visible = fields.some(field => !field.when || field.when(session)); });
         }
 
+        const categories = new Map();
         for (const field of visibleFields) {
             if (field === primaryToggle) continue;
-            const host = field.axis ? positionBody : main;
+            let host = groups.get(groupFor(field));
+            if (field.category) {
+                const id = groupFor(field) + ":" + field.category;
+                if (!categories.has(id)) {
+                    const section = P.create("Panel", host, "");
+                    section.AddClass("QOLCustomizeSubsection");
+                    label(section, field.category).AddClass("QOLCustomizeSubheading");
+                    categories.set(id, section);
+                }
+                host = categories.get(id);
+            }
             const row = P.create("Panel", host, "");
             row.AddClass("QOLCustomizeField");
             if (field.when) syncs.push(() => { row.visible = !!field.when(session); });
             label(row, field.axis ? (field.axis === "x" ? "Horizontal" : "Vertical") : field.label);
             if (field.type === "enum") {
-                row.AddClass("QOLCustomizeFieldColor");
-                const options = P.create("Panel", row, "");
-                options.AddClass("QOLCustomizeEnum");
+                row.AddClass("QOLCustomizeFieldEnum");
+                const control = P.create("DropDown", row, "QOLCustomize_" + field.key);
+                control.AddClass("SettingsDropDown");
+                control.AddClass("QOLSettingsDropDown");
+                control.AddClass("QOLCustomizeDropDown");
+                control.AddClass("ValueInput");
+                const options = new Map();
                 for (const [value, text] of field.options) {
-                    const choice = button(options, "QOLCustomize_" + field.key + "_" + value, text, () => {
-                        if (!valid()) return;
-                        if (commit({ [field.key]: value })) changed();
-                    });
-                    syncs.push(() => setActive(choice, Number(session.value(field.key)) === value));
+                    const option = label(control, text, "QOLSettingsDropDownItem", "QOLCustomize_" + field.key + "_" + value);
+                    option.AddClass("DropDownChild");
+                    option.AddClass("QOLCustomizeDropDownItem");
+                    // Native dropdown options must receive their own input.
+                    option.hittest = true;
+                    control.AddOption(option);
+                    options.set(option.id, value);
                 }
+                control.SetPanelEvent("oninputsubmit", () => {
+                    if (!valid() || syncing) return;
+                    const selected = control.GetSelected();
+                    if (!P.isAlive(selected) || !options.has(selected.id)) return;
+                    if (commit({ [field.key]: options.get(selected.id) })) changed();
+                    else sync({ preserveInput: true });
+                });
+                syncs.push(() => {
+                    const id = "QOLCustomize_" + field.key + "_" + session.value(field.key);
+                    if (control.GetSelected()?.id !== id) control.SetSelected(id);
+                });
                 continue;
             }
             if (field.type === "toggle") {
@@ -168,7 +205,7 @@
                 palette.AddClass("QOLCustomizeColorEditor");
                 palette.visible = false;
                 if (docked) {
-                    label(palette, field.label, "QOLCustomizeSectionHeading");
+                    label(palette, field.label, "ModalTitle").AddClass("QOLCustomizeSectionHeading");
                     cleanups.push(() => {
                         if (P.isAlive(palette)) palette.visible = false;
                         P.delete(palette);
