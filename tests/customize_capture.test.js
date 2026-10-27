@@ -266,7 +266,7 @@ test(`${id}: repeated native grabs and partitioned inputs with ${cursor ? "curso
     assert.ok(a.x + a.width <= b.x, "Current and Max padding is partitioned");
     assert.ok(Math.max(a.y + a.height, b.y + b.height) <= c.y, "Ammo padding cannot intercept Stamina");
     for (const key of Object.keys(points)) {
-        env.click("QOLCustomizeFrame_" + key);
+        env.click("QOLCustomizeSelect_" + key);
         const area = bounds(key), handle = env.find("QOLCustomizeResize_" + key);
         assert.ok(area.width - parseFloat(handle.style.width) * 2 >= 16, "corners leave a central move target");
         assert.ok(area.height - parseFloat(handle.style.height) * 2 >= 16, "corners leave a central move target");
@@ -274,6 +274,7 @@ test(`${id}: repeated native grabs and partitioned inputs with ${cursor ? "curso
     for (let i = 0; i < 10; i++) {
         // Start from another selection to exercise the native source callback.
         env.click("QOLCustomizeSelect_healthbar");
+        if (id !== "stamina") env.click("QOLCustomizeSelect_" + id);
         const source = env.find("QOLCustomizeFrame_" + id);
         const gesture = cursor ? capture(env, x, y, id) : {source, proxy: startDrag(env, source)};
         assert.ok(gesture.proxy);
@@ -424,6 +425,7 @@ for (const id of ["stamina", "ammoCurrent", "ammoMax"]) for (const change of ["h
 test(`${id}: pending geometry does not retain capture after its owner is ${change}`, () => {
     const env = setup(), target = smallTargets(env)[id];
     env.clock.advance(400); env.click("QOLCustomizeToggleSnap");
+    env.click("QOLCustomizeSelect_" + id);
     const gesture = capture(env, 920, 520, id);
     move(env, 940, 530);
     target.actuallayoutwidth = 0; target.actualxoffset = 3.4028e38;

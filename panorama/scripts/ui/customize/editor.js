@@ -15,6 +15,27 @@
     const geometryKey = (element, values) => JSON.stringify(element.fields.filter(field => field.axis || field.resize)
         .map(field => [field.key, values[field.key]]));
     const fontResize = element => element.id === "ammoCurrent" || element.id === "ammoMax";
+    const ammoFamily = element => element?.id === "ammo" || element?.parentId === "ammo";
+    const pointerTarget = (owner, element) => !ammoFamily(element) || owner.selected === element ||
+        (!ammoFamily(owner.selected) && element.id === "ammo");
+    function syncShop(owner, selected) {
+        if (!P.isAlive(owner.hud) || Q.ui.customizeSession.resolveHud(owner.root) !== owner.hud) return;
+        const open = owner.hud.BHasClass("gShopOpen");
+        if (owner.shopOpened && open) owner.shopObservedOpen = true;
+        if (["shop", "recentPurchases", "quickbuy"].includes(selected?.id)) {
+            if (!owner.shopOpened && !open) {
+                // Maintainer-verified toggle; never dispatch it again on polls or reselection.
+                owner.shopOpened = Q.ui.consoleTab.runConsoleCommand("citadel_open_hero_sheet");
+                owner.shopObservedOpen = owner.hud.BHasClass("gShopOpen");
+            }
+        } else if (owner.shopOpened) {
+            // Balance a queued open even before its global class arrives. Once observed,
+            // a natively closed shop must stay closed rather than being toggled open.
+            if (open || !owner.shopObservedOpen) Q.ui.consoleTab.runConsoleCommand("citadel_open_hero_sheet");
+            owner.shopOpened = false;
+            owner.shopObservedOpen = false;
+        }
+    }
     const geometryGeneration = (owner, element) => Math.max(0, ...element.fields.filter(field => field.axis || field.resize)
         .map(field => owner.transaction.geometryGeneration(field.key)));
     function flowWidth(owner, element, target) {
@@ -77,6 +98,7 @@
         cleanup(() => owner.inspector?.dispose());
         cleanup(() => owner.chrome?.dispose());
         cleanup(() => owner.transaction.close());
+        cleanup(() => syncShop(owner, null));
         for (const timer of [owner.timer, owner.dragTimer, owner.settleTimer, owner.activationTimer]) if (timer !== null) cleanup(() => $.CancelScheduled(timer));
         cleanup(() => P.delete(owner.drag?.proxy));
         cleanup(() => P.delete(owner.drag?.preview));
@@ -228,6 +250,7 @@
         if (current !== owner || owner.drag || owner.applied || !owner.transaction.canEditElement(element.id)) return false;
         if (!acceptNavigation(owner)) return false;
         if (!owner.transaction.selection(element.id)) return false;
+        syncShop(owner, element);
         // A new grab of the same surface must keep its live inspector/pickers.
         // Selection metadata is still renewed, but no panel tree is replaced.
         if (owner.selected === element && owner.inspector) {
@@ -419,10 +442,10 @@
     }
     function bindDrag(owner, element, frame, resize = false) {
         frame.SetPanelEvent("onactivate", () => {
-            if (current === owner && !owner.drag && !owner.applied && !owner.justDropped) select(owner, element);
+            if (current === owner && pointerTarget(owner, element) && !owner.drag && !owner.applied && !owner.justDropped) select(owner, element);
         });
         $.RegisterEventHandler("DragStart", frame, (_panel, event) => {
-            if (current !== owner || owner.applied || owner.drag || owner.chrome?.isDragging() || !frame.visible) return false;
+            if (current !== owner || owner.applied || owner.drag || owner.chrome?.isDragging() || !frame.visible || !pointerTarget(owner, element)) return false;
             if (owner.transaction.isLocked(element.id)) return false;
             const origin = G.cursorPoint();
             const target = resolve(owner, element);
@@ -571,6 +594,8 @@
                 observe(owner, element, target, measured);
             } else if (!measured) { item.observed = null; item.geometryHistory = null; item.contextCandidate = null; item.layoutCandidate = null; }
             if (item.frame.visible !== visible) item.frame.visible = visible;
+            const interactive = pointerTarget(owner, element);
+            if (item.frame.hittest !== interactive) item.frame.hittest = interactive;
             const unavailable = !measured && !element.context && !!element.path;
             const caption = localize(element.name);
             if (item.caption.text !== caption) item.caption.text = caption;
@@ -614,6 +639,7 @@
             (!owner.applied && !owner.transaction.valid())) { stop(); return; }
         try {
             if (!owner.applied && !owner.transaction.publish()) { stop(); return; }
+            if (owner.shopOpened && owner.hud?.BHasClass("gShopOpen")) owner.shopObservedOpen = true;
             refreshHistory(owner);
             refreshFrames(owner);
             owner.chrome.refresh();
@@ -660,7 +686,7 @@
         if (!P.isAlive(root) || !P.isAlive(window) || !window.BHasClass("Visible")) return false;
         const overlay = P.create("Panel", context, "QOLCustomizeEditor");
         if (!P.isAlive(overlay)) return false;
-        const owner = { context, hud, window, overlay, transaction: Q.ui.customizeSession.create(root, hud, window, element),
+        const owner = { root, context, hud, window, overlay, transaction: Q.ui.customizeSession.create(root, hud, window, element),
             elements: element ? Q.ui.customizeSession.scopedElements(element) : Q.presentation.elements.filter(item => Q.presentation.hasFrame(item) && item.fields.length && !item.context),
             hidden: [], active: [], frames: new Map(), headings: [], query: "", showAll: !hud, selectionPinned: false,
             timer: null, dragTimer: null, settleTimer: null, activationTimer: null, drag: null, inspector: null, onStop, applied: false, saving: false, snapEnabled: true };

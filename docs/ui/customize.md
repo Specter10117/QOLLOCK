@@ -89,7 +89,11 @@ Each selection frame and resize corner is a native Button with its own
 Panorama DragStart/DragEnd handlers. Selection is delivered by that Button's
 activation; it never requires a JavaScript coordinate picker or cursor API.
 The native XML `draggable` attribute is supplied at creation, without requiring
-`SetDraggable`. Current/Max Ammo have independent inputs above the Ammo family.
+`SetDraggable`. The left catalog selects Ammo, Current Ammo or Max Ammo. Within
+this family only the selected frame accepts pointer input; the other two cannot
+select or capture through the active frame. When another element is selected,
+the Ammo family frame remains the canvas entry point. Scoped digit editors keep
+their single selection interactive.
 A temporary input-transparent displayPanel exists only for native capture.
 When available at capture, `GameUI.GetCursorPosition()` supplies pointer intent;
 otherwise validated compositor window positions supply motion. The first valid
@@ -117,8 +121,8 @@ entries that inherit an owner's geometry (health warnings, top-bar details,
 quickbuy) remain in the catalog without a competing hit-test frame. Their native
 owners can still be measured for availability. Hover identifies the element by localized
 tooltip. Actual content and smaller surfaces have priority within larger family bounds;
-editor chrome remains above all frames. Independent Ammo digit frames have a
-higher native layer priority than the family bounds, including when all three are small.
+editor chrome remains above all frames. Ammo family pointer ownership follows
+the catalog selection rather than competing overlapping hit areas.
 Small elements receive a padded input area with a separate outline of actual
 content. Padding is partitioned at gaps between neighboring surfaces so it
 cannot cover their real content. Corner inputs shrink when needed to avoid
@@ -446,6 +450,16 @@ in Customize and the ordinary HUD/UI controls preserve the placement gate and
 dormant coordinates.
 Better Unsecured Souls presents its vertical offset as up-positive relative to
 the configured default; storage and runtime retain the existing raw coordinate.
+
+Shop, Recent Purchases and Quick Buy selections use the maintainer-verified
+`citadel_open_hero_sheet` toggle through the existing settings console dispatcher.
+The shared selection handler covers gameplay-section actions, Customize shortcuts
+and the full editor catalog. Reselection does not toggle again. Leaving these
+selections or ending the session closes a shop opened by that session; an already
+open shop is preserved. A queued open is balanced even before native class delivery,
+and an observed shop that closes natively is not reopened by cleanup. Commands are
+never transferred to a replacement HUD. Native command execution and ESC/shop
+coexistence require client verification after repack.
 
 `core/ql_customize_preview.js` carries a leased draft through HUD attributes.
 Selection is transient metadata in this same lease, independent of config and

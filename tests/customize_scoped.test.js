@@ -20,6 +20,84 @@ const clean = env => {
     assert.deepEqual(env.clock.errors, []);
 };
 
+for (const entry of ["section", "shortcut", "catalog"]) test(`Shop ${entry} opens and retires its native command exactly once`, () => {
+    const env = setup(), Q = env.global.QOL, commands = [];
+    const dispatch = env.global.$.DispatchEvent;
+    // Native command execution is modeled; real ESC/shop coexistence needs a client check.
+    env.global.$.DispatchEvent = (name, ...args) => {
+        if (name === "CitadelConCommand") {
+            commands.push(args[0]);
+            env.hud.root.SetHasClass("gShopOpen", !env.hud.root.BHasClass("gShopOpen"));
+        }
+        return dispatch(name, ...args);
+    };
+    if (entry === "section") {
+        Q.ui.window.setActiveTabAndRefresh("Shop"); env.clock.advance(300);
+        activate(env, "QOLCustomizeEntry_shop");
+    } else {
+        Q.ui.window.setActiveTabAndRefresh("Customize"); env.clock.advance(300);
+        activate(env, entry === "shortcut" ? "QOLCustomizeLaunch_shop" : "QOLCustomizeOpen");
+        if (entry === "catalog") activate(env, "QOLCustomizeSelect_shop");
+    }
+    assert.deepEqual(commands, ["citadel_open_hero_sheet"]);
+    if (entry === "catalog") {
+        activate(env, "QOLCustomizeSelect_shop"); env.clock.advance(600);
+        assert.equal(commands.length, 1, "reselection and polls cannot toggle the shop shut");
+        activate(env, "QOLCustomizeSelect_souls");
+        assert.deepEqual(commands, ["citadel_open_hero_sheet", "citadel_open_hero_sheet"]);
+    }
+    activate(env, "QOLCustomizeCancel"); env.clock.advance(300);
+    assert.deepEqual(commands, ["citadel_open_hero_sheet", "citadel_open_hero_sheet"]);
+    assert.equal(env.hud.root.BHasClass("gShopOpen"), false);
+    clean(env);
+});
+
+test("Shop selection preserves an already-open native shop", () => {
+    const env = setup(), Q = env.global.QOL, commands = [];
+    env.hud.root.AddClass("gShopOpen");
+    const dispatch = env.global.$.DispatchEvent;
+    env.global.$.DispatchEvent = (name, ...args) => {
+        if (name === "CitadelConCommand") commands.push(args[0]);
+        return dispatch(name, ...args);
+    };
+    Q.ui.customize.start(null, { elementId: "shop" });
+    activate(env, "QOLCustomizeCancel");
+    assert.deepEqual(commands, []);
+    assert.equal(env.hud.root.BHasClass("gShopOpen"), true);
+    clean(env);
+});
+
+for (const exit of ["queued", "nativeClose", "save", "menuClose", "windowClose", "hudReplacement"])
+test(`Shop command ownership survives ${exit}`, () => {
+    const env = setup(), Q = env.global.QOL, commands = [];
+    const dispatch = env.global.$.DispatchEvent;
+    env.global.$.DispatchEvent = (name, ...args) => {
+        if (name === "CitadelConCommand") {
+            commands.push(args[0]);
+            if (exit !== "queued") env.hud.root.SetHasClass("gShopOpen", !env.hud.root.BHasClass("gShopOpen"));
+        }
+        return dispatch(name, ...args);
+    };
+    Q.ui.customize.start(null, { elementId: "shop" });
+    assert.deepEqual(commands, ["citadel_open_hero_sheet"]);
+    if (exit === "nativeClose") env.hud.root.RemoveClass("gShopOpen");
+    if (exit === "save") {
+        Q.core.storageBridge.saveSettings = (_config, callback) => callback(null);
+        activate(env, "QOLCustomizeApply");
+    } else if (exit === "menuClose") Q.ui.customize.onMenuClosed();
+    else if (exit === "windowClose") {
+        env.em.FindChildTraverse("SettingsWindow").RemoveClass("Visible"); env.clock.advance(300);
+    } else if (exit === "hudReplacement") {
+        env.hud.root.id = "RetiredHud";
+        env.doc.root.addChild(env.doc.create("CitadelHud", { id: "Hud" }));
+        env.clock.advance(300);
+    } else activate(env, "QOLCustomizeCancel");
+    assert.equal(Q.ui.customize.isRunning(), false);
+    assert.deepEqual(commands, exit === "nativeClose" || exit === "hudReplacement"
+        ? ["citadel_open_hero_sheet"] : ["citadel_open_hero_sheet", "citadel_open_hero_sheet"]);
+    clean(env);
+});
+
 test("Properties expose content controls while independent digit geometry stays in its own selection", () => {
     const env = setup(), Q = env.global.QOL;
     for (const [id, present] of [

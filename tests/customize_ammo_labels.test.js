@@ -24,6 +24,35 @@ const submit = (env, key, value) => {
     input.text = String(value); input._fire("oninputsubmit"); env.clock.advance(1200);
 };
 
+for (const scoped of [false, true]) test(`Ammo family uses only the catalog pointer target (scoped ${scoped})`, () => {
+    const env = setup();
+    env.global.QOL.ui.customize.start(null, scoped ? { elementId: "ammo" } : {});
+    for (const selected of ["ammo", "ammoCurrent", "ammoMax", "ammo"]) {
+        activate(env, "QOLCustomizeSelect_" + selected);
+        for (const id of ["ammo", "ammoCurrent", "ammoMax"]) {
+            const frame = env.em.FindChildTraverse("QOLCustomizeFrame_" + id);
+            assert.equal(frame.hittest, id === selected, selected + ": " + id);
+            if (id !== selected) {
+                frame._fire("onactivate");
+                const event = {};
+                env.global.$.DispatchEvent("DragStart", frame, event);
+                assert.equal(event.displayPanel, undefined, "inactive family frames cannot capture");
+            }
+        }
+        const key = { ammo: "AMMO_PANEL_X_OFFSET", ammoCurrent: "AMMO_CURRENT_X_OFFSET", ammoMax: "AMMO_MAX_X_OFFSET" }[selected];
+        assert.ok(env.em.FindChildTraverse("QOLCustomize_" + key), "inactive activation preserves catalog selection");
+    }
+    if (!scoped) {
+        activate(env, "QOLCustomizeSelect_souls");
+        assert.equal(env.em.FindChildTraverse("QOLCustomizeFrame_ammo").hittest, true);
+        assert.equal(env.em.FindChildTraverse("QOLCustomizeFrame_ammoCurrent").hittest, false);
+        assert.equal(env.em.FindChildTraverse("QOLCustomizeFrame_ammoMax").hittest, false);
+    }
+    activate(env, "QOLCustomizeCancel");
+    assert.deepEqual(env.doc.eventErrors, []);
+    assert.deepEqual(env.clock.errors, []);
+});
+
 for (const id of ["ammoCurrent", "ammoMax"])
 test(`${id}: shared ammo color previews through the inspector and Cancel restores native styles`, () => {
     const env = setup();
@@ -452,7 +481,7 @@ test(`Ammo ${scoped ? "section" : "full editor"}: three selections, drag reset a
     for (const [id, target, key] of [["ammoCurrent", env.current, "AMMO_CURRENT_X_OFFSET"], ["ammoMax", env.max, "AMMO_MAX_X_OFFSET"]]) {
         const frame = find("QOLCustomizeFrame_" + id);
         assert.ok(frame, id);
-        frame._fire("onactivate");
+        activate(env, "QOLCustomizeSelect_" + id);
         const proxy = startDrag(env, frame);
         assert.ok(proxy);
         proxy.actualxoffset += 40;
