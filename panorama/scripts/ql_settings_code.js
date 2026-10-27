@@ -467,7 +467,16 @@
         ["STATS_LIST_OPACITY",1],
         ["AMMO_CURRENT_FONT_STYLE",0],
         ["AMMO_TOTAL_FONT_STYLE",0],
-        ["ENABLE_BETTER_DISABLED_ABILITIES",0]
+        ["ENABLE_BETTER_DISABLED_ABILITIES",0],
+        ["ENABLE_CUSTOM_HITMARKER",0],
+        ["ENABLE_CUSTOM_HITMARKER_SHADOW",0],
+        ["ENABLE_CUSTOM_HITMARKER_HIDE_GLOW",0],
+        ["CUSTOM_HITMARKER_SIZE",20],
+        ["CUSTOM_HITMARKER_CRIT_SIZE",20],
+        ["CUSTOM_HITMARKER_THICKNESS",2],
+        ["CUSTOM_HITMARKER_OFFSET",40],
+        ["CUSTOM_HITMARKER_COLOR",0],
+        ["CUSTOM_HITMARKER_CRIT_COLOR",0]
     ].map(entry => Object.freeze(entry));
     Object.freeze(dictionary);
     const keys = new Set(dictionary.map(entry => entry[0]));

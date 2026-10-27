@@ -1261,6 +1261,15 @@
     "Stylized Alternative": "Stylized Alternative",
     "Old": "Old",
     "Better Silenced/Cursed Abilities": "Better Silenced/Cursed Abilities",
-    "Mark disabled abilities and active items with a red cross.": "Mark disabled abilities and active items with a red cross."
+    "Mark disabled abilities and active items with a red cross.": "Mark disabled abilities and active items with a red cross.",
+    "Custom Hit Marker": "Custom Hit Marker",
+    "Line Length": "Line Length",
+    "Crit Line Length": "Crit Line Length",
+    "Thickness": "Thickness",
+    "Spacing": "Spacing",
+    "Crit Color": "Crit Color",
+    "Outline Shadow": "Outline Shadow",
+    "Hide Crit Glow": "Hide Crit Glow",
+    "Customize hit and critical markers while preserving native hit timing.": "Customize hit and critical markers while preserving native hit timing."
 };
 })();

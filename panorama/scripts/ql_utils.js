@@ -819,7 +819,8 @@
     const CUSTOM_RGB_TAG = 0x1000000;
     const CUSTOM_RGB_MAX = 0x1ffffff;
     const customColorKeys = new Set(["ITEMS_WASH_COLOR", "STAMINA_CHARGE_COLOR", "AMMO_TEXT_COLOR",
-        "BOTTOM_BAR_WASH_COLOR", "KEYBOARD_OVERLAY_WASH_COLOR", "PLAYER_HEALTHBAR_ACCENT_COLOR", "MINIMAP_ICON_COLOR"]);
+        "BOTTOM_BAR_WASH_COLOR", "KEYBOARD_OVERLAY_WASH_COLOR", "PLAYER_HEALTHBAR_ACCENT_COLOR", "MINIMAP_ICON_COLOR",
+        "CUSTOM_HITMARKER_COLOR", "CUSTOM_HITMARKER_CRIT_COLOR"]);
     exports.SupportsCustomColor = key => customColorKeys.has(key);
     exports.IsCustomColor = value => Number.isInteger(value) && value >= CUSTOM_RGB_TAG && value <= CUSTOM_RGB_MAX;
     exports.EncodeHexColor = text => {

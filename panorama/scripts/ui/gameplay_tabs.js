@@ -74,7 +74,7 @@
     const getCreateSeparator = () => (typeof globalThis.CreateSeparator === "function" ? globalThis.CreateSeparator : ((p) => Q.ui?.renderer?.createSeparator?.(p)));
     const CUSTOMIZE_TOGGLE_ELEMENTS = {
         HUD_TOP_BAR_ENABLED: "topBar", HUD_BOTTOM_BAR_ENABLED: "bottomBar", HUD_ITEMS_ENABLED: "items", HUD_SOULS_ENABLED: "souls",
-        ENABLE_PASSIVE_COOLDOWN: "cooldowns", ENABLE_CROSSHAIR_STATS: "activeStats", ENABLE_DAMAGE_IMPACT: "damageImpact",
+        ENABLE_CUSTOM_HITMARKER: "hitMarker", ENABLE_PASSIVE_COOLDOWN: "cooldowns", ENABLE_CROSSHAIR_STATS: "activeStats", ENABLE_DAMAGE_IMPACT: "damageImpact",
         ENABLE_RELOAD_COOLDOWN: "reload", ENABLE_UNSECURED_SOUL_TIMER: "unsecuredTimer", ENABLE_BETTER_UNSECURED: "unsecuredSouls",
         ENABLE_CHAT: "chat", DISABLE_DAMAGE_REPORT: "damageReport", ENABLE_SHOP_RECENT_PURCHASES: "recentPurchases",
         ENABLE_SHOP_ITEM_NOTIFICATIONS: "purchaseNotifications", ENABLE_KEYBOARD_OVERLAY: "keyboard", ENABLE_ZIP_BOOST: "zipBoost",
@@ -208,6 +208,10 @@
                 "Scale the Damage Fountain effect. 100% keeps its original size.");
         }
 
+        createSep(list);
+        if (createAnimatedToggle) {
+            createAnimatedToggle(list, "Custom Hit Marker", "ENABLE_CUSTOM_HITMARKER", "Customize hit and critical markers while preserving native hit timing.", null);
+        }
         createSep(list);
         createTitle(list, "Ammo", null, "ammo");
         if (createRow) {

@@ -8,6 +8,12 @@
     const t = (key, label) => f(key, label, "toggle");
     const overlay = (id, name, panel, fields) => ({ id, name, group: "Overlay", path: [...gameplay, panel], fields });
     C.register([
+        { id: "hitMarker", name: "Custom Hit Marker", group: "Crosshair", path: [...crosshair, "gun", "gun_data", "hit_markers"], fields: [
+            toggle("ENABLE_CUSTOM_HITMARKER"), f("CUSTOM_HITMARKER_SIZE", "Line Length"), f("CUSTOM_HITMARKER_CRIT_SIZE", "Crit Line Length"),
+            f("CUSTOM_HITMARKER_THICKNESS", "Thickness"), f("CUSTOM_HITMARKER_OFFSET", "Spacing"),
+            f("CUSTOM_HITMARKER_COLOR", "Color", "palette"), f("CUSTOM_HITMARKER_CRIT_COLOR", "Crit Color", "palette"),
+            t("ENABLE_CUSTOM_HITMARKER_SHADOW", "Outline Shadow"), t("ENABLE_CUSTOM_HITMARKER_HIDE_GLOW", "Hide Crit Glow")
+        ] },
         overlay("activeStats", "Active Stats", "QOLCrosshairStatsOverlay", [
             toggle("ENABLE_CROSSHAIR_STATS"), ...geometry("CROSSHAIR_STATS_", true), opacity("CROSSHAIR_STATS_"),
             ...[

@@ -1261,6 +1261,15 @@
     "Stylized Alternative": "Стилизованный альтернативный",
     "Old": "Старый",
     "Better Silenced/Cursed Abilities": "Улучшенные иконки при безмолвии/проклятии",
-    "Mark disabled abilities and active items with a red cross.": "Отмечать недоступные способности и активные предметы красным крестом."
+    "Mark disabled abilities and active items with a red cross.": "Отмечать недоступные способности и активные предметы красным крестом.",
+    "Custom Hit Marker": "Настраиваемый маркер попадания",
+    "Line Length": "Длина линий",
+    "Crit Line Length": "Длина линий крита",
+    "Thickness": "Толщина",
+    "Spacing": "Расстояние от центра",
+    "Crit Color": "Цвет крита",
+    "Outline Shadow": "Тень контура",
+    "Hide Crit Glow": "Скрыть свечение крита",
+    "Customize hit and critical markers while preserving native hit timing.": "Настройка обычных и критических маркеров с сохранением нативной длительности попадания."
 };
 })();

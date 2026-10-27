@@ -25,12 +25,8 @@
 		<include src="s2r://panorama/scripts/core/ql_event_bus.vjs_c" />
 		<include src="s2r://panorama/scripts/core/ql_scheduler.vjs_c" />
 		<include src="s2r://panorama/scripts/core/ql_panel_helpers.vjs_c" />
-		<!-- ==== QOLLOCK shared native HUD state ==== -->
 		<include src="s2r://panorama/scripts/core/ql_hud_state.vjs_c" />
-		<!-- ==== End QOLLOCK shared native HUD state ==== -->
-		<!-- ==== QOLLOCK shared native chat-label reader ==== -->
 		<include src="s2r://panorama/scripts/core/ql_chat_messages.vjs_c" />
-		<!-- ==== End QOLLOCK shared native chat-label reader ==== -->
 		<include src="s2r://panorama/scripts/core/ql_hud.vjs_c" />
 		<include src="s2r://panorama/scripts/core/ql_time.vjs_c" />
 		<include src="s2r://panorama/scripts/core/ql_config_store.vjs_c" />
@@ -44,27 +40,21 @@
 		<include src="s2r://panorama/scripts/ql_shared_presets.vjs_c" />
 		<include src="s2r://panorama/scripts/ql_settings_contract.vjs_c" />
 		<include src="s2r://panorama/scripts/ql_legacy_compact.vjs_c" />
-		<!-- ==== QOLLOCK lossless settings exchange ==== -->
 		<include src="s2r://panorama/scripts/ql_settings_code.vjs_c" />
-		<!-- ==== End QOLLOCK lossless settings exchange ==== -->
 		<include src="s2r://panorama/scripts/ql_bridge.vjs_c" />
 		<include src="s2r://panorama/scripts/ql_state.vjs_c" />
 		<include src="s2r://panorama/scripts/ql_panelcache.vjs_c" />
 		<include src="s2r://panorama/scripts/ql_config.vjs_c" />
-		<!-- ==== QOLLOCK customization capabilities and transient preview ==== -->
 		<include src="s2r://panorama/scripts/ql_customize_data.vjs_c" />
 		<include src="s2r://panorama/scripts/customize/overlays.vjs_c" />
 		<include src="s2r://panorama/scripts/customize/map_shop.vjs_c" />
 		<include src="s2r://panorama/scripts/customize/hud_details.vjs_c" />
 		<include src="s2r://panorama/scripts/customize/other_contexts.vjs_c" />
 		<include src="s2r://panorama/scripts/core/ql_customize_preview.vjs_c" />
-		<!-- ==== End QOLLOCK customization preview ==== -->
 		<include src="s2r://panorama/scripts/ql_recent_purchases_data.vjs_c" />
 		<include src="s2r://panorama/scripts/ql_minimap_crate_data.vjs_c" />
-		<!-- ==== QOLLOCK static minimap loot and route references ==== -->
 		<include src="s2r://panorama/scripts/ql_minimap_loot_data.vjs_c" />
 		<include src="s2r://panorama/scripts/manifests/ql_minimap_loot/manifest.vjs_c" />
-		<!-- ==== End QOLLOCK static minimap loot and route references ==== -->
 		<include src="s2r://panorama/scripts/tools/qol_dump_tree.vjs_c" />
 		<include src="s2r://panorama/scripts/manifests/ql_cast_failed_hint/manifest.vjs_c" />
 		<include src="s2r://panorama/scripts/manifests/ql_mouse_cursor/manifest.vjs_c" />
@@ -75,24 +65,18 @@
 		<include src="s2r://panorama/scripts/manifests/ql_ability_icons/manifest.vjs_c" />
 		<include src="s2r://panorama/scripts/manifests/ql_damage_report/manifest.vjs_c" />
 		<include src="s2r://panorama/scripts/manifests/ql_passive_cooldown/manifest.vjs_c" />
-		<!-- ==== QOLLOCK independent chat geometry and image owners ==== -->
 		<include src="s2r://panorama/scripts/manifests/ql_chat_geometry/manifest.vjs_c" />
 		<include src="s2r://panorama/scripts/manifests/ql_chat_images/manifest.vjs_c" />
-		<!-- ==== End QOLLOCK independent chat geometry and image owners ==== -->
 		<include src="s2r://panorama/scripts/manifests/ql_chat_translate/manifest.vjs_c" />
 		<include src="s2r://panorama/scripts/manifests/ql_lane_with_party/manifest.vjs_c" />
 		<include src="s2r://panorama/scripts/manifests/ql_ui_controls/manifest.vjs_c" />
 		<include src="s2r://panorama/scripts/manifests/ql_unsecured_souls_timer/manifest.vjs_c" />
 		<include src="s2r://panorama/scripts/manifests/ql_urn_timer/manifest.vjs_c" />
-		<!-- ==== QOLLOCK independent urn difference owner ==== -->
 		<include src="s2r://panorama/scripts/manifests/ql_urn_tracker/model.vjs_c" />
 		<include src="s2r://panorama/scripts/manifests/ql_urn_tracker/manifest.vjs_c" />
-		<!-- ==== End QOLLOCK independent urn difference owner ==== -->
 		<include src="s2r://panorama/scripts/manifests/ql_on_death_arcade/manifest.vjs_c" />
-		<!-- ==== QOLLOCK: minimap geometry and runtime ==== -->
 		<include src="s2r://panorama/scripts/manifests/ql_minimap_runtime/geometry.vjs_c" />
 		<include src="s2r://panorama/scripts/manifests/ql_minimap_runtime/manifest.vjs_c" />
-		<!-- ==== QOLLOCK: minimap geometry and runtime end ==== -->
 		<include src="s2r://panorama/scripts/manifests/ql_recent_purchases/manifest.vjs_c" />
 		<include src="s2r://panorama/scripts/manifests/ql_target_shapes/manifest.vjs_c" />
 		<include src="s2r://panorama/scripts/manifests/ql_souls/manifest.vjs_c" />
@@ -102,9 +86,7 @@
 		<include src="s2r://panorama/scripts/manifests/ql_zipboost/manifest.vjs_c" />
 		<include src="s2r://panorama/scripts/manifests/ql_spm/manifest.vjs_c" />
 		<include src="s2r://panorama/scripts/manifests/ql_combat_status/manifest.vjs_c" />
-		<!-- ==== QOLLOCK independent healthbar combat indicator ==== -->
 		<include src="s2r://panorama/scripts/manifests/ql_combat_indicator/manifest.vjs_c" />
-		<!-- ==== End QOLLOCK independent healthbar combat indicator ==== -->
 		<include src="s2r://panorama/scripts/manifests/ql_heroshop/manifest.vjs_c" />
 		<include src="s2r://panorama/scripts/manifests/ql_keyboard/manifest.vjs_c" />
 		<include src="s2r://panorama/scripts/manifests/ql_damage_numbers/manifest.vjs_c" />
@@ -117,24 +99,19 @@
 		<include src="s2r://panorama/scripts/manifests/ql_minimap_timers/manifest.vjs_c" />
 		<include src="s2r://panorama/scripts/manifests/ql_legacy_audio_passive/manifest.vjs_c" />
 		<include src="s2r://panorama/scripts/manifests/ql_ammo/manifest.vjs_c" />
-		<!-- ==== QOLLOCK: independent disabled-ability presentation ==== -->
+		<include src="s2r://panorama/scripts/manifests/ql_hit_marker/manifest.vjs_c" />
 		<include src="s2r://panorama/scripts/manifests/ql_disabled_abilities/manifest.vjs_c" />
-		<!-- ==== QOLLOCK: independent disabled-ability presentation ==== -->
 		<include src="s2r://panorama/scripts/manifests/ql_bottom_bar/manifest.vjs_c" />
 		<include src="s2r://panorama/scripts/manifests/ql_items/manifest.vjs_c" />
 		<include src="s2r://panorama/scripts/manifests/ql_stamina/manifest.vjs_c" />
-		<!-- ==== QOLLOCK independent HUD presentation scales ==== -->
 		<include src="s2r://panorama/scripts/manifests/ql_presentation_scale/manifest.vjs_c" />
-		<!-- ==== End QOLLOCK independent HUD presentation scales ==== -->
 		<include src="s2r://panorama/scripts/manifests/ql_compass/manifest.vjs_c" />
 		<include src="s2r://panorama/scripts/manifests/ql_reload_cooldown/manifest.vjs_c" />
-		<!-- ==== QOLLOCK Advanced item-mirror owners ==== -->
 		<include src="s2r://panorama/scripts/manifests/ql_item_mirror/data.vjs_c" />
 		<include src="s2r://panorama/scripts/manifests/ql_item_mirror/sources.vjs_c" />
 		<include src="s2r://panorama/scripts/manifests/ql_item_mirror/renderer.vjs_c" />
 		<include src="s2r://panorama/scripts/manifests/ql_item_mirror/controller.vjs_c" />
 		<include src="s2r://panorama/scripts/manifests/ql_item_mirror/manifest.vjs_c" />
-		<!-- ==== End QOLLOCK Advanced item-mirror owners ==== -->
 		<include src="s2r://panorama/scripts/manifests/ql_healthbar/shared.vjs_c" />
 		<include src="s2r://panorama/scripts/manifests/ql_healthbar/variants/accent.vjs_c" />
 		<include src="s2r://panorama/scripts/manifests/ql_healthbar/variants/minimalist.vjs_c" />
@@ -142,11 +119,9 @@
 		<include src="s2r://panorama/scripts/manifests/ql_healthbar/variants/fg.vjs_c" />
 		<include src="s2r://panorama/scripts/manifests/ql_healthbar/variants/mc.vjs_c" />
 		<include src="s2r://panorama/scripts/manifests/ql_healthbar/manifest.vjs_c" />
-		<!-- ==== QOLLOCK performance display owners ==== -->
 		<include src="s2r://panorama/scripts/manifests/ql_perf/model.vjs_c" />
 		<include src="s2r://panorama/scripts/manifests/ql_perf/overlay.vjs_c" />
 		<include src="s2r://panorama/scripts/manifests/ql_perf/manifest.vjs_c" />
-		<!-- ==== End QOLLOCK performance display owners ==== -->
 		<include src="s2r://panorama/scripts/manifests/ql_show_build_id/manifest.vjs_c" />
 		<include src="s2r://panorama/scripts/core/ql_app.vjs_c" />
 	</scripts>
