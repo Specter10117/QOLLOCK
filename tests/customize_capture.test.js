@@ -76,6 +76,21 @@ test("catalog polling leaves unchanged visibility alone and one activation selec
     env.clean();
 });
 
+test("catalog switches color inspectors on the first activation without an unsupported unregister API", () => {
+    const env = setup();
+    // Deadlock's settings context does not expose this API. The simulator's
+    // old no-op hid the exception seen in the client's inspector.dispose().
+    delete env.global.$.UnregisterEventHandler;
+    for (const [id, key] of [["items", "ITEMS_X_OFFSET"], ["healthbar", "PLAYER_HEALTHBAR_X_OFFSET"],
+        ["souls", "SOULS_X_OFFSET"]]) {
+        env.click("QOLCustomizeSelect_" + id);
+        assert.deepEqual(env.doc.eventErrors, [], "retiring the previous color inspector must not interrupt selection");
+        assert.ok(env.find("QOLCustomize_" + key), "one activation must build the new inspector");
+        env.clock.advance(1);
+    }
+    env.clean();
+});
+
 // Exercise native Button callbacks with optional cursor coordinates, separately
 // from compositor motion. Native hit testing still requires client verification.
 function pointer(env, x, y) {

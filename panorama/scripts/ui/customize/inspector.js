@@ -191,8 +191,10 @@
                             if (value === session.value(field.key)) return;
                             if (commit({ [field.key]: value }, false, "color:" + field.key)) { seededHex = hex; changed(); }
                         };
+                        // This panel-scoped handler retires with the owned picker.
+                        // Deadlock has no $.UnregisterEventHandler binding; valid()
+                        // rejects late callbacks while panel deletion is pending.
                         $.RegisterEventHandler("CitadelColorPickerColorChanged", picker, colorChanged);
-                        cleanups.push(() => { if (P.isAlive(picker)) $.UnregisterEventHandler("CitadelColorPickerColorChanged", picker, colorChanged); });
                         syncs.push(() => {
                             const hexEntry = P.findTraverse(picker, "HexValue");
                             if (!palette.visible || !P.isAlive(hexEntry)) return;

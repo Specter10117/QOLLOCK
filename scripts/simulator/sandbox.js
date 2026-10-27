@@ -131,7 +131,6 @@ class Sandbox {
                 return list.length;
             },
             UnregisterForUnhandledEvent: () => {},
-            UnregisterEventHandler: () => {},
 
             Localize: (token, _panel) => {
                 const key = String(token).replace(/^#/, "");
