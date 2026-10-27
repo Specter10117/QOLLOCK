@@ -148,7 +148,9 @@
             return panel?.id === "ammo_panel" ? QOL_UTILS.FindPanelsByClass(panel, className)[0] || null : null;
         },
         available: (_hud, config) => Number(config?.[id === "ammoCurrent" ? "ENABLE_HIDE_AMMO_ALL" : "ENABLE_HIDE_MAGAZINE"]) !== 1,
-        fields: [...geometry(prefix), { key: sizeKey, label: "Size", unit: "%", resize: true }, color("AMMO_TEXT_COLOR")]
+        fields: [...geometry(prefix), { key: sizeKey, label: "Size", unit: "%", resize: true }, color("AMMO_TEXT_COLOR"),
+            { key: id === "ammoCurrent" ? "AMMO_CURRENT_FONT_STYLE" : "AMMO_TOTAL_FONT_STYLE", label: "Font", type: "enum",
+                options: Q.settings.get(id === "ammoCurrent" ? "AMMO_CURRENT_FONT_STYLE" : "AMMO_TOTAL_FONT_STYLE").options }]
     });
     register(nativeElements);
 

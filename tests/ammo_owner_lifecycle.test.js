@@ -28,6 +28,38 @@ function setup() {
     return { ...env, Q, $, cfg, feature, add, native, reads: () => reads };
 }
 
+test("ammo font choices activate independently, preserve native colors and retire across layout replacement", () => {
+    const env = setup(), source = env.native(env.root);
+    const manifest = env.Q.core.FeatureRegistry.getManifest("ql_ammo");
+    assert.equal(manifest.isEnabled({ AMMO_CURRENT_FONT_STYLE: 1 }), true);
+    assert.equal(manifest.isEnabled({ AMMO_TOTAL_FONT_STYLE: 3 }), true);
+    env.cfg.AMMO_CURRENT_FONT_STYLE = 1; env.cfg.AMMO_TOTAL_FONT_STYLE = 3;
+    env.feature.onEnable();
+    assert.match(source.current.style.fontFamily, /VALVEOracle/);
+    assert.equal(source.current.style.fontSize, "24px");
+    assert.equal(source.current.style.color, undefined, "native low-ammo colors stay authoritative");
+    assert.equal(source.maximum.style.fontFamily, "Radiance");
+    source.current.style.fontFamily = "native rewrite"; env.clock.advance(600);
+    assert.match(source.current.style.fontFamily, /VALVEOracle/);
+    env.cfg.AMMO_CURRENT_FONT_STYLE = 0; env.feature.onSettingsChanged();
+    assert.equal(source.current.style.fontFamily, undefined);
+    assert.equal(source.current.style.fontWeight, undefined);
+    assert.equal(source.current.style.fontSize, "24px", "font release preserves the selected size");
+    env.cfg.AMMO_TOTAL_FONT_STYLE = 2; env.cfg.AMMO_TEXT_COLOR = 0x1112233;
+    env.feature.onSettingsChanged();
+    assert.equal(source.maximum.style.color, "#112233");
+    assert.equal(source.maximum.style.opacity, "0.95");
+    source.weapon.GetParent().GetParent().GetParent().GetParent().SetParent(env.add(null, "OldHudCore"));
+    const next = env.native(env.root); env.add(next.gun, "clip_status_mirrored"); env.clock.advance(600);
+    assert.equal(source.maximum.style.opacity, undefined);
+    assert.equal(next.maximum.style.opacity, "0.95");
+    env.cfg.AMMO_TOTAL_FONT_STYLE = 0; env.cfg.AMMO_TEXT_COLOR = 0; env.feature.onSettingsChanged();
+    assert.equal(next.maximum.style.opacity, undefined);
+    assert.equal(next.maximum.style.textShadow, undefined);
+    env.feature.onDisable(); env.feature.onEnable(); env.feature.onDisable();
+    env.clock.advance(20); assert.deepEqual(env.clock.errors, []);
+});
+
 test("missing ammo breadcrumbs ignore unrelated templates and recover through the live owner", () => {
     const env = setup();
     const decoy = env.add(env.root, "gun_data");

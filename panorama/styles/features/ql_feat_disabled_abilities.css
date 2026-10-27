@@ -1,0 +1,51 @@
+/* Native .disabled changes immediately; JS only owns icon lifetime discovery. */
+CitadelAbilityIcon.qol-better-disabled.disabled,
+DraggableAbilityIcon.qol-better-disabled.disabled
+{
+    wash-color: none;
+}
+
+CitadelAbilityIcon.qol-better-disabled.disabled .ability_image,
+DraggableAbilityIcon.qol-better-disabled.disabled .ability_image
+{
+    wash-color: offBlack&aa;
+}
+
+#QOLDisabledXOverlay
+{
+    visibility: collapse;
+    width: 100%;
+    height: 100%;
+    ignore-parent-flow: true;
+    horizontal-align: center;
+    vertical-align: center;
+    z-index: 500;
+}
+
+CitadelAbilityIcon.qol-better-disabled.disabled #QOLDisabledXOverlay,
+DraggableAbilityIcon.qol-better-disabled.disabled #QOLDisabledXOverlay
+{
+    visibility: visible;
+}
+
+#QOLDisabledXBar0,
+#QOLDisabledXBar1
+{
+    width: 145%;
+    height: 14px;
+    background-color: #ff1a1a;
+    horizontal-align: center;
+    vertical-align: center;
+    ignore-parent-flow: true;
+    box-shadow: 0px 0px 6px 2px black;
+    border-radius: 3px;
+}
+
+DraggableAbilityIcon #QOLDisabledXBar0,
+DraggableAbilityIcon #QOLDisabledXBar1
+{
+    height: 12px;
+}
+
+#QOLDisabledXBar0 { transform: rotateZ(45deg); }
+#QOLDisabledXBar1 { transform: rotateZ(-45deg); }

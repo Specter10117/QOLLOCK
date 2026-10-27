@@ -39,7 +39,7 @@
         detail("urn", "Urn", [...core, "TopBar"], [t("ENABLE_URN_DIFF", "Urn Difference"), t("ENABLE_URN_TIMER", "Urn Timer")]),
         detail("buffTimers", "Buffs and Rejuvenator", [...core, "TopBar"], [t("ENABLE_BUFF_HUD", "Buff HUD"), t("ENABLE_REJUV_HUD", "Rejuvenator HUD")]),
         detail("abilities", "Ability Icons", [...abilities, "hud_signature"], [
-            t("ENABLE_SIMPLIFY_ABILITY_ICONS", "Simplify Ability Icons"), t("ENABLE_HIDE_COSMETIC_ABILITY", "Hide Cosmetic Abilities"),
+            t("ENABLE_SIMPLIFY_ABILITY_ICONS", "Simplify Ability Icons"), t("ENABLE_BETTER_DISABLED_ABILITIES", "Better Silenced/Cursed Abilities"), t("ENABLE_HIDE_COSMETIC_ABILITY", "Hide Cosmetic Abilities"),
             t("ENABLE_HIDE_ABILITY_SUGGESTION", "Hide Ability Suggestion"), t("ENABLE_CLEAN_STACKS", "Clean Stacks"),
             t("ENABLE_LEGACY_COOLDOWNS", "Legacy Durations"), t("ENABLE_HIDE_FAILED_HINT", "Hide Failed Cast Hint")
         ]),

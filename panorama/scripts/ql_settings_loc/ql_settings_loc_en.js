@@ -1253,6 +1253,14 @@
     "Default preset updated.": "Default preset updated.",
     "Active": "Active",
     "Reset to Defaults": "Reset to Defaults",
-    "No personal presets yet.": "No personal presets yet."
+    "No personal presets yet.": "No personal presets yet.",
+    "Font": "Font",
+    "Current Font": "Current Font",
+    "Max Font": "Max Font",
+    "Stylized Ammo": "Stylized Ammo",
+    "Stylized Alternative": "Stylized Alternative",
+    "Old": "Old",
+    "Better Silenced/Cursed Abilities": "Better Silenced/Cursed Abilities",
+    "Mark disabled abilities and active items with a red cross.": "Mark disabled abilities and active items with a red cross."
 };
 })();

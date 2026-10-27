@@ -117,6 +117,9 @@
 		<include src="s2r://panorama/scripts/manifests/ql_minimap_timers/manifest.vjs_c" />
 		<include src="s2r://panorama/scripts/manifests/ql_legacy_audio_passive/manifest.vjs_c" />
 		<include src="s2r://panorama/scripts/manifests/ql_ammo/manifest.vjs_c" />
+		<!-- ==== QOLLOCK: independent disabled-ability presentation ==== -->
+		<include src="s2r://panorama/scripts/manifests/ql_disabled_abilities/manifest.vjs_c" />
+		<!-- ==== QOLLOCK: independent disabled-ability presentation ==== -->
 		<include src="s2r://panorama/scripts/manifests/ql_bottom_bar/manifest.vjs_c" />
 		<include src="s2r://panorama/scripts/manifests/ql_items/manifest.vjs_c" />
 		<include src="s2r://panorama/scripts/manifests/ql_stamina/manifest.vjs_c" />

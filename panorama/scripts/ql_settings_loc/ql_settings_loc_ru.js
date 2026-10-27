@@ -1253,6 +1253,14 @@
     "Default preset updated.": "Основной пресет обновлён.",
     "Active": "Активен",
     "Reset to Defaults": "Сбросить настройки",
-    "No personal presets yet.": "Личных пресетов пока нет."
+    "No personal presets yet.": "Личных пресетов пока нет.",
+    "Font": "Шрифт",
+    "Current Font": "Шрифт текущих патронов",
+    "Max Font": "Шрифт максимума патронов",
+    "Stylized Ammo": "Стилизованный",
+    "Stylized Alternative": "Стилизованный альтернативный",
+    "Old": "Старый",
+    "Better Silenced/Cursed Abilities": "Улучшенные иконки при безмолвии/проклятии",
+    "Mark disabled abilities and active items with a red cross.": "Отмечать недоступные способности и активные предметы красным крестом."
 };
 })();

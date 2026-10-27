@@ -464,7 +464,10 @@
         ["STATS_LIST_X_OFFSET",0],
         ["STATS_LIST_Y_OFFSET",0],
         ["STATS_LIST_SCALE",100],
-        ["STATS_LIST_OPACITY",1]
+        ["STATS_LIST_OPACITY",1],
+        ["AMMO_CURRENT_FONT_STYLE",0],
+        ["AMMO_TOTAL_FONT_STYLE",0],
+        ["ENABLE_BETTER_DISABLED_ABILITIES",0]
     ].map(entry => Object.freeze(entry));
     Object.freeze(dictionary);
     const keys = new Set(dictionary.map(entry => entry[0]));

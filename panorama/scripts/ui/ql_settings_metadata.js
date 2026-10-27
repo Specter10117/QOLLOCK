@@ -34,6 +34,9 @@ const PERF_IMPACT_LABEL_BY_TIER = {
     high: "High"
 };
 const SETTING_CREATED_BY_BY_CONFIG = {
+    AMMO_CURRENT_FONT_STYLE: "Specty",
+    AMMO_TOTAL_FONT_STYLE: "Specty",
+    ENABLE_BETTER_DISABLED_ABILITIES: "Specty",
     ENABLE_PASSIVE_COOLDOWN: "Hanturaya",
     OPEN_OLD_ITEM_FILTERS_DOWNLOAD: "Hanturaya",
     ENABLE_CUMULATIVE_DMG: "wouwei",
@@ -232,7 +235,6 @@ const SETTING_DESCRIPTION_OVERRIDE_BY_CONFIG = {
     "CHAT_Y_OFFSET": "Adjust vertical position of the in-game chat.",
     "ENABLE_CHAT": "Show the in-game chat panel.",
     "ENABLE_IMAGES_IN_CHAT": "Render image URLs as images.",
-    "HITMARKERS_RUNTIME": "Toggle the hitmarkers when attacking enemies.",
     "MINIMAL_MINIMAP": "Cleans up visuals of the minimap significantly to reduce clutter.",
     "MINIMAP_FLIP": "Rotates the static minimap 180 degrees.",
     "MINIMAP_REMINDER_INTERVAL": "The interval in which the sound plays in seconds.",
@@ -619,7 +621,6 @@ const SETTING_PERF_IMPACT_TIERS = {
     CHAT_Y_OFFSET: "none",
     ENABLE_CHAT: "none",
     ENABLE_IMAGES_IN_CHAT: "low",
-    HITMARKERS_RUNTIME: "none",
     HUD_INDICATOR_SIZE: "none",
     ITEM_FILTER_DEF_ACTIVE: "low",
     ITEM_FILTER_DEF_PASSIVE: "low",

@@ -17,7 +17,7 @@
                 if (cfg[key] != null && Number(cfg[key]) !== 100) return true;
             }
             for (const key of ["AMMO_PANEL_X_OFFSET", "AMMO_PANEL_Y_OFFSET", "AMMO_CURRENT_X_OFFSET", "AMMO_CURRENT_Y_OFFSET",
-                "AMMO_MAX_X_OFFSET", "AMMO_MAX_Y_OFFSET", "AMMO_CLIP_ANGLE", "AMMO_TEXT_COLOR"]) {
+                "AMMO_MAX_X_OFFSET", "AMMO_MAX_Y_OFFSET", "AMMO_CLIP_ANGLE", "AMMO_TEXT_COLOR", "AMMO_CURRENT_FONT_STYLE", "AMMO_TOTAL_FONT_STYLE"]) {
                 if (cfg[key] != null && Number(cfg[key]) !== 0) return true;
             }
             return false;
@@ -27,6 +27,7 @@
             { key: "ENABLE_AMMO_STATUS", type: "toggle" },
             { key: "ENABLE_HIDE_MAGAZINE", type: "toggle" },
             { key: "ENABLE_HIDE_AMMO_ALL", type: "toggle" },
+            ...["AMMO_CURRENT_FONT_STYLE", "AMMO_TOTAL_FONT_STYLE"].map(key => ({ key, type: "dropdown", options: QOL.settings.get(key).options.map(([value]) => value) })),
             { key: "AMMO_PANEL_SCALE", type: "slider" },
             { key: "AMMO_HUD_SCALE", type: "slider" },
             { key: "AMMO_CURRENT_SCALE", type: "slider" },
@@ -71,8 +72,18 @@
                 const current = QOL.settings.readNumber("AMMO_CURRENT_SCALE", cfg.AMMO_CURRENT_SCALE ?? cfg.AMMO_PANEL_SCALE);
                 const total = QOL.settings.readNumber("AMMO_TOTAL_SCALE", cfg.AMMO_TOTAL_SCALE ?? cfg.AMMO_PANEL_SCALE);
                 const color = panelAPI.resolvePaletteColor(cfg.AMMO_TEXT_COLOR);
-                const currentStyles = { fontSize: null, width: null, color: color || null };
-                const totalStyles = { fontSize: null, width: null, marginLeft: null, color: color || null };
+                // Native citadel_base_styles.css numericOracle fallback chain.
+                // Code ownership also reaches hero-specific gun stylesheets.
+                const numericFont = "Gulim, VALVEOracle, Reaver, Noto Sans, sans-serif";
+                const neutralFont = { fontFamily: null, fontWeight: null, textShadow: null, opacity: null };
+                const currentStyles = { ...neutralFont, fontSize: null, width: null, color: color || null };
+                const totalStyles = { ...neutralFont, fontSize: null, width: null, marginLeft: null, color: color || null };
+                const currentFont = number("AMMO_CURRENT_FONT_STYLE"), totalFont = number("AMMO_TOTAL_FONT_STYLE");
+                if (currentFont === 1) Object.assign(currentStyles, { fontFamily: numericFont, fontWeight: "bold", textShadow: "0px 0px 0px 5.0 #10130d" });
+                if (currentFont === 2) Object.assign(currentStyles, { fontFamily: "Radiance", fontWeight: "bold" });
+                if (totalFont === 1) Object.assign(totalStyles, { fontFamily: numericFont, textShadow: "0px 0px 0px 5.0 #10130d", color: color || "rgba(255, 255, 255, 0.1)" });
+                if (totalFont === 2) Object.assign(totalStyles, { fontWeight: "bold", textShadow: "0px 0px 0px 2.0 #aaaaaa", color: color || "#10130d", opacity: "0.95" });
+                if (totalFont === 3) Object.assign(totalStyles, { fontFamily: "Radiance", fontWeight: "normal", color: color || "rgba(255, 255, 255, 0.1)" });
                 const infiniteStyles = { color: color || null };
                 if (current !== 100) {
                     currentStyles.fontSize = Math.max(8, Math.round(16 * current / 100)) + "px";

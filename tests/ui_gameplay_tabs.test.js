@@ -13,6 +13,7 @@ const vm = require("node:vm");
 
 const { Document } = require("../scripts/simulator/panel.js");
 const { Clock } = require("../scripts/simulator/clock.js");
+const { Sandbox } = require("../scripts/simulator/sandbox.js");
 
 function createTestEnvironment() {
     const clock = new Clock(1000);
@@ -99,6 +100,15 @@ function createTestEnvironment() {
     };
     sandbox.globalThis.QOL = sandbox.QOL;
     sandbox.globalThis.$ = mockDollar;
+
+    // Dropdown choices come from the real current settings catalog, shared
+    // with Customize; this isolated renderer fixture does not duplicate it.
+    const catalog = new Sandbox({ name: "gameplay tab settings catalog" });
+    for (const file of ["core/ql_namespace.js", "ql_utils.js", "ql_shared_presets.js", "ql_settings_contract.js"]) {
+        catalog.load(path.resolve(__dirname, "../panorama/scripts", file));
+    }
+    assert.deepEqual(catalog.loadErrors, []);
+    sandbox.QOL.settings = catalog.global.QOL.settings;
 
     const code = fs.readFileSync(
         path.resolve(__dirname, "../panorama/scripts/ui/gameplay_tabs.js"),

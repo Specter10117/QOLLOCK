@@ -87,6 +87,7 @@
         { label: "Fascilux", role: "Contributor", url: "https://gamebanana.com/members/4690723" },
         { label: "Karma", role: "Contributor" },
         { label: "Somarotsaway", role: "Contributor", url: "https://gamebanana.com/members/3961199" },
+        { label: "Specty", role: "Contributor", url: "https://github.com/Specter10117" },
         { label: "EmilyVasquez", role: "Contributor", url: "https://gamebanana.com/members/1383839" },
         { label: "gfkm", role: "Contributor", url: "https://gamebanana.com/members/5349748" },
         { label: "Aminsx", role: "Contributor", url: "https://gamebanana.com/members/4798159" },
