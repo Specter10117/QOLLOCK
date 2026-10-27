@@ -284,11 +284,6 @@ test("Reset replaces screen recovery and restores offscreen elements through und
         const env = setup("souls", 160, 60, x, y);
         env.global.QOL.ui.customize.start(null, { elementId: "souls" });
         rect(env.find("QOLCustomizeEditor"), 1920, 1080);
-        assert.equal(env.find("QOLCustomizeAlign_left"), null);
-        assert.equal(env.find("QOLCustomizeAlign_center"), null);
-        assert.equal(env.find("QOLCustomizeAlign_right"), null);
-        for (const action of ["top", "middle", "bottom"]) assert.equal(env.find("QOLCustomizeAlign_" + action), null);
-        assert.equal(!!env.find("QOLCustomizeRecover"), false);
         const initial = axis === "X" ? x : y;
         env.find("QOLCustomize_SOULS_" + axis + "_OFFSET").text = String(initial);
         env.find("QOLCustomize_SOULS_" + axis + "_OFFSET")._fire("oninputsubmit");

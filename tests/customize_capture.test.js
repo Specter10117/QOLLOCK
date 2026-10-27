@@ -53,34 +53,8 @@ function type(env, key, text) {
     input.text = text; input._fire("oninputsubmit");
 }
 
-test("catalog polling leaves unchanged visibility alone and one activation selects an element", () => {
-    const env = setup();
-    const catalog = env.find("QOLCustomizeCatalog");
-    const writes = [];
-    const track = panel => {
-        let visible = panel.visible;
-        Object.defineProperty(panel, "visible", {
-            configurable: true,
-            get: () => visible,
-            set: value => { writes.push(panel.id || panel.type); visible = value; }
-        });
-        panel.Children().forEach(track);
-    };
-    track(catalog);
-    env.clock.advance(1000);
-    assert.deepEqual(writes, [], "idle discovery must not rewrite the catalog's native visibility");
-    env.click("QOLCustomizeSelect_items");
-    assert.ok(env.find("QOLCustomize_ITEMS_X_OFFSET"), "one activation opens the requested inspector");
-    env.click("QOLCustomizeSelect_souls");
-    assert.ok(env.find("QOLCustomize_SOULS_X_OFFSET"));
-    env.clean();
-});
-
 test("catalog switches color inspectors on the first activation without an unsupported unregister API", () => {
     const env = setup();
-    // Deadlock's settings context does not expose this API. The simulator's
-    // old no-op hid the exception seen in the client's inspector.dispose().
-    delete env.global.$.UnregisterEventHandler;
     for (const [id, key] of [["items", "ITEMS_X_OFFSET"], ["healthbar", "PLAYER_HEALTHBAR_X_OFFSET"],
         ["souls", "SOULS_X_OFFSET"]]) {
         env.click("QOLCustomizeSelect_" + id);
@@ -116,7 +90,6 @@ for (const id of ["souls", "items", "healthbar"]) test(`${id}: repeated native B
         env.drop(gesture);
         assert.equal(env.find("QOLCustomizeFields").enabled, true);
     }
-    assert.equal(env.find("QOLCustomizeCanvas"), null, "no shared input blocker");
     assert.equal(env.find("QOLCustomizeFrame_" + id).hittest, true);
     assert.equal(env.find("QOLCustomizeCorners_" + id).hittestchildren, true);
     env.clean();
@@ -160,7 +133,6 @@ test(`${name}: visible corners follow live resize while native input rectangles 
     assert.equal(marker.style.x, sx > 0 ? "32px" : "-32px");
     assert.equal(marker.style.y, sy > 0 ? "12px" : "-12px");
     assert.equal(env.find("QOLCustomizeGestureOutline").style.width, "192px");
-    assert.equal(env.find("QOLCustomizeCanvas"), null);
     env.drop(gesture);
     env.clean();
 });

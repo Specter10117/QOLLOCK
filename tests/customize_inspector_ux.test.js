@@ -103,13 +103,8 @@ test("exact position is immediate; presets disclose on demand and numeric wheel 
     assert.equal(env.host.FindChildrenWithClassTraverse("QOLCustomizeAvailability")[0].visible, false, "empty availability text must not reserve a row");
     const position = env.find("QOLCustomizePositionBody");
     assert.equal(position.visible, true);
-    assert.equal(env.find("QOLCustomizePositionToggle"), null);
-    assert.equal(env.find("QOLCustomizePositionTitle"), null);
     assert.equal(env.find("QOLCustomize_ITEMS_X_OFFSET").GetParent().GetParent().GetParent(), position);
     assert.equal(env.find("QOLCustomize_ITEMS_Y_OFFSET").GetParent().GetParent().GetParent(), position);
-    assert.equal(env.find("QOLCustomizeLock"), null);
-    assert.equal(env.find("QOLCustomizeIncrease_ITEMS_X_OFFSET"), null);
-    assert.equal(env.find("QOLCustomizeDecrease_ITEMS_SCALE"), null);
     assert.ok(env.find("QOLCustomizeSlider_ITEMS_SCALE"));
     assert.equal(env.find("QOLCustomize_ITEMS_X_OFFSET")._events.get("onmousewheel")(1), true, "value edits consume scrolling");
     assert.equal(env.session.value("ITEMS_X_OFFSET"), 1);

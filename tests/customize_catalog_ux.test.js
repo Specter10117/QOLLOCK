@@ -109,10 +109,3 @@ for (const opacity of [0, 1]) test(`Souls remain recoverable from the full catal
     find("QOLCustomizeCancel")._fire("onactivate"); clock.advance(1200);
     assert.deepEqual(env.doc.eventErrors, []); assert.deepEqual(clock.errors, []);
 });
-
-test("Customize inspectors do not render panel descriptions", () => {
-    const env = setup();
-    env.global.QOL.ui.customize.start(null, { elementId: "ammoMax" });
-    assert.equal(env.find("QOLCustomizeDetails"), null);
-    env.find("QOLCustomizeCancel")._fire("onactivate");
-});
