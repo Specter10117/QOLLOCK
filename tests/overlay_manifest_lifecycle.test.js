@@ -310,7 +310,7 @@ test("selected Unsecured Souls can edit its owned sample before native source di
     env.clean();
 });
 
-test("unsecured timer samples across its minimum interval, resets on gains/source replacement and owns only its overlay", () => {
+test("unsecured timer forecasts gains and spending, resets on source replacement and owns only its overlay", () => {
     const env = fixture();
     const { Q, hud, core, gameplay, add, label, config, find } = env;
     const top = add(core, "TopBar"); label(top, "GameTime", "0:00");
@@ -325,15 +325,15 @@ test("unsecured timer samples across its minimum interval, resets on gains/sourc
     const state = find("QOLUnsecuredSoulsState");
     assert.equal(overlay.style.marginLeft, "-2519px"); assert.equal(overlay.style.marginBottom, "-1391px");
     assert.equal(overlay.style.x, undefined); assert.equal(overlay.style.y, undefined);
-    assert.equal(state.style.fontSize, "32px"); assert.equal(state.text, "29s");
+    assert.equal(state.style.fontSize, "32px"); assert.equal(state.text, "256s");
     source.text = "990"; hud.clock.advance(200);
     source.text = "980"; hud.clock.advance(200);
-    assert.equal(state.text, "20s", "20 souls over400ms produces a50souls/s observed rate");
+    assert.equal(state.text, "253s", "a rapid balance decrease cannot be extrapolated as the conversion rate");
     source.text = "1200"; hud.clock.advance(200);
-    assert.equal(state.text, "31s", "a gain releases the old decay-rate estimate");
+    assert.equal(state.text, "280s", "a gain starts a longer conversion forecast");
     source.DeleteAsync(0); hud.clock.advance(1);
     const replacement = label(container, "hudDeathGoldLabel", "500", ["death_penalty_gold"]); hud.clock.advance(200);
-    assert.equal(state.text, "20s", "the new source cannot inherit a1200→500 decay sample");
+    assert.equal(state.text, "174s", "the new source cannot inherit the previous deadline");
     hud.root.AddClass("InHideout"); hud.clock.advance(200);
     assert.equal(overlay.BHasClass("qol-hidden"), false);
     Q.core.ConfigStore.set("ql_unsecured_souls_timer", "ENABLE_UNSECURED_SOUL_TIMER", false); hud.clock.advance(1);
@@ -342,16 +342,80 @@ test("unsecured timer samples across its minimum interval, resets on gains/sourc
     env.clean();
 });
 
-function unsecuredTimerFixture(value) {
+function unsecuredTimerFixture(value, clockText = "0:00") {
     const env = fixture();
+    const top = env.add(env.core, "TopBar");
+    const gameClock = env.add(top, "", ["GameClock"]);
+    const clockLabel = env.label(gameClock, "GameTime", clockText);
     const stats = env.add(env.core, "StatsAndModsContainer");
     const gold = env.add(env.add(stats, "LowerLeft"), "gold_and_ap_container");
     const container = env.add(env.add(gold, "hudGoldContainer"), "", ["hudDeathGoldContainer"]);
     const source = env.label(container, "hudDeathGoldLabel", value, ["death_penalty_gold"]);
     env.config({ ENABLE_UNSECURED_SOUL_TIMER: 1 });
     env.hud.clock.advance(1);
-    return { ...env, source, state: env.find("QOLUnsecuredSoulsState") };
+    return { ...env, source, clockLabel, state: env.find("QOLUnsecuredSoulsState") };
 }
+
+test("unsecured timer forecasts the native conversion rule instead of capping slow decay with a heuristic", () => {
+    // Native convars: fixed 1.6, growth 0.08/min, remaining fraction 0.005,
+    // interval 1s. Literal times include falling remaining-based decay and
+    // flat-rate growth during conversion, rather than souls/currentRate.
+    for (const [souls, clock, expected] of [[50, "0:00", "29s"], [50, "10:00", "17s"],
+        [500, "10:00", "121s"], [1000, "10:00", "192s"], [1000, "20:00", "153s"]]) {
+        const env = unsecuredTimerFixture(String(souls), clock);
+        assert.equal(env.state.text, expected, `${souls} souls at ${clock}`);
+        env.clean();
+    }
+});
+
+test("small unsecured balances count down to full conversion without a 3s to 2s to 3s restart", () => {
+    const env = unsecuredTimerFixture("50");
+    assert.equal(env.state.text, "29s");
+    env.hud.clock.advance(2000);
+    env.source.text = "45"; env.clockLabel.text = "0:02"; env.hud.clock.advance(200);
+    assert.equal(env.state.text, "26s");
+    env.hud.clock.advance(800);
+    env.source.text = "43"; env.clockLabel.text = "0:03"; env.hud.clock.advance(200);
+    assert.equal(env.state.text, "25s");
+    env.hud.clock.advance(1000);
+    assert.equal(env.state.text, "24s", "one real second passes even between native label updates");
+    env.source.text = "42"; env.clockLabel.text = "0:04"; env.hud.clock.advance(200);
+    assert.ok(parseInt(env.state.text, 10) <= 24, "integer label rounding cannot add time back while souls decrease");
+    env.source.text = "100"; env.hud.clock.advance(200);
+    assert.ok(parseInt(env.state.text, 10) > 24, "new souls start a new longer forecast");
+    env.source.text = "0"; env.hud.clock.advance(200);
+    assert.equal(env.state.text, "");
+    env.clean();
+});
+
+test("unsecured conversion forecast follows a rounded native balance through the final soul", () => {
+    const env = unsecuredTimerFixture("50");
+    let previous = 0;
+    // Rounded balances from the extracted conversion rule at these seconds.
+    for (const [second, souls, expected] of [[1, 48, "28s"], [2, 46, "27s"], [3, 44, "26s"],
+        [5, 41, "24s"], [10, 32, "19s"], [15, 23, "14s"], [20, 14, "9s"],
+        [25, 6, "4s"], [28, 1, "1s"], [29, 0, ""]]) {
+        env.hud.clock.advance((second - previous) * 1000 - 200);
+        env.source.text = String(souls); env.clockLabel.text = `0:${String(second).padStart(2, "0")}`;
+        env.hud.clock.advance(200);
+        assert.equal(env.state.text, expected, `second ${second}: ${souls} souls`);
+        previous = second;
+    }
+    env.clean();
+});
+
+test("unsecured forecast rebases on late or rewound match time and unreadable amount recovery", () => {
+    const env = unsecuredTimerFixture("50");
+    env.clockLabel.text = "10:00"; env.hud.clock.advance(200);
+    assert.equal(env.state.text, "17s");
+    env.clockLabel.text = "0:00"; env.hud.clock.advance(200);
+    assert.equal(env.state.text, "29s", "a restarted match cannot retain the faster late-match forecast");
+    env.source.text = "{i:hud_death_gold_penalty}"; env.hud.clock.advance(200);
+    assert.equal(env.state.text, "--");
+    env.source.text = "50"; env.hud.clock.advance(200);
+    assert.equal(env.state.text, "29s", "unreadable periods cannot retain an old deadline");
+    env.clean();
+});
 
 test("unsecured timer retains saved margin coordinates and matching drag distance", () => {
     const env = unsecuredTimerFixture("1000");
@@ -372,21 +436,21 @@ test("unsecured timer retains saved margin coordinates and matching drag distanc
 
 test("unsecured timer parses compact amounts without treating them as single souls", () => {
     const env = unsecuredTimerFixture("1.2k");
-    assert.equal(env.state.text, "31s");
+    assert.equal(env.state.text, "280s");
     env.source.text = "1,200"; env.hud.clock.advance(200);
-    assert.equal(env.state.text, "31s");
+    assert.equal(env.state.text, "280s");
     env.clean();
 });
 
-test("unsecured timer measures complete native update intervals and counts down between changes", () => {
+test("unsecured timer counts down between changes without extrapolating the native refresh cadence", () => {
     const env = unsecuredTimerFixture("1000");
     env.hud.clock.advance(800);
     env.source.text = "980"; env.hud.clock.advance(200);
-    assert.equal(env.state.text, "49s", "20 souls converted over one full second");
+    assert.equal(env.state.text, "253s", "conversion follows the native rule regardless of the amount's refresh interval");
     env.hud.clock.advance(1000);
-    assert.equal(env.state.text, "48s", "unchanged text must not postpone the deadline");
+    assert.equal(env.state.text, "252s", "unchanged text must not postpone the deadline");
     env.source.text = "940"; env.hud.clock.advance(200);
-    assert.ok(parseInt(env.state.text, 10) < 49);
+    assert.ok(parseInt(env.state.text, 10) < 252);
     env.source.text = "0"; env.hud.clock.advance(200);
     assert.equal(env.state.text, "");
     env.clean();
@@ -405,14 +469,14 @@ test("unsecured mirrors rebind still-live native sources and reset the timer est
     config({ ENABLE_BETTER_UNSECURED: 1, ENABLE_UNSECURED_SOUL_TIMER: 1 });
     hud.clock.advance(1);
     oldAmount.text = "980"; hud.clock.advance(400);
-    assert.equal(find("QOLUnsecuredSoulsState").text, "20s");
+    assert.equal(find("QOLUnsecuredSoulsState").text, "253s");
     const detached = $.CreatePanel("Panel", null, "DetachedUnsecuredSources");
     oldContainer.SetParent(detached);
     const currentContainer = add(body, "", ["hudDeathGoldContainer"]);
     const amount = label(currentContainer, "hudDeathGoldLabel", "500", ["death_penalty_gold"]);
     hud.clock.advance(2200);
     assert.equal(find("QOLBetterUnsecuredMirrorLabel").text, "500");
-    assert.equal(find("QOLUnsecuredSoulsState").text, "18s", "replacement starts a fresh estimate and counts down for two seconds");
+    assert.equal(find("QOLUnsecuredSoulsState").text, "172s", "replacement starts a fresh estimate and counts down for two seconds");
     assert.equal(oldAmount.text, "980");
     assert.equal(amount.IsValid(), true); assert.equal(oldContainer.IsValid(), true);
     env.clean();
@@ -439,7 +503,7 @@ test("unsecured source discovery follows the native gold owner without full HUD 
     config({ ENABLE_UNSECURED_SOUL_TIMER: 1, ENABLE_BETTER_UNSECURED: 1 });
     hud.clock.advance(6200);
     assert.equal(find("QOLBetterUnsecuredMirrorLabel").text, "1000");
-    assert.equal(find("QOLUnsecuredSoulsState").text, "23s", "six elapsed seconds are not added back on each poll");
+    assert.equal(find("QOLUnsecuredSoulsState").text, "250s", "six elapsed seconds are not added back on each poll");
     assert.equal(broadGoldSearches, 0, "verified native owners need no whole-HUD periodic rediscovery");
 
     lower.id = "RetiredLowerLeft";
@@ -448,7 +512,7 @@ test("unsecured source discovery follows the native gold owner without full HUD 
     hud.clock.advance(2200);
     assert.equal(first.IsValid(), true, "retired native source remains alive");
     assert.equal(find("QOLBetterUnsecuredMirrorLabel").text, "500");
-    assert.equal(find("QOLUnsecuredSoulsState").text, "18s");
+    assert.equal(find("QOLUnsecuredSoulsState").text, "172s");
     assert.equal(broadGoldSearches, 0);
     for (const id of ["ql_unsecured_souls_timer", "ql_better_unsecured_hud"]) Q.core.FeatureRegistry.disable(id);
     hud.clock.advance(20);

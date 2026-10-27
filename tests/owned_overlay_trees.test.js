@@ -73,7 +73,7 @@ for (const owner of owners) {
         assert.equal(env.root.IsValid(), true); assert.ok(env.overlay());
         assert.equal(native.amount.text, "500"); assert.equal(native.modified.text, "300");
         if (owner.id === "ql_zipboost") assert.equal(env.find(owner.child).text, "READY");
-        if (owner.id === "ql_unsecured_souls_timer") assert.equal(env.find(owner.child).text, "20s");
+        if (owner.id === "ql_unsecured_souls_timer") assert.equal(env.find(owner.child).text, "173s");
         env.stop();
     });
 

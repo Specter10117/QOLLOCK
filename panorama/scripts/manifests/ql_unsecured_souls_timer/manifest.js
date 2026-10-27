@@ -1,4 +1,4 @@
-// OWNS: Estimated unsecured-souls countdown, private samples and overlay labels.
+// OWNS: Native-rule unsecured-souls conversion forecast and overlay labels.
 // DOES NOT OWN: Native soul conversion, native amount labels or Better Unsecured state.
 // Source: hud.xml and hud_gold_and_ap_container.xml, confirmed in Panorama Debugger.
 // This timer intentionally stays active in hideout and hero testing.
@@ -6,7 +6,6 @@
 (() => {
     "use strict";
     const P = QOL.core.panel;
-    const MIN_SAMPLE_MS = 250, STALE_RATE_MS = 12000, EMA_ALPHA = 0.35;
     const SOURCE_PATH = ["StatsAndModsContainer", "LowerLeft", "gold_and_ap_container", "hudGoldContainer"];
 
     function parseSouls(text) {
@@ -19,10 +18,19 @@
         return Number.isFinite(value) ? Math.round(value) : null;
     }
 
-    function fallbackEta(souls, gameMinutes) {
-        const remaining = Math.max(0, Number(souls) || 0);
-        const rate = remaining * 0.02 + 15 * (1 + Math.max(0, Number(gameMinutes) || 0) * 0.05);
-        return remaining > 0 && rate > 0 ? remaining / rate : 0;
+    function conversionSeconds(souls, gameSeconds) {
+        // GameTracking 17462b250a0ca80e7f80102f2c83cc3eecff5f12,
+        // DumpSource2/convars.txt: citadel_secure_gold_{percent,fixed,
+        // fixed_growth,rate}. Valve's 12-16-2025 notes describe the same rule.
+        // Forecast each 1s conversion, including the shrinking balance and
+        // growing match-time term. Recomputed only when the balance changes.
+        let remaining = souls;
+        for (let seconds = 0; seconds < 999; seconds++) {
+            const rate = remaining * 0.005 + 1.6 * (1 + (gameSeconds + seconds) / 60 * 0.08);
+            if (remaining <= rate) return seconds + remaining / rate;
+            remaining -= rate;
+        }
+        return 999;
     }
 
     function directClass(parent, name) {
@@ -64,8 +72,7 @@
             const presentation = P.createNativeStyleOwner();
             let running = false, loop = null, rootOwner = null, model = null, overlay = null, stateLabel = null;
             let source = null;
-            let lastSouls = -1, lastSampleMs = 0, rateEma = 0, rateUpdateMs = 0, etaEndMs = 0;
-            let estimatedSouls = -1;
+            let lastSouls = -1, lastGameSeconds = 0, etaEndMs = 0;
 
             function readModel() {
                 const cfg = QOL.presentation.captureVisibility(ctx, ctx.config.view());
@@ -79,9 +86,8 @@
                     fontSize: Math.max(1, Math.round(16 * scale / 100)) + "px" };
             }
 
-            function resetSamples() {
-                lastSouls = -1; lastSampleMs = 0; rateEma = 0; rateUpdateMs = 0; etaEndMs = 0;
-                estimatedSouls = -1;
+            function resetEstimate() {
+                lastSouls = -1; lastGameSeconds = 0; etaEndMs = 0;
             }
 
             function release(resetSource = true) {
@@ -90,7 +96,7 @@
                 overlay = null; stateLabel = null;
                 if (resetSource) {
                     source = null; rootOwner = null;
-                    resetSamples();
+                    resetEstimate();
                 }
             }
 
@@ -110,41 +116,19 @@
                 return P.isAlive(icon) && P.isAlive(title) && P.isAlive(stateLabel);
             }
 
-            function sample(souls, now) {
-                if (lastSouls < 0 || souls > lastSouls) {
-                    if (souls > lastSouls) { rateEma = 0; rateUpdateMs = 0; }
-                    lastSouls = souls; lastSampleMs = now;
-                    return;
+            function estimate(souls, unresolved, root, now) {
+                if (unresolved || souls <= 0) { resetEstimate(); return unresolved ? "--" : ""; }
+                const gameSeconds = QOL.core.time.readGameTime(root);
+                const restart = souls > lastSouls || gameSeconds < lastGameSeconds || (lastGameSeconds === 0 && gameSeconds > 0);
+                if (souls !== lastSouls || restart || etaEndMs === 0) {
+                    const nextEndMs = now + conversionSeconds(souls, gameSeconds) * 1000;
+                    // Native integer rounding cannot extend an existing forecast
+                    // while souls decrease. Gains/source/clock changes rebase it.
+                    etaEndMs = restart || etaEndMs === 0 ? nextEndMs : Math.min(etaEndMs, nextEndMs);
+                    lastSouls = souls;
                 }
-                const elapsed = now - lastSampleMs;
-                if (elapsed < MIN_SAMPLE_MS) return;
-                const delta = lastSouls - souls;
-                // Keep the start of the interval until the native amount
-                // changes; its refresh cadence need not match our poll loop.
-                if (delta === 0) return;
-                if (delta > 0) {
-                    const rate = delta / (elapsed / 1000);
-                    if (Number.isFinite(rate) && rate > 0.01) {
-                        rateEma = rateEma > 0 ? rateEma + (rate - rateEma) * EMA_ALPHA : rate;
-                        rateUpdateMs = now;
-                    }
-                }
-                lastSouls = souls; lastSampleMs = now;
-                return true;
-            }
-
-            function estimate(souls, unresolved, root, now, rateChanged) {
-                let eta = 0;
-                if (!unresolved && souls > 0 && (souls !== estimatedSouls || rateChanged || etaEndMs === 0)) {
-                    const fallback = fallbackEta(souls, QOL.core.time.readGameTime(root) / 60);
-                    if (rateUpdateMs > 0 && now - rateUpdateMs <= STALE_RATE_MS && rateEma > 0.01) eta = souls / rateEma;
-                    if (!Number.isFinite(eta) || eta <= 0 || (fallback > 0 && eta > fallback * 2)) eta = fallback;
-                    eta = Math.min(999, eta);
-                    if (eta > 0) etaEndMs = now + Math.round(eta * 1000);
-                } else if (souls <= 0) { etaEndMs = 0; rateEma = 0; rateUpdateMs = 0; }
-                estimatedSouls = unresolved ? -1 : souls;
-                const remaining = etaEndMs > now ? (etaEndMs - now) / 1000 : eta;
-                return unresolved ? "--" : souls <= 0 ? "" : Math.max(1, Math.ceil(remaining)) + "s";
+                lastGameSeconds = gameSeconds;
+                return Math.max(1, Math.ceil((etaEndMs - now) / 1000)) + "s";
             }
 
             function update() {
@@ -159,13 +143,12 @@
                 QOL.utils.SetStyleIfChanged(stateLabel, "fontSize", model.fontSize);
                 const now = QOL.utils.PerfNowMs();
                 const current = findSource(core);
-                if (current !== source) { resetSamples(); source = current; }
+                if (current !== source) { resetEstimate(); source = current; }
                 const rawText = source && typeof source.text === "string" ? source.text : "";
                 const parsed = parseSouls(rawText);
                 const unresolved = parsed === null;
                 const souls = unresolved ? 0 : parsed;
-                const rateChanged = !unresolved && sample(souls, now);
-                const status = estimate(souls, unresolved, root, now, rateChanged);
+                const status = estimate(souls, unresolved, root, now);
                 const danger = dangerLevel(source, souls);
                 for (let level = 1; level <= 4; level++) P.setClass(overlay, "danger_" + level, danger === level);
                 P.setClass(overlay, "has_souls", souls > 0);

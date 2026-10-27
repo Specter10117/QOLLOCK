@@ -47,12 +47,12 @@ test("unsecured timer reads only its native owner and follows late and living re
     const state = () => env.hud.root.FindChildTraverse("QOLUnsecuredSoulsState");
     assert.equal(state().text, "--", "unrelated labels cannot provide a fallback amount");
     const first = native("1000"); env.hud.clock.advance(200);
-    assert.equal(state().text, "29s", "late native owner is discovered on the next tick");
+    assert.equal(state().text, "256s", "late native owner is discovered on the next tick");
     first.amount.text = "980"; env.hud.clock.advance(400);
-    assert.equal(state().text, "20s");
+    assert.equal(state().text, "253s");
     first.gold.SetParent(env.add(env.hud.root, "RetiredGold"));
     const replacement = native("500"); env.hud.clock.advance(200);
-    assert.equal(state().text, "20s", "live old owners cannot leak their decay history");
+    assert.equal(state().text, "174s", "live old owners cannot leak their conversion deadline");
     replacement.amount.SetParent(env.add(replacement.gold, "RetiredLabels"));
     env.hud.clock.advance(200);
     assert.equal(state().text, "--", "a moved label within the same gold owner is no longer the amount");
