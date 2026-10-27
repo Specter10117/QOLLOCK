@@ -61,3 +61,28 @@ test("hit marker inspector applies and cancels shape edits without changing nati
     assert.equal(g.MOD_CONFIG.ENABLE_CUSTOM_HITMARKER, 0);
     assert.deepEqual(e.doc.eventErrors, []); assert.deepEqual(e.clock.errors, []);
 });
+
+test("Player Stats and Stats List controls remain in Customize without duplicate HUD or UI sections", () => {
+    const e = load(), g = e.global;
+    g.MOD_CONFIG.LANGUAGE = 0;
+    g.QOL.ui.window.setOpen(true); e.clock.advance(500);
+    for (const tab of ["HUD", "UI"]) {
+        g.QOL.ui.window.setActiveTabAndRefresh(tab); e.clock.advance(300);
+        const titles = e.list.FindChildrenWithClassTraverse("SectionTitle").map(panel => panel.text);
+        assert.equal(titles.includes("Player Stats"), false, tab);
+        assert.equal(titles.includes("Stats List"), false, tab);
+        for (const key of ["STATS_POSITION_HIDE_NORMAL", "STATS_POSITION_HIDE_SCOREBOARD"]) {
+            assert.equal(e.list.FindChildrenWithClassTraverse("SettingRow_" + key).length, 0, tab + "/" + key);
+        }
+    }
+    assert.equal(g.QOL.ui.customize.start(), true);
+    e.em.FindChildTraverse("QOLCustomizeAllElements")._fire("onactivate");
+    for (const [id, keys] of [["playerStats", ["STATS_POSITION_HIDE_NORMAL", "STATS_POSITION_HIDE_SCOREBOARD"]],
+        ["statsList", ["STATS_LIST_SCALE", "STATS_LIST_OPACITY"]]]) {
+        const selection = e.em.FindChildTraverse("QOLCustomizeSelect_" + id);
+        assert.ok(selection, id); selection._fire("onactivate");
+        for (const key of keys) assert.ok(e.em.FindChildTraverse("QOLCustomize_" + key), id + "/" + key);
+    }
+    e.em.FindChildTraverse("QOLCustomizeCancel")._fire("onactivate"); e.clock.advance(500);
+    assert.deepEqual(e.doc.eventErrors, []); assert.deepEqual(e.clock.errors, []);
+});

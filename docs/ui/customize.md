@@ -527,6 +527,8 @@ Stats hides through the outer wrapper opacity so its native data remains availab
 to mirrors; its compact child keeps custom opacity. Position offsets move both
 coexisting native stats owners together so the legacy compact block and active
 modifier effects stay aligned.
+Player Stats and Stats List controls are available only in Customize; the HUD
+and UI tabs have no duplicate sections.
 Stats List exposes additional local position, scale and opacity for the active
 owner's detailed resistances/modifiers, independently of compact-block scale.
 Its local offsets follow the shared Player Stats group position. Stamina suppresses

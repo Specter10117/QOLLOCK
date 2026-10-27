@@ -136,7 +136,7 @@ test("scoped session rejects other fields atomically and cannot unlock or reset 
     clean(env);
 });
 
-test("Player Stats uses Customize placement in HUD and UI tabs without exposing legacy Side", () => {
+test("Player Stats stays editable through Customize without duplicate ordinary controls or legacy Side", () => {
     const env = setup();
     const { global: g, clock } = env;
     g.MOD_CONFIG.STATS_POSITION_SIDE = 1;
@@ -145,8 +145,9 @@ test("Player Stats uses Customize placement in HUD and UI tabs without exposing 
         g.QOL.ui.window.setActiveTabAndRefresh(tab); clock.advance(300);
         assert.equal(env.list.FindChildrenWithClassTraverse("SettingRow_STATS_POSITION_SIDE").length, 0, tab);
         for (const key of ["STATS_POSITION_HIDE_NORMAL", "STATS_POSITION_HIDE_SCOREBOARD"])
-            assert.ok(env.list.FindChildrenWithClassTraverse("SettingRow_" + key).length > 0, key);
-        activate(env, "QOLCustomizeEntry_playerStats");
+            assert.equal(env.list.FindChildrenWithClassTraverse("SettingRow_" + key).length, 0, key);
+        assert.equal(env.em.FindChildTraverse("QOLCustomizeEntry_playerStats"), null);
+        assert.equal(g.QOL.ui.customize.start(null, { elementId: "playerStats" }), true);
         assert.equal(env.em.FindChildTraverse("QOLCustomize_STATS_POSITION_SIDE"), null);
         assert.equal(env.em.FindChildTraverse("QOLCustomize_ENABLE_STATS_POSITION"), null);
         assert.equal(env.em.FindChildTraverse("QOLCustomizePositionBody").visible, true);
@@ -211,13 +212,15 @@ test("Player Stats Reset with untouched default coordinates preserves a disabled
     session.close(); clean(env);
 });
 
-for (const tab of ["HUD", "UI"]) test(`Player Stats ordinary hide controls preserve dormant legacy placement (${tab})`, () => {
+for (const tab of ["HUD", "UI"]) test(`Player Stats Customize hide controls preserve dormant legacy placement (from ${tab})`, () => {
     const env = setup(), g = env.global;
     g.MOD_CONFIG.ENABLE_STATS_POSITION = 0; g.SaveAndSync(); env.clock.advance(600);
     g.QOL.ui.window.setActiveTabAndRefresh(tab); env.clock.advance(300);
     assert.equal(env.list.FindChildrenWithClassTraverse("SettingRow_ENABLE_STATS_POSITION").length, 0);
-    const row = env.list.FindChildrenWithClassTraverse("SettingRow_STATS_POSITION_HIDE_NORMAL")[0];
-    row.FindChildrenWithClassTraverse("SwitchButton")[0]._fire("onactivate"); env.clock.advance(600);
+    assert.equal(g.QOL.ui.customize.start(null, { elementId: "playerStats" }), true);
+    activate(env, "QOLCustomize_STATS_POSITION_HIDE_NORMAL");
+    g.QOL.core.storageBridge.saveSettings = (_config, callback) => callback(null);
+    activate(env, "QOLCustomizeApply"); env.clock.advance(1000);
     assert.equal(g.MOD_CONFIG.STATS_POSITION_HIDE_NORMAL, 1);
     assert.equal(g.MOD_CONFIG.ENABLE_STATS_POSITION, 0);
     clean(env);
@@ -265,11 +268,11 @@ test("all gameplay entry buttons open their declared element and full Customize 
     const env = setup();
     const Q = env.global.QOL;
     const tabs = {
-        HUD: ["topBar", "bottomBar", "items", "souls", "unsecuredTimer", "unsecuredSouls", "chat", "damageReport", "playerStats", "statsList"],
+        HUD: ["topBar", "bottomBar", "items", "souls", "unsecuredTimer", "unsecuredSouls", "chat", "damageReport"],
         Shop: ["recentPurchases", "purchaseNotifications", "shop"],
-        Crosshair: ["cooldowns", "activeStats", "damageImpact", "stamina", "ammo", "reload", "targetShapes"],
+        Crosshair: ["cooldowns", "activeStats", "damageImpact", "stamina", "ammo", "hitMarker", "reload", "targetShapes"],
         Healthbar: ["healthbar"], Minimap: ["minimap", "minimapAlt", "minimapTab"],
-        Overlay: ["keyboard", "zipBoost", "speed", "compass"], UI: ["chat", "damageReport", "playerStats", "statsList"]
+        Overlay: ["keyboard", "zipBoost", "speed", "compass"], UI: ["chat", "damageReport"]
     };
     for (const [tab, ids] of Object.entries(tabs)) {
         Q.ui.window.setActiveTabAndRefresh(tab); env.clock.advance(300);
@@ -277,9 +280,9 @@ test("all gameplay entry buttons open their declared element and full Customize 
             activate(env, "QOLCustomizeEntry_" + id);
             assert.equal(Q.ui.customize.isRunning(), true, id);
             const frames = env.em.FindChildrenWithClassTraverse("QOLCustomizeFrame");
-            assert.equal(frames.length, id === "ammo" ? 3 : id === "playerStats" ? 2 : 1, id);
+            assert.equal(frames.length, id === "ammo" ? 3 : 1, id);
             assert.ok(frames.some(frame => frame.id === "QOLCustomizeFrame_" + id));
-            assert.equal(env.em.FindChildTraverse("QOLCustomizeCatalog").visible, id === "ammo" || id === "playerStats");
+            assert.equal(env.em.FindChildTraverse("QOLCustomizeCatalog").visible, id === "ammo");
             activate(env, "QOLCustomizeCancel"); env.clock.advance(300);
         }
     }
