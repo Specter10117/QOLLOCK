@@ -214,9 +214,6 @@
 
     const deletePersonalPreset = async name => {
         name = validatePersonalName(name);
-        const config = globalThis.MOD_CONFIG;
-        const snapshot = JSON.stringify(config);
-        const context = $.GetContextPanel();
         return serializePersonalWrite(async () => {
             const entries = (await readPersonalPresets()).filter(entry => entry.name.toLowerCase() !== name.toLowerCase());
             const state = await readPersonalState();
@@ -225,13 +222,6 @@
                 const generation = savedDefaultGeneration;
                 await personalStorage().clearSettings();
                 if (generation === savedDefaultGeneration) await onDefaultSaved(null, false);
-                // Once main storage is cleared, reset immediately even if later collection cleanup fails.
-                // Newer edits, saves and replacement contexts keep ownership of their live settings.
-                if (!savedDefaultConfig && isAlive(context) && $.GetContextPanel() === context &&
-                    globalThis.MOD_CONFIG === config && JSON.stringify(config) === snapshot) {
-                    Object.assign(config, preservedUiPreferences(globalThis.DEFAULT_CONFIG || globalThis.QOL_DEFAULT_CONFIG));
-                    applyPresetByName("Default");
-                }
                 // Retain the entry if clearing its metadata fails, so deletion can be retried.
                 await personalStorage().remove(PERSONAL_STATE_KEY);
                 personalState = null;
@@ -965,7 +955,7 @@
                 };
                 button(editor, "Cancel", "PersonalPresetRenameCancel", cancelRename);
                 editor.SetPanelEvent("oncancel", cancelRename);
-                button(menu, personalState?.startupName === entry.name ? "Delete and reset" : "Delete", "PersonalPresetDelete", () => {
+                button(menu, "Delete", "PersonalPresetDelete", () => {
                     if (busy || !current()) return;
                     closeMenu();
                     void run(() => deletePersonalPreset(entry.name), "Personal preset deleted.");

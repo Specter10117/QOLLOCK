@@ -83,13 +83,11 @@ Use at Startup writes the selected snapshot to `qollock_settings` without
 changing live settings and records its name after acknowledgment. At startup
 appears only on that named entry while its contents match the saved slot.
 Identical snapshots do not receive duplicate badges. Rename follows the saved
-identity. Deleting the selected main preset clears the startup slot, resets live
-factory settings and UI preferences, and removes tracking metadata so the next
-footer Save creates My config again. Other personal presets are preserved.
-Its menu action is Delete and reset; ordinary Delete removes only that snapshot.
-Neither requires another confirmation. Live reset follows acknowledgment of the
-main-slot clear even if later collection cleanup fails. Failed cleanup can be
-retried; newer edits/saves and replacement contexts cannot receive a stale reset.
+identity. Deleting the selected main preset clears the startup slot and removes
+tracking metadata so the next footer Save creates My config again. Current live
+settings, UI preferences and other personal presets are preserved. Every entry
+uses Delete without another confirmation; ordinary deletion removes only that
+snapshot. Failed cleanup can be retried without changing live settings.
 
 Active highlights compare current values against saved snapshots, ignoring local
 UI preferences and retired default-hero metadata. Loading an identical named

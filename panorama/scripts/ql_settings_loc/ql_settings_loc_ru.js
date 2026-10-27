@@ -1226,7 +1226,6 @@
     "Rename": "Переименовать",
     "Personal preset renamed.": "Личный пресет переименован.",
     "My config": "Мой конфиг",
-    "Delete and reset": "Удалить и сбросить",
     "No personal presets yet. Create a new preset or save your settings.": "Личных пресетов пока нет. Создай новый пресет или сохрани настройки.",
     "Personal preset created.": "Личный пресет создан.",
     "New Preset": "Новый пресет",

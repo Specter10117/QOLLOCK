@@ -367,7 +367,7 @@ test("two queued footer saves retain one entry with the latest saved settings", 
 });
 
 
-test("deleting the startup My config clears main storage, resets live defaults and preserves other presets", async () => {
+test("deleting the startup My config clears main storage and preserves live settings and other presets", async () => {
     const e = setup(), g = e.global;
     g.MOD_CONFIG.SOULS_X_OFFSET = 123;
     g.MOD_CONFIG.DRAG_ENABLED = 0;
@@ -378,12 +378,14 @@ test("deleting the startup My config clears main storage, resets live defaults a
     await e.p.savePersonalPreset("Other", g.MOD_CONFIG);
     e.p.renderPresetsTab(e.list); await flush();
     e.list.FindChildrenWithClassTraverse("PersonalPresetMore")[0].activate();
+    const beforeDelete = JSON.stringify(g.MOD_CONFIG);
     activeMenuAction(e, "PersonalPresetDelete").activate(); await flush();
+    assert.equal(JSON.stringify(g.MOD_CONFIG), beforeDelete);
     assert.equal(e.disk.has("qollock_settings"), false);
     assert.equal(e.disk.has("qollock_personal_presets_state"), false);
-    assert.equal(g.MOD_CONFIG.SOULS_X_OFFSET, g.DEFAULT_CONFIG.SOULS_X_OFFSET);
-    assert.equal(g.MOD_CONFIG.DRAG_ENABLED, g.DEFAULT_CONFIG.DRAG_ENABLED);
-    assert.equal(g.MOD_CONFIG.PREVIEWS_ENABLED, g.DEFAULT_CONFIG.PREVIEWS_ENABLED);
+    assert.equal(g.MOD_CONFIG.SOULS_X_OFFSET, 456);
+    assert.equal(g.MOD_CONFIG.DRAG_ENABLED, 0);
+    assert.equal(g.MOD_CONFIG.PREVIEWS_ENABLED, 0);
     const remaining = await e.p.readPersonalPresets();
     assert.deepEqual(Array.from(remaining, entry => entry.name), ["Other"]);
     assert.equal(e.Q.parseStoredConfig(remaining[0].raw).SOULS_X_OFFSET, 456);
@@ -476,7 +478,7 @@ test("failed main metadata removal leaves a retryable preset and next successful
 });
 
 
-test("failed collection deletion after clearing main still resets live settings and remains retryable", async () => {
+test("failed collection deletion after clearing main preserves live settings and remains retryable", async () => {
     const e = setup(), g = e.global;
     g.MOD_CONFIG.SOULS_X_OFFSET = 123;
     const raw = g.WrapConfigForStorage(g.MOD_CONFIG);
@@ -488,13 +490,13 @@ test("failed collection deletion after clearing main still resets live settings 
         await save(key, value);
     };
     await assert.rejects(e.p.deletePersonalPreset("My config"), /quota/);
-    assert.equal(g.MOD_CONFIG.SOULS_X_OFFSET, g.DEFAULT_CONFIG.SOULS_X_OFFSET);
+    assert.equal(g.MOD_CONFIG.SOULS_X_OFFSET, 123);
     assert.equal((await e.p.readPersonalPresets()).length, 1);
     e.Q.core.storageBridge.save = save;
     await e.p.deletePersonalPreset("My config");
     assert.equal((await e.p.readPersonalPresets()).length, 0);
     assert.equal(e.disk.has("qollock_settings"), false);
-    assert.equal(g.MOD_CONFIG.SOULS_X_OFFSET, g.DEFAULT_CONFIG.SOULS_X_OFFSET);
+    assert.equal(g.MOD_CONFIG.SOULS_X_OFFSET, 123);
 });
 
 

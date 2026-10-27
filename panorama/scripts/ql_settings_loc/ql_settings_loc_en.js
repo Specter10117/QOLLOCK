@@ -1226,7 +1226,6 @@
     "Rename": "Rename",
     "Personal preset renamed.": "Personal preset renamed.",
     "My config": "My config",
-    "Delete and reset": "Delete and reset",
     "No personal presets yet. Create a new preset or save your settings.": "No personal presets yet. Create a new preset or save your settings.",
     "Personal preset created.": "Personal preset created.",
     "New Preset": "New Preset",
