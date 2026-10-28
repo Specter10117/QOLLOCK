@@ -371,6 +371,8 @@
         if (_lastBenchmarkReport) {
             diag.benchmark = _lastBenchmarkReport;
         }
+        const fpsScan = QOL.core.FpsInvestigation?.getStatus();
+        if (fpsScan) diag.fpsScan = fpsScan;
 
         return diag;
     };
@@ -393,17 +395,20 @@
         _benchmarkRequest = null;
         try { request?.handle?.stop?.(); }
         catch (e) { if (Logger) Logger.logWarn("Benchmark", `Benchmark stop failed: ${e?.message || e}`); }
+        if (request?.isFpsScan && _stressBenchmark) _restoreStressBenchmark(_hudPanel, "cancelled");
     };
 
     const _startRequestedBenchmark = (hudPanel, forceToken) => {
         _stopBenchmarkRequest();
-        const request = { handle: null };
+        const isFpsScan = forceToken.startsWith("fps_");
+        const request = { handle: null, isFpsScan };
         _benchmarkRequest = request;
         const parts = forceToken.split("_");
-        const durSec = parseFloat(parts[1]) || 10;
-        const isStress = parts[2] === "stress";
+        const durSec = isFpsScan ? 420 : parseFloat(parts[1]) || 10;
+        const isStress = isFpsScan ? parts[1] === "expanded" : parts[2] === "stress";
+        const leasedConfig = isStress || isFpsScan;
 
-        if (isStress) {
+        if (leasedConfig) {
             let stress = null;
             try {
                 const globalState = (typeof State !== "undefined" && State) ? State :
@@ -431,7 +436,7 @@
                     previous.timer = null;
                 }
 
-                const maxConfig = _buildMaximalConfig();
+                const maxConfig = isStress ? _buildMaximalConfig() : QOL.mergeConfig(savedFlatConfig || QOL.buildDefaultConfig());
                 stress.config = maxConfig;
 
                 if (globalState) {
@@ -478,9 +483,9 @@
         if (_benchmarkRequest !== request) return;
         if (QOL?.core?.Scheduler?.startBenchmark) {
             try {
-                const handle = QOL.core.Scheduler.startBenchmark(durSec, (report, stats) => {
+                const complete = (report, stats) => {
                     if (_benchmarkRequest !== request) return;
-                    if (isStress) {
+                    if (leasedConfig) {
                         _restoreStressBenchmark(hudPanel, "complete");
                     }
                     if (_benchmarkRequest !== request) return;
@@ -492,19 +497,28 @@
                         timestamp: _nowMs()
                     };
                     _writeDiagSnapshot(hudPanel, forceToken);
-                }, isStress ? null : { capturePanelLookups: true, panelRoot: hudPanel });
+                };
+                const handle = isFpsScan ? QOL.core.FpsInvestigation.start({
+                    root: hudPanel, mode: isStress ? "expanded" : "current",
+                    onProgress: () => _writeDiagSnapshot(hudPanel, forceToken),
+                    onComplete: result => {
+                        const { report, ...stats } = result;
+                        $.Msg(report); complete(report, stats);
+                    }
+                }) : QOL.core.Scheduler.startBenchmark(durSec, complete,
+                    isStress ? null : { capturePanelLookups: true, panelRoot: hudPanel });
                 if (_benchmarkRequest === request) request.handle = handle;
                 else handle?.stop?.();
             } catch (bmErr) {
                 if (_benchmarkRequest === request) {
                     _benchmarkRequest = null;
-                    if (isStress) _restoreStressBenchmark(hudPanel, "error");
+                    if (leasedConfig) _restoreStressBenchmark(hudPanel, "error");
                 }
                 if (Logger) Logger.logWarn("Benchmark", `Benchmark start failed: ${bmErr.message || bmErr}`);
             }
         } else if (Logger) {
             _benchmarkRequest = null;
-            if (isStress) _restoreStressBenchmark(hudPanel, "unavailable");
+            if (leasedConfig) _restoreStressBenchmark(hudPanel, "unavailable");
             Logger.logWarn("Benchmark", "Benchmark requested but Scheduler.startBenchmark unavailable");
         }
     };
@@ -544,6 +558,9 @@
                 }
 
                 if (forceToken.startsWith("bm_")) _startRequestedBenchmark(hudPanel, forceToken);
+                if (forceToken.startsWith("fps_stop_")) {
+                    if (_benchmarkRequest?.isFpsScan) _benchmarkRequest.handle?.stop("cancelled");
+                } else if (forceToken.startsWith("fps_")) _startRequestedBenchmark(hudPanel, forceToken);
 
                 if (forceToken.startsWith("dt_")) {
                     if (QOL && typeof QOL.dumpTreeSummary === "function") {
@@ -600,7 +617,9 @@
                     if (newest) _stressBenchmark.savedConfig = newest;
                     _stressBenchmark.savedRevision = rev;
                     _stressBenchmark.savedRaw = raw;
+                    if (_benchmarkRequest?.isFpsScan) _benchmarkRequest.handle?.stop("config changed");
                 } else {
+                    if (_benchmarkRequest?.isFpsScan) _benchmarkRequest.handle?.stop("config changed");
                     _applyConfigUpdate(raw, rev, hudPanel, best.sourcePanel);
                     _nextRootClassSyncMs = nowMs + 1000;
                 }

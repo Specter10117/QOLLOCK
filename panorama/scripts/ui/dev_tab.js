@@ -707,10 +707,12 @@
     let bmToken = 0;
 
     function runInGameBenchmark(container, statusLabel, actionBtn, isStressTest) {
+        const isScan = isStressTest === "fps_current" || isStressTest === "fps_expanded";
         const setStatus = (text, color) => {
             if (isAlive(statusLabel)) {
-                statusLabel.text = localize(text);
-                statusLabel.style.color = color;
+                const translated = localize(text);
+                if (statusLabel.text !== translated) statusLabel.text = translated;
+                if (statusLabel.style.color !== color) statusLabel.style.color = color;
             }
         };
 
@@ -725,9 +727,9 @@
         bmRunning = true;
         setBtnActive(true);
 
-        const durSec = 10;
+        const durSec = isScan ? 420 : 10;
         const modeStr = isStressTest ? "stress" : "normal";
-        const forceToken = `bm_${durSec}_${modeStr}_${Date.now()}`;
+        const forceToken = isScan ? `${isStressTest}_${Date.now()}` : `bm_${durSec}_${modeStr}_${Date.now()}`;
 
         const hudPanel = findHudPanel();
         if (!hudPanel || !hudPanel.SetAttributeString) {
@@ -743,7 +745,8 @@
         } catch {}
 
         const startTime = Date.now();
-        setStatus(format("Benchmarking: {seconds}s left...", { seconds: durSec }), "#66cc99");
+        setStatus(isScan ? "Close the menu within 5 seconds and keep the scene stationary." :
+            format("Benchmarking: {seconds}s left...", { seconds: durSec }), "#66cc99");
 
         function pollBenchmark() {
             if (!bmRunning || token !== bmToken) return;
@@ -752,7 +755,9 @@
             const elapsedSec = Math.floor(elapsedMs / 1000);
             const remaining = Math.max(0, durSec - elapsedSec);
 
-            if (remaining > 0) {
+            if (isScan) {
+                setStatus("Investigation running. Opening Esc stops the scan.", "#66cc99");
+            } else if (remaining > 0) {
                 setStatus(format("Benchmarking: {seconds}s left...", { seconds: remaining }), "#66cc99");
             } else {
                 setStatus("Finalizing report...", "#66cc99");
@@ -794,7 +799,9 @@
 
                         $.Msg(`[QOLLock][DevTab] Benchmark finished: ${totalJs}ms in timed poll callbacks over ${durSec}s. Report ${copied ? "copied to clipboard" : "printed to console"}.`);
 
-                        if (copied) {
+                        if (isScan) {
+                            setStatus("Investigation finished. Check console or clipboard.", "#e6b800");
+                        } else if (copied) {
                             setStatus(format("Copied! {milliseconds}ms callbacks (Check ~)", { milliseconds: totalJs }), "#66cc99");
                             if (typeof setFeedback === "function") {
                                 setFeedback("Benchmark report copied to clipboard!", "success", 4000);
@@ -1230,6 +1237,20 @@
 
         // 2. In-Game Benchmarks
         createTitle(list, "In-Game Benchmarks");
+
+        for (const [mode, title] of [["current", "FPS investigation (Current Config)"], ["expanded", "FPS investigation (Expanded Config)"]]) {
+            createDevActionRow(list, "FpsScanRow" + mode, "FpsScanBtn" + mode, "FpsScanStatus" + mode,
+                "s2r://panorama/images/icons/icon_play.vsvg", title,
+                "Repeated A/B/B/A feature exclusions, then individual suspects. Close Esc within 5s; stay still for up to 7 minutes. Measures UI cadence, not engine FPS. Config is restored without saving.",
+                "Investigate", (status, button) => runInGameBenchmark(list, status, button, "fps_" + mode));
+        }
+        createDevActionRow(list, "FpsStopRow", "FpsStopBtn", "FpsStopStatus", "", "Stop FPS investigation",
+            "Restores excluded features and temporary settings. A partial report is copied when the scan finishes.", "Stop",
+            status => {
+                const hud = findHudPanel();
+                if (hud) hud.SetAttributeString("QOL_DiagRequest", "fps_stop_" + Date.now());
+                if (isAlive(status)) status.text = localize("Stop requested");
+            });
 
         createDevActionRow(
             list,

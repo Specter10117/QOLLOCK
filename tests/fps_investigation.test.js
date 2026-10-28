@@ -1,0 +1,99 @@
+"use strict";
+const test = require("node:test");
+const assert = require("node:assert/strict");
+const { createHud } = require("../scripts/simulator");
+
+function setup(ids = ["ql_keyboard", "ql_compass"], culprit = "ql_keyboard") {
+    const hud = createHud({ inHideout: false }); hud.assertLoaded();
+    const { QOL: Q, $ } = hud.sandbox.global;
+    Q.core.App.shutdown();
+    const enabled = new Set(ids);
+    Q.core.FeatureRegistry = {
+        getEnabledIds: () => [...enabled], getErrorCounts: () => ({}),
+        disable: id => enabled.delete(id), enable: id => enabled.add(id)
+    };
+    const schedule = $.Schedule;
+    $.Schedule = (delay, cb) => schedule(delay || (enabled.has(culprit) ? 0.032 : 0.016), cb);
+    return { hud, Q, $, enabled };
+}
+
+test("FPS investigation compares repeated UI cadence windows and restores every excluded owner", () => {
+    const { hud, Q, enabled } = setup();
+    let result;
+    Q.core.FpsInvestigation.start({ root: hud.root, onComplete: value => { result = value; } });
+    hud.clock.advance(400000);
+    assert.ok(result);
+    assert.equal(result.reason, "complete");
+    const keyboard = result.rows.find(row => row.ids.length === 1 && row.ids[0] === "ql_keyboard");
+    assert.ok(keyboard.confirmed);
+    assert.ok(keyboard.improvementMs > 10);
+    assert.match(result.report, /UI dispatch cadence/);
+    assert.match(result.report, /not measured/);
+    assert.deepEqual([...enabled].sort(), ["ql_compass", "ql_keyboard"]);
+    assert.deepEqual(hud.clock.errors, []);
+});
+
+test("FPS investigation stop invalidates callbacks even when native cancellation fails", () => {
+    const { hud, Q, $, enabled } = setup();
+    let completions = 0;
+    const session = Q.core.FpsInvestigation.start({ root: hud.root, onComplete: () => { completions++; } });
+    hud.clock.advance(12000);
+    $.CancelScheduled = () => { throw Error("cancel rejected"); };
+    session.stop("cancelled"); session.stop("cancelled");
+    hud.clock.advance(400000);
+    assert.equal(completions, 1);
+    assert.deepEqual([...enabled].sort(), ["ql_compass", "ql_keyboard"]);
+    assert.equal(Q.core.FpsInvestigation.getStatus().running, false);
+    assert.deepEqual(hud.clock.errors, []);
+});
+
+test("FPS investigation rejects a nonadvancing frame clock without inventing FPS", () => {
+    const { hud, Q, $ } = setup();
+    $.FrameTime = () => 1;
+    let result;
+    Q.core.FpsInvestigation.start({ root: hud.root, onComplete: value => { result = value; } });
+    hud.clock.advance(400000);
+    assert.ok(result.rows.every(row => !row.confirmed));
+    assert.match(result.report, /insufficient/);
+    assert.deepEqual(hud.clock.errors, []);
+});
+
+test("intermittent managed callback errors invalidate the scan even after registry streaks reset", () => {
+    const { hud, Q } = setup();
+    Q.core.Scheduler.startWorkObservation = () => ({
+        sample: () => ({ callbacks: 100, callbackMs: 1, errors: 2 }), stop() {}
+    });
+    let result;
+    Q.core.FpsInvestigation.start({ root: hud.root, onComplete: value => { result = value; } });
+    hud.clock.advance(20000);
+    assert.ok(result, "callback failures must end the scan immediately");
+    assert.match(result.reason, /callback failures/);
+    assert.equal(result.rows.some(row => row.confirmed), false);
+    assert.deepEqual(hud.clock.errors, []);
+});
+
+test("large owner groups include their last owner in individual follow-up", () => {
+    const ids = Array.from({ length: 24 }, (_, i) => "ql_other_" + String(i).padStart(2, "0"));
+    const { hud, Q } = setup(ids, "ql_other_23");
+    let result;
+    Q.core.FpsInvestigation.start({ root: hud.root, onComplete: value => { result = value; } });
+    hud.clock.advance(400000);
+    assert.equal(result.reason, "complete");
+    assert.ok(result.rows.some(row => row.ids.length === 1 && row.ids[0] === "ql_other_23" && row.confirmed));
+    assert.deepEqual(hud.clock.errors, []);
+});
+
+for (const changedClass of ["ShowEscapeMenu", "gShopOpen", "gScoreboardOpen"]) {
+    test(`scene transition ${changedClass} stops sampling and removes its progress overlay`, () => {
+        const { hud, Q, enabled } = setup();
+        let result;
+        Q.core.FpsInvestigation.start({ root: hud.root, onComplete: value => { result = value; } });
+        hud.clock.advance(6500);
+        assert.ok(hud.root.FindChild("QOLFpsInvestigationProgress"));
+        hud.root.AddClass(changedClass); hud.clock.advance(2000);
+        assert.ok(result);
+        assert.equal(hud.root.FindChild("QOLFpsInvestigationProgress"), null);
+        assert.deepEqual([...enabled].sort(), ["ql_compass", "ql_keyboard"]);
+        assert.deepEqual(hud.clock.errors, []);
+    });
+}

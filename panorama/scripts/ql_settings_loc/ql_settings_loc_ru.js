@@ -1289,6 +1289,16 @@
     "Crit Color": "Цвет крита",
     "Outline Shadow": "Тень контура",
     "Hide Crit Glow": "Скрыть свечение крита",
-    "Customize hit and critical markers while preserving native hit timing.": "Настройка обычных и критических маркеров с сохранением нативной длительности попадания."
+    "Customize hit and critical markers while preserving native hit timing.": "Настройка обычных и критических маркеров с сохранением нативной длительности попадания.",
+    "FPS investigation (Current Config)": "Поиск просадки FPS (текущий конфиг)",
+    "FPS investigation (Expanded Config)": "Поиск просадки FPS (расширенный конфиг)",
+    "Repeated A/B/B/A feature exclusions, then individual suspects. Close Esc within 5s; stay still for up to 7 minutes. Measures UI cadence, not engine FPS. Config is restored without saving.": "Повторные проверки A/B/B/A с отключением групп, затем отдельных подозреваемых. Закрой Esc за 5 секунд и не двигайся до 7 минут. Измеряются интервалы UI, а не FPS движка. Конфиг восстанавливается без сохранения.",
+    "Investigate": "Проверить",
+    "Stop FPS investigation": "Остановить поиск просадки FPS",
+    "Restores excluded features and temporary settings. A partial report is copied when the scan finishes.": "Возвращает отключённые функции и настройки. После остановки копируется частичный отчёт.",
+    "Stop requested": "Запрошена остановка",
+    "Close the menu within 5 seconds and keep the scene stationary.": "Закрой меню за 5 секунд и не двигай камеру.",
+    "Investigation running. Opening Esc stops the scan.": "Идёт проверка. Открытие Esc остановит её.",
+    "Investigation finished. Check console or clipboard.": "Проверка завершена. Отчёт в консоли или буфере обмена."
 };
 })();

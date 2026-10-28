@@ -126,6 +126,7 @@ are compatibility guards, not evidence that browser APIs are available in HUD.
 | `panorama/scripts/core/ql_namespace.js` | Base `QOL`, `QOL.core`, `QOL.ui`, `QOL.features` namespaces |
 | `panorama/scripts/core/ql_app.js` | HUD boot, flat-config synchronization, feature enable-state reconciliation and client bridges |
 | `panorama/scripts/core/ql_feature_registry.js` | Manifest registration, scoped feature contexts and lifecycle |
+| `panorama/scripts/core/ql_fps_investigation.js` | Temporary feature exclusion trials and bounded UI dispatch cadence observations; App owns the configuration lease |
 | `panorama/scripts/core/ql_config_store.js`, `ql_config_adapter.js` | Feature config buckets and flat/bucket conversion |
 | `panorama/scripts/ql_config.js` | Canonical input parsing, normalization and config constants shared with settings |
 | `panorama/scripts/ql_shared_presets.js` | Default values, presets, independent current settings catalog, JSON codec and shared constants |

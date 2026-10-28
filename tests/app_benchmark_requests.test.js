@@ -20,6 +20,76 @@ function topbar(hud) {
     return core.addChild(hud.doc.create("CitadelHudTopBar", { id: "TopBar" }));
 }
 
+test("FPS scan leases expanded config, cancels through the bridge and restores settings", () => {
+    const { hud, Q, request } = setup();
+    const baseline = Q.core.ConfigAdapter.exportToFlat();
+    const owners = Q.core.FeatureRegistry.getEnabledIds().slice().sort();
+    request("fps_expanded_cancel");
+    assert.equal(Q.core.FpsInvestigation.getStatus().running, true);
+    assert.equal(Q.core.ConfigAdapter.exportToFlat().ENABLE_COMPASS, 1);
+    request("fps_stop_cancel");
+    assert.equal(Q.core.FpsInvestigation.getStatus().running, false);
+    assert.deepEqual(Q.core.ConfigAdapter.exportToFlat(), baseline);
+    assert.deepEqual(Q.core.FeatureRegistry.getEnabledIds().slice().sort(), owners);
+    const diag = JSON.parse(hud.root.GetAttributeString("QOL_Diag", ""));
+    assert.equal(diag.benchmark.token, "fps_expanded_cancel");
+    assert.match(diag.benchmark.report, /cancelled/);
+    hud.clock.advance(5000);
+    assert.deepEqual(hud.clock.errors, []);
+});
+
+test("FPS stop while idle does not start a diagnostic or alter settings", () => {
+    const { Q, request } = setup();
+    const baseline = Q.core.ConfigAdapter.exportToFlat();
+    request("fps_stop_idle");
+    assert.equal(Q.core.FpsInvestigation.getStatus(), null);
+    assert.deepEqual(Q.core.ConfigAdapter.exportToFlat(), baseline);
+});
+
+test("current FPS scan freezes canonical config instead of sampling an expiring Customize draft", () => {
+    const { hud, Q, g, request } = setup();
+    const canonical = { ...Q.buildDefaultConfig(), TOP_BAR_X_OFFSET: 37 };
+    g.State.lastConfig = canonical;
+    Q.core.ConfigAdapter.loadFromFlat(canonical);
+    hud.root.AddClass("QOLCustomizeActive");
+    Q.presentation.preview.write(hud.root, { TOP_BAR_X_OFFSET: 90 }, "scan-draft",
+        Q.core.persistence.getConfigChangeStamp(Q.getUIRoot()));
+    hud.clock.advance(600);
+    assert.equal(Q.core.ConfigAdapter.exportToFlat().TOP_BAR_X_OFFSET, 90);
+    request("fps_current_frozen");
+    assert.equal(Q.core.ConfigAdapter.exportToFlat().TOP_BAR_X_OFFSET, 37);
+    hud.clock.advance(3000);
+    assert.equal(Q.core.ConfigAdapter.exportToFlat().TOP_BAR_X_OFFSET, 37);
+    request("fps_stop_frozen");
+    assert.equal(Q.core.ConfigAdapter.exportToFlat().TOP_BAR_X_OFFSET, 37);
+    assert.deepEqual(hud.clock.errors, []);
+});
+
+test("current FPS scan supersedes legacy stress with canonical settings and retires its old safety timer", () => {
+    const { hud, Q, request } = setup();
+    const baseline = Q.core.ConfigAdapter.exportToFlat();
+    request("bm_1_stress_previous");
+    request("fps_current_successor");
+    assert.deepEqual(Q.core.ConfigAdapter.exportToFlat(), baseline);
+    hud.clock.advance(4500);
+    assert.equal(Q.core.FpsInvestigation.getStatus().running, true);
+    request("fps_stop_successor");
+    assert.deepEqual(Q.core.ConfigAdapter.exportToFlat(), baseline);
+    assert.deepEqual(hud.clock.errors, []);
+});
+
+test("new user config stops a FPS scan and restores the newest accepted values", () => {
+    const { hud, Q, g, request } = setup();
+    request("fps_expanded_edit");
+    const changed = { ...Q.buildDefaultConfig(), KEYBOARD_OVERLAY_SCALE: 175 };
+    hud.root.SetAttributeString("Deadlock_Mod_Settings_v1", g.WrapConfigForStorage(changed));
+    hud.root.SetAttributeString("QOL_USER_EDIT_REV", "999");
+    hud.clock.advance(500);
+    assert.equal(Q.core.FpsInvestigation.getStatus().running, false);
+    assert.equal(Q.core.ConfigAdapter.exportToFlat().KEYBOARD_OVERLAY_SCALE, 175);
+    assert.deepEqual(hud.clock.errors, []);
+});
+
 test("expanded benchmark keeps HUD surfaces visible and preserves numeric presentation defaults", () => {
     const { hud, Q, request } = setup();
     const top = topbar(hud);

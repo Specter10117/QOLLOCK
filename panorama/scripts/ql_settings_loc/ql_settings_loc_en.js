@@ -1289,6 +1289,16 @@
     "Crit Color": "Crit Color",
     "Outline Shadow": "Outline Shadow",
     "Hide Crit Glow": "Hide Crit Glow",
-    "Customize hit and critical markers while preserving native hit timing.": "Customize hit and critical markers while preserving native hit timing."
+    "Customize hit and critical markers while preserving native hit timing.": "Customize hit and critical markers while preserving native hit timing.",
+    "FPS investigation (Current Config)": "FPS investigation (Current Config)",
+    "FPS investigation (Expanded Config)": "FPS investigation (Expanded Config)",
+    "Repeated A/B/B/A feature exclusions, then individual suspects. Close Esc within 5s; stay still for up to 7 minutes. Measures UI cadence, not engine FPS. Config is restored without saving.": "Repeated A/B/B/A feature exclusions, then individual suspects. Close Esc within 5s; stay still for up to 7 minutes. Measures UI cadence, not engine FPS. Config is restored without saving.",
+    "Investigate": "Investigate",
+    "Stop FPS investigation": "Stop FPS investigation",
+    "Restores excluded features and temporary settings. A partial report is copied when the scan finishes.": "Restores excluded features and temporary settings. A partial report is copied when the scan finishes.",
+    "Stop requested": "Stop requested",
+    "Close the menu within 5 seconds and keep the scene stationary.": "Close the menu within 5 seconds and keep the scene stationary.",
+    "Investigation running. Opening Esc stops the scan.": "Investigation running. Opening Esc stops the scan.",
+    "Investigation finished. Check console or clipboard.": "Investigation finished. Check console or clipboard."
 };
 })();

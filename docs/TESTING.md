@@ -459,6 +459,45 @@ condition to distinguish a regression from normal variation. Keep diagnostic
 audits and report printing outside the measured window. Test return-to-menu and
 re-entry separately: one clean startup does not cover lifecycle regressions.
 
+### In-game feature exclusion investigation
+
+Dev offers FPS investigation for the current or expanded configuration. Start in
+a repeatable sandbox scene, close Esc within five seconds and keep the camera,
+gameplay and native telemetry settings constant. Opening Esc stops the scan and
+produces a partial report. The Stop action is also available in Dev. Completion,
+cancellation, HUD retirement and incoming configuration changes restore excluded
+owners; both modes lease canonical settings in memory, suspend Customize drafts
+and never save test values.
+
+The scan compares all registered enabled owners, then groups, using A/B/B/A
+(reference/excluded/excluded/reference). Large groups are partitioned before
+testing so individual follow-up does not silently omit a group's tail. Each window settles for one second and
+samples for three. It automatically checks up to twelve individual owners in the
+strongest repeatable group, with a seven-minute overall deadline. Diagnostic
+metadata/percentiles are processed outside sampling; the sampler keeps bounded
+numeric intervals and uses the existing Scheduler work observation for callback
+context. Reports distinguish insufficient samples, reference drift, inconsistent
+repeats and repeatable improvement. Repeatable candidates are investigation
+leads, not proof of a feature's engine frame cost. A fixed-size HUD label shows
+the trial and phase; it updates outside sampling and disappears on completion.
+Wall-clock start/end markers allow alignment with a separate native capture.
+Reports list owners not checked individually. Managed callback failures and
+observed menu/shop/scoreboard/hideout transitions stop the scan.
+
+The measured intervals are **UI dispatch cadence**, using native `$.Schedule(0)`
+and changes in `$.FrameTime()`. The current extracted `async.js` implements
+`NextFrame` through zero-delay scheduling, and the post-game progress script uses
+frame-clock differences for elapsed animation time. This does not establish a
+one-to-one relationship to presented game frames. UI caps, missed dispatches,
+scene variation, inactive gameplay paths and interacting features can obscure a
+cost. No engine FPS, GPU timing or rendering attribution is claimed. Validate
+candidates with native telemetry and a repeated identical scene. The all-excluded
+condition retains core code and loaded static stylesheets, so it is not vanilla.
+
+`tests/fps_investigation.test.js` models cadence changes and cancellation; App and
+Dev tests cover the actual request/result bridge and configuration restoration.
+These simulator checks do not verify native frame cadence or FPS.
+
 ### Offline operation counts
 
 ```

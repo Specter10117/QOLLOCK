@@ -243,6 +243,22 @@ test("ui/dev_tab: runInGameBenchmark initiates benchmark request and copies repo
     assert.ok(statusLabel.text.includes("10s left"), "Status should indicate 10s remaining");
 });
 
+test("FPS investigation UI requests the selected config and copies its own final report", () => {
+    const env = createTestEnvironment();
+    const label = env.sandbox.$.CreatePanel("Label", env.rootPanel, "ScanStatus");
+    const button = env.sandbox.$.CreatePanel("Button", env.rootPanel, "ScanButton");
+    env.sandbox.QOL.ui.devTab.runInGameBenchmark(env.rootPanel, label, button, "fps_current");
+    const token = env.hudPanel.GetAttributeString("QOL_DiagRequest", "");
+    assert.match(token, /^fps_current_/);
+    env.hudPanel.SetAttributeString("QOL_Diag", JSON.stringify({ benchmark: {
+        token, report: "UI cadence investigation report", stats: { reason: "complete" }
+    } }));
+    env.clock.advance(600);
+    assert.equal(env.getClipboardText(), "UI cadence investigation report");
+    assert.equal(button.BHasClass("CycleActive"), false);
+    assert.doesNotMatch(label.text, /\?ms|callbacks/);
+});
+
 test("audit displays a failed HUD observation as failure even when copying succeeds", () => {
     const env = createTestEnvironment();
     const label = env.sandbox.$.CreatePanel("Label", env.rootPanel, "AuditStatus");
