@@ -50,9 +50,17 @@ an explicit capture to select another scenario; see [the tool map](TOOLS.md).
   failed reads and incomplete classes must remain visible in reports.
 - Missing Label/TextEntry text and missing visibility/enabled flags use simulator
   defaults. Value/state-dependent paths therefore have incomplete evidence.
+- Optional direct HUD-Dumper `computedMeasurements` supply captured width, height
+  and X/Y offsets to replay. Zero is a valid reading; omitted/null readings use
+  model zeros and are counted in `captureFidelity.missingMeasurements`. This is
+  a count of panels missing at least one of those four fields. Non-finite or
+  nonnumeric readings are rejected. These are static
+  samples, not layout recalculation after a style write. The Debugger description
+  capture does not supply these measurements; direct captures still have their
+  documented class-coverage limits. Separate captures are not merged by ID.
 - `debuggerRowVisible` belongs to the inspector. `debuggerAttributes` describe
   displayed fields; they are not inserted into `GetAttributeString` storage.
-- Native commands, bindings, gameplay changes, computed layout and CSS are not
+- Native commands, bindings, gameplay changes, layout recalculation and CSS are not
   replayed. Captured replay does not bind commands to the synthetic build model.
   QOLLOCK's own startup and feature code can create additional panels.
 

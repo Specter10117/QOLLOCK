@@ -3,6 +3,12 @@
 // One capture contract for import, static audits and simulated HUD replay.
 const crypto = require("node:crypto");
 
+// HUD-Dumper's optional scalar measurements, not a replayed layout engine.
+const MEASUREMENT_FIELDS = Object.freeze({
+    actualLayoutWidth: "actuallayoutwidth", actualLayoutHeight: "actuallayoutheight",
+    actualPanelOffsetX: "actualxoffset", actualPanelOffsetY: "actualyoffset",
+});
+
 function inspectCapture(capture, { requireHud = false, allowSummary = false } = {}) {
     if (capture?.kind === "summary" && allowSummary) {
         if (!Number.isInteger(capture.panels) || capture.panels < 1 || !capture.byId || typeof capture.byId !== "object") {
@@ -37,7 +43,7 @@ function inspectCapture(capture, { requireHud = false, allowSummary = false } = 
     const ids = new Map(), classes = new Map(), seen = new Set();
     const stack = [{ node: root, path: "0", depth: 0 }];
     let panels = 0, missingText = 0, incompleteClasses = 0, maxDepth = 0;
-    let missingFlags = 0;
+    let missingFlags = 0, missingMeasurements = 0;
     while (stack.length) {
         const { node, path, depth } = stack.pop();
         if (!node || typeof node !== "object" || Array.isArray(node) || seen.has(node)) {
@@ -56,6 +62,19 @@ function inspectCapture(capture, { requireHud = false, allowSummary = false } = 
         if (node.attributes !== undefined && (!node.attributes || typeof node.attributes !== "object" || Array.isArray(node.attributes))) {
             throw new Error("invalid runtime attributes at " + path);
         }
+        const measurements = node.computedMeasurements;
+        if (measurements !== undefined) {
+            if (!measurements || typeof measurements !== "object" || Array.isArray(measurements)) {
+                throw new Error("invalid captured measurements at " + path);
+            }
+            for (const key of Object.keys(MEASUREMENT_FIELDS)) {
+                const value = measurements[key];
+                if (value !== undefined && value !== null && !Number.isFinite(value)) {
+                    throw new Error("invalid captured measurement " + key + " at " + path);
+                }
+            }
+        }
+        if (Object.keys(MEASUREMENT_FIELDS).some(key => !Number.isFinite(measurements?.[key]))) missingMeasurements++;
         const location = { path, id: node.id || "", type: node.type || "Panel" };
         const add = (map, key) => {
             if (!key) return;
@@ -86,6 +105,7 @@ function inspectCapture(capture, { requireHud = false, allowSummary = false } = 
     if (Object.values(meta.readErrors || {}).some(n => n > 0)) notes.push("native reads failed; inspect capture meta.readErrors");
     if (missingText) notes.push(missingText + " captured Labels/TextEntries lack text; value-dependent paths use empty model text");
     if (missingFlags) notes.push(missingFlags + " panels lack some visible/enabled state; replay uses simulator defaults");
+    if (missingMeasurements) notes.push(missingMeasurements + " panels lack some captured measurements; missing dimensions/offsets use model zeros");
     if (incompleteClasses || meta.classesIncomplete || meta.classCoverage === "partial") notes.push("class inventory is incomplete; absence of a class is unknown");
     if (capture.version === "2.0.0") notes.push("HUD-Dumper v2 class inventory may be limited to its probe whitelist; absent classes are not authoritative");
     if (capture.format === "debugger-rows-v1") {
@@ -96,7 +116,7 @@ function inspectCapture(capture, { requireHud = false, allowSummary = false } = 
     const fidelity = {
         format: capture.format || "panel-tree", version: capture.version || null,
         scope: root.id || root.type || "Panel", panels, maxDepth,
-        classCoverage: meta.classCoverage || "unspecified", incompleteClasses, missingText, missingFlags,
+        classCoverage: meta.classCoverage || "unspecified", incompleteClasses, missingText, missingFlags, missingMeasurements,
         fullHudCapture: meta.fullHudCapture ?? null,
         descriptionFreshness: meta.descriptionFreshness || "unverified",
         durationMs: capture.durationMs ?? null, timestampUtc: capture.timestampUtc || null,
@@ -126,4 +146,4 @@ function comparisonIssues(current, previous) {
     return [...new Set(issues)];
 }
 
-module.exports = { inspectCapture, comparisonIssues };
+module.exports = { inspectCapture, comparisonIssues, MEASUREMENT_FIELDS };

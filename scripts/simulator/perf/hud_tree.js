@@ -2,7 +2,7 @@
 // Omitted native state and lifecycle remain unknown; no XML composition is added.
 "use strict";
 
-const { inspectCapture } = require("../../capture_tree.js");
+const { inspectCapture, MEASUREMENT_FIELDS } = require("../../capture_tree.js");
 
 function buildCapturedHud(doc, captured) {
     const { root: rootNode, notes, fidelity } = inspectCapture(captured, { requireHud: true });
@@ -24,6 +24,10 @@ function buildCapturedHud(doc, captured) {
         doc._index(panel);
         panel.breadcrumbs = node.breadcrumbs || null;
         panel.text = typeof node.text === "string" ? node.text : "";
+        for (const [capturedKey, panelKey] of Object.entries(MEASUREMENT_FIELDS)) {
+            const value = node.computedMeasurements?.[capturedKey];
+            panel[panelKey] = Number.isFinite(value) ? value : 0;
+        }
         panel._attrs.clear();
         for (const key of ["visible", "enabled", "checked", "hittest", "hittestchildren"]) {
             panel[key] = typeof node[key] === "boolean" ? node[key] :

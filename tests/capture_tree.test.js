@@ -78,6 +78,49 @@ test("invalid native trees, malformed records, mismatched counts and focused sub
     assert.equal(inspectCapture({ domTree: { id: "Shop" } }).panels, 1);
 });
 
+test("captured measurements let production stats discovery choose the populated owner", () => {
+    const captured = { domTree: { id: "Hud", children: [
+        { id: "hudPlayerStats", children: [{ id: "HudStatBlock", visible: true,
+            computedMeasurements: { actualLayoutWidth: 0, actualLayoutHeight: 0 } }] },
+        { id: "hudActivePlayerStats", children: [{ id: "StatList", visible: true,
+            computedMeasurements: { actualLayoutWidth: 180, actualLayoutHeight: 60,
+                actualPanelOffsetX: -12.5, actualPanelOffsetY: 24 } }] },
+    ] } };
+    const hud = createProfiledHud({ capturedTree: captured, warmupMs: 0 });
+    const legacy = hud.doc.root.FindChild("hudPlayerStats");
+    const active = hud.doc.root.FindChild("hudActivePlayerStats");
+    assert.ok(hud.sandbox.global.QOL.presentation.chooseStatsPanel(legacy, active) === active);
+    assert.equal(active.FindChild("StatList").actualxoffset, -12.5);
+    assert.equal(active.FindChild("StatList").actualyoffset, 24);
+    assert.equal(hud.tree.fidelity.missingMeasurements, 4);
+});
+
+test("absent and failed measurements remain zero on reimport without becoming measured evidence", () => {
+    const doc = new Document(new Clock());
+    const measured = { domTree: { id: "Hud", computedMeasurements: {
+        actualLayoutWidth: 800, actualLayoutHeight: 600, actualPanelOffsetX: -8, actualPanelOffsetY: 9,
+    } } };
+    const first = buildCapturedHud(doc, measured);
+    assert.equal(doc.root.actuallayoutwidth, 800);
+    assert.equal(first.fidelity.missingMeasurements, 0);
+    assert.equal(first.notes.some(n => n.includes("lack some captured measurements")), false);
+    const second = buildCapturedHud(doc, { domTree: { id: "Hud", computedMeasurements: {
+        actualLayoutWidth: null, actualLayoutHeight: 0,
+    } } });
+    assert.deepEqual([doc.root.actuallayoutwidth, doc.root.actuallayoutheight,
+        doc.root.actualxoffset, doc.root.actualyoffset], [0, 0, 0, 0]);
+    assert.equal(second.fidelity.missingMeasurements, 1);
+    assert.ok(second.notes.some(n => n.includes("lack some captured measurements")));
+    assert.equal(inspectCapture(nativeCapture()).fidelity.missingMeasurements, 5);
+});
+
+test("malformed measurement containers and nonnumeric readings cannot enter replay", () => {
+    for (const computedMeasurements of [null, [], "180px", { actualLayoutWidth: "180" },
+        { actualLayoutHeight: false }, { actualPanelOffsetX: Infinity }, { actualPanelOffsetY: NaN }]) {
+        assert.throws(() => inspectCapture({ domTree: { id: "Hud", computedMeasurements } }), /measurement/);
+    }
+});
+
 test("AST dependency comparison includes classes, aliases, multiline and direct calls but ignores comments and distinguishes dynamic arguments", () => {
     const result = auditCapture(nativeCapture(), [{ file: "fixture.js", text: `
         // root.FindChildTraverse("CommentOnly");

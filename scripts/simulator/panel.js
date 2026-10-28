@@ -58,7 +58,7 @@ class Panel {
         this.enabled = true;
         this.style = {};
 
-        // Layout properties the mod reads. Static zeros: we do no layout.
+        // No layout engine: zeros unless a test or capture supplies scalar readings.
         this.actuallayoutwidth = 0;
         this.actuallayoutheight = 0;
         this.actualxoffset = 0;
