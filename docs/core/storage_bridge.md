@@ -32,19 +32,18 @@ An explicit `loadSettings()` captures a new baseline after marking the request a
 
 Settings are structurally validated and normalized through the side-effect-free parser before publication. Malformed input rejects without invoking the legacy parser's reset path. Accepted settings are serialized to a canonical envelope for publication, so the later HUD parser receives the same normalized configuration. The HUD revision poll owns ConfigAdapter and feature lifecycle updates.
 
-`saveSettings()` validates and normalizes a snapshot, marks user intent, publishes its canonical envelope to panel attributes, and sends it to CEF. A realm-local intent generation also invalidates older restores when every native attribute write is rejected; explicit load and clear use that same guard. Success requires a CEF acknowledgment; updating live attributes alone is not disk-save success. A failed disk save may leave the chosen settings active for the current session. Clearing disk settings also invalidates older pending restores, but does not itself reset live settings.
+`saveSettings()` validates and normalizes a snapshot, marks user intent, publishes its canonical envelope to panel attributes, and sends it to CEF. In the settings realm, the personal-presets owner saves the captured profile and updates the startup slot only if that profile owns it or no startup profile has been established. Other realms save the startup slot directly. A realm-local intent generation also invalidates older restores when every native attribute write is rejected; explicit load and clear use that same guard. Success requires a CEF acknowledgment; updating live attributes alone is not disk-save success. A failed disk save may leave the chosen settings active for the current session. Clearing disk settings also invalidates older pending restores, but does not itself reset live settings.
 
-After an acknowledged main or startup save, the settings realm notifies the
-personal-presets owner with the canonical snapshot through
-`QOL.ui.presets.onDefaultSaved(raw, mainSave, saveTarget)`. Before writing,
-Main Save captures the loaded profile name and transient identity revision through
-`getSaveTarget()` and later passes
-true so the owner can create/update that profile. Startup selection and clearing
-pass false. The bridge awaits this operation before completing its high-level
-callback. Failed main writes do not notify it. A personal-profile write error is
-logged and rejects Main Save so the UI cannot claim that the complete save
-succeeded. The already-acknowledged main slot remains available for recovery;
-this is a partial save, not a rollback. Collection and selection persistence are described in
+Before writing, Main Save captures the loaded profile name and transient identity
+revision through `QOL.ui.presets.getSaveTarget()`. It delegates the canonical
+snapshot to `savePersonalSettings(raw, saveTarget)`, which serializes the profile
+write and any applicable startup-slot write with personal-preset mutations.
+Startup selection and clearing notify `onDefaultSaved(raw, false)` after their
+storage acknowledgment. The bridge awaits the owner before completing its
+high-level callback. A personal-profile write error rejects Main Save so the UI
+cannot claim that the complete save succeeded. If a startup-slot write was
+already acknowledged, that slot remains available for recovery; this is a partial
+save, not a rollback. Collection and selection persistence are described in
 [personal presets](../PRESET_BINDINGS.md#personal-presets).
 
 ## Interface
@@ -53,11 +52,14 @@ The API is available as `QOL.core.storageBridge`, `QOL.core.storage`, and `QOLSt
 
 - `init(parent, options)`, `isReady()`, `getPanel()`, `enableAutoload(flag)` manage connection and startup restore.
 - `save(key, value, callback)`, `load(key, callback)`, `remove(key, callback)` are low-level key/value transport operations returning Promises.
-- `saveSettings(configOrRaw, callback)` writes the validated configuration under `qollock_settings`.
+- `saveSettings(configOrRaw, callback)` saves the validated configuration to the
+  current personal profile in the settings realm, preserving another profile's
+  startup selection; without that owner it writes `qollock_settings` directly.
 - `saveStartupSettings(configOrRaw, callback)` writes the same validated startup slot
   without publishing or changing live settings. Like Save, it invalidates older
   pending restores and reports success only after CEF acknowledgment. The existing
-  startup restore reads this slot; a later save replaces its contents.
+  startup restore reads this slot. Later saves of its owning profile update its
+  contents; saving another personal profile preserves it.
 - `loadSettings(callback)` restores settings subject to the captured change stamp.
 - `clearSettings(callback)` removes `qollock_settings` from CEF storage.
 

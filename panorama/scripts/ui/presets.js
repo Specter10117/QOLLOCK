@@ -152,7 +152,7 @@
         return entries.sort((a, b) => compareLabels(a.name, b.name));
     }, true);
 
-    const captureOriginalPreset = (raw, generation, migration, epoch = originalCaptureEpoch, saveTarget = null) => serializePersonalWrite(async () => {
+    const captureOriginalPresetOperation = async (raw, generation, migration, epoch, saveTarget, persist = false) => {
         const state = await readPersonalState();
         const entries = await readPersonalPresets();
         if (epoch !== originalCaptureEpoch || generation !== savedDefaultGeneration) return entries;
@@ -175,11 +175,20 @@
                 entries.push(entry);
             }
         }
+        let startupSaved = true;
+        if (persist) {
+            startupSaved = !state?.startupName || state.startupName === entry.name;
+            if (startupSaved) {
+                await personalStorage().save("qollock_settings", raw);
+            }
+            if (epoch !== originalCaptureEpoch || generation !== savedDefaultGeneration) return entries;
+            if (startupSaved) savedDefaultConfig = Q.parseStoredConfig(raw);
+        }
         // Footer Save owns the selected profile; migration only recovers an unrepresented main save.
         entry.raw = raw;
         await personalStorage().save(PERSONAL_PRESETS_KEY, JSON.stringify(entries));
         await savePersonalState({
-            startupName: generation === savedDefaultGeneration ? entry.name : (state?.startupName || ""),
+            startupName: startupSaved && generation === savedDefaultGeneration ? entry.name : (state?.startupName || ""),
             originalName: entries.some(item => item.name === state?.originalName) ? state.originalName : entry.name
         });
         entries.sort((a, b) => compareLabels(a.name, b.name));
@@ -188,7 +197,20 @@
             personalView?.replace(entries);
         }
         return entries;
-    });
+    };
+    const captureOriginalPreset = (raw, generation, migration, epoch = originalCaptureEpoch, saveTarget = null) =>
+        serializePersonalWrite(() => captureOriginalPresetOperation(raw, generation, migration, epoch, saveTarget));
+
+    // Serialize profile saves with startup selection so an ordinary Save cannot
+    // replace the slot owned by another profile, including while CEF is waiting.
+    const savePersonalSettings = (raw, saveTarget = getSaveTarget()) => {
+        const epoch = originalCaptureEpoch;
+        return serializePersonalWrite(async () => {
+            const generation = ++savedDefaultGeneration;
+            await captureOriginalPresetOperation(raw, generation, false, epoch, saveTarget, true);
+            personalView?.refresh();
+        });
+    };
 
     const savePersonalStartup = entry => serializePersonalWrite(async () => {
         const generation = savedDefaultGeneration;
@@ -1046,6 +1068,7 @@
     // Export API on Q.ui.presets
     Q.ui.presets = {
         onDefaultSaved,
+        savePersonalSettings,
         getSaveTarget,
         readPersonalPresets,
         savePersonalPreset,

@@ -551,6 +551,98 @@ test("fresh install footer Save creates My config through the real CEF page befo
     assert.deepEqual(e.clock.errors, []);
 });
 
+test("saving another personal profile preserves startup until explicitly selected", async () => {
+    const e = loadSettings(), g = e.global, disk = new Map();
+    e.hud.sandbox.global.QOL.core.App.shutdown();
+    const drain = connectSavePage(e, disk);
+    g.currentTab = "HUD";
+    g.QOL.ui.window.buildUI();
+    g.QOL.ui.window.setOpen(true); e.clock.advance(500);
+    g.MOD_CONFIG.HEALTHBAR_TYPE = 1;
+    const save = async () => {
+        e.clock.advance(1500);
+        e.em.FindChildTraverse("FooterSaveBuildButton").activate();
+        await drain();
+        assert.equal(e.em.FindChildTraverse("FooterSaveBuildButton").FindChildTraverse("TabLabel").text, "SAVED");
+    };
+    await save();
+    const original = disk.get("qollock_settings");
+    g.QOL.ui.window.setActiveTabAndRefresh("Presets"); e.clock.advance(200); await drain();
+    e.em.FindChildTraverse("PersonalPresetName").text = "BoostyPreset";
+    e.em.FindChildTraverse("PersonalPresetSave").activate(); await drain();
+    g.MOD_CONFIG.HEALTHBAR_TYPE = 2;
+    g.SaveAndSync();
+    await save();
+    assert.equal(disk.get("qollock_settings"), original, "Save of another profile must preserve the startup slot");
+    assert.equal(JSON.parse(disk.get("qollock_personal_presets_state")).startupName, "My config");
+    let entries = JSON.parse(disk.get("qollock_personal_presets"));
+    assert.equal(g.QOL.parseStoredConfig(entries.find(entry => entry.name === "BoostyPreset").raw).HEALTHBAR_TYPE, 2);
+    assert.equal(g.QOL.parseStoredConfig(entries.find(entry => entry.name === "My config").raw).HEALTHBAR_TYPE, 1);
+    g.MOD_CONFIG.AUTO_SAVE_CHANGES = 1;
+    g.MOD_CONFIG.SOULS_X_OFFSET = 123;
+    g.SaveAndSync(); e.clock.advance(700); await drain();
+    assert.equal(disk.get("qollock_settings"), original, "Auto-Save must also preserve another profile's startup slot");
+    entries = JSON.parse(disk.get("qollock_personal_presets"));
+    assert.equal(g.QOL.parseStoredConfig(entries.find(entry => entry.name === "BoostyPreset").raw).SOULS_X_OFFSET, 123);
+    const restarted = setup(disk);
+    restarted.p.renderPresetsTab(restarted.list); await flush();
+    const badges = restarted.list.FindChildrenWithClassTraverse("PersonalPresetStartupBadge");
+    assert.deepEqual(badges.map(badge => badge.visible), [false, true]);
+
+    e.em.FindChildrenWithClassTraverse("PersonalPresetMore")[0].activate();
+    activeMenuAction(e, "PersonalPresetStartup").activate(); await drain();
+    assert.equal(JSON.parse(disk.get("qollock_personal_presets_state")).startupName, "BoostyPreset");
+    assert.equal(g.QOL.parseStoredConfig(disk.get("qollock_settings")).HEALTHBAR_TYPE, 2);
+    g.MOD_CONFIG.HEALTHBAR_TYPE = 3;
+    g.SaveAndSync();
+    await save();
+    assert.equal(JSON.parse(disk.get("qollock_personal_presets_state")).startupName, "BoostyPreset");
+    assert.equal(g.QOL.parseStoredConfig(disk.get("qollock_settings")).HEALTHBAR_TYPE, 3);
+    entries = JSON.parse(disk.get("qollock_personal_presets"));
+    assert.equal(g.QOL.parseStoredConfig(entries.find(entry => entry.name === "BoostyPreset").raw).HEALTHBAR_TYPE, 3);
+    assert.deepEqual(e.doc.eventErrors, []);
+    assert.deepEqual(e.clock.errors, []);
+});
+
+test("profile saves serialize with startup selection and reject failed collection writes", async () => {
+    const e = setup(), g = e.global;
+    await e.p.onDefaultSaved(g.WrapConfigForStorage(g.MOD_CONFIG));
+    await e.p.savePersonalPreset("BoostyPreset", g.MOD_CONFIG);
+    const original = g.WrapConfigForStorage(g.MOD_CONFIG);
+    e.disk.set("qollock_settings", original);
+    let acknowledge;
+    e.Q.core.storageBridge.saveStartupSettings = raw => new Promise(resolve => {
+        acknowledge = () => { e.disk.set("qollock_settings", raw); resolve(); };
+    });
+    let preview;
+    g.OpenConfigDiffPreviewModal = options => { preview = options; };
+    e.p.renderPresetsTab(e.list); await flush();
+    e.list.FindChildrenWithClassTraverse("PersonalPresetLoad")[0].activate(); preview.onApply();
+    const target = e.p.getSaveTarget();
+    e.list.FindChildrenWithClassTraverse("PersonalPresetMore")[0].activate();
+    activeMenuAction(e, "PersonalPresetStartup").activate(); await flush();
+    g.MOD_CONFIG.HEALTHBAR_TYPE = 2;
+    const saving = e.p.savePersonalSettings(g.WrapConfigForStorage(g.MOD_CONFIG), target);
+    acknowledge(); await flush(); await saving;
+    assert.equal(JSON.parse(e.disk.get("qollock_personal_presets_state")).startupName, "BoostyPreset");
+    assert.equal(e.Q.parseStoredConfig(e.disk.get("qollock_settings")).HEALTHBAR_TYPE, 2);
+
+    const startup = e.disk.get("qollock_settings");
+    e.list.FindChildrenWithClassTraverse("PersonalPresetLoad")[1].activate(); preview.onApply();
+    const originalTarget = e.p.getSaveTarget();
+    const save = e.Q.core.storageBridge.save;
+    e.Q.core.storageBridge.save = async (key, value) => {
+        if (key === "qollock_personal_presets") throw Error("quota");
+        await save(key, value);
+    };
+    g.MOD_CONFIG.HEALTHBAR_TYPE = 3;
+    await assert.rejects(e.p.savePersonalSettings(g.WrapConfigForStorage(g.MOD_CONFIG), originalTarget), /quota/);
+    assert.equal(e.disk.get("qollock_settings"), startup);
+    assert.equal(JSON.parse(e.disk.get("qollock_personal_presets_state")).startupName, "BoostyPreset");
+    assert.deepEqual(e.doc.eventErrors, []);
+    assert.deepEqual(e.clock.errors, []);
+});
+
 test("footer cannot report SAVED when its personal preset write fails", async () => {
     const e = loadSettings(), g = e.global, disk = new Map();
     e.hud.sandbox.global.QOL.core.App.shutdown();

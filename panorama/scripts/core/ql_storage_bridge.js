@@ -651,9 +651,13 @@
             return _withCallback(Promise.reject(err), callback);
         }
         const promise = (async () => {
-            await save(SETTINGS_STORAGE_KEY, rawToSave);
+            if (publish && Q.ui?.presets?.savePersonalSettings) {
+                await Q.ui.presets.savePersonalSettings(rawToSave, saveTarget);
+            } else {
+                await save(SETTINGS_STORAGE_KEY, rawToSave);
+                await _refreshDefaultPreset(rawToSave, publish, saveTarget);
+            }
             _log(`${publish ? "saveSettings" : "saveStartupSettings"} succeeded (${rawToSave.length} characters).`);
-            await _refreshDefaultPreset(rawToSave, publish, saveTarget);
             return { ok: true, timestamp: Date.now() };
         })();
         return _withCallback(promise, callback);

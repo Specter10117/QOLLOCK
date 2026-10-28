@@ -82,6 +82,18 @@ async function finishPersonalCapture(env, protocol, start) {
     }
 }
 
+async function readSaveProfile(protocol, start = 0) {
+    // Profile ownership must be read before deciding whether to write startup.
+    let index = start;
+    await flush();
+    while (protocol.requests[index]?.f === "load") {
+        protocol.respond(protocol.requests[index++], { ok: true, data: null });
+        await flush();
+    }
+    assert.equal(protocol.requests[index]?.f, "saveChunk");
+    return index;
+}
+
 test("Apply stays open until every real CEF save chunk is acknowledged", async () => {
     const env = setup();
     const protocol = cef(env);
@@ -91,9 +103,10 @@ test("Apply stays open until every real CEF save chunk is acknowledged", async (
     assert.equal(env.global.QOL.ui.customize.isRunning(), true);
     assert.equal(env.em.FindChildTraverse("QOLCustomizeApply").enabled, false);
     assert.equal(env.global.MOD_CONFIG.SOULS_X_OFFSET, 125);
+    const start = await readSaveProfile(protocol);
     const chunks = [];
     let sequence = 0;
-    for (let index = 0; index < protocol.requests.length; index++) {
+    for (let index = start; index < protocol.requests.length; index++) {
         const request = protocol.requests[index];
         assert.equal(request.f, "saveChunk");
         chunks.push(Buffer.from(request.a[3], "base64").toString("utf8"));
@@ -116,16 +129,19 @@ test("failed CEF save keeps applied settings and supports Retry save without rea
     env.global.QOL.ui.customize.start();
     type(env, "SOULS_X_OFFSET", 75);
     activate(env, "QOLCustomizeApply");
-    protocol.respond(protocol.requests[0], { ok: false, error: "test storage unavailable" });
-    for (let i = 0; i < 6; i++) await Promise.resolve();
+    const start = await readSaveProfile(protocol);
+    protocol.respond(protocol.requests[start], { ok: false, error: "test storage unavailable" });
+    await flush();
     const apply = env.em.FindChildTraverse("QOLCustomizeApply");
     assert.equal(env.global.QOL.ui.customize.isRunning(), true);
     assert.equal(apply.enabled, true);
     assert.match(apply.GetChild(0).text, /Retry save/);
     assert.equal(env.global.MOD_CONFIG.SOULS_X_OFFSET, 75);
+    const retryStart = protocol.requests.length;
     activate(env, "QOLCustomizeApply");
+    const retryChunks = await readSaveProfile(protocol, retryStart);
     let sequence = 0;
-    for (let index = 1; index < protocol.requests.length; index++) {
+    for (let index = retryChunks; index < protocol.requests.length; index++) {
         const request = protocol.requests[index];
         protocol.respond(request, { ok: true, savePartAck: request.a[1], _seq: ++sequence });
     }

@@ -82,6 +82,10 @@ On a fresh install, the first footer Save creates My config even if Presets has
 never been opened. Later Saves update the loaded personal profile, falling back
 to the main/original profile when no personal profile was explicitly loaded.
 The bridge captures the target identity before its asynchronous disk write.
+Save and Auto-Save update that profile without changing the startup selection.
+They update the startup slot only when saving its selected profile, or when no
+startup profile has been established yet. Saving another profile leaves both
+the startup snapshot and its badge unchanged; Use at Startup selects it explicitly.
 Missing entries referenced by old metadata are repaired instead of preventing
 creation. Existing names are preserved; collisions receive a numeric suffix.
 Opening Presets after upgrading also recovers an existing main save without
