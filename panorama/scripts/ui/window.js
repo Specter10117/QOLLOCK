@@ -1146,6 +1146,7 @@
         if (!ignoreGuard && now < guardUntil) return;
         Q.ui.visualCheck?.onMenuClosed();
         Q.ui.customize?.onMenuClosed();
+        Q.ui.presetPreview?.stop(false);
 
         const ctx = (typeof $.GetContextPanel === "function") ? $.GetContextPanel() : null;
         const win = (ctx && ctx.FindChildTraverse ? ctx.FindChildTraverse("SettingsWindow") : null) || findShell();
@@ -1173,9 +1174,10 @@
     const handleCustomizeCancel = () => {
         const now = getNowMs();
         if (now < _cancelConsumedUntilMs) return true;
-        if (!Q.ui.customize?.isRunning()) return false;
+        if (!Q.ui.customize?.isRunning() && !Q.ui.presetPreview?.isRunning()) return false;
         _cancelConsumedUntilMs = now + 100;
-        Q.ui.customize.stop();
+        if (Q.ui.presetPreview?.isRunning()) Q.ui.presetPreview.stop();
+        else Q.ui.customize.stop();
         return true;
     };
 
@@ -2222,7 +2224,7 @@
         const bg = root?.FindChildTraverse ? root.FindChildTraverse("EscapeBackground") : null;
         if (bg && isAlive(bg)) {
             bg.SetPanelEvent("onactivate", () => {
-                if (Q.ui.customize?.isRunning()) return;
+                if (Q.ui.customize?.isRunning() || Q.ui.presetPreview?.isRunning()) return;
                 if (isOpen()) {
                     setOpen(false);
                 } else {
@@ -2271,6 +2273,7 @@
                 if (now < guardUntil) return;
                 Q.ui.visualCheck?.onMenuClosed();
                 Q.ui.customize?.onMenuClosed();
+                Q.ui.presetPreview?.stop(false);
                 const ctx = (typeof $.GetContextPanel === "function") ? $.GetContextPanel() : null;
                 const win = (ctx && ctx.FindChildTraverse ? ctx.FindChildTraverse("SettingsWindow") : null) || findShell();
                 if (win) win.RemoveClass("Visible");

@@ -36,6 +36,22 @@ Community entries are ordered by displayed name, case-insensitively. Base
 presets retain their separate first row. An entry without a supplied configuration
 is a non-applying tile with an explanatory tooltip, not a substitute configuration.
 
+Base, community and personal preset confirmations expose Preview preset. In a
+gameplay HUD this hides settings and shows the temporary configuration with a
+compact Apply/Back panel. Back and Escape return to the diff; closing settings,
+HUD replacement or a conflicting canonical edit withdraw the preview. Without a
+gameplay HUD the diff remains usable and explains the match/sandbox requirement.
+Other visual editors cannot run concurrently.
+
+`ui/preset_preview.js` owns the session and uses `core/ql_customize_preview.js`'s
+leased transport with an explicit preset kind, validated against the current
+settings catalog. Ordinary Customize drafts retain their presentation whitelist.
+Preview does not publish canonical settings or write preset/startup storage.
+Apply waits for HUD configuration delivery and uses the existing preset callback;
+this acknowledgment establishes configuration delivery, not native rendering.
+Conditional HUD content still requires its native context, and separate native
+UI script contexts do not acquire this temporary configuration.
+
 ## Personal presets
 
 The Presets tab has a separate personal section below the community grid.

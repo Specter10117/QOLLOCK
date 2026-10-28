@@ -135,7 +135,7 @@
     }
 
     function start(onStop) {
-        if (session) return false;
+        if (session || Q.ui.customize?.isRunning() || Q.ui.presetPreview?.isRunning()) return false;
         const context = $.GetContextPanel();
         const root = persistence.getUIRoot();
         const hud = persistence.resolveHudPanel(root);

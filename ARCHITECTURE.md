@@ -461,6 +461,7 @@ load the HUD FeatureRegistry: a new manifest alone cannot render settings there.
 | Gameplay tabs | `ui/gameplay_tabs.js` |
 | General Settings / Config | `ui/config_tab.js` |
 | Presets | `ui/presets.js` |
+| Live preset preview | `ui/preset_preview.js`, shared leased transport in `core/ql_customize_preview.js` |
 | Support | `ui/support.js` |
 | Audio | `ui/audio.js` |
 | Console / Arcade | `ui/console_tab.js`, `ui/arcade_tab.js` |

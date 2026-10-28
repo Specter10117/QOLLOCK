@@ -679,6 +679,8 @@
                                     title: "Settings Changes",
                                     summary: `Changes: ${diffRows.length}`,
                                     rows: diffRows,
+                                    previewConfig: candidate,
+                                    previewName: entry.label,
                                     applyText: "Confirm",
                                     cancelText: "Cancel",
                                     onApply: () => {
@@ -810,6 +812,7 @@
             globalThis.OpenConfigDiffPreviewModal({
                 title: localize("Settings Changes", true), details: name,
                 rows: globalThis.BuildConfigDiffRows(globalThis.MOD_CONFIG, candidate),
+                previewConfig: candidate, previewName: name,
                 applyText: localize("Confirm", true), cancelText: localize("Cancel", true),
                 onApply: () => {
                     if (!current() || !applyPresetSnapshot(config, config.ACTIVE_PRESET_NAME)) return false;

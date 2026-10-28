@@ -59,6 +59,7 @@
 
     const closeModal = (overlay) => {
         if (!isAlive(overlay)) return;
+        if (Q.ui.presetPreview?.owns(overlay)) Q.ui.presetPreview.stop(false);
         const overlayId = String(overlay.id || "");
         const shouldReleaseSettingsFocus = (overlayId === "ConfigDiffPreviewModalOverlay");
 
@@ -281,7 +282,7 @@
         prepareSettingsModalOpen();
 
         const existing = rootPanel.FindChildTraverse("ConfigDiffPreviewModalOverlay");
-        if (isAlive(existing)) existing.DeleteAsync(0);
+        if (isAlive(existing)) closeModal(existing);
 
         const overlay = $.CreatePanel("Panel", rootPanel, "ConfigDiffPreviewModalOverlay");
         if (!overlay) return;
@@ -350,6 +351,27 @@
                 detailsLabel.AddClass("ConfigDiffDetails");
                 detailsLabel.text = details;
             }
+        }
+
+        const apply = () => {
+            if (typeof opts.onApply === "function" && opts.onApply() === false) return false;
+            closeModal(overlay);
+            return true;
+        };
+        if (opts.previewConfig) {
+            const previewBtn = $.CreatePanel("Button", modalContainer, "ConfigDiffPreviewBtn");
+            previewBtn.AddClass("ConfigDiffPreviewBtn");
+            previewBtn.AddClass("QOLUnifiedModalPrimary");
+            const caption = $.CreatePanel("Label", previewBtn, "");
+            caption.text = localize("Preview preset", true);
+            const hint = $.CreatePanel("Label", modalContainer, "ConfigDiffPreviewHint");
+            hint.AddClass("ConfigDiffPreviewHint");
+            hint.text = localize("Preview on your HUD without saving changes.", true);
+            previewBtn.SetPanelEvent("onactivate", () => {
+                if (!Q.ui.presetPreview.start({ modal: overlay, config: opts.previewConfig, name: opts.previewName || "", onApply: apply })) {
+                    hint.text = localize("Live preview is available in a match or sandbox. Close other visual tools and try again.", true);
+                }
+            });
         }
 
         const list = $.CreatePanel("Panel", modalContainer, "ConfigDiffList");
@@ -465,17 +487,8 @@
                 const applyLbl = $.CreatePanel("Label", applyBtn, "");
                 if (applyLbl) applyLbl.text = applyText;
                 applyBtn.SetPanelEvent("onactivate", () => {
-                    let shouldClose = true;
-                    if (typeof opts.onApply === "function") {
-                        try {
-                            shouldClose = opts.onApply() !== false;
-                        } catch {
-                            shouldClose = false;
-                        }
-                    }
-                    if (shouldClose) {
-                        closeModal(overlay);
-                    }
+                    try { apply(); }
+                    catch (error) { $.Msg("[QOLLock] Preset Apply: " + (error.message || error)); }
                 });
             }
         }

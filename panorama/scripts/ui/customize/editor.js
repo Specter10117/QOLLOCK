@@ -673,7 +673,7 @@
     }
     function start(onStop, options = {}) {
         lastError = "";
-        if (current || Q.ui.visualCheck?.isRunning()) return false;
+        if (current || Q.ui.visualCheck?.isRunning() || Q.ui.presetPreview?.isRunning()) return false;
         const element = options.elementId ? Q.presentation.elements.find(item => item.id === options.elementId) : null;
         if (options.elementId && !element) {
             recordError(new Error(localize("Unknown HUD element.")));

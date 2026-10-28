@@ -69,6 +69,9 @@
 		<include src="s2r://panorama/scripts/ui/drag.vjs_c" />
 		<include src="s2r://panorama/scripts/ui/window.vjs_c" />
 		<include src="s2r://panorama/scripts/ui/presets.vjs_c" />
+		<!-- ==== QOLLOCK: Live preset preview ==== -->
+		<include src="s2r://panorama/scripts/ui/preset_preview.vjs_c" />
+		<!-- ==== END QOLLOCK: Live preset preview ==== -->
 		<include src="s2r://panorama/scripts/ui/modal.vjs_c" />
 		<include src="s2r://panorama/scripts/ui/config_tab.vjs_c" />
 		<include src="s2r://panorama/scripts/ui/cloud_sync.vjs_c" />

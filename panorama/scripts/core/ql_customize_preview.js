@@ -20,9 +20,10 @@
         if (panels.length) visibilityOwner.apply(hud, {}, { QOLCustomizeLiveHud: true });
     }
 
-    function write(hud, draft, token, stamp, sample = "", gesture = false) {
+    function write(hud, draft, token, stamp, sample = "", gesture = false, kind = "") {
         if (!P.isAlive(hud)) return false;
-        const raw = JSON.stringify({ token, stamp, values: draft, ...(sample ? { sample } : {}), ...(gesture ? { gesture: true } : {}) });
+        const raw = JSON.stringify({ token, stamp, values: draft, ...(sample ? { sample } : {}), ...(gesture ? { gesture: true } : {}),
+            ...(kind ? { kind } : {}) });
         if (QOL_UTILS.SafeGetAttribute(hud, payloadAttr, "") !== raw) QOL_UTILS.SafeSetAttribute(hud, payloadAttr, raw);
         QOL_UTILS.SafeSetAttribute(hud, leaseAttr, Date.now() + 2500);
         return QOL_UTILS.SafeGetAttribute(hud, payloadAttr, "") === raw;
@@ -49,11 +50,13 @@
                 payload = JSON.parse(raw);
                 if (!payload.token || payload.stamp !== Q.core.persistence.getConfigChangeStamp(Q.core.persistence.getUIRoot())) raw = "";
                 if (payload.gesture !== undefined && typeof payload.gesture !== "boolean") raw = "";
+                if (payload.kind !== undefined && payload.kind !== "preset") raw = "";
                 if (!payload.values || typeof payload.values !== "object" || Array.isArray(payload.values)) raw = "";
                 if (payload.sample !== undefined && (typeof payload.sample !== "string" ||
                     !Q.presentation.elements.some(element => element.id === payload.sample))) raw = "";
                 if (raw) for (const [key, value] of Object.entries(payload.values)) {
-                    if (Q.presentation.normalize(key, value) !== value) { raw = ""; break; }
+                    const normalized = payload.kind === "preset" ? Q.settings.normalize(key, value) : Q.presentation.normalize(key, value);
+                    if (normalized === null || normalized !== value) { raw = ""; break; }
                 }
             } catch (_) { raw = ""; }
         }
@@ -139,7 +142,8 @@
             return next.sample === id && next.token === activeSample.token && next.stamp === activeSample.stamp;
         } catch (_) { return false; }
     }
-    Q.presentation.preview = { write, clear, consume, commit, reject, reset, selected, effective: canonical => activeConfig || canonical,
+    Q.presentation.preview = { write, writePreset: (hud, values, token, stamp) => write(hud, values, token, stamp, "", false, "preset"),
+        clear, consume, commit, reject, reset, selected, effective: canonical => activeConfig || canonical,
         ack: hud => QOL_UTILS.SafeGetAttribute(hud, ackAttr, ""),
         settled, interacting };
 })();

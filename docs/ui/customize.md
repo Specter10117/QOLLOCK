@@ -462,6 +462,10 @@ never transferred to a replacement HUD. Native command execution and ESC/shop
 coexistence require client verification after repack.
 
 `core/ql_customize_preview.js` carries a leased draft through HUD attributes.
+Preset preview shares this transport with its own session owner and an explicit
+preset payload kind validated against the current settings catalog. This does
+not expand the ordinary editor's presentation-field whitelist. See
+[preset behavior](../PRESET_BINDINGS.md).
 Selection is transient metadata in this same lease, independent of config and
 undo history. Runtime owners may keep a representative sample while selected:
 purchase notifications use the production purchase-row tree in their central
