@@ -6743,7 +6743,7 @@ DropDownMenu .QOLCustomizeDropDownItem:active
 	padding: 16px;
 	flow-children: down;
 }
-.QOLPresetPreviewTitle { width: 100%; font-size: 14px; color: #c7c2ba; text-align: center; }
+.QOLPresetPreviewTitle { width: 100%; font-size: 14px; color: #c7c2ba; text-align: center; vertical-align: center; }
 .QOLPresetPreviewName { width: 100%; font-size: 24px; font-weight: bold; color: #a3ffb7; text-align: center; text-overflow: ellipsis; }
 .QOLPresetPreviewStatus { width: 100%; font-size: 14px; color: #c7c2ba; text-align: center; margin: 4px 0px 12px; }
 .QOLPresetPreviewActions { width: 100%; height: fit-children; flow-children: right; }

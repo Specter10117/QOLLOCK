@@ -23,6 +23,7 @@
             catch (error) { $.Msg("[QOLLock][PresetPreview] cleanup: " + (error.message || error)); }
         };
         if (owner.timer !== null) cleanup(() => $.CancelScheduled(owner.timer));
+        cleanup(() => owner.chrome?.dispose());
         cleanup(() => Q.presentation.preview.clear(owner.hud, owner.token));
         for (const panel of owner.hidden) cleanup(() => { if (P.isAlive(panel)) panel.RemoveClass("QOLCustomizeHidden"); });
         for (const panel of owner.active) cleanup(() => { if (P.isAlive(panel)) panel.RemoveClass("QOLCustomizeActive"); });
@@ -43,6 +44,7 @@
             const text = localize(delivered ? "HUD settings updated" : "Updating HUD...");
             if (owner.status.text !== text) owner.status.text = text;
             if (owner.apply.enabled !== delivered) owner.apply.enabled = delivered;
+            owner.chrome.refresh();
             owner.timer = $.Schedule(0.2, () => watch(owner));
         } catch (error) {
             $.Msg("[QOLLock][PresetPreview] " + (error.message || error));
@@ -70,12 +72,19 @@
             owner.overlay.hittestchildren = true;
             owner.overlay.SetPanelEvent("onactivate", () => {});
             owner.overlay.SetPanelEvent("oncancel", () => Q.ui.window.handleCustomizeCancel());
+            const probe = P.create("Panel", owner.overlay, "QOLPresetPreviewUnitProbe");
+            if (!P.isAlive(probe)) throw new Error("Unable to create preset preview coordinate probe");
+            P.syncStyles(probe, { align: "left top", x: "100px", y: "100px", width: "1px", height: "1px" });
+            probe.hittest = false;
+            probe.hittestchildren = false;
+            owner.chrome = Q.ui.customizeChrome.create(owner.overlay, () => valid(owner), probe);
             const bar = P.create("Panel", owner.overlay, "QOLPresetPreviewBar");
             bar.AddClass("QOLPresetPreviewBar");
             bar.AddClass("QOLUnifiedModalSurface");
-            const title = P.create("Label", bar, "");
+            const header = owner.chrome.header(bar, "QOLPresetPreviewDrag", "Preset preview");
+            const title = header.GetChild(0);
+            title.RemoveClass("ModalTitle");
             title.AddClass("QOLPresetPreviewTitle");
-            title.text = localize("Preset preview");
             const name = P.create("Label", bar, "");
             name.AddClass("QOLPresetPreviewName");
             name.text = options.name;

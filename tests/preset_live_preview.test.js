@@ -2,6 +2,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const load = require("./load_settings_environment");
+const startDrag = require("./customize_drag_fixture");
 
 function setup() {
     const e = load();
@@ -225,5 +226,66 @@ test("partial preview construction failure retires panels and allows retry witho
     e.clock.advance(650);
     assert.equal(offset(e), 125);
     click(e, "QOLPresetPreviewBack");
+    assert.deepEqual(e.clock.errors, []);
+});
+
+test("preview toolbar header moves the whole panel, clamps to the viewport and leaves Back usable", () => {
+    const e = setup();
+    const before = JSON.stringify(e.global.MOD_CONFIG);
+    open(e);
+    const overlay = e.em.FindChildTraverse("QOLPresetPreview");
+    Object.assign(overlay, { actuallayoutwidth: 1920, actuallayoutheight: 1080, actualuiscale_x: 2, actualuiscale_y: 2 });
+    const bar = e.em.FindChildTraverse("QOLPresetPreviewBar");
+    Object.assign(bar, { actuallayoutwidth: 500, actuallayoutheight: 400, actualxoffset: 100, actualyoffset: 60 });
+    const handle = e.em.FindChildTraverse("QOLPresetPreviewDrag");
+    assert.ok(handle, "the toolbar title is a native drag handle");
+    const proxy = startDrag(e, handle);
+    assert.ok(proxy);
+    proxy.actualxoffset += 200; proxy.actualyoffset += 100;
+    e.clock.advance(50);
+    assert.equal(bar.style.x, "150px");
+    assert.equal(bar.style.y, "80px");
+    proxy.actualxoffset += 10000; proxy.actualyoffset += 10000;
+    startDrag.end(e, handle, proxy);
+    e.clock.advance(1);
+    assert.equal(bar.style.x, "710px");
+    assert.equal(bar.style.y, "340px");
+    assert.equal(proxy.IsValid(), false);
+    bar.actuallayoutwidth = 1000; bar.actuallayoutheight = 600;
+    e.clock.advance(300);
+    assert.equal(bar.style.x, "460px");
+    assert.equal(bar.style.y, "240px");
+    assert.equal(JSON.stringify(e.global.MOD_CONFIG), before, "moving preview chrome never edits the HUD config");
+    click(e, "QOLPresetPreviewBack");
+    e.clock.advance(650);
+    assert.equal(offset(e), 0);
+    assert.equal(e.global.QOL.ui.presetPreview.isRunning(), false);
+    assert.deepEqual(e.clock.errors, []);
+});
+
+test("closing a preview mid-drag retires its proxy and the next session starts at its default position", () => {
+    const e = setup();
+    open(e);
+    Object.assign(e.em.FindChildTraverse("QOLPresetPreview"), { actuallayoutwidth: 1920, actuallayoutheight: 1080 });
+    const bar = e.em.FindChildTraverse("QOLPresetPreviewBar");
+    Object.assign(bar, { actuallayoutwidth: 420, actuallayoutheight: 160, actualxoffset: 100, actualyoffset: 60 });
+    const handle = e.em.FindChildTraverse("QOLPresetPreviewDrag");
+    assert.ok(handle);
+    const proxy = startDrag(e, handle);
+    assert.ok(proxy);
+    e.global.QOL.ui.window.forceCloseModSettings(true);
+    e.clock.advance(650);
+    assert.equal(proxy.IsValid(), false);
+    assert.equal(bar.IsValid(), false);
+    assert.equal(offset(e), 0);
+    e.global.QOL.ui.window.setOpen(true);
+    e.clock.advance(300);
+    open(e);
+    const next = e.em.FindChildTraverse("QOLPresetPreviewBar");
+    assert.equal(next.style.x, undefined);
+    assert.equal(next.style.y, undefined);
+    e.global.QOL.ui.presetPreview.stop();
+    e.clock.advance(650);
+    assert.deepEqual(e.doc.eventErrors, []);
     assert.deepEqual(e.clock.errors, []);
 });

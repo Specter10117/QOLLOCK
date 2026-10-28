@@ -41,7 +41,8 @@ gameplay HUD this hides settings and shows the temporary configuration with a
 compact Apply/Back panel. Back and Escape return to the diff; closing settings,
 HUD replacement or a conflicting canonical edit withdraw the preview. Without a
 gameplay HUD the diff remains usable and explains the match/sandbox requirement.
-Other visual editors cannot run concurrently.
+Other visual editors cannot run concurrently. Drag the panel's heading to move it
+within the screen; its position lasts only for the current preview session.
 
 `ui/preset_preview.js` owns the session and uses `core/ql_customize_preview.js`'s
 leased transport with an explicit preset kind, validated against the current
