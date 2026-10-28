@@ -20,14 +20,23 @@ Heading samples, motion history and presentation signatures belong to the
 feature instance. A replacement renderer, local-player image or overlay parent
 starts a new binding generation. Speed-only mode still samples the native
 player position; flipping does not require an available heading image. Native
-rotation is untouched until Spinny Mode owns it, and partial layout/rotation
+rotation is untouched until Flip or Spinny Mode owns it, and partial layout/rotation
 writes remain retryable. The HUD root projector owns only the related classes,
 not another compass/speed visibility writer.
+Static Flip adds a half-turn through `pre-transform-rotate2d`, leaving the native
+team transform intact. Renderer CSS compensates marker and reference-label
+orientation without applying a second map half-turn. The native-style owner
+reasserts overwritten rotation and retries retirement after disable/replacement.
+Tunnel and objective-timer orientation rules load in the HUD stylesheet because
+those overlays are viewport children outside the native renderer context.
 
 Hideout gates the entire tick, including minimap discovery. Entry hides owned
 overlays, clears rotation/flip overrides through cached handles and discards
 heading history. Idle polling must avoid searching for missing minimap panels;
-returning to a match rediscovers current sources. Offline operation counts do
+returning to a match rediscovers current sources. A valid Customize selection of
+a retained minimap permits map rotation/flip preview in hideout, while compass
+and speed readouts remain hidden. Withdrawing that preview restores the idle
+hideout gate. Offline operation counts do
 not establish native frame-time improvement.
 
 Geometry and enable choices are derived in settings hooks; live heading and

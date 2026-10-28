@@ -73,6 +73,58 @@ test("Customize exact Size previews and applies to the fixed-icon renderer in Ba
     }
 });
 
+test("both icon modes size the square viewport without scaling its non-square native host", () => {
+    for (const mode of ["base", "alt", "tab"]) for (const fixed of [0, 1]) {
+        const env = setup({ mode, fixed });
+        const key = mode === "base" ? "MINIMAP_SMALL_SIZE" : "MINIMAP_LARGE_SIZE_" + mode.toUpperCase();
+        for (const size of [400, 650, 1000]) {
+            env.store.set("ql_minimap_runtime", key, size);
+            assert.equal(env.host.style.uiScale, "100%", "a tall HUD host must never be squished by screen height");
+            assert.equal(env.host.style.overflow, "noclip", "the square can grow beyond the native host");
+            assert.equal(env.host.style.width, undefined);
+            assert.equal(env.host.style.height, undefined);
+            assert.equal(env.viewport.style.uiScale, fixed ? "100%" : size / 4 + "%");
+            assert.equal(env.viewport.style.width, fixed ? size + "px" : undefined);
+            assert.equal(env.viewport.style.height, fixed ? size + "px" : undefined);
+            assert.equal(env.viewport.style.align, mode === "base" ? "right bottom" : "center center");
+            for (const edge of ["Top", "Right", "Bottom", "Left"]) {
+                assert.equal(env.viewport.style["margin" + edge], "0px", "native inset must not shift the scaling anchor");
+            }
+        }
+        env.clean();
+    }
+});
+
+test("Customize previews Flip while the retained native minimap is in hideout and releases it on cancel", () => {
+    for (const hideoutClass of ["InHideout", "connectedToHideout"]) {
+        const env = setup();
+        env.hud.root.AddClass(hideoutClass);
+        env.global.QOL.ui.customize.start(null, { elementId: "minimap" });
+        env.click("QOLCustomize_MINIMAP_FLIP"); env.clock.advance(1200);
+        assert.equal(env.renderer.BHasClass("qol_minimap_flip_active"), true);
+        assert.equal(env.renderer.style.preTransformRotate2d, "180.00deg");
+        assert.equal(env.hud.root.FindChildTraverse("QOLCompassRoot"), null, "map preview must not show the compass in hideout");
+        env.click("QOLCustomizeCancel"); env.clock.advance(1200);
+        assert.equal(env.renderer.BHasClass("qol_minimap_flip_active"), false);
+        assert.equal(env.renderer.style.preTransformRotate2d, undefined);
+        assert.equal(env.global.MOD_CONFIG.MINIMAP_FLIP, 0);
+        env.clean();
+    }
+});
+
+test("Customize Flip owns an additive half-turn without replacing the native team transform", () => {
+    const env = setup();
+    env.renderer.style.transform = "scaleX(-1) scaleY(-1)";
+    env.global.QOL.ui.customize.start(null, { elementId: "minimap" });
+    env.click("QOLCustomize_MINIMAP_FLIP"); env.clock.advance(1200);
+    assert.equal(env.renderer.style.preTransformRotate2d, "180.00deg");
+    assert.equal(env.renderer.style.transform, "scaleX(-1) scaleY(-1)");
+    env.click("QOLCustomize_MINIMAP_FLIP"); env.clock.advance(1200);
+    assert.equal(env.renderer.style.preTransformRotate2d, undefined);
+    assert.equal(env.renderer.style.transform, "scaleX(-1) scaleY(-1)");
+    env.clean();
+});
+
 test("fixed-icon corner scaling uses the existing size keys and completes after native relayout at both densities", () => {
     for (const density of [1, 2]) for (const mode of ["base", "alt", "tab"]) {
         const env = setup({ mode, density });
@@ -102,13 +154,14 @@ test("fixed-icon corner scaling uses the existing size keys and completes after 
     }
 });
 
-test("fixed-icon toggle returns to native CSS and whole-map scale without disturbing saved view sizes", () => {
+test("fixed-icon toggle returns to native renderer CSS and viewport scale without disturbing saved view sizes", () => {
     const env = setup();
     const update = values => { Object.assign(env.global.MOD_CONFIG, values); env.global.SaveAndSync(); env.clock.advance(1200); };
     update({ MINIMAP_FIXED_ICON_SIZE: 0, MINIMAP_SMALL_SIZE: 651 });
     assert.equal(env.renderer.BHasClass(fixedClass), false);
     assert.equal(env.viewport.style.width, undefined); assert.equal(env.viewport.style.height, undefined);
-    assert.equal(env.host.style.uiScale, "162.75%");
+    assert.equal(env.host.style.uiScale, "100%");
+    assert.equal(env.viewport.style.uiScale, "162.75%");
     update({ MINIMAP_FIXED_ICON_SIZE: 1 });
     assert.equal(env.viewport.style.width, "651px"); assert.equal(env.renderer.BHasClass(fixedClass), true);
     env.hud.root.AddClass("gDetailView"); env.clock.advance(600);
@@ -138,12 +191,12 @@ test("Customize fixed-icon toggles preserve edited size and offsets while releas
             assert.equal(env.find("QOLCustomize_" + key).text, String(value));
         }
         assert.equal(Number(env.store.get("ql_minimap_runtime", "MINIMAP_FIXED_ICON_SIZE")), fixed);
-        assert.equal(env.host.style.uiScale, fixed ? "100%" : "225%");
+        assert.equal(env.host.style.uiScale, "100%");
+        assert.equal(env.viewport.style.uiScale, fixed ? "100%" : "225%");
         assert.equal(env.viewport.style.width, fixed ? "900px" : undefined);
         assert.equal(env.host.style.marginRight, "-90px");
         assert.equal(env.host.style.marginBottom, "-40px");
-        assert.equal(env.host.style.overflow, fixed ? "noclip" : undefined,
-            "the fixed native host must not squish or clip the enlarged viewport");
+        assert.equal(env.host.style.overflow, "noclip", "neither mode may squish the enlarged viewport");
         assert.equal(env.host.style.width, undefined);
         assert.equal(env.host.style.height, undefined);
         assert.equal(env.viewport.style.overflow, undefined, "retain the viewport's native clipping");
@@ -154,6 +207,39 @@ test("Customize fixed-icon toggles preserve edited size and offsets while releas
     env.hud.sandbox.global.QOL.core.FeatureRegistry.disable("ql_minimap_runtime");
     assert.equal(env.host.style.overflow, undefined, "disable releases the host overflow override");
     env.clean();
+});
+
+test("Customize keeps its outline and resize corners on the measured map across icon-mode toggles", () => {
+    for (const density of [0.75, 1, 1.5, 2]) {
+        const env = setup({ fixed: 0, density });
+        env.global.QOL.ui.customize.start(null, { elementId: "minimap" });
+        const overlay = env.find("QOLCustomizeEditor");
+        Object.assign(overlay, { actuallayoutwidth: 1920 * density, actuallayoutheight: 1080 * density,
+            actualuiscale_x: density, actualuiscale_y: density });
+        const input = env.find("QOLCustomize_MINIMAP_SMALL_SIZE");
+        input.text = "900"; input._fire("ontextentrychange"); env.clock.advance(1200);
+        // Native relayout reports physical pixels. A 900-unit map ends at
+        // (1890,1050) inside the native host, independently of its icon mode.
+        Object.assign(env.host, { actualxoffset: 1450 * density, actualyoffset: 530 * density });
+        Object.assign(env.viewport, { actualxoffset: -460 * density, actualyoffset: -380 * density,
+            actuallayoutwidth: 900 * density, actuallayoutheight: 900 * density });
+        const check = () => {
+            env.clock.advance(500);
+            for (const id of ["QOLCustomizeFrame_minimap", "QOLCustomizeCorners_minimap"]) {
+                const panel = env.find(id);
+                assert.equal(panel.style.x, "990px"); assert.equal(panel.style.y, "150px");
+                assert.equal(panel.style.width, "900px"); assert.equal(panel.style.height, "900px");
+            }
+            assert.equal(env.find("QOLCustomizeResize_minimap").visible, true);
+        };
+        check();
+        for (const fixed of [1, 0]) {
+            env.click("QOLCustomize_MINIMAP_FIXED_ICON_SIZE"); env.clock.advance(1200);
+            assert.equal(env.viewport.style.uiScale, fixed ? "100%" : "225%");
+            check();
+        }
+        env.clean();
+    }
 });
 
 test("fixed-icon presentation rebinds replaced native owners and releases only owned properties", () => {

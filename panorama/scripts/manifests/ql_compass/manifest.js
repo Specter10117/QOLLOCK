@@ -191,10 +191,10 @@
             const gameplayResolver = QOL.panelCache.createIdResolver("gameplay_hud", { ownerPath: ownerPath.slice(0, 2) });
             const imageResolver = QOL.panelCache.createIdResolver("MainImage");
             const layoutStyles = new Map();
+            const rotationStyles = P.createNativeStyleOwner();
             const overlays = P.createOwnedTree();
             let active = false, model = null, rootOwner = null;
             let minimapScope = null;
-            let rotationOwned = false;
             let _loop = null;
 
             function readModel() {
@@ -264,10 +264,9 @@
                 const renderer = P.findChild(nativeContainer, "hud_minimap") || P.findChild(container, "hud_minimap") || rendererResolver.resolve(container || host || hud);
                 const nextRotate = renderer || container || host || fallbackRenderResolver.resolve(hud);
                 const nextFlip = renderer || nativeContainer || nextRotate;
+                rotationStyles.retain([nextRotate]);
                 if (_minimapRotateTarget !== nextRotate) {
-                    if (rotationOwned && _isAlive(_minimapRotateTarget)) _clearStyle(_minimapRotateTarget, "preTransformRotate2d");
-                    rotationOwned = false;
-                    _minimapRotateLastDeg = _minimapRotateSmoothedDeg = null;
+                    _minimapRotateSmoothedDeg = null;
                 }
                 for (const panel of [_minimapFlipClassTarget, _minimapContainer]) {
                     if (panel !== nextFlip && panel !== container) P.setClass(panel, "qol_minimap_flip_active", false);
@@ -310,7 +309,6 @@
             let _speedSamples = [];
 
             // Minimap rotation state
-            let _minimapRotateLastDeg = null;
             let _minimapRotateSmoothedDeg = null;
             let _minimapRotateLastUpdateMs = 0;
             let _minimapRotateLastHeadingDeg = null;
@@ -452,24 +450,16 @@
             function _findMinimapContainer() { return _minimapContainer; }
             function _findMinimapFlipClassTarget() { return _minimapFlipClassTarget; }
 
-            let _clearStyle = QOL.utils.ClearStyleSafe;
-
             function _applyStaticMinimapRotation(hud, nowMs, targetDeg) {
                 let target = _findMinimapRotateTarget(hud);
                 if (!_isAlive(target)) return;
                 let resolvedDeg = Number(targetDeg);
                 if (!isFinite(resolvedDeg)) resolvedDeg = 0;
                 let roundedDeg = Math.round(resolvedDeg * 100) / 100;
-                if (_minimapRotateLastDeg !== roundedDeg) {
-                    if (Math.abs(roundedDeg) < 0.001) {
-                        if (rotationOwned) _clearStyle(target, "preTransformRotate2d");
-                        rotationOwned = false;
-                    } else {
-                        rotationOwned = true;
-                        if (!sync(target, { preTransformRotate2d: roundedDeg.toFixed(2) + "deg" })) return;
-                    }
-                }
-                _minimapRotateLastDeg = roundedDeg;
+                // Add the user half-turn independently of the native team's
+                // transform; CSS transform alone can lose to native code styles.
+                if (!rotationStyles.apply(target, Math.abs(roundedDeg) < 0.001 ? {} :
+                    { preTransformRotate2d: roundedDeg.toFixed(2) + "deg" })) return;
                 _minimapRotateSmoothedDeg = roundedDeg;
                 _minimapRotateLastUpdateMs = nowMs;
                 _minimapRotateLastHeadingDeg = null;
@@ -486,7 +476,7 @@
                 let container = _findMinimapContainer(hud);
 
                 if (!enabled) {
-                    _applyStaticMinimapRotation(hud, nowMs, 0);
+                    _applyStaticMinimapRotation(hud, nowMs, staticFlipEnabled ? 180 : 0);
                     if (_isAlive(flipClassTarget) && flipClassTarget.BHasClass && flipClassTarget.BHasClass("qol_minimap_flip_active") !== staticFlipEnabled) {
                         flipClassTarget.SetHasClass("qol_minimap_flip_active", staticFlipEnabled);
                     }
@@ -589,10 +579,7 @@
                 }
 
                 let roundedDeg = Math.round(_minimapRotateSmoothedDeg * 100) / 100;
-                if (_minimapRotateLastDeg === roundedDeg) return;
-                rotationOwned = true;
-                if (!sync(target, { preTransformRotate2d: roundedDeg.toFixed(2) + "deg" })) return;
-                _minimapRotateLastDeg = roundedDeg;
+                if (!rotationStyles.apply(target, { preTransformRotate2d: roundedDeg.toFixed(2) + "deg" })) return;
             }
 
             let _lastRenderedHeadingDeg = null;
@@ -649,16 +636,12 @@
             function _releaseMinimapRuntime() {
                 // Cleanup must not discover panels: on match exit the minimap
                 // can be absent while the HUD root remains alive.
-                if (_isAlive(_minimapRotateTarget) && rotationOwned) {
-                    _clearStyle(_minimapRotateTarget, "preTransformRotate2d");
-                }
-                layoutStyles.delete(_minimapRotateTarget);
+                rotationStyles.clear();
                 [_minimapFlipClassTarget, _minimapContainer].forEach(function(panel) {
                     if (_isAlive(panel) && panel.BHasClass("qol_minimap_flip_active")) {
                         panel.SetHasClass("qol_minimap_flip_active", false);
                     }
                 });
-                rotationOwned = false;
                 minimapScope = null;
                 hostResolver.reset(); containerResolver.reset(); rendererResolver.reset(); fallbackRenderResolver.reset();
                 _minimapRotateTarget = null;
@@ -666,7 +649,6 @@
                 _minimapContainer = null;
                 _minimapLocalPlayerPanel = null;
                 _minimapLocalMainImage = null;
-                _minimapRotateLastDeg = null;
                 _minimapRotateSmoothedDeg = null;
                 _minimapRotateLastUpdateMs = 0;
                 _minimapRotateLastHeadingDeg = null;
@@ -807,8 +789,11 @@
                 }
                 overlays.sweep();
 
-                if (_isInHideout(hud)) {
-                    _hideCompassOverlay();
+                const inHideout = _isInHideout(hud);
+                if (inHideout) _hideCompassOverlay();
+                const previewMap = inHideout && ["minimap", "minimapAlt", "minimapTab"]
+                    .some(id => QOL.presentation.preview.selected(hud, id));
+                if (inHideout && !previewMap) {
                     if (!_inHideout) _releaseMinimapRuntime();
                     _inHideout = true;
                     if (_loop) _loop.reschedule(COMPASS_INTERVAL_IDLE_SEC);
@@ -830,7 +815,7 @@
 
                 const nowMs = _nowMs();
                 discover(hud);
-                _updateCompass(hud, cfg, nowMs);
+                if (!inHideout) _updateCompass(hud, cfg, nowMs);
                 _updateMinimapRotate(hud, cfg, nowMs);
             }
 

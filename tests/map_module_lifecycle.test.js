@@ -152,13 +152,14 @@ test("minimalist opacity follows native background images without fading their c
 test("minimap partial native writes retry without another settings change", () => {
     const e = fixture();
     const mapFailures = onceFailStyle(e.render, "opacity");
-    const geometryFailures = onceFailStyle(e.host, "uiScale");
+    const geometryFailures = onceFailStyle(e.viewport, "uiScale");
     e.configure({ MINIMAL_MINIMAP: 1, MINIMAL_MINIMAP_OPACITY: 0.4, MINIMAP_SMALL_SIZE: 600 });
     e.clock.advance(600);
     assert.ok(mapFailures() >= 2);
     assert.ok(geometryFailures() >= 2);
     assert.equal(e.render.style.opacity, "0.4");
-    assert.equal(e.host.style.uiScale, "150%");
+    assert.equal(e.host.style.uiScale, "100%");
+    assert.equal(e.viewport.style.uiScale, "150%");
     e.clean();
 });
 
@@ -350,7 +351,7 @@ test("minimap hides partial crate and tunnel trees until construction and styles
 test("minimap derives settings through active hooks and stopped callbacks cannot revive presentation", () => {
     const e = fixture(), { feature, cfg, callbacks, reads } = directMinimap(e); feature.onEnable();
     const scoreboard = callbacks.get("engine:scoreboard_toggle"); e.clock.advance(600); assert.equal(reads(), 1);
-    cfg.MINIMAP_SMALL_SIZE = 800; feature.onSettingsChanged(); assert.equal(e.host.style.uiScale, "200%");
+    cfg.MINIMAP_SMALL_SIZE = 800; feature.onSettingsChanged(); assert.equal(e.viewport.style.uiScale, "200%");
     feature.onDisable(); e.clock.advance(20);
     assert.equal(callbacks.size, 0); assert.equal(e.host.style.uiScale, undefined);
     feature.onSettingsChanged(); scoreboard(); e.clock.advance(1500);
@@ -383,7 +384,8 @@ test("minimap releases a still living old HUD while waiting for the current nati
     const gameplay = e.add(core, "gameplay_hud"), clamp = e.add(gameplay, ""); clamp.AddClass("clamp_width");
     const host = e.add(clamp, "minimap_persp"), viewport = e.add(host, "minimap_container"), inner = e.add(viewport, "HudMinimapContainer");
     e.add(inner, "hud_minimap"); e.doc.root = root; e.clock.advance(150);
-    assert.equal(host.style.uiScale, "150%"); assert.ok(viewport.FindChildTraverse("minimap_overlay_root"));
+    assert.equal(host.style.uiScale, "100%"); assert.equal(viewport.style.uiScale, "150%");
+    assert.ok(viewport.FindChildTraverse("minimap_overlay_root"));
     assert.equal(e.renderer.FindChild("minimap_overlay_root"), null); feature.onDisable(); e.clock.advance(20); e.clean();
 });
 
@@ -405,7 +407,7 @@ test("fixed-icon objective bridge positions share Base/Alt/Tab size and Alt prec
     e.root.AddClass("gScoreboardOpen"); check(800);
     e.root.RemoveClass("gDetailView"); check(1000);
     e.configure({ MINIMAP_FIXED_ICON_SIZE: 0 }); check(400);
-    assert.equal(e.host.style.uiScale, "250%");
+    assert.equal(e.host.style.uiScale, "100%"); assert.equal(e.viewport.style.uiScale, "250%");
     e.clean();
 });
 
@@ -642,6 +644,26 @@ test("compass preserves native rotation until Spinny Mode owns it and retries fa
     e.clean();
 });
 
+test("static minimap Flip retries native overwrites and rejected retirement without a heading source", () => {
+    const e = fixture();
+    const { feature } = directCompass(e, { ENABLE_COMPASS: 0, ENABLE_COMPASS_SPEED: 0,
+        MINIMAP_ROTATE_WITH_PLAYER: 0, MINIMAP_FLIP: 1 });
+    feature.onEnable();
+    assert.equal(e.renderer.style.preTransformRotate2d, "180.00deg");
+    e.renderer.style.preTransformRotate2d = "0deg";
+    e.clock.advance(100);
+    assert.equal(e.renderer.style.preTransformRotate2d, "180.00deg");
+    const clear = e.renderer.ClearPropertyFromCode.bind(e.renderer);
+    let reject = true;
+    e.renderer.ClearPropertyFromCode = key => key === "pre-transform-rotate2d" && reject ? false : clear(key);
+    feature.onDisable();
+    assert.equal(e.renderer.style.preTransformRotate2d, "180.00deg");
+    reject = false; e.clock.advance(700);
+    assert.equal(e.renderer.style.preTransformRotate2d, undefined);
+    assert.equal(e.renderer.BHasClass("qol_minimap_flip_active"), false);
+    e.clean();
+});
+
 test("compass rebinds replaced native map and local-player sources without carrying old motion", () => {
     const e = fixture();
     const first = localPlayer(e, e.renderer, 120, "10% 10% 0px");
@@ -742,7 +764,7 @@ test("map modules bound absent native discovery and recover when sources mount",
     assert.equal(counts.get("MainImage") || 0, 0, "heading sources stay inside a resolved minimap");
     const replacement = e.map(); localPlayer(e, replacement.renderer, 75);
     e.clock.advance(1400);
-    assert.equal(replacement.host.style.uiScale, "150%");
+    assert.equal(replacement.host.style.uiScale, "100%"); assert.equal(replacement.viewport.style.uiScale, "150%");
     assert.equal(e.root.FindChildTraverse("QOLCompassDegree").text, "75°");
     assert.ok(replacement.viewport.FindChild("QOLMinimapTimersRoot"));
     e.root.FindChildTraverse = original;

@@ -87,12 +87,14 @@ the large zoom surface must not be replaced by a viewport-sized square. Turning
 Fixed Icon Size off releases the viewport width/height overrides and class so
 the native pixel dimensions apply again.
 
-The same build changed `minimap_persp` to a non-square native host so location
-text and edge UI fit around the square map viewport. Scaling may use `ui-scale`,
-but must not replace that host's native width or height.
-Fixed-icon mode releases the host's overflow constraint with `noclip`, allowing
-the resized viewport to extend beyond that native box. The viewport retains its
-native clipping; switching back or disabling releases the host override without
-changing saved sizes or offsets.
+`minimap_persp` is a non-square native host for location text and edge UI. Both
+icon modes keep its native dimensions and unit scale, with `noclip` allowing the
+square viewport to grow beyond it. Magnifying that taller host can let screen
+height constrain one axis before the other. Ordinary mode instead applies
+`ui-scale` to the square viewport; fixed-icon mode changes its dimensions.
+Both paths neutralize the viewport's native scale and insets, align its bottom
+right corner in Base, and center it in Alt/Tab. Switching icon modes therefore
+keeps the same map size and anchor. The viewport retains native clipping, and
+disable releases the owned geometry without changing saved sizes or offsets.
 Check markers, click targets, range circles, Alt/Tab switching and reset in the
 repacked client.

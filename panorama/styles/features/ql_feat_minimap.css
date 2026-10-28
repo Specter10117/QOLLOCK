@@ -148,9 +148,31 @@
     visibility: visible;
 }
 
-.localPlayerTeam2 #tunnel_overlay
+/* These overlays are viewport children; their orientation belongs to the HUD
+ * sheet, while marker orientation belongs to hud_minimap's own style chain. */
+.qol_minimap_flip_active #tunnel_overlay,
+.qol_minimap_flip_active #QOLMinimapTimersRoot,
+.localPlayerTeam2 #tunnel_overlay,
+.localPlayerTeam2 #QOLMinimapTimersRoot
 {
     transform: scaleY(-1) scaleX(-1);
+}
+
+.qol_minimap_flip_active #QOLMinimapTimersRoot .QOLMinimapTimer,
+.localPlayerTeam2 #QOLMinimapTimersRoot .QOLMinimapTimer
+{
+    transform: scaleY(-1) scaleX(-1);
+}
+
+.localPlayerTeam2 .qol_minimap_flip_active #tunnel_overlay,
+.localPlayerTeam2 .qol_minimap_flip_active #QOLMinimapTimersRoot
+{
+    transform: scaleY(1) scaleX(1);
+}
+
+.localPlayerTeam2 .qol_minimap_flip_active #QOLMinimapTimersRoot .QOLMinimapTimer
+{
+    transform: scaleY(1) scaleX(1);
 }
 
 .QOLMinimapTimer

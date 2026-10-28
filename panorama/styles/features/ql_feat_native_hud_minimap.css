@@ -202,11 +202,8 @@
 	z-index: 30;
 }
 
-.qol_minimap_flip_active.HudMinimap
-{
-	transform: scaleY(-1) scaleX(-1);
-}
-
+/* Compass adds the map's half-turn through pre-transform-rotate2d. These
+ * classes compensate marker orientation without replacing native transforms. */
 .qol_minimap_flip_active .button_image
 {
 	transform: scaleY(-1) scaleX(-1);
@@ -263,11 +260,6 @@
 	clip: radial(50% 50%, 0deg, 360deg);
 }
 
-.invert_map.qol_minimap_flip_active.HudMinimap
-{
-	transform: scaleY(1) scaleX(1);
-}
-
 .invert_map.qol_minimap_flip_active .button_image
 {
 	transform: scaleY(1) scaleX(1);
@@ -313,47 +305,9 @@
 	transform: scaleY(1) scaleX(1);
 }
 
-.qol_minimap_flip_active #tunnel_overlay,
-.qol_minimap_flip_active #QOLMinimapCrateOverlay,
-.qol_minimap_flip_active #QOLMinimapTimersRoot
-{
-	transform: scaleY(-1) scaleX(-1);
-}
-
-.qol_minimap_flip_active #QOLMinimapCrateOverlay .minimap_crate_marker,
-.qol_minimap_flip_active #QOLMinimapTimersRoot .QOLMinimapTimer
-{
-	transform: scaleY(-1) scaleX(-1);
-}
-
-.localPlayerTeam2 #tunnel_overlay,
-.localPlayerTeam2 #QOLMinimapCrateOverlay,
-.localPlayerTeam2 #QOLMinimapTimersRoot
-{
-	transform: scaleY(-1) scaleX(-1);
-}
-
-.localPlayerTeam2 #QOLMinimapCrateOverlay .minimap_crate_marker,
-.localPlayerTeam2 #QOLMinimapTimersRoot .QOLMinimapTimer
-{
-	transform: scaleY(-1) scaleX(-1);
-}
-
-.localPlayerTeam2 .qol_minimap_flip_active #tunnel_overlay,
-.localPlayerTeam2 .qol_minimap_flip_active #QOLMinimapCrateOverlay,
-.localPlayerTeam2 .qol_minimap_flip_active #QOLMinimapTimersRoot
-{
-	transform: scaleY(1) scaleX(1);
-}
-
-.localPlayerTeam2 .qol_minimap_flip_active #QOLMinimapCrateOverlay .minimap_crate_marker,
-.localPlayerTeam2 .qol_minimap_flip_active #QOLMinimapTimersRoot .QOLMinimapTimer
-{
-	transform: scaleY(1) scaleX(1);
-}
-
-/* Static reference labels keep the native flipped-map text orientation. */
-.invert_map #QOLMinimapLootRoot .QOLMinimapLootText
+/* Compensate either half-turn; native inversion plus user Flip cancel out. */
+.invert_map #QOLMinimapLootRoot .QOLMinimapLootText,
+.qol_minimap_flip_active #QOLMinimapLootRoot .QOLMinimapLootText
 {
     transform: scaleX(-1) scaleY(-1);
 }

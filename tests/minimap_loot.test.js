@@ -8,7 +8,9 @@ const path = require("node:path");
 
 test("loot text compensates native inversion only while the map is effectively flipped", () => {
     const css = fs.readFileSync(path.join(__dirname, "../panorama/styles/features/ql_feat_native_hud_minimap.css"), "utf8");
-    assert.match(css, /\.invert_map #QOLMinimapLootRoot \.QOLMinimapLootText\s*\{\s*transform:\s*scaleX\(-1\) scaleY\(-1\);/);
+    assert.equal(/\.qol_minimap_flip_active\.HudMinimap\s*\{/.test(css), false,
+        "the JS half-turn must not be duplicated by a renderer transform rule");
+    assert.match(css, /\.invert_map #QOLMinimapLootRoot \.QOLMinimapLootText,\s*\.qol_minimap_flip_active #QOLMinimapLootRoot \.QOLMinimapLootText\s*\{\s*transform:\s*scaleX\(-1\) scaleY\(-1\);/);
     assert.match(css, /\.invert_map\.qol_minimap_flip_active #QOLMinimapLootRoot \.QOLMinimapLootText\s*\{\s*transform:\s*none;/);
 });
 
@@ -20,6 +22,16 @@ test("ordinary crate styles load through the native renderer stylesheet", () => 
     assert.match(native, /#hud_minimap #minimap_markers\s*\{/);
     assert.match(native, /#hud_minimap \.minimap_marker\s*\{/);
     assert.doesNotMatch(read("features/ql_feat_minimap.css"), /(?:#minimap_overlay_root|#minimap_markers|\.minimap_marker)\s*\{/);
+});
+
+test("viewport overlay flip rules belong to the HUD stylesheet, outside the native renderer context", () => {
+    const read = file => fs.readFileSync(path.join(__dirname, "../panorama/styles/features/", file), "utf8");
+    const hud = read("ql_feat_minimap.css"), renderer = read("ql_feat_native_hud_minimap.css");
+    for (const id of ["tunnel_overlay", "QOLMinimapTimersRoot"]) {
+        assert.equal(hud.includes(".qol_minimap_flip_active #" + id), true, id + " follows user Flip");
+        assert.equal(hud.includes(".localPlayerTeam2 .qol_minimap_flip_active #" + id), true, id + " cancels two half-turns");
+        assert.equal(renderer.includes("#" + id), false, id + " is a viewport child, not a renderer child");
+    }
 });
 
 function fixture() {

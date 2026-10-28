@@ -42,7 +42,7 @@
                     const marginTop = zoomed ? -y : 0;
                     const marginLeft = zoomed ? x : 0;
                     styles = {
-                        uiScale: fixedIcons ? "100%" : Number((size / 400 * 100).toFixed(2)) + "%",
+                        uiScale: "100%", overflow: "noclip",
                         preTransformScale2d: "1.00, 1.00", transformOrigin: zoomed ? "50% 50%" : "100% 100%",
                         horizontalAlign: zoomed ? "center" : "right", verticalAlign: zoomed ? "center" : "bottom",
                         align: zoomed ? "center center" : "right bottom",
@@ -50,14 +50,20 @@
                         marginTop: marginTop + "px", marginRight: marginRight + "px",
                         marginBottom: marginBottom + "px", marginLeft: marginLeft + "px", opacity: String(opacity)
                     };
-                    // The native 440x520 host also contains location/edge UI.
-                    // Let the fixed-icon viewport grow beyond it without
-                    // squishing the map into that unchanged native layout box.
-                    if (fixedIcons) styles.overflow = "noclip";
+                    // Scale only the square viewport. Magnifying this native
+                    // 440x520 host lets screen-height squishing distort the map.
                     if (hidden) styles.visibility = "collapse";
                     if (drawOverUi) styles.zIndex = "2147483647";
                 } else if (panel.id !== "hud_minimap" && fixedIcons) {
                     styles = { width: sizeText, height: sizeText };
+                }
+                if (panel.id === "minimap_container") {
+                    Object.assign(styles, {
+                        uiScale: fixedIcons ? "100%" : Number((size / 400 * 100).toFixed(2)) + "%",
+                        horizontalAlign: zoomed ? "center" : "right", verticalAlign: zoomed ? "center" : "bottom",
+                        align: zoomed ? "center center" : "right bottom",
+                        margin: "0px", marginTop: "0px", marginRight: "0px", marginBottom: "0px", marginLeft: "0px"
+                    });
                 }
                 if (panel === host) hostStyles = styles;
                 owned.apply(panel, styles, panel.id === "hud_minimap" ? { [fixedClass]: fixedIcons } : {});
