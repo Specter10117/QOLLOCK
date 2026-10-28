@@ -261,6 +261,37 @@ test("ui/modal: openConfigDiffPreviewModal creates overlay with action buttons",
     assert.ok(overlay.deleted || !overlay.BHasClass("Show"), "Overlay is removed or marked for deletion");
 });
 
+test("ui/modal: diff scrolling leaves the footer in native flow instead of guessing row heights", () => {
+    const { sandbox, rootPanel } = createTestEnvironment();
+    const modal = sandbox.QOL.ui.modal;
+    for (const count of [0, 1, 52, 400]) {
+        modal.openConfigDiffPreviewModal({
+            rows: Array.from({ length: count }, (_, index) => ({ key: `SETTING_${index}` })),
+            previewConfig: {},
+        });
+        const container = rootPanel.FindChildTraverse("ConfigDiffModalContainer");
+        const list = container.FindChildTraverse("ConfigDiffList");
+        const footer = container.FindChildTraverse("ConfigDiffModalBtnRow");
+        assert.strictEqual(list.style.height, undefined, "JS must not override the remaining native flow height");
+        assert.strictEqual(list.style.maxHeight, undefined, "row count must not cap the scroll viewport");
+        assert.strictEqual(list.FindChildrenWithClassTraverse("ConfigDiffCell").length, count);
+        assert.strictEqual(footer.GetParent(), container, "actions stay outside the scrolling content");
+        modal.closeConfigDiffPreviewModalIfOpen();
+        // DeleteAsync is deliberately queued in the simulator.
+        rootPanel.RemoveAndDeleteChildren();
+    }
+    // Structural layout guard only; the simulator does not perform Panorama layout.
+    const css = require("./helpers/style_source").readStyleSource("panorama/styles/ql_settings.css");
+    const shell = css.match(/(?:^|\n)#ConfigDiffModalContainer\s*\{([^}]+)\}/)[1];
+    const list = css.match(/(?:^|\n)#ConfigDiffList\s*\{([^}]+)\}/)[1];
+    const footer = css.match(/(?:^|\n)#ConfigDiffModalBtnRow\s*\{([^}]+)\}/)[1];
+    assert.match(shell, /(?:^|;)\s*height:\s*\d+%;/);
+    assert.match(list, /height:\s*fill-parent-flow\(1(?:\.0)?\);/);
+    assert.match(list, /overflow:\s*squish scroll;/);
+    assert.match(footer, /height:\s*fit-children;/);
+    assert.doesNotMatch(footer, /vertical-align:\s*bottom;/);
+});
+
 test("ui/modal: tryApplyImportStringWithDiagnostics parses token and returns candidate", () => {
     const { sandbox } = createTestEnvironment();
     const modal = sandbox.QOL.ui.modal;

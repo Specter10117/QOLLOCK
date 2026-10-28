@@ -377,17 +377,6 @@
         const list = $.CreatePanel("Panel", modalContainer, "ConfigDiffList");
         if (list) {
             list.AddClass("ConfigDiffList");
-            const diffGridRows = Math.max(1, Math.ceil(rows.length / 2));
-            const diffRowHeightPx = 35;
-            const diffListPaddingPx = 8;
-            const diffListMinHeightPx = 120;
-            const diffListMaxHeightPx = 620;
-            const computedListHeightPx = Math.max(
-                diffListMinHeightPx,
-                Math.min(diffListMaxHeightPx, diffGridRows * diffRowHeightPx + diffListPaddingPx)
-            );
-            list.style.height = `${computedListHeightPx}px`;
-            list.style.maxHeight = `${computedListHeightPx}px`;
 
             if (rows.length <= 0) {
                 const empty = $.CreatePanel("Label", list, "");
