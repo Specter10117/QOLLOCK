@@ -164,11 +164,13 @@ through that owner without searching unrelated HUD templates.
 Colors appear in the inspector with a stock `CitadelColorPicker`, preset swatches,
 a HEX entry and native Default action. A single Color palette button with an
 embedded preview chip expands the native saturation/value canvas, hue strip and
-RGB/HEX controls. The expanded palette lives in a non-scrolling dock below the
-field list, so native marker dragging has no scrolling field ancestor. Only one
+RGB/HEX controls. The expanded palette lives in a separate non-scrolling,
+draggable window beside Properties, so native marker dragging has no scrolling
+field ancestor and opening it does not change the Properties height budget. Only one
 palette opens at a time; its localized field caption identifies the owner.
-The dock participates in the inspector's measured height budget and disappears
-when closed or when selection changes. Hidden pickers are not seeded, and
+The palette window starts to the left of Properties and follows it until the user
+drags the palette to a session-only position. Hide panels also hides the palette;
+closing it or changing selection hides the window. Hidden pickers are not seeded, and
 unchanged text is not rewritten during synchronization. Opening or seeding creates no draft edit;
 notifications from a hidden or retired picker are ignored.
 Default has an accepted empty HEX entry rather than a pending invalid color.

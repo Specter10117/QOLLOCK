@@ -548,6 +548,10 @@
     }
     function refreshFrames(owner) {
         const view = G.viewport(owner.overlay);
+        if (owner.paletteWindow) {
+            const visible = !owner.panelsHidden && owner.paletteDock.visible;
+            if (owner.paletteWindow.visible !== visible) owner.paletteWindow.visible = visible;
+        }
         if (view && owner.fields) {
             const density = G.scale(owner.overlay, "y");
             const chromeHeight = (Number(owner.tools.actuallayoutheight) - Number(owner.fields.actuallayoutheight)) / density;
@@ -728,6 +732,7 @@
                 owner.tools.visible = !owner.panelsHidden;
                 owner.catalog.visible = (!element || owner.elements.length > 1) && !owner.panelsHidden;
                 panels.GetChild(0).text = localize(owner.panelsHidden ? "Show panels" : "Hide panels");
+                refreshFrames(owner);
             });
             const frames = I.button(viewActions, "QOLCustomizeToggleFrames", "Show frames", () => {
                 if (current !== owner) return;
@@ -864,7 +869,17 @@
             });
             owner.empty = I.label(choices, "No visible elements");
             owner.fields = P.create("Panel", tools, "QOLCustomizeFields");
-            owner.paletteDock = P.create("Panel", tools, "QOLCustomizePaletteDock");
+            const paletteWindow = P.create("Panel", overlay, "QOLCustomizePaletteWindow");
+            owner.paletteWindow = paletteWindow;
+            paletteWindow.AddClass("QOLCustomizePaletteWindow");
+            paletteWindow.AddClass("QOLUnifiedModalSurface");
+            paletteWindow.hittest = true;
+            paletteWindow.visible = false;
+            owner.chrome.header(paletteWindow, "QOLCustomizeDragPalette", "Color palette", bounds => {
+                const properties = G.box(tools, overlay);
+                return properties ? { x: properties.x - bounds.width - 12, y: properties.y } : null;
+            });
+            owner.paletteDock = P.create("Panel", paletteWindow, "QOLCustomizePaletteDock");
             owner.paletteDock.AddClass("QOLCustomizePaletteDock");
             owner.paletteDock.visible = false;
             const resetRow = P.create("Panel", tools, "QOLCustomizeResetRow");

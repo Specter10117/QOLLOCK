@@ -34,6 +34,7 @@ CitadelHudEscapeMenu.QOLCustomizeActive { background-color: #0000; }
     transition-duration: 0.15s;
 }
 .QOLCustomizeOverlay.Dragging .QOLCustomizeTools,
+.QOLCustomizeOverlay.Dragging .QOLCustomizePaletteWindow,
 .QOLCustomizeOverlay.Dragging .QOLCustomizeCatalog
 {
     opacity: 0.65;
@@ -50,6 +51,7 @@ CitadelHudEscapeMenu.QOLCustomizeActive { background-color: #0000; }
 .QOLCustomizeSubheading { width: 100%; height: fit-children; margin: 4px 0px; font-size: 13px; font-weight: semi-bold; }
 .QOLCustomizeSectionBody > .ModalInstructions { width: 100%; white-space: normal; height: fit-children; }
 .QOLCustomizeTools .QOLCustomizeSectionHeading.ModalTitle,
+.QOLCustomizePaletteWindow .QOLCustomizeSectionHeading.ModalTitle,
 .QOLCustomizeLaunch .QOLCustomizeSectionHeading.ModalTitle { width: 100%; height: fit-children; margin: 0px 0px 4px 0px; padding: 4px 0px; font-size: 14px; font-weight: semi-bold; letter-spacing: 0px; text-transform: none; text-align: left; text-shadow: none; }
 .QOLCustomizeChoices, #QOLCustomizeFields { flow-children: down; width: 100%; }
 .QOLCustomizeCatalog {
@@ -64,6 +66,7 @@ CitadelHudEscapeMenu.QOLCustomizeActive { background-color: #0000; }
     transition-duration: 0.15s;
 }
 .QOLCustomizeOverlay.PanelsHidden .QOLCustomizeTools,
+.QOLCustomizeOverlay.PanelsHidden .QOLCustomizePaletteWindow,
 .QOLCustomizeOverlay.PanelsHidden .QOLCustomizeCatalog { visibility: collapse; }
 .QOLCustomizeView {
     flow-children: down;
@@ -169,6 +172,15 @@ CitadelHudEscapeMenu.QOLCustomizeActive { background-color: #0000; }
 .QOLCustomizeTools .QOLCustomizeInput.ValueInput.Invalid:focus { border: 1px solid #ed7070; box-shadow: none; }
 .QOLCustomizeSwatch { width: 18px; height: 18px; margin-left: 6px; vertical-align: center; border: 1px solid #fff4; border-radius: 2px; }
 .QOLCustomizeColorEditor { width: 100%; height: fit-children; flow-children: down; }
+.QOLCustomizePaletteWindow {
+    width: 400px;
+    height: fit-children;
+    flow-children: down;
+    overflow: squish squish;
+    align: right top;
+    margin: 15px 432px 15px 0px;
+    z-index: 10;
+}
 .QOLCustomizePaletteDock { width: 100%; height: fit-children; flow-children: down; overflow: squish squish; }
 .QOLCustomizeNativePicker { horizontal-align: center; margin: 6px 0px; }
 .QOLCustomizePalette { width: 100%; flow-children: right-wrap; margin-top: 4px; margin-bottom: 4px; }

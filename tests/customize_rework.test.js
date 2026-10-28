@@ -372,27 +372,47 @@ test("the inspector reserves measured history/actions when the canvas becomes sh
     clean(env);
 });
 
-test("expanded palettes reserve non-scrolling chrome and retire when the selected element changes", () => {
+test("the palette opens beside Properties without changing its field budget and retires on selection", () => {
     const env = setup("healthbar", 300, 456);
     env.global.QOL.ui.customize.start(); click(env, "QOLCustomizeSelect_healthbar");
     const overlay = rect(env.find("QOLCustomizeEditor"), 1920, 800);
     const tools = env.find("QOLCustomizeTools"), fields = env.find("QOLCustomizeFields");
     const dock = env.find("QOLCustomizePaletteDock");
+    const window = env.find("QOLCustomizePaletteWindow");
+    assert.ok(window, "the palette needs an independent editor window");
     const palette = env.find("QOLCustomizePalette_PLAYER_HEALTHBAR_ACCENT_COLOR");
     const toggle = env.find("QOLCustomizePaletteToggle_PLAYER_HEALTHBAR_ACCENT_COLOR");
+    rect(tools, 400, 580, 1500, 15); rect(fields, 340, 350);
+    rect(window, 400, 400); env.clock.advance(300);
+    assert.equal(window.visible, false);
+    assert.equal(fields.style.maxHeight, "474px");
     toggle._fire("onactivate");
     assert.equal(palette.GetParent(), dock);
-    assert.equal(dock.GetParent(), tools);
+    assert.equal(dock.GetParent(), window);
+    assert.equal(window.GetParent(), overlay);
     assert.equal(dock.visible, true);
-    // Supply native measurements including the expanded palette. The fixture
-    // has no CSS layout engine or native drag-autoscroll behavior.
-    rect(tools, 380, 680); rect(fields, 340, 170); env.clock.advance(300);
-    assert.equal(fields.style.maxHeight, "194px", "the palette budget comes from the same measured fixed chrome");
+    for (let panel = env.find("QOLCustomizePicker_PLAYER_HEALTHBAR_ACCENT_COLOR"); panel; panel = panel.GetParent()) {
+        assert.notEqual(panel, fields, "native color dragging must have no scrolling field ancestor");
+        assert.notEqual(panel, tools, "the palette must be independent of Properties layout");
+    }
+    env.clock.advance(300);
+    assert.equal(window.visible, true);
+    assert.equal(window.style.x, "1088px"); assert.equal(window.style.y, "15px");
+    assert.equal(fields.style.maxHeight, "474px", "palette layout is independent of the Properties budget");
+    click(env, "QOLCustomizeTogglePanels"); assert.equal(window.visible, false);
+    click(env, "QOLCustomizeTogglePanels"); assert.equal(window.visible, true);
     overlay.actualuiscale_y = 2; overlay.actuallayoutheight = 1600;
-    tools.actuallayoutheight = 1360; fields.actuallayoutheight = 340; env.clock.advance(300);
-    assert.equal(fields.style.maxHeight, "194px", "dock reservation respects canvas density");
+    tools.actuallayoutheight = 1160; tools.actualyoffset = 30;
+    fields.actuallayoutheight = 700; window.actuallayoutheight = 800; env.clock.advance(300);
+    assert.equal(fields.style.maxHeight, "474px", "independent field budgeting respects canvas density");
+    assert.equal(window.style.y, "15px");
+    toggle._fire("onactivate");
+    assert.equal(window.visible, false);
+    toggle._fire("onactivate");
+    assert.equal(window.visible, true);
     click(env, "QOLCustomizeSelect_items"); env.clock.advance(300);
     assert.equal(dock.visible, false);
+    assert.equal(window.visible, false);
     assert.equal(palette.IsValid(), false);
     toggle._fire("onactivate");
     assert.equal(dock.visible, false, "a retired palette toggle cannot reopen the new inspector's dock");
@@ -514,13 +534,18 @@ test("the view toolbar follows measured top-bar content until the user drags it"
 });
 
 for (const [id, handle] of [["QOLCustomizeCatalog", "QOLCustomizeDragCatalog"], ["QOLCustomizeTools", "QOLCustomizeDragTools"],
-    ["QOLCustomizeView", "QOLCustomizeDragView"]]) {
+    ["QOLCustomizeView", "QOLCustomizeDragView"], ["QOLCustomizePaletteWindow", "QOLCustomizeDragPalette"]]) {
     test(`${id}: draggable header keeps controls and native windows in place, clamps to viewport and cleans its proxy`, () => {
-        const env = setup();
+        const env = setup(id === "QOLCustomizePaletteWindow" ? "healthbar" : "souls");
         const baseline = JSON.stringify(env.global.MOD_CONFIG);
         env.global.QOL.ui.customize.start();
+        if (id === "QOLCustomizePaletteWindow") {
+            click(env, "QOLCustomizeSelect_healthbar");
+            click(env, "QOLCustomizePaletteToggle_PLAYER_HEALTHBAR_ACCENT_COLOR");
+        }
         const overlay = rect(env.find("QOLCustomizeEditor"), 1920, 1080);
         overlay.actualuiscale_x = 2; overlay.actualuiscale_y = 2;
+        assert.ok(env.find(id), "the draggable window must exist");
         const panel = rect(env.find(id), 500, 400, 100, 60);
         const proxy = startDrag(env, env.find(handle));
         proxy.actualxoffset += 200; proxy.actualyoffset += 100;
@@ -532,6 +557,13 @@ for (const [id, handle] of [["QOLCustomizeCatalog", "QOLCustomizeDragCatalog"], 
         assert.equal(panel.GetParent(), overlay);
         assert.equal(proxy.IsValid(), false);
         assert.equal(JSON.stringify(env.global.MOD_CONFIG), baseline);
+        if (id === "QOLCustomizePaletteWindow") {
+            click(env, "QOLCustomizeSelect_items");
+            click(env, "QOLCustomizePaletteToggle_ITEMS_WASH_COLOR");
+            env.clock.advance(300);
+            assert.equal(panel.visible, true);
+            assert.equal(panel.style.x, "710px"); assert.equal(panel.style.y, "340px");
+        }
         // Inspector selection can change the native window dimensions after
         // moving it. Clamp against the new measurement, not stored old sizes.
         panel.actuallayoutwidth = 1000; panel.actuallayoutheight = 600;

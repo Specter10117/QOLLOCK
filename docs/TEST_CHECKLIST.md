@@ -69,6 +69,9 @@ observed result, and remaining issue. A green offline suite is not a client pass
   Navigation must remain usable; Save must still reject unfinished input.
   Reset must clear unaccepted text, including when the draft already is default.
 - Expand the native color palette and adjust saturation/hue, RGB/HEX and presets.
+  Check that its separate window opens left of Properties without resizing it.
+  Drag the palette header, close/reopen it and switch color fields; its session
+  position must persist. Hide/Show panels must include the palette window.
   Drag the saturation/value marker and hue selector across the full canvas and
   its edges; the field list must retain its scroll position. Open another color
   field, close the palette and change selection; no old palette may remain.
