@@ -476,7 +476,8 @@
         ["CUSTOM_HITMARKER_THICKNESS",2],
         ["CUSTOM_HITMARKER_OFFSET",40],
         ["CUSTOM_HITMARKER_COLOR",0],
-        ["CUSTOM_HITMARKER_CRIT_COLOR",0]
+        ["CUSTOM_HITMARKER_CRIT_COLOR",0],
+        ["AUTO_SAVE_CHANGES",0]
     ].map(entry => Object.freeze(entry));
     Object.freeze(dictionary);
     const keys = new Set(dictionary.map(entry => entry[0]));

@@ -312,6 +312,7 @@ test("INVARIANT 4: All 90+ community presets resolve, diff, and serialize into #
         "panorama/scripts/ui/modal.js",
         "panorama/scripts/ui/theme.js",
         "panorama/scripts/ui/controls.js",
+        "panorama/scripts/ui/cloud_sync.js",
         "panorama/scripts/ql_settings.js"
     ];
 

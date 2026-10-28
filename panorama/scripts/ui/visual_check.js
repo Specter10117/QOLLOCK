@@ -191,7 +191,6 @@
                 session.hidden.push(child);
                 child.AddClass("QOLVisualCheckHidden");
             }
-            Q.preview?.hideAll?.();
             Q.tooltip?.hideRowTooltip?.();
             applyStep(0);
             overlay.SetFocus();

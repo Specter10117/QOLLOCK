@@ -93,7 +93,7 @@ Healthbar shared code and variants load before their dispatcher manifest. Respec
 real dependency ordering even where an XML comment says manifests are independent.
 
 **Settings order:** namespace/utilities/panel helpers/shared presets/bridge/config
--> locale catalogs -> arcade/previews/tooltips/persistence/update checker -> UI
+-> locale catalogs -> arcade/tooltips/persistence/update checker -> UI
 metadata/renderer/modules -> `ql_settings.js`. The settings context deliberately
 has no gameplay FeatureRegistry or feature manifests. Shared low-level core
 helpers being present does not mean all HUD services exist there.
@@ -148,7 +148,6 @@ are compatibility guards, not evidence that browser APIs are available in HUD.
 | `panorama/scripts/ui/` | Settings shell, metadata, controls, registered tab renderers, search, drag, modals, themes and storage UI |
 | `panorama/scripts/manifests/ql_presentation_scale/` | Independent ui-scale overrides and additional opacity controls; default releases native overrides, content remains with existing feature owners |
 | `panorama/scripts/ql_customize_data.js`, `customize/`, `core/ql_customize_preview.js`, `ui/customize/` | Shared presentation capabilities, transient HUD preview and settings editor; see [Customize](docs/ui/customize.md) |
-| `panorama/scripts/ql_settings_previews.js` | Preview ownership, positioning and update dispatch |
 | `panorama/scripts/ql_settings_tooltips.js` | Shared tooltip creation, text and scroll/position tracking |
 | `panorama/scripts/ql_settings_loc/` | Shipped runtime locale dictionaries; the UI text source of truth |
 | `panorama/scripts/ql_arcade_games.js` | Six arcade games and settings-side on-death bridge; not another settings implementation |
@@ -414,6 +413,11 @@ for 0.3 seconds. This distinction prevents a pending restore from overwriting a
 slider edit made before its save flush. `getConfigChangeStamp(root)` combines
 root/HUD published and dirty generations.
 
+`ui/cloud_sync.js` observes published user changes for optional debounced durable
+Auto-Save through `storageBridge.saveSettings`. It owns one in-flight save and
+one latest pending snapshot; disabling it saves the off preference once. Manual
+Save, explicit Load and Clear cancel queued Auto-Save.
+
 The storage API is exposed as `QOL.core.storageBridge`, `QOL.core.storage` and
 `QOLStorageBridge`. Use `saveSettings`, `loadSettings`, `clearSettings` for
 configuration; low-level `save/load/remove` are generic key/value transport.
@@ -478,17 +482,13 @@ Legacy globals such as `CreateRow` delegate to extracted modules; they are not
 independent implementations to edit in `ql_settings.js`.
 
 Reuse the controls' save, search-collection, tooltip, reset, changed-state,
-row-sync and preview behavior. A hand-built slider can look correct while losing
+row-sync behavior. A hand-built slider can look correct while losing
 wire precision, reset keys or search results. Cached rows need synchronization
 when settings change outside that row; do not leave stale captured `MOD_CONFIG`
 references after config replacement. Read current config through the accessor.
 
-`QOL.preview.showForConfigId(configId)` dispatches supported previews;
-`hideAll()` and `wirePreviewToggleButton(buttonPanel)` manage visibility/master
-control. Feature-specific detection helpers live in `ql_settings_previews.js`.
-Previews are settings-owned, not the gameplay overlay. They can remain useful
-where gameplay features are suppressed. Their host scaling/live-anchor fallback
-logic does not prove pixel-perfect alignment at every resolution.
+The old floating Preview Changes samples are removed. Live Customize and preset
+previews use the shared leased HUD transport; see [preview ownership](docs/ui/previews.md).
 
 `QOL.tooltip` owns tooltip reuse, deferred hide and row tooltip behavior; see
 [tooltip ownership](docs/ui/tooltips.md).
@@ -732,7 +732,7 @@ Record untested cases honestly. See [TEST_CHECKLIST.md](docs/TEST_CHECKLIST.md).
    Ask about new defaults rather than borrowing an unrelated feature's value.
 4. Handle off/on, hidden/visible, destroyed/replaced source and match transitions.
    Reset style signatures on panel replacement; leave no delayed resurrection.
-5. Localize any new/changed copy. Reuse controls, preview dispatch and tooltip
+5. Localize any new/changed copy. Reuse controls and tooltip
    infrastructure; update the relevant catalogs/metadata, not just the caption.
 6. Exercise the affected path and existing regressions. For performance changes,
    compare the same scenario and report raw counters separately from game timing.

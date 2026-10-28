@@ -39,9 +39,7 @@ function createTestEnvironment() {
         $: mockDollar,
         QOL: {
             VERSION: "4.0.0",
-            preview: {
-                isAdvancedItemCooldownModeEnabled: () => false,
-            },
+            getSettingsConfig: () => ({ ENABLE_OLD_ITEM_COOLDOWNS: 1 }),
             ui: {
                 window: {
                     registerTabRenderer: (name, fn) => {

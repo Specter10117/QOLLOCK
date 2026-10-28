@@ -983,7 +983,7 @@ var QOL_SETTINGS_FIELDS = [
     {"key":"PERF_OVERLAY_OPACITY","min":0,"max":1,"step":0.01,"kind":"number","role":"opacity","unit":"%","displayFactor":100,"owners":["ql_perf"]},
     {"key":"ENABLE_SPECIALS","min":0,"max":1,"step":1,"kind":"toggle","role":"toggle","unit":"","displayFactor":1,"owners":[]},
     {"key":"DRAG_ENABLED","min":0,"max":1,"step":1,"kind":"toggle","role":"toggle","unit":"","displayFactor":1,"owners":[]},
-    {"key":"PREVIEWS_ENABLED","min":0,"max":1,"step":1,"kind":"toggle","role":"toggle","unit":"","displayFactor":1,"owners":[]},
+    {"key":"AUTO_SAVE_CHANGES","min":0,"max":1,"step":1,"kind":"toggle","role":"toggle","unit":"","displayFactor":1,"owners":[]},
     {"key":"UNIT_TARGET_HINT_SIZE","kind":"number","role":"scale","unit":"%","displayFactor":1,"owners":["ql_target_shapes"]},
     {"key":"SHOW_RANK","min":0,"max":1,"step":1,"kind":"toggle","role":"toggle","unit":"","displayFactor":1,"owners":["ql_showrank"]},
     {"key":"SHOW_RANK_TOPBAR","min":0,"max":1,"step":1,"kind":"toggle","role":"toggle","unit":"","displayFactor":1,"owners":["ql_showrank"]},
@@ -1600,7 +1600,7 @@ var QOL_DEFAULT_CONFIG = {
         LANGUAGE: 0,
         DEFAULT_HERO: "hero_werewolf",
         DRAG_ENABLED: 1,
-        PREVIEWS_ENABLED: 1,
+        AUTO_SAVE_CHANGES: 0,
         ACTIVE_PRESET_NAME: "",
         ENABLE_UPDATE_CHECKER: 1
 };

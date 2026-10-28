@@ -23,7 +23,7 @@ fallback is for an absent/empty layout and does not include every current tab
 1. Reorder tabs or move them between sidebar groups in `ui/layout.js`.
 2. Find the tab's `QOL.ui.window.registerTabRenderer(tabId, renderFn)` call in the
    settings XML's loaded modules. Move/add the actual rows there and preserve
-   localization, search collection, reset scope, changed-state tracking and previews.
+   localization, search collection, reset scope and changed-state tracking.
 3. For a new tab, add its navigation entry and register a renderer loaded by
    `hud_escape_menu.xml`. Follow [ADDING_SETTINGS.md](../ADDING_SETTINGS.md) when
    it introduces a setting; a navigation entry does not create persistence or a

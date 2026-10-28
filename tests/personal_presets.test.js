@@ -64,7 +64,7 @@ test("personal preset UI loads only on confirmation and preserves live UI prefer
     await e.p.savePersonalPreset("My HUD", g.MOD_CONFIG);
     g.MOD_CONFIG.SOULS_X_OFFSET = 456;
     g.MOD_CONFIG.DRAG_ENABLED = 0;
-    g.MOD_CONFIG.PREVIEWS_ENABLED = 0;
+    g.MOD_CONFIG.AUTO_SAVE_CHANGES = 0;
     let preview;
     g.OpenConfigDiffPreviewModal = options => { preview = options; };
     e.p.renderPresetsTab(e.list);
@@ -76,7 +76,7 @@ test("personal preset UI loads only on confirmation and preserves live UI prefer
     assert.equal(preview.onApply(), true);
     assert.equal(g.MOD_CONFIG.SOULS_X_OFFSET, 123);
     assert.equal(g.MOD_CONFIG.DRAG_ENABLED, 0);
-    assert.equal(g.MOD_CONFIG.PREVIEWS_ENABLED, 0);
+    assert.equal(g.MOD_CONFIG.AUTO_SAVE_CHANGES, 0);
     assert.deepEqual(e.clock.errors, []);
 });
 
@@ -371,7 +371,7 @@ test("deleting the startup My config clears main storage and preserves live sett
     const e = setup(), g = e.global;
     g.MOD_CONFIG.SOULS_X_OFFSET = 123;
     g.MOD_CONFIG.DRAG_ENABLED = 0;
-    g.MOD_CONFIG.PREVIEWS_ENABLED = 0;
+    g.MOD_CONFIG.AUTO_SAVE_CHANGES = 0;
     e.disk.set("qollock_settings", g.WrapConfigForStorage(g.MOD_CONFIG));
     await e.p.onDefaultSaved(e.disk.get("qollock_settings"));
     g.MOD_CONFIG.SOULS_X_OFFSET = 456;
@@ -385,7 +385,7 @@ test("deleting the startup My config clears main storage and preserves live sett
     assert.equal(e.disk.has("qollock_personal_presets_state"), false);
     assert.equal(g.MOD_CONFIG.SOULS_X_OFFSET, 456);
     assert.equal(g.MOD_CONFIG.DRAG_ENABLED, 0);
-    assert.equal(g.MOD_CONFIG.PREVIEWS_ENABLED, 0);
+    assert.equal(g.MOD_CONFIG.AUTO_SAVE_CHANGES, 0);
     const remaining = await e.p.readPersonalPresets();
     assert.deepEqual(Array.from(remaining, entry => entry.name), ["Other"]);
     assert.equal(e.Q.parseStoredConfig(remaining[0].raw).SOULS_X_OFFSET, 456);

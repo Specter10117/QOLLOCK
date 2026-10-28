@@ -20,7 +20,7 @@
 
     const BREAD_PRESET_NAME = "BreadRollius";
     const LEGACY_BREAD_PRESET_NAME = "Bread";
-    const PRESET_MATCH_EXCLUDED_KEYS = new Set(["DRAG_ENABLED", "PREVIEWS_ENABLED", "ACTIVE_PRESET_NAME", "ENABLE_UPDATE_CHECKER", "DEFAULT_HERO"]);
+    const PRESET_MATCH_EXCLUDED_KEYS = new Set(["DRAG_ENABLED", "AUTO_SAVE_CHANGES", "ACTIVE_PRESET_NAME", "ENABLE_UPDATE_CHECKER", "DEFAULT_HERO"]);
 
     let _presetButtonRegistry = new Map();
     let _lastAppliedPresetName = "";
@@ -362,7 +362,7 @@
     };
 
     const preservedUiPreferences = config => {
-        const result = { DRAG_ENABLED: config.DRAG_ENABLED, PREVIEWS_ENABLED: config.PREVIEWS_ENABLED };
+        const result = { DRAG_ENABLED: config.DRAG_ENABLED, AUTO_SAVE_CHANGES: config.AUTO_SAVE_CHANGES };
         if (config.ENABLE_UPDATE_CHECKER !== undefined) result.ENABLE_UPDATE_CHECKER = config.ENABLE_UPDATE_CHECKER;
         return result;
     };

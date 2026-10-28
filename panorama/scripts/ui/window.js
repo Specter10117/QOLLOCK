@@ -928,7 +928,6 @@
         showSettingsListTabPanel(list, renderSig);
 
         if (contentCreated || shouldRebuildCurrentSig) {
-            if (Q.preview?.hideAll) Q.preview.hideAll();
             resetSettingsListRowSyncRegistry();
             contentPanel.RemoveAndDeleteChildren();
             renderCurrentTabContent(contentPanel);
@@ -1131,7 +1130,6 @@
             } else if (typeof globalThis.StopPresetHighlightPolling === "function") {
                 globalThis.StopPresetHighlightPolling();
             }
-            try { Q.preview?.hideAll?.(); } catch (_) {}
             closeSettingsSideModalsIfOpen();
             try { Q.arcade?.closeAllModals?.(); } catch (_) {}
             Q.events?.emit?.("ui:settings_closed");
@@ -1165,7 +1163,6 @@
         } else if (typeof globalThis.StopPresetHighlightPolling === "function") {
             globalThis.StopPresetHighlightPolling();
         }
-        try { Q.preview?.hideAll?.(); } catch (_) {}
         closeSettingsSideModalsIfOpen();
         try { Q.arcade?.closeAllModals?.(); } catch (_) {}
         Q.events?.emit?.("ui:settings_closed");
@@ -1507,8 +1504,6 @@
         if (staleSubHeaderActions) staleSubHeaderActions.DeleteAsync(0);
         const dragBtnRailExisting = tabHost.FindChildTraverse("DragToggleBtnRail");
         if (dragBtnRailExisting) dragBtnRailExisting.DeleteAsync(0);
-        const previewBtnRailExisting = tabHost.FindChildTraverse("PreviewToggleBtnRail");
-        if (previewBtnRailExisting) previewBtnRailExisting.DeleteAsync(0);
         const impBtnRailExisting = tabHost.FindChildTraverse("ImportSettingsBtnRail");
         if (impBtnRailExisting) impBtnRailExisting.DeleteAsync(0);
         const expBtnRailExisting = tabHost.FindChildTraverse("ExportSettingsBtnRail");
@@ -2284,7 +2279,6 @@
                 try { Q.tooltip?.hideRowTooltip?.(); } catch (_) {}
                 if (typeof StopPresetHighlightPolling === "function") StopPresetHighlightPolling();
                 else if (typeof globalThis.StopPresetHighlightPolling === "function") globalThis.StopPresetHighlightPolling();
-                try { Q.preview?.hideAll?.(); } catch (_) {}
                 closeSettingsSideModalsIfOpen();
                 try { Q.arcade?.closeAllModals?.(); } catch (_) {}
                 Q.events?.emit?.("ui:settings_closed");

@@ -48,7 +48,7 @@ function createTestEnvironment() {
         ENABLE_UNSPENT_SOULS: 1,
         ENABLE_COLOR_WARNINGS: 1,
         MINIMAP_SCALE: 1.0,
-        PREVIEWS_ENABLED: 1,
+        AUTO_SAVE_CHANGES: 1,
         LANGUAGE: "english",
         DEFAULT_HERO: "None",
         SETTINGS_THEME: "dark",

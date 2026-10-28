@@ -10,7 +10,6 @@ const sharedPath = path.join(projectRoot, "panorama", "scripts", "ql_shared_pres
 const utilsPath = path.join(projectRoot, "panorama", "scripts", "ql_utils.js");
 const bridgePath = path.join(projectRoot, "panorama", "scripts", "ql_bridge.js");
 const configPath = path.join(projectRoot, "panorama", "scripts", "ql_config.js");
-const settingsPreviewsPath = path.join(projectRoot, "panorama", "scripts", "ql_settings_previews.js");
 const settingsTooltipsPath = path.join(projectRoot, "panorama", "scripts", "ql_settings_tooltips.js");
 const settingsPersistencePath = path.join(projectRoot, "panorama", "scripts", "ql_settings_persistence.js");
 const settingsModalPath = path.join(projectRoot, "panorama", "scripts", "ui", "modal.js");
@@ -485,8 +484,17 @@ function fuzzCrossVersionMigration(exports, fromSemver, toSemver, registry, defa
         try {
             const encoded = exports.serialize(original, fromSemver);
             const decoded = exports.deserialize(encoded, toSemver);
+            const candidate = exports.buildCandidateConfig(decoded, toSemver, defaultConfig).candidateConfig;
             // Verify keys present in both schemas are preserved
             for (const key of fromKeys) {
+                // Legacy decoders may return frozen slots; the actual import
+                // candidate must discard the retired Preview Changes setting.
+                if (key === "PREVIEWS_ENABLED") {
+                    if (candidate.hasOwnProperty(key)) {
+                        failures.push({ iteration: i, type: "retired_key_revived", key });
+                    }
+                    continue;
+                }
                 if (toKeys.has(key) && original.hasOwnProperty(key)) {
                     if (!decoded.hasOwnProperty(key)) {
                         failures.push({
@@ -577,7 +585,7 @@ function runFuzzTests(settingsExports, coreExports, defaultConfig, settingsRegis
 
 function main() {
     const settingsContext = loadContext(
-        [namespacePath, utilsPath, panelHelpersPath, sharedPath, contractPath, legacyPath, bridgePath, configPath, rendererPath, settingsPreviewsPath, settingsTooltipsPath, settingsPersistencePath, settingsModalPath, settingsConfigTabPath, settingsCloudSyncPath, settingsSupportPath, settingsAudioPath, settingsConsoleTabPath, settingsArcadeTabPath, settingsDevTabPath, settingsGameplayTabsPath, settingsThemePath, settingsMetadataPath, settingsTabsPath, settingsControlsPath, settingsPath],
+        [namespacePath, utilsPath, panelHelpersPath, sharedPath, contractPath, legacyPath, bridgePath, configPath, rendererPath, settingsTooltipsPath, settingsPersistencePath, settingsModalPath, settingsConfigTabPath, settingsCloudSyncPath, settingsSupportPath, settingsAudioPath, settingsConsoleTabPath, settingsArcadeTabPath, settingsDevTabPath, settingsGameplayTabsPath, settingsThemePath, settingsMetadataPath, settingsTabsPath, settingsControlsPath, settingsPath],
         `globalThis.__schemaGuardExports = {
             sharedSemver: QOL_SCHEMA_SEMVER,
             sharedWireVersion: QOL_SCHEMA_WIRE_VERSION,

@@ -228,6 +228,43 @@ function connectEmbeddedPage(env, storage = new Map(), options = {}) {
     return currentPage;
 }
 
+test("Auto-Save: production settings edits reach the embedded page and restore in a fresh realm", async () => {
+    const e = require("./load_settings_environment")(), g = e.global;
+    e.hud.sandbox.global.QOL.core.App.shutdown();
+    const panel = g.QOL.core.storageBridge.getPanel();
+    assert.ok(panel);
+    panel.SetURL = () => {};
+    const env = {
+        sandbox: g, clock: e.clock,
+        getLastSetUrl: () => BRIDGE_URL,
+        fireTitleEvent: (target, title) => e.settings.dispatch("HTMLTitle", [target, title]),
+    };
+    const storage = new Map();
+    connectEmbeddedPage(env, storage);
+    assert.equal(g.QOL.core.storageBridge.isReady(), true);
+    g.MOD_CONFIG.AUTO_SAVE_CHANGES = 1;
+    g.SaveAndSync();
+    g.MOD_CONFIG.SOULS_X_OFFSET = 87;
+    g.MarkConfigDirty();
+    e.clock.advance(1200);
+    // The production personal-preset save performs additional asynchronous
+    // storage requests. Pump transport and JS jobs without replacing any owner.
+    for (let i = 0; i < 20; i++) { await flush(); e.clock.advance(0); }
+    const stored = storage.get("qollock_settings");
+    assert.ok(stored, "live attributes alone are not a durable save");
+    assert.equal(JSON.parse(stored).data.SOULS_X_OFFSET, 87);
+    assert.equal(JSON.parse(stored).data.AUTO_SAVE_CHANGES, 1);
+    assert.equal(Object.hasOwn(JSON.parse(stored).data, "PREVIEWS_ENABLED"), false);
+    const fresh = createTestEnvironment();
+    fresh.sandbox.QOL.core.storageBridge.enableAutoload(true);
+    connectEmbeddedPage(fresh, storage);
+    for (let i = 0; i < 10; i++) { await flush(); fresh.clock.advance(0); }
+    assert.equal(fresh.sandbox.MOD_CONFIG.SOULS_X_OFFSET, 87);
+    assert.equal(fresh.sandbox.MOD_CONFIG.AUTO_SAVE_CHANGES, 1);
+    assert.deepEqual(e.clock.errors, []); assert.deepEqual(e.doc.eventErrors, []);
+    assert.deepEqual(fresh.clock.errors, []);
+});
+
 test("storage_bridge: actual embedded page preserves Unicode across chunk boundaries", async () => {
     const env = createTestEnvironment();
     const storage = new Map();

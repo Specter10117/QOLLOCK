@@ -74,7 +74,7 @@ test("new exchange preserves changed fractions, wide coordinates, custom colors 
     const { global: g, hud } = load();
     const cfg = { ...g.QOL_DEFAULT_CONFIG, TOP_BAR_SCALE: 2.73,
         PLAYER_HEALTHBAR_X_OFFSET: 8000, SOULS_OPACITY: .73,
-        DRAG_ENABLED: 0, PREVIEWS_ENABLED: 0, ENABLE_UPDATE_CHECKER: 0,
+        DRAG_ENABLED: 0, AUTO_SAVE_CHANGES: 0, ENABLE_UPDATE_CHECKER: 0,
         STAMINA_CHARGE_COLOR: 0x112abef, ACTIVE_PRESET_NAME: "Тест 🐈 日本語\ud800" };
     const code = g.QOL.ui.configTab.getCurrentExportSettingsString(cfg);
     const raw = g.QOL.persistence.fromBase64Url(code.split(":")[1]);
@@ -82,7 +82,7 @@ test("new exchange preserves changed fractions, wide coordinates, custom colors 
     const imported = g.QOL.ui.modal.tryApplyImportStringWithDiagnostics(code);
     assert.equal(imported.ok, true);
     assert.equal(imported.source, "settingsCode");
-    for (const key of ["DRAG_ENABLED", "PREVIEWS_ENABLED", "ENABLE_UPDATE_CHECKER"]) {
+    for (const key of ["DRAG_ENABLED", "AUTO_SAVE_CHANGES", "ENABLE_UPDATE_CHECKER"]) {
         assert.equal(imported.candidateConfig[key], g.MOD_CONFIG[key]);
     }
 });

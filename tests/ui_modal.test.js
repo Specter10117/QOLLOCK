@@ -43,7 +43,7 @@ function createTestEnvironment() {
         ENABLE_COLOR_WARNINGS: 1,
         MINIMAP_SCALE: 1.0,
         DRAG_ENABLED: 0,
-        PREVIEWS_ENABLED: 1,
+        AUTO_SAVE_CHANGES: 1,
         ACTIVE_PRESET_NAME: "",
     };
 
@@ -161,20 +161,20 @@ test("ui/modal: preserveUiOnlySettings keeps runtime UI flags untouched", () => 
     const modal = sandbox.QOL.ui.modal;
 
     sandbox.globalThis.MOD_CONFIG.DRAG_ENABLED = 1;
-    sandbox.globalThis.MOD_CONFIG.PREVIEWS_ENABLED = 0;
+    sandbox.globalThis.MOD_CONFIG.AUTO_SAVE_CHANGES = 0;
     sandbox.globalThis.MOD_CONFIG.ENABLE_UPDATE_CHECKER = 0;
 
     const candidate = {
         ENABLE_UNSPENT_SOULS: 0,
         DRAG_ENABLED: 0,
-        PREVIEWS_ENABLED: 1,
+        AUTO_SAVE_CHANGES: 1,
         ENABLE_UPDATE_CHECKER: 1,
     };
 
     modal.preserveUiOnlySettings(candidate);
 
     assert.strictEqual(candidate.DRAG_ENABLED, 1);
-    assert.strictEqual(candidate.PREVIEWS_ENABLED, 0);
+    assert.strictEqual(candidate.AUTO_SAVE_CHANGES, 0);
     assert.strictEqual(candidate.ENABLE_UPDATE_CHECKER, 0);
 });
 

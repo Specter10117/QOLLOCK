@@ -261,11 +261,6 @@
         bindSectionPerfTooltip: () => {}
     };
 
-    const getPreview = () => (Q && Q.preview) ? Q.preview : {
-        showForConfigId: () => {},
-        hideAll: () => {}
-    };
-
     const getArcade = () => (Q && Q.arcade) ? Q.arcade : {
         openMinesweeper: () => {},
         openFlappy: () => {},
@@ -1128,7 +1123,6 @@
             saveAndSync();
             if (refreshListOnChange) requestSettingsListRefresh(0, true);
             if (toggleOptions && typeof toggleOptions.onChanged === "function") toggleOptions.onChanged();
-            getPreview().showForConfigId(configId);
         });
 
         registerSettingsListRowSync(() => {
@@ -1272,7 +1266,6 @@
             getConfig()[enableConfigId] = invertEnableToggle ? (nextEnabled ? 0 : 1) : (nextEnabled ? 1 : 0);
             applyBodyState(nextEnabled, true);
             saveAndSync();
-            getPreview().showForConfigId(enableConfigId);
         });
 
         if (buildRowsFn) {
@@ -1653,7 +1646,6 @@
                     markConfigDirty();
                     refreshRowChangedState();
                 }
-                getPreview().showForConfigId(configId);
             });
 
             const submitSliderInput = () => {
@@ -1670,7 +1662,6 @@
                 input.AddClass("ValueSavedFlash");
                 markConfigDirty();
                 refreshRowChangedState();
-                getPreview().showForConfigId(configId);
             };
             input.SetPanelEvent("oninputsubmit", submitSliderInput);
             input.SetPanelEvent("onblur", submitSliderInput);
@@ -2265,7 +2256,6 @@
                     }
                     saveAndSync();
                     refreshRowChangedState();
-                    getPreview().showForConfigId(configId);
                 });
             });
             syncRowVisualState = () => {
@@ -2809,9 +2799,6 @@
                 const enableKey = toggleConfig?.enableOnChange;
                 if (enableKey && Object.prototype.hasOwnProperty.call(getDefaultConfig(), enableKey)) modCfg[enableKey] = 1;
                 update();
-                if (configId === "PREVIEWS_ENABLED" && modCfg[configId] !== 1) {
-                    getPreview().hideAll();
-                }
                 if (configId === "DRAG_ENABLED") {
                     const settingsWindow = $.GetContextPanel().FindChildTraverse("SettingsWindow");
                     if (settingsWindow && settingsWindow.IsValid && settingsWindow.IsValid()) {
@@ -2826,7 +2813,6 @@
                 if (configId === "ENABLE_OLD_ITEM_COOLDOWNS") {
                     requestSettingsListRefresh(0, true);
                 }
-                getPreview().showForConfigId(configId);
             };
             switchButton.SetPanelEvent("onactivate", activateToggle);
             syncRowVisualState = () => {
@@ -3019,7 +3005,6 @@
             update();
             saveAndSync();
             refreshRowChangedState();
-            getPreview().showForConfigId(configId);
         });
         secondaryBtn.SetPanelEvent("onactivate", () => {
             const mainEnabled = invertMain ? (modCfg[configId] !== 1) : (modCfg[configId] === 1);
@@ -3028,7 +3013,6 @@
             update();
             saveAndSync();
             refreshRowChangedState();
-            getPreview().showForConfigId(secondaryConfigId);
         });
 
         const syncRowVisualState = () => {

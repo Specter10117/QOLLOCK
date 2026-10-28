@@ -701,12 +701,14 @@
 
     /** Explicit load may replace preceding edits, never edits made while waiting. */
     const loadSettings = (callback) => {
+        Q.ui?.cloudSync?.autoSave?.cancel();
         const root = _findRootPanel();
         _markSettingsIntent(root);
         return _withCallback(_loadSettings(_captureRestoreState()), callback);
     };
 
     const clearSettings = (callback) => {
+        Q.ui?.cloudSync?.autoSave?.cancel();
         // Clearing storage is also user intent: an older restore must not undo it.
         _markSettingsIntent(_findRootPanel());
         const clearing = (async () => {

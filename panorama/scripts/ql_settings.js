@@ -128,6 +128,7 @@ function SyncConfigFromStorage() {
     }
     MOD_CONFIG = nextConfig;
     gLastSavedConfigRaw = WrapConfigForStorage(MOD_CONFIG);
+    QOL.ui.cloudSync.autoSave.restored(MOD_CONFIG, gLastSavedConfigRaw);
     // $.persistentStorage confirmed absent — statlocker state persists via panel attrs only.
     if (QOL.arcade) QOL.arcade.updateBridgePollerState();
 }
@@ -255,6 +256,7 @@ const settingsSaveQueue = (() => {
 })();
 
 function MarkConfigDirty() {
+    if (MOD_CONFIG.AUTO_SAVE_CHANGES === 1) QOL.ui.cloudSync.autoSave.cancel();
     settingsSaveQueue.mark();
 }
 
@@ -287,6 +289,7 @@ function SaveAndSync() {
     }
     if (alreadyPublished) {
         PublishPaletteColorBridges();
+        QOL.ui.cloudSync.autoSave.observe(data);
         return;
     }
     var publication = publisher.writeStorageConfigRawToUi(root, data, {
@@ -301,6 +304,7 @@ function SaveAndSync() {
     ApplySettingsThemeClasses(panel && panel.FindChildTraverse ? panel.FindChildTraverse("SettingsWindow") : null);
     QueueActivePresetHighlightRefresh(0.05);
     RefreshEnumSections();
+    QOL.ui.cloudSync.autoSave.observe(data);
 }
 
 // Window shell, navigation, list caching, and event listeners delegated to panorama/scripts/ui/window.js

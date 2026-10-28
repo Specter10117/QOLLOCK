@@ -911,7 +911,6 @@
             }, true);
             owner.cancel = I.button(actions, "QOLCustomizeCancel", "Cancel", () => { if (current === owner) stop(); });
             owner.status = I.label(tools, "Waiting for HUD preview");
-            Q.preview?.hideAll?.();
             Q.tooltip?.hideRowTooltip?.();
             refreshFrames(owner);
             select(owner, element || owner.elements.find(item => owner.frames.get(item.id).available) || owner.elements[0], !!element);

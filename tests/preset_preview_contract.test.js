@@ -6,7 +6,7 @@ const loadSettings = require("./load_settings_environment");
 test("preset preview preserves the same UI preferences as Confirm without changing pure preset resolution", () => {
     const e = loadSettings(), g = e.global, Q = g.QOL;
     e.hud.sandbox.global.QOL.core.App.shutdown();
-    const keys = ["DRAG_ENABLED", "PREVIEWS_ENABLED", "ENABLE_UPDATE_CHECKER"];
+    const keys = ["DRAG_ENABLED", "AUTO_SAVE_CHANGES", "ENABLE_UPDATE_CHECKER"];
     for (const name of ["Default", "Clean", "Maximum", "Bread"]) {
         for (const key of keys) g.MOD_CONFIG[key] = 0;
         g.SaveAndSync();
@@ -26,7 +26,7 @@ test("preset preview preserves the same UI preferences as Confirm without changi
 test("the actual preset confirmation shows and applies matching preserved preferences", () => {
     const e = loadSettings(), g = e.global, Q = g.QOL;
     e.hud.sandbox.global.QOL.core.App.shutdown();
-    const keys = ["DRAG_ENABLED", "PREVIEWS_ENABLED", "ENABLE_UPDATE_CHECKER"];
+    const keys = ["DRAG_ENABLED", "AUTO_SAVE_CHANGES", "ENABLE_UPDATE_CHECKER"];
     for (const key of keys) g.MOD_CONFIG[key] = 0;
     let preview;
     g.OpenConfigDiffPreviewModal = options => { preview = options; };

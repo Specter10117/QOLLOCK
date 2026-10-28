@@ -229,7 +229,7 @@
         if (globalThis.gSearchCollectMode && globalThis.gSearchCollectState) {
             if (typeof globalThis.CreateSectionTitle === "function" && typeof globalThis.CreateRow === "function") {
                 globalThis.CreateSectionTitle(list, "General");
-                globalThis.CreateRow(list, "Preview", "PREVIEWS_ENABLED", "toggle", null, null, null, null, "Realtime Changes");
+                globalThis.CreateRow(list, "Auto-Save Changes", "AUTO_SAVE_CHANGES", "toggle", null, null, null, null, "Automatically save settings after changes.");
                 globalThis.CreateRow(list, "Update Checker", "ENABLE_UPDATE_CHECKER", "toggle", null, null, null, null, "Check for new QOLLOCK releases when opening settings.");
                 globalThis.CreateRow(list, "Language", "LANGUAGE", "dropdown", null, null, null, globalThis.SETTINGS_LANGUAGE_OPTIONS);
                 globalThis.CreateRow(list, "Theme", "SETTINGS_THEME", "buttongroup", null, null, null, globalThis.SETTINGS_THEME_OPTIONS);
@@ -277,7 +277,7 @@
             globalThis.CreateSectionTitle(cardGeneral, "General");
         }
         if (typeof globalThis.CreateRow === "function") {
-            globalThis.CreateRow(cardGeneral, "Preview Changes", "PREVIEWS_ENABLED", "toggle", null, null, null, null, "Realtime Changes");
+            globalThis.CreateRow(cardGeneral, "Auto-Save Changes", "AUTO_SAVE_CHANGES", "toggle", null, null, null, null, "Automatically save settings after changes.");
             globalThis.CreateRow(cardGeneral, "Update Checker", "ENABLE_UPDATE_CHECKER", "toggle", null, null, null, null, "Check for new QOLLOCK releases when opening settings.");
             globalThis.CreateRow(cardGeneral, "Language", "LANGUAGE", "dropdown", null, null, null, globalThis.SETTINGS_LANGUAGE_OPTIONS);
             globalThis.CreateRow(cardGeneral, "Theme", "SETTINGS_THEME", "buttongroup", null, null, null, globalThis.SETTINGS_THEME_OPTIONS);

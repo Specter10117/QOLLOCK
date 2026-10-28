@@ -69,7 +69,7 @@ they do not bypass normalization or grant additional numeric precision. The
 release/schema tag is retained for display, but new-code compatibility is owned
 by the dictionary and format, not release numbers. Normalization and application
 use current settings metadata. The import preview and local preferences
-(`DRAG_ENABLED`, `PREVIEWS_ENABLED`, `ENABLE_UPDATE_CHECKER`) keep their existing
+(`DRAG_ENABLED`, `AUTO_SAVE_CHANGES`, `ENABLE_UPDATE_CHECKER`) keep their existing
 behavior.
 
 ## Verification

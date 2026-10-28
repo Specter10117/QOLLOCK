@@ -9,7 +9,7 @@ thumb readback and row refresh must not overwrite the accepted exact value.
 Enter and blur validate the same complete numeric input; malformed or out-of-
 range values stay marked and preserve the previous accepted value. Numeric
 wheel changes use the declared setting step. Displayed overall scale is a
-percentage of its native baseline. Existing dirty/save/preview paths are reused.
+percentage of its native baseline. Existing dirty/save paths are reused.
 
 `createSliderRow` accepts an optional seventh argument, `inlineCheckbox`, with
 `key`, `label` and `description`. It reuses the title-checkbox control after the

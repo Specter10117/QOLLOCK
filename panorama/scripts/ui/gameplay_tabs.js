@@ -111,7 +111,7 @@
 
         if (createAnimatedToggle) {
             createAnimatedToggle(list, "Item Cooldowns", "ENABLE_PASSIVE_COOLDOWN", "Tracked cooldowns near crosshair", (sectionParent) => {
-                const advancedModeEnabled = Q.preview?.isAdvancedItemCooldownModeEnabled ? Q.preview.isAdvancedItemCooldownModeEnabled() : false;
+                const advancedModeEnabled = Number(Q.getSettingsConfig().ENABLE_OLD_ITEM_COOLDOWNS) !== 1;
                 if (isSearchCollect && createRow) {
                     createRow(sectionParent, "Advanced", "ENABLE_OLD_ITEM_COOLDOWNS", "toggle", null, null, null, [{ invert: true }], "Switch to the advanced item cooldown mode with in-menu filters.");
                 }

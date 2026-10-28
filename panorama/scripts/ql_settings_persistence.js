@@ -114,7 +114,7 @@ function ApplyParsedConfigWithDiagnostics(parsed, schemaVersion) {
     if (!parsed || typeof parsed !== "object") return diagnostics;
 
     var preservedDragEnabled = MOD_CONFIG.DRAG_ENABLED;
-    var preservedPreviewsEnabled = MOD_CONFIG.PREVIEWS_ENABLED;
+    var preservedAutoSaveChanges = MOD_CONFIG.AUTO_SAVE_CHANGES;
     var preservedUpdateCheckerEnabled = MOD_CONFIG.ENABLE_UPDATE_CHECKER;
     var fieldMap = BuildSchemaFieldMap(schemaVersion);
     var defConfig = GetDefaultConfig();
@@ -140,7 +140,7 @@ function ApplyParsedConfigWithDiagnostics(parsed, schemaVersion) {
     NormalizeCompassSpeedSchemaMigration(MOD_CONFIG, parsed, schemaVersion || QOL_SCHEMA_SEMVER);
     NormalizeLanguageSchemaMigration(MOD_CONFIG, parsed, schemaVersion || QOL_SCHEMA_SEMVER);
     MOD_CONFIG.DRAG_ENABLED = preservedDragEnabled;
-    MOD_CONFIG.PREVIEWS_ENABLED = preservedPreviewsEnabled;
+    MOD_CONFIG.AUTO_SAVE_CHANGES = preservedAutoSaveChanges;
     if (preservedUpdateCheckerEnabled !== undefined) {
         MOD_CONFIG.ENABLE_UPDATE_CHECKER = preservedUpdateCheckerEnabled;
     }

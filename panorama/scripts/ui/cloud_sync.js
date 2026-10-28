@@ -219,6 +219,71 @@
         tick();
     };
 
+    // One debounced snapshot and one in-flight durable save. Publication remains
+    // synchronous; CEF acknowledgments must belong to the latest user intent.
+    const autoSave = (() => {
+        let pending = null, inFlight = null, timer = null, generation = 0;
+        let enabled = false, savedRaw = "";
+        const current = record => isAlive(record.context) && isAlive(record.root) &&
+            record.context === $.GetContextPanel() && record.root === findRootPanel();
+        const cancelTimer = () => {
+            if (timer !== null) {
+                try { $.CancelScheduled(timer); } catch (_) {}
+                timer = null;
+            }
+        };
+        const cancel = () => {
+            generation++;
+            cancelTimer(); pending = null; savedRaw = "";
+        };
+        const run = record => {
+            if (pending !== record || record.generation !== generation) return;
+            timer = null;
+            if (!current(record)) { pending = null; return; }
+            if (inFlight) return;
+            pending = null;
+            inFlight = record;
+            setFeedbackMessage("Saving settings...", "info", 0);
+            const complete = error => {
+                if (inFlight !== record) return;
+                inFlight = null;
+                if (record.generation === generation && current(record)) {
+                    if (error) {
+                        savedRaw = "";
+                        setFeedbackMessage("Save failed.", "error", 2600);
+                        $.Msg("[QOLLOCK] Auto-Save failed: " + String(error.message || error));
+                    } else {
+                        savedRaw = record.raw;
+                        setFeedbackMessage("Settings saved successfully.", "success", 2000);
+                    }
+                }
+                // A newer edit already waited its debounce while CEF was busy.
+                if (pending && timer === null) run(pending);
+            };
+            const bridge = Q.core?.storageBridge;
+            if (!bridge?.saveSettings) { complete(new Error("Storage bridge unavailable")); return; }
+            bridge.saveSettings(record.raw, complete);
+        };
+        const observe = raw => {
+            const nextEnabled = Q.getSettingsConfig().AUTO_SAVE_CHANGES === 1;
+            const disabling = enabled && !nextEnabled;
+            enabled = nextEnabled;
+            if (!enabled && !disabling) return;
+            if (pending?.raw === raw && current(pending)) return;
+            if (!pending && inFlight?.raw === raw && inFlight.generation === generation && current(inFlight)) return;
+            if (!pending && !inFlight && savedRaw === raw) return;
+            cancelTimer();
+            const record = { raw, context: $.GetContextPanel(), root: findRootPanel(), generation: ++generation };
+            pending = record;
+            timer = $.Schedule(0.6, () => run(record));
+        };
+        const restored = (config, raw) => {
+            if (pending && pending.raw !== raw) cancel();
+            enabled = config.AUTO_SAVE_CHANGES === 1;
+        };
+        return { observe, cancel, restored };
+    })();
+
     let gSaveButtonLastActionMs = 0;
     let saveUiGeneration = 0;
     const SAVE_BUTTON_DEBOUNCE_MS = 1000;
@@ -248,6 +313,7 @@
         if (typeof onBeforeQueue === "function") {
             try { onBeforeQueue(); } catch (_) {}
         }
+        autoSave.cancel();
 
         saveBtn.RemoveClass("FailureState");
         saveBtn.AddClass("SuccessState");
@@ -489,6 +555,7 @@
 
     // Export API on Q.ui.cloudSync
     Q.ui.cloudSync = {
+        autoSave,
         queueBuildSaveRequest,
         readBuildSaveStatus,
         resolveBuildSavePendingLabel,

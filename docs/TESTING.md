@@ -339,6 +339,16 @@ responses: late startup versus newer edits, debounced edits, retries, malformed
 data, explicit Load, chunking and request failures. They do not establish that
 the real client's CEF localStorage survives a full process restart.
 
+`tests/settings_autosave.test.js` exercises production settings controls and save
+coordination: coalescing, acknowledgment, failures, disable, restored preferences,
+stale contexts and manual storage actions. `main_preview_retirement.json` freezes
+Preview on/off JSON and compact exports generated from the recorded `origin/main`
+commit, so compatibility is checked against the old writer. The bridge suite also
+connects actual settings edits to the embedded page and restores the result in a
+fresh modeled realm. Retired preview-panel behavior tests were replaced by
+removal and compatibility checks; live Customize/preset previews retain their
+separate regressions.
+
 The audio tests observe production sound dispatches after config mapping and
 export/reload. A Buff Delay of 15 seconds already worked on that path before the
 release fixes. The confirmed zero-to-30 fallback was a separate bug; its fix

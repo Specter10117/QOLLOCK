@@ -43,7 +43,7 @@ function createTestEnvironment() {
         ENABLE_COLOR_WARNINGS: 1,
         MINIMAP_SCALE: 1.0,
         DRAG_ENABLED: 0,
-        PREVIEWS_ENABLED: 1,
+        AUTO_SAVE_CHANGES: 1,
         ACTIVE_PRESET_NAME: "",
     };
 
@@ -193,7 +193,7 @@ test("presets: applyPresetByName applies preset and preserves UI settings", () =
     const modConfig = env.sandbox.globalThis.MOD_CONFIG;
 
     modConfig.DRAG_ENABLED = 1;
-    modConfig.PREVIEWS_ENABLED = 0;
+    modConfig.AUTO_SAVE_CHANGES = 0;
     modConfig.ENABLE_UPDATE_CHECKER = 0;
 
     const ok = p.applyPresetByName("Clean");
@@ -202,7 +202,7 @@ test("presets: applyPresetByName applies preset and preserves UI settings", () =
     assert.strictEqual(modConfig.MINIMAP_SCALE, 0.9);
     // UI layout preferences preserved
     assert.strictEqual(modConfig.DRAG_ENABLED, 1);
-    assert.strictEqual(modConfig.PREVIEWS_ENABLED, 0);
+    assert.strictEqual(modConfig.AUTO_SAVE_CHANGES, 0);
     assert.strictEqual(modConfig.ENABLE_UPDATE_CHECKER, 0);
 });
 
@@ -222,7 +222,7 @@ test("presets: doesCurrentConfigMatchPreset accurately matches config", () => {
     // Changing UI layout settings does NOT break match
     modConfig.ENABLE_UNSPENT_SOULS = 0;
     modConfig.DRAG_ENABLED = 1;
-    modConfig.PREVIEWS_ENABLED = 0;
+    modConfig.AUTO_SAVE_CHANGES = 0;
     assert.strictEqual(p.doesCurrentConfigMatchPreset("Clean"), true);
 });
 

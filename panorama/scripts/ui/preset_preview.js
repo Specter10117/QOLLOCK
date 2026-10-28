@@ -122,7 +122,6 @@
                     child.AddClass("QOLCustomizeHidden"); owner.hidden.push(child);
                 }
             }
-            Q.preview?.hideAll?.();
             Q.tooltip?.hideRowTooltip?.();
             watch(owner);
             if (current !== owner) return false;

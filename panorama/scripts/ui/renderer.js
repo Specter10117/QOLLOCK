@@ -1086,11 +1086,6 @@
             }
             if (enableKey) {
                 updateDependents(enableKey, next);
-                if (typeof globalThis !== "undefined" && typeof globalThis.ShowConfigPreviewForConfigId === "function") {
-                    try { globalThis.ShowConfigPreviewForConfigId(enableKey); } catch (_) {}
-                } else if (Q?.preview?.showConfigPreviewForConfigId) {
-                    try { Q.preview.showConfigPreviewForConfigId(enableKey); } catch (_) {}
-                }
             }
         };
 

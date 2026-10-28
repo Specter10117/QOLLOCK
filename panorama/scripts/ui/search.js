@@ -642,7 +642,6 @@
         const ensureHosts = (typeof EnsureSettingsListHosts === "function") ? EnsureSettingsListHosts : globalThis.EnsureSettingsListHosts;
         const hosts = ensureHosts ? ensureHosts(list) : null;
         if (!hosts || !hosts.searchHost || !hosts.searchHost.IsValid || !hosts.searchHost.IsValid()) return false;
-        if (Q.preview?.hideAll) Q.preview.hideAll();
         if (typeof SetActiveSettingsListRenderSignature === "function") SetActiveSettingsListRenderSignature("__search__");
         else if (typeof globalThis.SetActiveSettingsListRenderSignature === "function") globalThis.SetActiveSettingsListRenderSignature("__search__");
         if (typeof ResetSettingsListRowSyncRegistry === "function") ResetSettingsListRowSyncRegistry();

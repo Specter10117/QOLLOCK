@@ -126,8 +126,8 @@
         if (Object.prototype.hasOwnProperty.call(modConfig, "DRAG_ENABLED")) {
             targetConfig.DRAG_ENABLED = modConfig.DRAG_ENABLED;
         }
-        if (Object.prototype.hasOwnProperty.call(modConfig, "PREVIEWS_ENABLED")) {
-            targetConfig.PREVIEWS_ENABLED = modConfig.PREVIEWS_ENABLED;
+        if (Object.prototype.hasOwnProperty.call(modConfig, "AUTO_SAVE_CHANGES")) {
+            targetConfig.AUTO_SAVE_CHANGES = modConfig.AUTO_SAVE_CHANGES;
         }
         if (Object.prototype.hasOwnProperty.call(modConfig, "ENABLE_UPDATE_CHECKER")) {
             targetConfig.ENABLE_UPDATE_CHECKER = modConfig.ENABLE_UPDATE_CHECKER;
