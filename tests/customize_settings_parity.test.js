@@ -120,6 +120,38 @@ test("scoped mode changes save through the existing config path while Reset pres
     assert.deepEqual(env.doc.eventErrors, []); assert.deepEqual(env.clock.errors, []);
 });
 
+test("Customize launcher pairs shortcuts in catalog order and keeps odd groups half-width", () => {
+    const env = load(), g = env.global;
+    g.QOL.ui.window.setOpen(true); env.clock.advance(500);
+    g.QOL.ui.window.setActiveTabAndRefresh("Customize"); env.clock.advance(300);
+    const host = env.em.FindChildTraverse("QOLCustomizeLaunch");
+    const expected = new Map();
+    for (const element of g.QOL.presentation.elements) {
+        if (element.inspectorOwner || element.parentId || !element.fields.some(field => !field.hidden)) continue;
+        const group = element.group || "HUD";
+        if (!expected.has(group)) expected.set(group, []);
+        expected.get(group).push("QOLCustomizeLaunch_" + element.id);
+    }
+    const sections = host.Children().filter(panel => panel.BHasClass("QOLCustomizeSection"));
+    assert.equal(sections.length, expected.size);
+    let index = 0;
+    for (const ids of expected.values()) {
+        const rows = sections[index++].Children().find(panel => panel.BHasClass("QOLCustomizeLaunchGrid")).Children();
+        assert.equal(rows.length, Math.ceil(ids.length / 2));
+        const buttons = rows.flatMap(row => {
+            assert.equal(row.GetChildCount(), 2, "each row reserves two equal columns");
+            return row.Children().filter(panel => panel.paneltype === "Button");
+        });
+        assert.deepEqual(buttons.map(panel => panel.id), ids, "visual and focus order follow the catalog");
+        if (ids.length % 2) {
+            const spacer = rows.at(-1).GetChild(1);
+            assert.equal(spacer.paneltype, "Panel");
+            assert.equal(spacer.hittest, false);
+        }
+    }
+    assert.deepEqual(env.doc.eventErrors, []); assert.deepEqual(env.clock.errors, []);
+});
+
 test("Customize tab shortcuts open feature scopes, including settings-only Quick Buy", () => {
     const env = load(), g = env.global;
     g.QOL.ui.window.setOpen(true); env.clock.advance(500);

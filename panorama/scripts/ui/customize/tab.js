@@ -67,8 +67,23 @@
                 grid.AddClass("QOLCustomizeLaunchGrid");
                 groups.set(group, grid);
             }
-            I.button(groups.get(group), "QOLCustomizeLaunch_" + element.id, element.name, () => open(element.id))
+            const grid = groups.get(group);
+            let row = grid.GetChildCount() ? grid.GetChild(grid.GetChildCount() - 1) : null;
+            if (!row || row.GetChildCount() === 2) {
+                row = P.create("Panel", grid, "");
+                row.AddClass("QOLCustomizeLaunchRow");
+            }
+            I.button(row, "QOLCustomizeLaunch_" + element.id, element.name, () => open(element.id))
                 .AddClass("QOLCustomizeLaunchElement");
+        }
+        for (const grid of groups.values()) {
+            const row = grid.GetChild(grid.GetChildCount() - 1);
+            if (row.GetChildCount() === 1) {
+                // Keep the final shortcut half-width without a focusable empty button.
+                const spacer = P.create("Panel", row, "");
+                spacer.AddClass("QOLCustomizeLaunchSpacer");
+                spacer.hittest = false;
+            }
         }
     }
     Q.ui.window.registerTabRenderer("Customize", render);
