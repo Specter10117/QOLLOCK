@@ -176,3 +176,43 @@ test("owned sibling batches and sweep remain linear while detecting live moves a
     assert.equal(parent.IsValid(), true);
     assert.ok(recovered.every(panel => !panel.IsValid()));
 });
+
+test("bulk owned-tree clear retires mixed handles with linear record visits", () => {
+    const env = fixture(owners[0]), tree = env.Q.core.panel.createOwnedTree();
+    const parent = env.add(env.root, "NativeClearParent"), foreign = env.add(parent, "NativeUnownedChild");
+    const entries = Array.from({ length: 400 }, (_, index) => ({ id: "QOLClearMarker" + index }));
+    const markers = tree.children(parent, "Panel", entries);
+    const moved = tree.child(markers[0], "Label", "QOLClearMoved");
+    const fresh = tree.create("Label", markers[1], "QOLClearFresh");
+    const detached = env.add(null, "DetachedClearChildren"); moved.SetParent(detached); fresh.SetParent(detached);
+    // Count actual record enumeration in the helper's realm, retaining Map's
+    // behavior. This catches quadratic rescans without native-time estimates.
+    env.sandbox.eval(`
+        globalThis.clearOwnedVisits = 0;
+        const ownedRecord = record => record && record.panel && record.panel.id.startsWith("QOLClear");
+        const recordEntries = Map.prototype[Symbol.iterator], recordValues = Map.prototype.values;
+        Map.prototype[Symbol.iterator] = function* () {
+            for (const entry of recordEntries.call(this)) {
+                if (ownedRecord(entry[1])) clearOwnedVisits++;
+                yield entry;
+            }
+        };
+        Map.prototype.values = function* () {
+            for (const record of recordValues.call(this)) {
+                if (ownedRecord(record)) clearOwnedVisits++;
+                yield record;
+            }
+        };
+    `);
+    tree.clear();
+    const visits = env.sandbox.eval("clearOwnedVisits"), owned = [...markers, moved, fresh];
+    assert.ok(visits <= owned.length * 4, `${owned.length} owned handles required ${visits} record visits`);
+    assert.ok(owned.every(panel => panel.visible === false));
+    env.clock.advance(20);
+    assert.ok(owned.every(panel => !panel.IsValid()));
+    assert.equal(parent.IsValid(), true); assert.equal(foreign.IsValid(), true);
+    const replacement = tree.child(parent, "Panel", entries[0].id);
+    assert.ok(replacement && replacement !== markers[0], "the cleared owner remains reusable");
+    tree.dispose(); env.clock.advance(20); assert.equal(replacement.IsValid(), false);
+    assert.deepEqual(env.clock.errors, []);
+});
