@@ -197,10 +197,15 @@
                 const created = [];
                 let childIndex = 0;
                 const createOwned = (type, owner, id, properties) => {
-                    // These IDs identify only QOL-created rows/keys/layouts.
-                    // CitadelBinding still owns its native glyph descendants.
-                    const panel = tree.child(owner, type, id || "QOLKeyboardOverlayChild" + childIndex++, properties);
+                    // Rows/keys/layouts are fresh private handles. Validate their
+                    // parents without indexing every sibling again before the
+                    // native glyph discovery pass. Named roots still reconcile IDs.
+                    const panel = id ? tree.child(owner, type, id, properties) :
+                        tree.create(type, owner, "QOLKeyboardOverlayChild" + childIndex++, {
+                            hittest: "false", hittestchildren: "false", ...properties
+                        });
                     if (!P.isAlive(panel)) throw new Error("Keyboard overlay panel creation failed");
+                    if (!id) { panel.hittest = false; panel.hittestchildren = false; }
                     created.push(panel);
                     return panel;
                 };

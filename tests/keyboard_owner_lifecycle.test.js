@@ -132,6 +132,26 @@ test("keyboard derives owned key sizing roles once per generation while native s
     assert.deepEqual(env.clock.errors, []);
 });
 
+test("keyboard enumerates a private row only once per poll while following moved owned keys", () => {
+    const env = setup(); env.feature.onEnable();
+    const row = env.box().FindChildrenWithClassTraverse("KeyboardRow")[0];
+    assert.equal(row.hittest, false);
+    assert.equal(row.hittestchildren, false);
+    const children = row.Children.bind(row);
+    let enumerations = 0;
+    row.Children = () => { enumerations++; return children(); };
+    env.clock.advance(200);
+    assert.equal(enumerations, 1, "ownership validation must not rescan the same row before glyph discovery");
+    const key = children()[0], old = env.overlay();
+    key.SetParent(env.add(null, "DetachedKeys"));
+    env.clock.advance(250);
+    assert.equal(old.IsValid(), false);
+    assert.equal(key.IsValid(), false);
+    assert.ok(env.overlay());
+    env.feature.onDisable(); env.clock.advance(20);
+    assert.deepEqual(env.clock.errors, []);
+});
+
 test("keyboard themes update in place and alternate layouts retain native actions and generation cleanup", () => {
     const env = setup(); env.feature.onEnable();
     const original = env.overlay();

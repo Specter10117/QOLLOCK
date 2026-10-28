@@ -176,6 +176,30 @@ for (const property of ["color", "washColor", "borderColor", "backgroundColor"])
     assert.deepEqual(env.clock.errors, []);
 });
 
+test("unchanged native classes need one validation and still recover after feedback or ownership transfer", () => {
+    const env = setup(), panel = env.add("NativeClass"), owner = env.P.createNativeStyleOwner();
+    const hasClass = panel.BHasClass.bind(panel);
+    let reads = 0;
+    panel.BHasClass = name => { reads++; return hasClass(name); };
+    owner.apply(panel, { width: "40px" }, { QOLActive: true });
+    reads = 0;
+    assert.equal(owner.apply(panel, { width: "40px" }, { QOLActive: true }), true);
+    assert.equal(reads, 1, "stable native presentation needs one class validation");
+    panel.RemoveClass("QOLActive");
+    owner.apply(panel, { width: "40px" }, { QOLActive: true });
+    assert.equal(hasClass("QOLActive"), true);
+    const other = env.P.createNativeStyleOwner();
+    other.apply(panel, { width: "60px" }, { QOLActive: true });
+    owner.apply(panel, { width: "40px" }, { QOLActive: true });
+    other.clear();
+    assert.equal(panel.style.width, "40px");
+    assert.equal(hasClass("QOLActive"), true);
+    owner.clear();
+    assert.equal(panel.style.width, undefined);
+    assert.equal(hasClass("QOLActive"), false);
+    assert.deepEqual(env.clock.errors, []);
+});
+
 test("native style ownership retries rejected writes and each failed clear without losing retired panels", () => {
     const env = setup(), old = env.add("OldNative"), current = env.add("CurrentNative");
     const scope = env.P.createNativeStyleOwner({ resetValues: { x: "0px", washColor: "transparent" } });
@@ -256,6 +280,21 @@ test("same-owner reapplication cancels the retired property's intent without all
     scope.apply(panel, { opacity: "0.7" }); reject = false; env.clock.advance(500);
     assert.equal(panel.style.opacity, "0.7"); scope.clear(); env.clock.advance(500);
     assert.equal(panel.style.opacity, undefined); assert.equal(env.clock.pendingCount(), env.baselinePending);
+});
+
+test("same-value reapplication cancels a rejected retain retirement before its cleanup retry", () => {
+    const env = setup(), panel = env.add("RetainedSource"), owner = env.P.createNativeStyleOwner();
+    owner.apply(panel, { opacity: "0.2" });
+    const clear = panel.ClearPropertyFromCode.bind(panel);
+    let reject = true;
+    panel.ClearPropertyFromCode = property => reject ? false : clear(property);
+    assert.equal(owner.retain([]), false);
+    assert.equal(owner.apply(panel, { opacity: "0.2" }), true);
+    reject = false; env.clock.advance(500);
+    assert.equal(panel.style.opacity, "0.2");
+    owner.clear();
+    assert.equal(panel.style.opacity, undefined);
+    assert.deepEqual(env.clock.errors, []);
 });
 
 test("composite position retirement retries rejection and respects another owner's axis lease", () => {

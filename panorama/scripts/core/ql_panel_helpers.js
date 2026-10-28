@@ -331,6 +331,7 @@
         const release = (panel) => {
             const record = records.get(panel);
             if (!record) return true;
+            record.settled = false;
             record.wantedProperties.clear(); record.wantedClasses.clear();
             return cleanup(panel);
         };
@@ -338,11 +339,29 @@
             if (!isPanelAlive(panel)) { release(panel); return false; }
             const properties = Object.keys(styles), names = Object.keys(classes);
             let record = records.get(panel);
+            let validatedStyles = false, previous;
+            // A settled presentation still validates native feedback and leases,
+            // but needs no new ownership sets, baseline claims or signatures.
+            if (record?.settled && record.properties.size === properties.length && record.classes.size === names.length) {
+                try {
+                    const unchangedStyles = properties.every(property =>
+                        Object.prototype.hasOwnProperty.call(record.styles, property) && record.styles[property] === styles[property] &&
+                        (property === "position" ? positionKeys.every(key => held(panel, key)) : held(panel, styleKey(property))) &&
+                        panel.style[property] === record.readback.get(property));
+                    previous = unchangedStyles ? record.signature : null;
+                    validatedStyles = true;
+                    const unchangedClasses = unchangedStyles && names.every(name =>
+                        Object.prototype.hasOwnProperty.call(record.classValues, name) && record.classValues[name] === !!classes[name] &&
+                        held(panel, "class:" + name) && panel.BHasClass(name) === (record.classBaselines.get(name) || !!classes[name]));
+                    if (unchangedClasses) return true;
+                } catch (_) { /* Retry through the ordinary partial-write path. */ }
+            }
             if (!record && !properties.length && !names.length) return true;
             if (!record) {
                 record = { properties: new Set(), classes: new Set(), classBaselines: new Map(), wantedProperties: new Set(), wantedClasses: new Set(), signature: null, readback: new Map() };
                 records.set(panel, record);
             }
+            record.settled = false;
             record.wantedProperties = new Set(properties); record.wantedClasses = new Set(names);
             let complete = cleanup(panel);
             if (!complete) retryCleanup();
@@ -364,13 +383,15 @@
                 claim(panel, key);
                 if (!reconcileClass(panel, name, !!baseline || !!classes[name])) complete = false;
             }
-            let previous = record.signature;
-            try {
-                for (const property of properties) {
-                    const leased = property === "position" ? positionKeys.every(key => held(panel, key)) : held(panel, styleKey(property));
-                    if (!leased || panel.style[property] !== record.readback.get(property)) previous = null;
-                }
-            } catch (_) { previous = null; }
+            if (!validatedStyles) {
+                previous = record.signature;
+                try {
+                    for (const property of properties) {
+                        const leased = property === "position" ? positionKeys.every(key => held(panel, key)) : held(panel, styleKey(property));
+                        if (!leased || panel.style[property] !== record.readback.get(property)) previous = null;
+                    }
+                } catch (_) { previous = null; }
+            }
             // Record ownership before a partial native write can fail.
             for (const property of properties) {
                 const key = styleKey(property);
@@ -393,6 +414,11 @@
                 } catch (_) { record.signature = null; complete = false; }
             }
             if (!record.properties.size && !record.classes.size) records.delete(panel);
+            if (complete) {
+                record.styles = { ...styles };
+                record.classValues = Object.fromEntries(names.map(name => [name, !!classes[name]]));
+                record.settled = true;
+            }
             return complete;
         };
         const retain = (panels) => {
