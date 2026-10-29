@@ -226,6 +226,10 @@ test("ui/dev_tab: render builds all dev sections and action buttons", () => {
     assert.ok(list.FindChildTraverse("DiagCopyLogsBtn"), "Should render DiagCopyLogsBtn");
     assert.ok(list.FindChildTraverse("BenchmarkRunBtn"), "Should render BenchmarkRunBtn");
     assert.ok(list.FindChildTraverse("BenchmarkStressBtn"), "Should render BenchmarkStressBtn");
+    const minimap = list.FindChildTraverse("FpsMinimapBtn");
+    assert.ok(minimap, "the targeted diagnostic must be reachable from Dev");
+    minimap._fire("onactivate");
+    assert.match(env.hudPanel.GetAttributeString("QOL_DiagRequest", ""), /^fps_minimap_/);
 });
 
 test("ui/dev_tab: runInGameBenchmark initiates benchmark request and copies report", () => {
@@ -243,13 +247,13 @@ test("ui/dev_tab: runInGameBenchmark initiates benchmark request and copies repo
     assert.ok(statusLabel.text.includes("10s left"), "Status should indicate 10s remaining");
 });
 
-test("FPS investigation UI requests the selected config and copies its own final report", () => {
+for (const mode of ["current", "minimap"]) test(`FPS investigation ${mode} UI requests its mode and copies its own final report`, () => {
     const env = createTestEnvironment();
     const label = env.sandbox.$.CreatePanel("Label", env.rootPanel, "ScanStatus");
     const button = env.sandbox.$.CreatePanel("Button", env.rootPanel, "ScanButton");
-    env.sandbox.QOL.ui.devTab.runInGameBenchmark(env.rootPanel, label, button, "fps_current");
+    env.sandbox.QOL.ui.devTab.runInGameBenchmark(env.rootPanel, label, button, "fps_" + mode);
     const token = env.hudPanel.GetAttributeString("QOL_DiagRequest", "");
-    assert.match(token, /^fps_current_/);
+    assert.ok(token.startsWith("fps_" + mode + "_"));
     env.hudPanel.SetAttributeString("QOL_Diag", JSON.stringify({ benchmark: {
         token, report: "UI cadence investigation report", stats: { reason: "complete" }
     } }));

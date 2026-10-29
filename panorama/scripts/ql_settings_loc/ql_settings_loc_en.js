@@ -1292,6 +1292,8 @@
     "Customize hit and critical markers while preserving native hit timing.": "Customize hit and critical markers while preserving native hit timing.",
     "FPS investigation (Current Config)": "FPS investigation (Current Config)",
     "FPS investigation (Expanded Config)": "FPS investigation (Expanded Config)",
+    "Minimap polling isolation (Expanded Config)": "Minimap polling isolation (Expanded Config)",
+    "Start external PresentMon capture first. Compares normal and paused minimap polling while keeping panels visible. Close Esc within 5s; stay still without Alt/Tab for about 53s. Settings and polling are restored automatically.": "Start external PresentMon capture first. Compares normal and paused minimap polling while keeping panels visible. Close Esc within 5s; stay still without Alt/Tab for about 53s. Settings and polling are restored automatically.",
     "Start external PresentMon capture first for game FPS. Without it, this scan measures UI cadence only. Close Esc within 5s; stay still for up to 7 minutes. Settings are restored without saving.": "Start external PresentMon capture first for game FPS. Without it, this scan measures UI cadence only. Close Esc within 5s; stay still for up to 7 minutes. Settings are restored without saving.",
     "Investigate": "Investigate",
     "Stop FPS investigation": "Stop FPS investigation",

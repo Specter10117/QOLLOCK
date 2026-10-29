@@ -505,6 +505,36 @@ condition retains core code and loaded static stylesheets, so it is not vanilla.
 Dev tests cover the actual request/result bridge and configuration restoration.
 These simulator checks do not verify native frame cadence or FPS.
 
+### Minimap polling isolation
+
+Dev's **Minimap polling isolation (Expanded Config)** runs a fixed, short plan
+through the same configuration lease and native capture transport. It compares
+normal polling with paused managed poll callbacks while retaining enabled owners,
+created panels and native overrides. The three A/B/B/A trials cover both minimap
+owners together, then each individually, independently of the UI cadence score.
+The usual settling/sample windows and menu grace make a complete run about
+53 seconds. Start the external collector first, close Esc and keep the scene,
+camera and Alt/Tab state unchanged. After the progress label disappears, keep
+the game focused for another three seconds before returning to the collector.
+
+The observation session owns the pause. Completion, cancellation, deadline,
+errors and observer replacement release it without stopping/recreating loops.
+The diagnostic checks the native minimap owner chain and both reference roots;
+missing/replaced roots, changed view or HUD, and observed menu/shop/scoreboard/
+hideout transitions stop the run. App's safety timeout also stops the diagnostic
+before restoring its lease. Incoming configuration changes use the usual
+cancel-and-restore path.
+
+This condition removes managed poll callback work, including synchronous native
+calls; it does not isolate JavaScript from those calls. Events, one-shots,
+App/root-class updates, other owners and native minimap rendering keep running.
+An observed native improvement directs follow-up toward those callbacks, then
+separate ownership-sweep comparisons. No improvement does not prove a rendering
+bottleneck: a subsequent visible/hidden retained-root comparison is needed.
+Polling is temporarily frozen, so this mode must not be used during gameplay.
+Simulator tests check preserved trees, continuing unrelated work, native-window
+markers and resumed polling; they cannot establish native rendering or FPS.
+
 ### Native game frame capture
 
 For game frame evidence, run the external collector before starting the same Dev
@@ -522,7 +552,8 @@ process. It downloads the pinned official portable PresentMon executable into
 the user's local application-data cache and verifies its SHA-256 before use;
 it does not install a service. `-PresentMonPath` accepts an already downloaded
 copy of that exact executable. `-GameProcessId`, `-GameLog` and `-OutputDirectory`
-override discovery. Start Dev's Current/Expanded investigation within one minute,
+override discovery. Start Dev's Current/Expanded investigation or minimap polling
+isolation within one minute,
 close Esc and keep the game focused. Completion/stop ends only this collector's
 unique ETW session. An eight-minute capture deadline bounds unattended runs.
 

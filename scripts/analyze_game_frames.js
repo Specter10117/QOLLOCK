@@ -119,7 +119,7 @@ function formatReport(result) {
         `Process=${result.processId}; swap chain=${result.swapChain}; native frames=${result.nativeFrames}; clock drift=${f(result.clockDriftMs)}ms`,
         "Source: PresentMon DXGI/graphics Present events, NOT Panorama scheduling.",
         "Present FPS measures application submissions; displayed FPS is reported separately. CPU/GPU busy are context, not code attribution.",
-        "Only the completed conditions below were measured. The in-game UI scan selects its follow-up using UI cadence; native coverage is not exhaustive."];
+        "Only the completed conditions below were measured. Coverage follows the in-game scan plan; native coverage is not exhaustive."];
     for (const row of result.rows) {
         lines.push(`${row.confirmed ? "REPEATABLE_NATIVE" : "UNCONFIRMED_NATIVE"} ${row.name}: Present FPS ${f(row.referenceFps)} -> ${f(row.excludedFps)}; improvement=${f(row.improvementMs)}ms; ${row.quality}`);
         for (const window of row.windows) lines.push(`  ${["A", "B", "B", "A"][window.phase]} n=${window.samples} Present FPS=${f(window.fps)} mean=${f(window.meanMs)}ms p95=${f(window.p95Ms)}ms displayed FPS=${f(window.displayFps)} CPU busy=${f(window.cpuBusyMs)}ms GPU busy=${f(window.gpuBusyMs)}ms; ${window.quality}`);

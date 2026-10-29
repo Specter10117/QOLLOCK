@@ -51,6 +51,7 @@
             slowestFeature: "", maxDelayMs: 0, errors: 0 });
         let window = emptyWindow();
         let stopped = false;
+        let pausedPollOwners = new Set();
         const entry = id => {
             const owner = id || "<anonymous>";
             const key = rows.has(owner) || rows.size < 127 ? owner : "<other>";
@@ -76,6 +77,17 @@
             return { activePolls, pendingOnce };
         };
         const session = {
+            // Diagnostic lease only: preserve task identity/cadence and native
+            // context checks. Events, one-shots and other owners keep running.
+            pausePolling: ids => {
+                if (stopped) {
+                    if (ids.length) throw Error("poll observation retired");
+                    return;
+                }
+                pausedPollOwners = new Set(ids);
+            },
+            isPollPaused: id => !stopped && pausedPollOwners.has(id),
+            isActive: () => !stopped && workObservation === session,
             record: (id, kind, elapsed, delay, threw) => {
                 if (stopped) return;
                 const row = entry(id);
@@ -101,6 +113,7 @@
             stop: () => {
                 if (!stopped) census(false);
                 stopped = true;
+                pausedPollOwners.clear();
                 if (workObservation === session) workObservation = null;
                 return Array.from(rows.values(), row => ({ ...row }));
             }
@@ -209,7 +222,10 @@
                 loop.stop();
                 return;
             }
-
+            if (workObservation?.isPollPaused(featureId)) {
+                handle = scheduleTick(rate);
+                return;
+            }
 
             let perfActive = false;
             try {

@@ -1292,6 +1292,8 @@
     "Customize hit and critical markers while preserving native hit timing.": "Настройка обычных и критических маркеров с сохранением нативной длительности попадания.",
     "FPS investigation (Current Config)": "Поиск просадки FPS (текущий конфиг)",
     "FPS investigation (Expanded Config)": "Поиск просадки FPS (расширенный конфиг)",
+    "Minimap polling isolation (Expanded Config)": "Проверка обновлений миникарты (расширенный конфиг)",
+    "Start external PresentMon capture first. Compares normal and paused minimap polling while keeping panels visible. Close Esc within 5s; stay still without Alt/Tab for about 53s. Settings and polling are restored automatically.": "Сначала запусти внешний захват PresentMon. Сравнивает обычные обновления миникарты с паузой, сохраняя панели видимыми. Закрой Esc за 5 секунд; не двигайся и не нажимай Alt/Tab около 53 секунд. Настройки и обновления восстанавливаются автоматически.",
     "Start external PresentMon capture first for game FPS. Without it, this scan measures UI cadence only. Close Esc within 5s; stay still for up to 7 minutes. Settings are restored without saving.": "Для игровых FPS сначала запусти внешний захват PresentMon. Без него тест измеряет только интервалы UI. Закрой Esc за 5 секунд и не двигайся до 7 минут. Настройки восстанавливаются без сохранения.",
     "Investigate": "Проверить",
     "Stop FPS investigation": "Остановить поиск просадки FPS",

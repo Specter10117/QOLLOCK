@@ -14,7 +14,7 @@ performance records live in the existing State.
 | `isBenchmarkActive()` | Reports the current benchmark flag. |
 | `formatBenchmarkReport(stats, durationSec, activeCount)` | Formats recorded benchmark data, not rendered frame timings. |
 | `getWorkSnapshot()` | Read-only array of `{id, polls, once}` outstanding managed tasks, without panel handles. |
-| `startWorkObservation()` | Opt-in bounded observation; returns `{sample(), stop()}`. Replaces the previous observer without changing scheduled production work. |
+| `startWorkObservation()` | Opt-in bounded observation; returns `{sample(), stop(), pausePolling(ids), isPollPaused(id), isActive()}`. Replacement retires the previous observer and releases its diagnostic poll pause. |
 
 The first tick has jitter up to half the interval. `reschedule` changes the rate
 for subsequent scheduling; it does not cancel and immediately restart a pending
@@ -74,6 +74,16 @@ and counts outstanding managed polls/one-shots. `stop()` detaches observation
 and returns per-owner totals plus sampled start/peak/end outstanding counts.
 Repeated stop calls return stable copies; an old stop cannot stop a newer observer.
 There are at most 128 owner rows; overflow is aggregated under `<other>`.
+
+The active observation may lease a diagnostic pause with `pausePolling(ids)`;
+an empty list resumes all its selected owners. Only managed recurring callbacks
+are skipped: tasks remain registered and scheduled at their normal cadence, and
+native context validity checks still run. Skipped callbacks do not count as
+executed work. One-shots, event/settings hooks and other owners continue. Stop
+or replacement releases the pause automatically; a retired observer cannot
+pause work again. `isActive()` lets the diagnostic reject superseded observation.
+This is for brief controlled comparisons with retained panels, not production
+work reduction: source discovery and lifecycle reconciliation are paused too.
 
 Observation creates no timers and performs no panel traversal or logging. The
 caller owns sampling and cancellation. Timing and per-callback aggregation only

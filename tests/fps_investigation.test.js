@@ -145,3 +145,71 @@ for (const changedClass of ["ShowEscapeMenu", "gShopOpen", "gScoreboardOpen"]) {
         assert.deepEqual(hud.clock.errors, []);
     });
 }
+
+function minimapSetup() {
+    const env = setup(["ql_minimap_runtime", "ql_minimap_loot", "ql_keyboard"]);
+    const { hud, Q } = env;
+    let parent = hud.root;
+    const chain = [
+        { classes: ["HudCore"] }, { id: "gameplay_hud" }, { classes: ["clamp_width"] },
+        { id: "minimap_persp" }, { id: "minimap_container" }, { id: "HudMinimapContainer" },
+        { id: "hud_minimap", classes: ["dl_midtown"] }
+    ];
+    for (const properties of chain) parent = parent.addChild(hud.doc.create("Panel", properties));
+    const renderer = parent;
+    const roots = ["minimap_overlay_root", "QOLMinimapLootRoot"].map(id => renderer.addChild(hud.doc.create("Panel", { id })));
+    const counts = { ql_minimap_runtime: 0, ql_minimap_loot: 0, ql_keyboard: 0 };
+    for (const id of Object.keys(counts)) Q.core.Scheduler.createPollLoop(() => counts[id]++, 0.05, id);
+    return { ...env, renderer, roots, counts };
+}
+
+test("minimap polling trials retain visible panels and owner coverage through fixed native windows", () => {
+    const { hud, Q, enabled, roots, counts } = minimapSetup();
+    let result;
+    const windows = [], phaseCounts = [];
+    Q.core.FpsInvestigation.start({ root: hud.root, mode: "minimap",
+        onWindow: value => { windows.push(value); phaseCounts.push({ ...counts }); },
+        onProgress: () => {
+            assert.deepEqual([...enabled].sort(), ["ql_keyboard", "ql_minimap_loot", "ql_minimap_runtime"]);
+            for (const panel of roots) { assert.equal(panel.IsValid(), true); assert.equal(panel.visible, true); }
+        }, onComplete: value => { result = value; }
+    });
+    hud.clock.advance(55000);
+    assert.equal(result.reason, "complete");
+    assert.equal(result.rows.length, 3, "both minimap polls, runtime only, loot only; no proxy-selected follow-up");
+    assert.equal(windows.length, 12);
+    assert.deepEqual(phaseCounts.slice(0, 4).map((value, i, all) => i ? value.ql_minimap_runtime - all[i - 1].ql_minimap_runtime > 0 : true), [true, false, false, true]);
+    assert.ok(phaseCounts[2].ql_keyboard > phaseCounts[1].ql_keyboard, "unselected production polling continues");
+    assert.match(result.report, /panels retained/);
+    const before = counts.ql_minimap_loot;
+    hud.clock.advance(200);
+    assert.ok(counts.ql_minimap_loot > before, "normal polling resumes without re-enabling owners");
+    assert.deepEqual(hud.clock.errors, []);
+});
+
+for (const stop of ["cancel", "HUD", "renderer", "Alt", "error", "observer"]) {
+    test(`minimap poll pause restores callbacks after ${stop}`, () => {
+        const { hud, Q, renderer, counts } = minimapSetup();
+        let result;
+        const scan = Q.core.FpsInvestigation.start({ root: hud.root, mode: "minimap", onComplete: value => { result = value; } });
+        hud.clock.advance(11000);
+        const paused = counts.ql_minimap_runtime;
+        hud.clock.advance(100);
+        assert.equal(counts.ql_minimap_runtime, paused, "B must pause production before this stop trigger");
+        if (stop === "cancel") scan.stop();
+        if (stop === "HUD") hud.root.DeleteAsync(0);
+        if (stop === "renderer") renderer.DeleteAsync(0);
+        if (stop === "Alt") renderer.GetParent().GetParent().GetParent().AddClass("gDetailView");
+        if (stop === "error") Q.core.Scheduler.scheduleOnce(() => { throw Error("diagnostic failure"); }, 0, "other");
+        if (stop === "observer") Q.core.Scheduler.startWorkObservation();
+        hud.clock.advance(3500);
+        assert.ok(result, "context changes and callback failures must terminate the diagnostic");
+        assert.notEqual(result.reason, "complete");
+        if (stop !== "HUD") {
+            const restored = counts.ql_minimap_runtime;
+            hud.clock.advance(200);
+            assert.ok(counts.ql_minimap_runtime > restored, "polling must resume after the diagnostic retires");
+        }
+        assert.deepEqual(hud.clock.errors, []);
+    });
+}

@@ -408,8 +408,9 @@
         const request = { handle: null, isFpsScan };
         _benchmarkRequest = request;
         const parts = forceToken.split("_");
-        const durSec = isFpsScan ? 420 : parseFloat(parts[1]) || 10;
-        const isStress = isFpsScan ? parts[1] === "expanded" : parts[2] === "stress";
+        const isMinimapScan = isFpsScan && parts[1] === "minimap";
+        const durSec = isFpsScan ? (isMinimapScan ? 60 : 420) : parseFloat(parts[1]) || 10;
+        const isStress = isFpsScan ? parts[1] === "expanded" || isMinimapScan : parts[2] === "stress";
         const leasedConfig = isStress || isFpsScan;
         let fpsConfiguration = null;
 
@@ -481,7 +482,11 @@
                 stress.timer = $.Schedule(durSec + 3.0, () => {
                     if (_stressBenchmark !== stress) return;
                     stress.timer = null;
-                    _restoreStressBenchmark(hudPanel, "safety-timeout");
+                    try {
+                        if (isFpsScan && _benchmarkRequest === request) request.handle?.stop("safety-timeout");
+                    } finally {
+                        if (_stressBenchmark === stress) _restoreStressBenchmark(hudPanel, "safety-timeout");
+                    }
                 });
 
                 const enabledIds = (FeatureRegistry && typeof FeatureRegistry.getEnabledIds === "function")
@@ -527,7 +532,7 @@
                 };
                 if (isFpsScan) $.Msg("[QOLLOCK:NativeFPS] " + JSON.stringify({ type: "start", session: forceToken }));
                 const handle = isFpsScan ? QOL.core.FpsInvestigation.start({
-                    root: hudPanel, mode: isStress ? "expanded" : "current",
+                    root: hudPanel, mode: isMinimapScan ? "minimap" : isStress ? "expanded" : "current",
                     configuration: fpsConfiguration,
                     onProgress: () => _writeDiagSnapshot(hudPanel, forceToken),
                     onWindow: window => $.Msg("[QOLLOCK:NativeFPS] " + JSON.stringify({ type: "window", session: forceToken, ...window })),

@@ -707,7 +707,7 @@
     let bmToken = 0;
 
     function runInGameBenchmark(container, statusLabel, actionBtn, isStressTest) {
-        const isScan = isStressTest === "fps_current" || isStressTest === "fps_expanded";
+        const isScan = ["fps_current", "fps_expanded", "fps_minimap"].includes(isStressTest);
         const setStatus = (text, color) => {
             if (isAlive(statusLabel)) {
                 const translated = localize(text);
@@ -727,7 +727,7 @@
         bmRunning = true;
         setBtnActive(true);
 
-        const durSec = isScan ? 420 : 10;
+        const durSec = isScan ? (isStressTest === "fps_minimap" ? 60 : 420) : 10;
         const modeStr = isStressTest ? "stress" : "normal";
         const forceToken = isScan ? `${isStressTest}_${Date.now()}` : `bm_${durSec}_${modeStr}_${Date.now()}`;
 
@@ -1237,6 +1237,11 @@
 
         // 2. In-Game Benchmarks
         createTitle(list, "In-Game Benchmarks");
+
+        createDevActionRow(list, "FpsMinimapRow", "FpsMinimapBtn", "FpsMinimapStatus",
+            "s2r://panorama/images/icons/icon_play.vsvg", "Minimap polling isolation (Expanded Config)",
+            "Start external PresentMon capture first. Compares normal and paused minimap polling while keeping panels visible. Close Esc within 5s; stay still without Alt/Tab for about 53s. Settings and polling are restored automatically.",
+            "Investigate", (status, button) => runInGameBenchmark(list, status, button, "fps_minimap"));
 
         for (const [mode, title] of [["current", "FPS investigation (Current Config)"], ["expanded", "FPS investigation (Expanded Config)"]]) {
             createDevActionRow(list, "FpsScanRow" + mode, "FpsScanBtn" + mode, "FpsScanStatus" + mode,
