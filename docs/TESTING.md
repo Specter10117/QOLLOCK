@@ -473,7 +473,14 @@ The scan compares all registered enabled owners, then groups, using A/B/B/A
 (reference/excluded/excluded/reference). Large groups are partitioned before
 testing so individual follow-up does not silently omit a group's tail. Each window settles for one second and
 samples for three. It automatically checks up to twelve individual owners in the
-strongest repeatable group, with a seven-minute overall deadline. Diagnostic
+strongest repeatable group. Confirmed minimap owners then receive layer follow-up
+through their existing active setting gates: static reference groups, crates,
+tunnels and applicable appearance modes. Each trial changes only its reported
+settings through the App's in-memory lease, with the original leased values
+restored between conditions. Settings trials may intentionally change enabled
+owner coverage; the expected coverage is derived from the existing enable policy.
+The seven-minute deadline still applies, and reports list selected layers that
+were not completed. Diagnostic
 metadata/percentiles are processed outside sampling; the sampler keeps bounded
 numeric intervals and uses the existing Scheduler work observation for callback
 context. Reports distinguish insufficient samples, reference drift, inconsistent

@@ -87,7 +87,7 @@ and maintainer client checks for actual style application.
 | What changed after a game update? | `node scripts/audit_game_update.js snapshot --vanilla <panorama-dir>` | Take `snapshot` before updating the extract, then rerun with `check` in place of `snapshot`; see [game update audit](GAME_UPDATE_AUDIT.md). |
 | Are runtime hooks reporting source problems in the client? | Dev test collector | Read-only feature hooks; see [testing](TESTING.md). Skips and observations are not rendering verification. |
 | What does managed polling cost in the client? | Dev -> Benchmark (Current Config) | Callback timing and temporary lookup instrumentation; scope and overhead are documented in [testing](TESTING.md). |
-| Which feature exclusions improve observed UI cadence? | Dev -> FPS investigation (Current/Expanded Config) | Repeated A/B/B/A trials and automatic individual follow-up. UI cadence is a proxy, not engine FPS; confirm with native telemetry. Opening Esc stops and restores the scan. See [testing](TESTING.md#in-game-feature-exclusion-investigation). |
+| Which feature exclusions improve observed UI cadence? | Dev -> FPS investigation (Current/Expanded Config) | Repeated A/B/B/A trials, individual owner follow-up and active layer settings for confirmed minimap candidates. UI cadence is a proxy, not engine FPS; confirm with native telemetry. Opening Esc stops and restores the scan. See [testing](TESTING.md#in-game-feature-exclusion-investigation). |
 
 Use controlled simulator fixtures for logic/lifecycle regressions. Whole-HUD
 profiling uses a validated supplied hierarchy; missing/invalid capture inputs fail

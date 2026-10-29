@@ -124,12 +124,7 @@
                 if (!P.isAlive(owner) || !owner.BHasClass("dl_midtown") || Q.core.hud.isInHideout(root) || Q.isStreetBrawlModeActive?.(root)) { shown(layer, false); return; }
                 if (!tree.sweep()) { built.clear(); }
                 const previousLayer = layer;
-                // The native top-bar PlayerAbilitiesContainer uses this creation
-                // attribute. Request one cache for the static references; verify
-                // child geometry/text invalidation after repacking in the client.
-                layer = tree.child(owner, "Panel", "QOLMinimapLootRoot", {
-                    hittest: "false", hittestchildren: "false", "always-cache-composition-layer": "true"
-                });
+                layer = tree.child(owner, "Panel", "QOLMinimapLootRoot", { hittest: "false", hittestchildren: "false" });
                 if (!P.isAlive(layer)) return;
                 if (layer !== previousLayer) shown(layer, false);
                 if (!style(layer, { width: "100%", height: "100%", ignoreParentFlow: "true", overflow: "noclip", opacity: String(model.MINIMAP_LOOT_OPACITY), zIndex: "10" })) { shown(layer, false); return; }

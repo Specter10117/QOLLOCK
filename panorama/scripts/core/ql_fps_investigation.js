@@ -4,6 +4,19 @@
     "use strict";
     const Q = QOL, P = Q.core.panel;
     let active = null, status = null;
+    // These are existing appearance gates, applied through the App's temporary
+    // configuration lease after their owner is a repeatable candidate.
+    const layerSettings = {
+        ql_minimap_loot: [
+            ["ENABLE_MINIMAP_TOUGH_CRATES"], ["ENABLE_MINIMAP_HEALING_SNACKS"], ["ENABLE_MINIMAP_STATUES"],
+            ["ENABLE_MINIMAP_CRATE_ROUTES"], ["MINIMAP_CAMP_NAMES"]
+        ],
+        ql_minimap_runtime: [
+            ["ENABLE_MINIMAP_CRATE_OVERLAY"],
+            ["ENABLE_MINIMAP_REM_TUNNELS", "ENABLE_ALT_ZOOM_REM_TUNNELS", "ENABLE_TAB_ZOOM_REM_TUNNELS"],
+            ["MINIMAL_MINIMAP"], ["MINIMAP_FIXED_ICON_SIZE"]
+        ]
+    };
     const groupName = id => {
         if (/keyboard/.test(id)) return "Keyboard";
         if (/minimap|compass/.test(id)) return "Map and compass";
@@ -41,18 +54,21 @@
             "", "Candidates sorted by repeatable cadence improvement; these are leads, not proven FPS costs:"];
         for (const row of [...result.rows].sort((a, b) => (b.improvementMs || 0) - (a.improvementMs || 0))) {
             lines.push(`${row.confirmed ? "REPEATABLE" : "UNCONFIRMED"} ${row.name}: improvement=${f(row.improvementMs)}ms; reference=${f(row.referenceMs)}ms; ${row.quality}`,
-                `  Excluded: ${row.ids.join(", ")}`);
+                row.patch ? `  Temporary settings: ${Object.entries(row.patch).map(([key, value]) => key + "=" + value).join(", ")}; baseline: ${Object.entries(row.baselineValues).map(([key, value]) => key + "=" + value).join(", ")}` : `  Excluded: ${row.ids.join(", ")}`);
             row.windows.forEach((window, i) => lines.push(`  ${["A", "B", "B", "A"][i]} wallStart=${window.startAt} wallEnd=${window.endAt} n=${window.samples} mean=${f(window.mean)} median=${f(window.median)} p95=${f(window.p95)} max=${f(window.max)} >33ms=${window.over33ms}; managed callbacks=${window.work.callbacks} callbackMs=${f(window.work.callbackMs)} errors=${window.work.errors}`));
         }
         if (!result.rows.some(row => row.confirmed)) lines.push("No repeatable candidate. Compare native telemetry; investigate rendering/static CSS and paths outside registered owners.");
         lines.push("Individual follow-up selected: " + (result.followUpIds.join(", ") || "none"));
         const checked = new Set(result.rows.filter(row => row.ids.length === 1).map(row => row.ids[0]));
         lines.push("Not checked individually: " + (result.enabledIds.filter(id => !checked.has(id)).join(", ") || "none"));
+        const checkedSettings = new Set(result.rows.filter(row => row.patch).map(row => row.name));
+        lines.push("Layer follow-up selected: " + (result.layerFollowUps.join("; ") || "none"));
+        lines.push("Selected layers not completed: " + (result.layerFollowUps.filter(name => !checkedSettings.has(name)).join("; ") || "none"));
         if (result.restoreErrors.length) lines.push("RESTORATION ERRORS: " + result.restoreErrors.join("; "));
         lines.push("Excluding all registered owners does not unload QOLLOCK core scripts or static stylesheets.");
         return lines.join("\n");
     };
-    function start({ root, mode = "current", onComplete, onProgress = () => {} }) {
+    function start({ root, mode = "current", configuration = null, onComplete, onProgress = () => {} }) {
         if (active) active.stop("superseded");
         if (!P.isAlive(root) || typeof $.FrameTime !== "function") throw Error("UI frame clock or HUD unavailable");
         const registry = Q.core.FeatureRegistry;
@@ -70,18 +86,27 @@
                 queue.push({ name: ids.length > 12 ? name + " #" + (offset / 12 + 1) : name, ids: ids.slice(offset, offset + 12) });
             }
         }
-        const result = { reason: "", mode, enabledIds, rows: [], restoreErrors: [], followUpIds: [] };
+        const baseline = configuration ? { ...configuration.baseline } : null;
+        const result = { reason: "", mode, enabledIds, rows: [], restoreErrors: [], followUpIds: [], layerFollowUps: [] };
         const observation = Q.core.Scheduler.startWorkObservation();
         const panels = P.createOwnedTree();
         let progressLabel = null;
         const context = $.GetContextPanel(), started = Date.now();
         let stopped = false, timer = null, excluded = [], trial = null, windowIndex = 0, drilled = false;
+        let layersDrilled = false, temporaryConfig = false, expectedIds = enabledIds;
         let nextCheck = 0, scene = null;
         const restore = () => {
+            let restored = true;
+            if (temporaryConfig) {
+                try { configuration.apply({}); temporaryConfig = false; }
+                catch (error) { result.restoreErrors.push("configuration: " + String(error)); restored = false; }
+            }
             const retiring = excluded; excluded = [];
             for (const id of retiring) {
-                try { registry.enable(id); } catch (error) { result.restoreErrors.push(id + ": " + String(error)); }
+                try { registry.enable(id); } catch (error) { result.restoreErrors.push(id + ": " + String(error)); restored = false; }
             }
+            expectedIds = enabledIds;
+            return restored;
         };
         const finish = reason => {
             if (stopped) return;
@@ -116,7 +141,7 @@
             if (scene === null) scene = flags;
             else if (scene !== flags) return "HUD scene flags changed";
             if (Date.now() - started > 420000) return "deadline";
-            const expected = enabledIds.filter(id => !excluded.includes(id)).join(",");
+            const expected = expectedIds.join(",");
             if (registry.getEnabledIds().slice().sort().join(",") !== expected) return "feature coverage changed";
             const errors = registry.getErrorCounts();
             if (Object.keys(errors).some(id => errors[id] > (initialErrors[id] || 0))) return "feature callback failure";
@@ -125,14 +150,24 @@
         const beginWindow = () => {
             const failure = current();
             if (failure) { finish(failure); return; }
-            restore();
+            if (!restore()) { finish("restoration failed"); return; }
             if (windowIndex === 1 || windowIndex === 2) {
-                excluded = trial.ids.slice();
-                for (const id of excluded) registry.disable(id);
+                if (trial.patch) {
+                    temporaryConfig = true;
+                    const expected = configuration.apply(trial.patch);
+                    if (!Array.isArray(expected) || expected.some(id => !enabledIds.includes(id))) throw Error("invalid temporary feature coverage");
+                    expectedIds = expected.slice().sort();
+                    excluded = enabledIds.filter(id => !expectedIds.includes(id));
+                } else {
+                    excluded = trial.ids.slice();
+                    expectedIds = enabledIds.filter(id => !excluded.includes(id));
+                    for (const id of excluded) registry.disable(id);
+                }
             }
             status = { running: true, name: trial.name, window: windowIndex + 1, excluded: excluded.slice(),
+                patch: trial.patch && (windowIndex === 1 || windowIndex === 2) ? { ...trial.patch } : null,
                 completed: result.rows.length, endAt: Date.now() + 4000 };
-            if (P.isAlive(progressLabel)) progressLabel.text = `QOLLOCK ${result.rows.length + 1} · ${["A", "B", "B", "A"][windowIndex]} · ${trial.ids[0]}${trial.ids.length > 1 ? " +" + (trial.ids.length - 1) : ""}`;
+            if (P.isAlive(progressLabel)) progressLabel.text = `QOLLOCK ${result.rows.length + 1} · ${["A", "B", "B", "A"][windowIndex]} · ${trial.patch ? Object.keys(trial.patch)[0] : trial.ids[0]}${trial.ids.length > 1 ? " +" + (trial.ids.length - 1) : ""}`;
             onProgress(status);
             schedule(1, sampleWindow);
         };
@@ -161,7 +196,8 @@
                 windowIndex++;
                 if (windowIndex < 4) { beginWindow(); return; }
                 result.rows.push(assess(trial));
-                restore(); nextTrial();
+                if (!restore()) { finish("restoration failed"); return; }
+                nextTrial();
             };
             schedule(0, frame);
         };
@@ -173,6 +209,23 @@
                 if (best) for (const id of best.ids) {
                     result.followUpIds.push(id);
                     queue.push({ name: id, ids: [id] });
+                }
+            }
+            if (!queue.length && drilled && !layersDrilled) {
+                layersDrilled = true;
+                if (baseline) {
+                    const candidates = result.rows.filter(row => row.confirmed && row.ids.length === 1)
+                        .sort((a, b) => b.improvementMs - a.improvementMs);
+                    const planned = new Set();
+                    for (const row of candidates) for (const keys of layerSettings[row.ids[0]] || []) {
+                        const patch = Object.fromEntries(keys.filter(key => Number(baseline[key]) > 0).map(key => [key, 0]));
+                        if (!Object.keys(patch).length) continue;
+                        const name = row.ids[0] + ": " + Object.keys(patch).join(" + ");
+                        if (planned.has(name)) continue;
+                        planned.add(name); result.layerFollowUps.push(name);
+                        queue.push({ name, ids: row.ids, patch,
+                            baselineValues: Object.fromEntries(Object.keys(patch).map(key => [key, baseline[key]])) });
+                    }
                 }
             }
             const next = queue.shift();

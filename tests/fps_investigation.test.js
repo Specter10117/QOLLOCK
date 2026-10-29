@@ -83,6 +83,50 @@ test("large owner groups include their last owner in individual follow-up", () =
     assert.deepEqual(hud.clock.errors, []);
 });
 
+test("confirmed minimap owners drill into active layers and restore their original settings", () => {
+    const { hud, Q, $, enabled } = setup(["ql_minimap_loot", "ql_minimap_runtime"], "ql_minimap_loot");
+    const baseline = { ENABLE_MINIMAP_STATUES: 1, ENABLE_MINIMAP_CRATE_ROUTES: 1, ENABLE_MINIMAP_CRATE_OVERLAY: 1 };
+    let config = { ...baseline }, result;
+    const schedule = $.Schedule;
+    $.Schedule = (delay, callback) => schedule(delay || (enabled.has("ql_minimap_loot") && config.ENABLE_MINIMAP_STATUES ? 0.032 : 0.016), callback);
+    Q.core.FpsInvestigation.start({ root: hud.root,
+        configuration: { baseline, apply: patch => { config = { ...baseline, ...patch }; return [...enabled]; } },
+        onComplete: value => { result = value; }
+    });
+    hud.clock.advance(400000);
+    assert.equal(result.reason, "complete");
+    const statues = result.rows.find(row => row.patch?.ENABLE_MINIMAP_STATUES === 0);
+    assert.ok(statues?.confirmed, "the expensive layer must be identified within the confirmed owner");
+    assert.equal(result.rows.find(row => row.patch?.ENABLE_MINIMAP_CRATE_ROUTES === 0)?.confirmed, false);
+    assert.equal(result.rows.some(row => row.patch?.ENABLE_MINIMAP_CRATE_OVERLAY === 0), false, "unconfirmed owners do not extend the scan");
+    assert.match(result.report, /Temporary settings: ENABLE_MINIMAP_STATUES=0/);
+    assert.deepEqual(config, baseline);
+    assert.deepEqual([...enabled].sort(), ["ql_minimap_loot", "ql_minimap_runtime"]);
+    assert.deepEqual(hud.clock.errors, []);
+});
+
+test("cancelling during a layer trial restores settings before stale sample callbacks can run", () => {
+    const { hud, Q, $, enabled } = setup(["ql_minimap_loot"], "ql_minimap_loot");
+    const baseline = { ENABLE_MINIMAP_STATUES: 1 };
+    let config = { ...baseline }, result;
+    const session = Q.core.FpsInvestigation.start({ root: hud.root,
+        configuration: { baseline, apply: patch => {
+            config = { ...baseline, ...patch };
+            if (config.ENABLE_MINIMAP_STATUES) enabled.add("ql_minimap_loot"); else enabled.delete("ql_minimap_loot");
+            return [...enabled];
+        } },
+        onProgress: progress => {
+            if (progress.patch?.ENABLE_MINIMAP_STATUES === 0) $.Schedule(0.2, () => session.stop("cancelled"));
+        },
+        onComplete: value => { result = value; }
+    });
+    hud.clock.advance(400000);
+    assert.equal(result.reason, "cancelled");
+    assert.deepEqual(config, baseline);
+    assert.deepEqual([...enabled], ["ql_minimap_loot"]);
+    assert.deepEqual(hud.clock.errors, []);
+});
+
 for (const changedClass of ["ShowEscapeMenu", "gShopOpen", "gScoreboardOpen"]) {
     test(`scene transition ${changedClass} stops sampling and removes its progress overlay`, () => {
         const { hud, Q, enabled } = setup();

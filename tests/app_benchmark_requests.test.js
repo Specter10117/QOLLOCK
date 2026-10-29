@@ -46,6 +46,67 @@ test("FPS stop while idle does not start a diagnostic or alter settings", () => 
     assert.deepEqual(Q.core.ConfigAdapter.exportToFlat(), baseline);
 });
 
+test("FPS layer trials use the App lease, reconcile owners and reject retired config writers", () => {
+    const { hud, Q, g, request } = setup();
+    const canonical = Q.core.ConfigAdapter.exportToFlat();
+    let scan;
+    Q.core.FpsInvestigation.start = options => {
+        scan = options;
+        return { stop: () => options.onComplete({ report: "cancelled", reason: "cancelled" }) };
+    };
+    request("fps_expanded_layers");
+    assert.equal(scan.configuration.baseline.ENABLE_MINIMAP_STATUES, 1);
+    const expected = scan.configuration.apply({ ENABLE_MINIMAP_STATUES: 0, ENABLE_MINIMAP_TOUGH_CRATES: 0,
+        ENABLE_MINIMAP_HEALING_SNACKS: 0, ENABLE_MINIMAP_CRATE_ROUTES: 0, MINIMAP_CAMP_NAMES: 0 });
+    assert.equal(Q.core.ConfigAdapter.exportToFlat().ENABLE_MINIMAP_STATUES, 0);
+    assert.equal(g.State.lastConfig.ENABLE_MINIMAP_CRATE_ROUTES, 0);
+    assert.equal(expected.includes("ql_minimap_loot"), false);
+    assert.equal(Q.core.FeatureRegistry.isEnabled("ql_minimap_loot"), false);
+    scan.configuration.apply({});
+    assert.equal(Q.core.FeatureRegistry.isEnabled("ql_minimap_loot"), true);
+    request("fps_stop_layers");
+    assert.deepEqual(Q.core.ConfigAdapter.exportToFlat(), canonical);
+    assert.throws(() => scan.configuration.apply({ ENABLE_MINIMAP_STATUES: 0 }), /retired/);
+    assert.deepEqual(Q.core.ConfigAdapter.exportToFlat(), canonical);
+    assert.deepEqual(hud.clock.errors, []);
+});
+
+test("superseding a layer trial permits synchronous baseline cleanup but retires its writer", () => {
+    const { Q, request } = setup();
+    const scans = [];
+    let cleaned = false;
+    Q.core.FpsInvestigation.start = options => {
+        scans.push(options);
+        return { stop() { options.configuration.apply({}); cleaned = true; } };
+    };
+    request("fps_expanded_old_layer");
+    scans[0].configuration.apply({ ENABLE_MINIMAP_STATUES: 0 });
+    request("fps_current_new_layer");
+    assert.equal(cleaned, true);
+    assert.throws(() => scans[0].configuration.apply({}), /retired/);
+    request("fps_stop_new_layer");
+});
+
+test("a newer FPS request started during layer cleanup keeps its lease and is not overwritten", () => {
+    const { Q, request } = setup();
+    const canonical = Q.core.ConfigAdapter.exportToFlat();
+    let starts = 0, reentered = false;
+    Q.core.FpsInvestigation.start = options => {
+        starts++;
+        return { stop() {
+            if (!reentered) { reentered = true; request("fps_expanded_inner_cleanup"); }
+            options.configuration.apply({});
+            options.onComplete({ report: "cancelled", reason: "cancelled" });
+        } };
+    };
+    request("fps_expanded_initial_cleanup");
+    request("fps_current_outer_cleanup");
+    assert.equal(starts, 2, "the newer request from cleanup must survive the older outer request");
+    assert.equal(Q.core.ConfigAdapter.exportToFlat().ENABLE_COMPASS, 1);
+    request("fps_stop_final_cleanup");
+    assert.deepEqual(Q.core.ConfigAdapter.exportToFlat(), canonical);
+});
+
 test("current FPS scan freezes canonical config instead of sampling an expiring Customize draft", () => {
     const { hud, Q, g, request } = setup();
     const canonical = { ...Q.buildDefaultConfig(), TOP_BAR_X_OFFSET: 37 };

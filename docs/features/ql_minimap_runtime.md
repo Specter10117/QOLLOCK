@@ -25,15 +25,6 @@ created groups and markers. Marker and route scale changes refresh only their
 affected geometry, including hidden groups before reveal; district-name selection
 retires only the name group. Disable/replacement retires all owned children.
 
-The ordinary-crate and loot reference roots request native composition caching
-with the same creation attribute used by the game's top-bar ability container.
-Only these two static roots request it; native canvas, moving map icons and
-individual markers do not. Settings still update the existing child geometry,
-text and visibility. Offline checks do not model composition caching: after
-repacking, compare the Expanded Config exclusion report in the same stationary
-scene and check Base/Alt/Tab zoom, rotation/flip, marker scales, opacity and
-district-name changes for stale or clipped content and image quality.
-
 
 Draw-over-UI behavior uses a stacking override without reparenting
 `minimap_persp`. The native location labels inherit their district/building

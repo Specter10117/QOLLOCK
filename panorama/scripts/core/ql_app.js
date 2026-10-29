@@ -392,14 +392,18 @@
 
     const _stopBenchmarkRequest = () => {
         const request = _benchmarkRequest;
+        const lease = _stressBenchmark;
         _benchmarkRequest = null;
+        if (request) request.stopping = true;
         try { request?.handle?.stop?.(); }
         catch (e) { if (Logger) Logger.logWarn("Benchmark", `Benchmark stop failed: ${e?.message || e}`); }
-        if (request?.isFpsScan && _stressBenchmark) _restoreStressBenchmark(_hudPanel, "cancelled");
+        finally { if (request) request.stopping = false; }
+        if (request?.isFpsScan && lease && _stressBenchmark === lease) _restoreStressBenchmark(_hudPanel, "cancelled");
     };
 
     const _startRequestedBenchmark = (hudPanel, forceToken) => {
         _stopBenchmarkRequest();
+        if (_benchmarkRequest) return;
         const isFpsScan = forceToken.startsWith("fps_");
         const request = { handle: null, isFpsScan };
         _benchmarkRequest = request;
@@ -407,6 +411,7 @@
         const durSec = isFpsScan ? 420 : parseFloat(parts[1]) || 10;
         const isStress = isFpsScan ? parts[1] === "expanded" : parts[2] === "stress";
         const leasedConfig = isStress || isFpsScan;
+        let fpsConfiguration = null;
 
         if (leasedConfig) {
             let stress = null;
@@ -450,6 +455,28 @@
                 if (_stressBenchmark !== stress) return;
                 _syncRootClasses(hudPanel, maxConfig);
                 if (_stressBenchmark !== stress) return;
+                if (isFpsScan) {
+                    const baseline = { ...maxConfig };
+                    const owners = FeatureRegistry.getEnabledIds();
+                    const checkLease = restoring => {
+                        const cleanup = restoring && request.stopping && _benchmarkRequest === null;
+                        if ((_benchmarkRequest !== request && !cleanup) || _stressBenchmark !== stress) throw Error("temporary configuration lease retired");
+                    };
+                    fpsConfiguration = { baseline, apply: patch => {
+                        const restoring = Object.keys(patch).length === 0;
+                        checkLease(restoring);
+                        const config = { ...baseline, ...patch };
+                        stress.config = config;
+                        if (globalState) globalState.lastConfig = config;
+                        ConfigAdapter.loadFromFlat(config, _enableKeyMap);
+                        checkLease(restoring);
+                        _syncFeatureEnabledState();
+                        checkLease(restoring);
+                        _syncRootClasses(hudPanel, config);
+                        checkLease(restoring);
+                        return owners.filter(id => FeatureRegistry.isFeatureSupposedToBeEnabled(id));
+                    } };
+                }
 
                 stress.timer = $.Schedule(durSec + 3.0, () => {
                     if (_stressBenchmark !== stress) return;
@@ -500,6 +527,7 @@
                 };
                 const handle = isFpsScan ? QOL.core.FpsInvestigation.start({
                     root: hudPanel, mode: isStress ? "expanded" : "current",
+                    configuration: fpsConfiguration,
                     onProgress: () => _writeDiagSnapshot(hudPanel, forceToken),
                     onComplete: result => {
                         const { report, ...stats } = result;
