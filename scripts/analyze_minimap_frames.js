@@ -177,6 +177,7 @@ function analyzeMinimap(meta, frames, focus, summarizeWindow) {
     }
     return { kind: "minimap-suite", context, scene: packets.get("scene"), rows, blocks, interactions, restoration, noiseMs, sourceStatus,
         sourceIdentity: meta.sourceIdentity, gameIdentity: meta.gameIdentity, captureStop: meta.reason, sourceMatches: functionMatches,
+        transportWarnings: meta.packetParseErrors || [],
         packetErrors: Object.fromEntries(packetErrors), sampleState: packets.get(windows.find(window => packets.has(window.beforeProof))?.beforeProof),
         retryIds: rows.filter(row => row.id !== "sham" && ["invalid", "not_run", "inconclusive"].includes(row.status)).map(row => row.id) };
 }
@@ -242,7 +243,7 @@ function formatMinimap(result) {
                 stressLeaseActive: result.restoration.app.stressLeaseActive, observationScope: result.restoration.app.observationScope,
                 expectedDeltaFromCanonical: delta(result.restoration.app.expectedConfig || {}, context.canonical || context.baseline),
                 actualDeltaFromExpected: delta(result.restoration.app.actualConfig || {}, result.restoration.app.expectedConfig || {}) } }),
-        "Transport errors=" + JSON.stringify(result.packetErrors),
+        "Transport errors=" + JSON.stringify(result.packetErrors) + "; decoding warnings=" + JSON.stringify(result.transportWarnings),
         "Available unrun refinements=" + JSON.stringify((context.plan.available || []).map(row => ({ id: row.id, question: row.question, source: row.source }))),
         "Retry without compilation/restart: start capture_game_frames.ps1 again, paste comma-separated IDs into Dev -> Complete minimap investigation -> condition IDs, then Investigate. A new sham control is included automatically. Suggested IDs=" + result.retryIds.join(","),
         "Scope=" + context.plan.scope, ...(context.caveats || []));

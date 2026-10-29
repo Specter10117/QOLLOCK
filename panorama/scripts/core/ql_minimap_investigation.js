@@ -190,7 +190,6 @@
         const sample = before => {
             const beforeProof = "proof-" + block.trial + "-" + phase + "-before";
             const afterProof = "proof-" + block.trial + "-" + phase + "-after";
-            onPacket(beforeProof, before);
             observation.sample();
             const startAt = Date.now();
             const guard = () => {
@@ -199,6 +198,9 @@
                 if (Date.now() - startAt < plan.sampleMs) { schedule(0.5, guard); return; }
                 const endAt = Date.now(), work = observation.sample(), after = proof();
                 if (work.errors) { finish("managed callback failure"); return; }
+                // Transport both captured states after their measured window.
+                // Before-state is immutable data, not a later native re-read.
+                onPacket(beforeProof, before);
                 onPacket(afterProof, { ...after, work });
                 onWindow({ trial: block.trial, conditionId: condition.id, repeat: block.repeat, phase, side: block.order[phase],
                     name: condition.id, ids: Plan.owners.slice(), beforeProof, afterProof, startAt, endAt });

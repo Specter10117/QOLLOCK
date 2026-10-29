@@ -784,27 +784,31 @@
                     const diag = JSON.parse(rawDiag);
                     if (diag.benchmark && diag.benchmark.token === forceToken) {
                         const report = diag.benchmark.report || "";
-                        const hiddenEntry = $.CreatePanel("TextEntry", container, "BenchmarkCopyTextEntry");
-                        hiddenEntry.text = report;
-                        hiddenEntry.multiline = true;
-                        hiddenEntry.maxchars = Math.max(report.length + 100, 2000);
-
-                        const tryCopy = Q.ui?.configTab?.tryCopyTextToClipboard || globalThis.TryCopyTextToClipboard;
-                        const copied = (typeof tryCopy === "function") ? tryCopy(report, hiddenEntry) : false;
-
-                        if (isAlive(hiddenEntry)) {
-                            try { hiddenEntry.DeleteAsync(0); } catch {}
+                        const nativeReport = isStressTest === "fps_minimap";
+                        let copied = false;
+                        if (!nativeReport) {
+                            const hiddenEntry = $.CreatePanel("TextEntry", container, "BenchmarkCopyTextEntry");
+                            hiddenEntry.text = report;
+                            hiddenEntry.multiline = true;
+                            hiddenEntry.maxchars = Math.max(report.length + 100, 2000);
+                            const tryCopy = Q.ui?.configTab?.tryCopyTextToClipboard || globalThis.TryCopyTextToClipboard;
+                            copied = (typeof tryCopy === "function") ? tryCopy(report, hiddenEntry) : false;
+                            if (isAlive(hiddenEntry)) {
+                                try { hiddenEntry.DeleteAsync(0); } catch {}
+                            }
                         }
 
                         const stats = diag.benchmark.stats || {};
                         const totalJs = (typeof stats.totalJsMs === "number") ? stats.totalJsMs.toFixed(1) : "?";
                         const setFeedback = Q.ui?.configTab?.setLocalizedConfigFeedbackMessage || globalThis.SetLocalizedConfigFeedbackMessage;
 
-                        $.Msg(`[QOLLock][DevTab] Benchmark finished: ${totalJs}ms in timed poll callbacks over ${durSec}s. Report ${copied ? "copied to clipboard" : "printed to console"}.`);
+                        if (nativeReport) $.Msg("[QOLLock][DevTab] Native scan ended; the external capture window produces and copies the FPS report.\n" + report);
+                        else $.Msg(`[QOLLock][DevTab] Benchmark finished: ${totalJs}ms in timed poll callbacks over ${durSec}s. Report ${copied ? "copied to clipboard" : "printed to console"}.`);
 
                         if (isScan) {
-                            setStatus(isStressTest === "fps_minimap" && stats.reason !== "complete" ?
-                                "Investigation stopped. Check report for missing conditions." : "Investigation finished. Check console or clipboard.", "#e6b800");
+                            setStatus(nativeReport ? stats.reason !== "complete" ?
+                                "Investigation stopped. Check the external report for missing conditions." :
+                                "Investigation finished. Wait for the native report in the capture window." : "Investigation finished. Check console or clipboard.", "#e6b800");
                         } else if (copied) {
                             setStatus(format("Copied! {milliseconds}ms callbacks (Check ~)", { milliseconds: totalJs }), "#66cc99");
                             if (typeof setFeedback === "function") {

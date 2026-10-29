@@ -108,10 +108,10 @@ test("native-first selected suite emits declared coverage and state proofs witho
     const { hud, Q, $, baseline } = setup();
     assert.equal(typeof Q.core.MinimapInvestigation?.start, "function");
     $.FrameTime = () => { throw Error("UI cadence must not choose or measure this suite"); };
-    const packets = new Map(), windows = [];
+    const packets = new Map(), sentAt = new Map(), windows = [];
     let result;
     Q.core.MinimapInvestigation.start({ root: hud.root, baseline, selectedIds: ["polls-both", "static-crates", "layer-routes"],
-        onPacket: (id, value) => packets.set(id, value), onWindow: value => windows.push(value), onComplete: value => { result = value; }
+        onPacket: (id, value) => { packets.set(id, value); sentAt.set(id, hud.clock.now()); }, onWindow: value => windows.push(value), onComplete: value => { result = value; }
     });
     hud.clock.advanceBy(180000, 10000);
     assert.equal(result.reason, "complete");
@@ -125,6 +125,7 @@ test("native-first selected suite emits declared coverage and state proofs witho
         assert.ok(window.endAt - window.startAt >= 2000);
         assert.ok(packets.get(window.beforeProof).verified);
         assert.ok(packets.get(window.afterProof).verified);
+        assert.ok(sentAt.get(window.beforeProof) >= window.endAt, "proof serialization/console transport must follow the measured window");
         if (window.conditionId === "static-crates") {
             const proof = packets.get(window.beforeProof);
             assert.deepEqual(Array.from(proof.applied.pausedPolls), ["ql_minimap_runtime", "ql_minimap_loot"]);

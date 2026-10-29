@@ -261,18 +261,20 @@ test("ui/dev_tab: runInGameBenchmark initiates benchmark request and copies repo
     assert.ok(statusLabel.text.includes("10s left"), "Status should indicate 10s remaining");
 });
 
-for (const mode of ["current", "minimap"]) test(`FPS investigation ${mode} UI requests its mode and copies its own final report`, () => {
+for (const mode of ["current", "minimap"]) test(`FPS investigation ${mode} UI preserves the correct report owner`, () => {
     const env = createTestEnvironment();
     const label = env.sandbox.$.CreatePanel("Label", env.rootPanel, "ScanStatus");
     const button = env.sandbox.$.CreatePanel("Button", env.rootPanel, "ScanButton");
     env.sandbox.QOL.ui.devTab.runInGameBenchmark(env.rootPanel, label, button, "fps_" + mode);
     const token = env.hudPanel.GetAttributeString("QOL_DiagRequest", "");
     assert.ok(token.startsWith("fps_" + mode + "_"));
+    env.sandbox.QOL.ui.configTab.tryCopyTextToClipboard("Actual external native report");
     env.hudPanel.SetAttributeString("QOL_Diag", JSON.stringify({ benchmark: {
         token, report: "UI cadence investigation report", stats: { reason: "complete" }
     } }));
     env.clock.advance(600);
-    assert.equal(env.getClipboardText(), "UI cadence investigation report");
+    assert.equal(env.getClipboardText(), mode === "minimap" ? "Actual external native report" : "UI cadence investigation report");
+    if (mode === "minimap") assert.match(label.text, /capture window/);
     assert.equal(button.BHasClass("CycleActive"), false);
     assert.doesNotMatch(label.text, /\?ms|callbacks/);
 });

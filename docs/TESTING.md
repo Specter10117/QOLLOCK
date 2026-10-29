@@ -529,7 +529,9 @@ Disabled-owner evidence includes actual tree/style retirement, not merely regist
 state. Every successful reconciliation receives a full warming interval; the final
 proof is read-only and cannot rebuild a tree at sampling start. Failed baseline
 setup stops early. Completed windows carry before/after proofs, actual stage counts
-and UTC bounds. Polling probes require execution in the running state and no body
+and UTC bounds. Both state payloads are transported after the measured window;
+the collector defers bulk proof decoding until ETW has stopped. Polling probes
+require execution in the running state and no body
 execution in the paused state. Events, one-shots, other owners and native game
 rendering remain active. These exclusions do not isolate JavaScript from native calls.
 
@@ -557,6 +559,9 @@ comma-separated IDs in the same Dev row. A fresh sham is included automatically.
 This uses the already compiled controls, without another repack or game restart.
 The default full run executes per-owner cache variants; remaining geometry refinements
 and their source mapping are listed in the report.
+The Dev completion status directs the user to the external capture window. It
+does not copy the internal completion stub over an already produced native
+report; the collector owns copying `report.txt` to the clipboard.
 
 `minimap_full_investigation`, `minimap_diagnostic_owners`, `minimap_native_analysis`
 and App/Dev regressions exercise the production request, lease, transport, validation

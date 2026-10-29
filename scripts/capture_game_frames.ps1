@@ -108,6 +108,8 @@ $traceName = 'QOLLOCK-' + [guid]::NewGuid().ToString('N')
 $duration = if ($ProbeSeconds) { $ProbeSeconds } else { $MaxSeconds }
 $nativeWindows = [Collections.Generic.List[object]]::new()
 $nativePackets = [Collections.Generic.List[object]]::new()
+$rawNativePackets = [Collections.Generic.List[string]]::new()
+$packetParseErrors = [Collections.Generic.List[string]]::new()
 $focus = [Collections.Generic.List[object]]::new()
 $anchors = @(Get-CaptureAnchor)
 $session = $null
@@ -151,7 +153,11 @@ try {
             $partialLine = $lines[-1]
             for ($i = 0; $i -lt $lines.Length - 1; $i++) {
                 if ($lines[$i] -match '\[QOLLOCK:NativeFPS\] (\{.*\})\s*$') {
-                    $marker = $Matches[1] | ConvertFrom-Json
+                    $markerJson = $Matches[1]
+                    # Payload sizes differ by condition. Decode bulk proof JSON
+                    # after ETW stops, avoiding differential concurrent CPU load.
+                    if ($markerJson.StartsWith('{"type":"packet",')) { $rawNativePackets.Add($markerJson); continue }
+                    $marker = $markerJson | ConvertFrom-Json
                     if ($marker.type -eq 'start' -and -not $session) { $session = [string]$marker.session; $kind = [string]$marker.kind }
                     if ($session -and $marker.session -eq $session) {
                         if ($marker.type -eq 'window') { $nativeWindows.Add($marker) }
@@ -188,10 +194,14 @@ finally {
         $stderr = $errorTask.GetAwaiter().GetResult()
         if ($nativeProcess.ExitCode -ne 0 -and -not $failure) { $failure = 'PresentMon exit code: ' + $nativeProcess.ExitCode }
     }
+    foreach ($rawPacket in $rawNativePackets) {
+        try { $nativePackets.Add(($rawPacket | ConvertFrom-Json)) }
+        catch { $packetParseErrors.Add('Malformed proof packet: ' + $_.Exception.Message) }
+    }
     $meta = @{ processId = $targetProcessId; session = $session; kind = $kind; reason = $reason; completed = (-not $failure);
         presentMonVersion = '2.6.0'; executableSha256 = $expectedDigest; swapChain = $SwapChain;
         anchors = $anchors; focus = $focus.ToArray(); windows = $nativeWindows.ToArray(); packets = $nativePackets.ToArray();
-        sourceIdentity = $sourceIdentity; gameIdentity = $gameIdentity;
+        sourceIdentity = $sourceIdentity; gameIdentity = $gameIdentity; packetParseErrors = $packetParseErrors.ToArray();
         failure = $failure; stdout = $stdout; stderr = $stderr }
     $meta | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $metaPath -Encoding utf8
     $stdout | Set-Content -LiteralPath (Join-Path $OutputDirectory 'presentmon-stdout.txt') -Encoding utf8
