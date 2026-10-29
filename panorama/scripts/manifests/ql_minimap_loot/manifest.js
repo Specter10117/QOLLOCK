@@ -124,7 +124,13 @@
                 if (!P.isAlive(owner) || !owner.BHasClass("dl_midtown") || Q.core.hud.isInHideout(root) || Q.isStreetBrawlModeActive?.(root)) { shown(layer, false); return; }
                 if (!tree.sweep()) { built.clear(); }
                 const previousLayer = layer;
-                layer = tree.child(owner, "Panel", "QOLMinimapLootRoot", { hittest: "false", hittestchildren: "false" });
+                // Native require-layer creates the offscreen composition target;
+                // always-cache alone only changes the policy of an existing one.
+                // Keep the moving native map outside this static reference layer.
+                layer = tree.child(owner, "Panel", "QOLMinimapLootRoot", {
+                    hittest: "false", hittestchildren: "false",
+                    "require-composition-layer": "true", "always-cache-composition-layer": "true"
+                });
                 if (!P.isAlive(layer)) return;
                 if (layer !== previousLayer) shown(layer, false);
                 if (!style(layer, { width: "100%", height: "100%", ignoreParentFlow: "true", overflow: "noclip", opacity: String(model.MINIMAP_LOOT_OPACITY), zIndex: "10" })) { shown(layer, false); return; }

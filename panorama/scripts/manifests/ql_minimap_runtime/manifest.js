@@ -178,7 +178,11 @@
                 if (!model.crates || Q.core.hud.isInHideout(rootOwner) || Q.isStreetBrawlModeActive?.(rootOwner)) {
                     show(crates, false); return;
                 }
-                const next = ensure(renderer, "minimap_overlay_root", crates);
+                // Request one cached composition for the static crate tree.
+                // Requiring the layer is separate from retaining its cached image.
+                const next = tree.child(renderer, "Panel", "minimap_overlay_root", {
+                    "require-composition-layer": "true", "always-cache-composition-layer": "true"
+                });
                 if (next !== crates) {
                     for (const panel of [crates, markers, ...markerPanels]) owned.delete(panel);
                     crates = next; markers = null; markerPanels = []; crateData = null; crateReady = false;

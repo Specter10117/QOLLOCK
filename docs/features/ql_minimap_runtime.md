@@ -25,6 +25,23 @@ created groups and markers. Marker and route scale changes refresh only their
 affected geometry, including hidden groups before reveal; district-name selection
 retires only the name group. Disable/replacement retires all owned children.
 
+The ordinary-crate and loot roots request an offscreen native composition layer
+and its persistent cache through creation properties. Native inspection confirmed
+that `require-composition-layer` contributes a layer-creation reason, whereas
+`always-cache-composition-layer` only affects an already-created layer. Both are
+needed for this request; copying only the cache policy from a translucent native
+component does not establish a layer for an otherwise opaque reference root.
+Only the two static reference trees request this composition. Native moving map
+content and tunnels are not included in either tree; individual markers do not
+request their own composition layers.
+The original children still own their geometry, localization and setting gates.
+
+After repacking, compare native PresentMon frame captures in the same scene.
+Check cache updates after marker/route scale, opacity, group and district-name
+changes, Base/Alt/Tab resize, native zoom, rotation/flip and renderer replacement.
+Also check edge clipping, text quality and GPU memory use: the simulator cannot
+verify native invalidation, composition reuse or performance.
+
 
 Draw-over-UI behavior uses a stacking override without reparenting
 `minimap_persp`. The native location labels inherit their district/building
