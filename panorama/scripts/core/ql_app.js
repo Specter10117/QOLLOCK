@@ -525,12 +525,15 @@
                     };
                     _writeDiagSnapshot(hudPanel, forceToken);
                 };
+                if (isFpsScan) $.Msg("[QOLLOCK:NativeFPS] " + JSON.stringify({ type: "start", session: forceToken }));
                 const handle = isFpsScan ? QOL.core.FpsInvestigation.start({
                     root: hudPanel, mode: isStress ? "expanded" : "current",
                     configuration: fpsConfiguration,
                     onProgress: () => _writeDiagSnapshot(hudPanel, forceToken),
+                    onWindow: window => $.Msg("[QOLLOCK:NativeFPS] " + JSON.stringify({ type: "window", session: forceToken, ...window })),
                     onComplete: result => {
                         const { report, ...stats } = result;
+                        $.Msg("[QOLLOCK:NativeFPS] " + JSON.stringify({ type: "end", session: forceToken, reason: result.reason }));
                         $.Msg(report); complete(report, stats);
                     }
                 }) : QOL.core.Scheduler.startBenchmark(durSec, complete,

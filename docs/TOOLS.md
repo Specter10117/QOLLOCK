@@ -88,6 +88,7 @@ and maintainer client checks for actual style application.
 | Are runtime hooks reporting source problems in the client? | Dev test collector | Read-only feature hooks; see [testing](TESTING.md). Skips and observations are not rendering verification. |
 | What does managed polling cost in the client? | Dev -> Benchmark (Current Config) | Callback timing and temporary lookup instrumentation; scope and overhead are documented in [testing](TESTING.md). |
 | Which feature exclusions improve observed UI cadence? | Dev -> FPS investigation (Current/Expanded Config) | Repeated A/B/B/A trials, individual owner follow-up and active layer settings for confirmed minimap candidates. UI cadence is a proxy, not engine FPS; confirm with native telemetry. Opening Esc stops and restores the scan. See [testing](TESTING.md#in-game-feature-exclusion-investigation). |
+| Do the tested exclusions improve actual game frame submission/display cadence? | `pwsh -NoProfile -File scripts/capture_game_frames.ps1` | Windows PresentMon capture by Deadlock PID, joined to compact in-game trial markers using QPC/UTC anchors. Requires the updated mod to be repacked and an existing game console log. Writes raw frames, metadata and an independent native comparison under ignored `captures/`; see [native capture](TESTING.md#native-game-frame-capture). |
 
 Use controlled simulator fixtures for logic/lifecycle regressions. Whole-HUD
 profiling uses a validated supplied hierarchy; missing/invalid capture inputs fail

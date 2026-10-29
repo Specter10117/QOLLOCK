@@ -1241,7 +1241,7 @@
         for (const [mode, title] of [["current", "FPS investigation (Current Config)"], ["expanded", "FPS investigation (Expanded Config)"]]) {
             createDevActionRow(list, "FpsScanRow" + mode, "FpsScanBtn" + mode, "FpsScanStatus" + mode,
                 "s2r://panorama/images/icons/icon_play.vsvg", title,
-                "Repeated A/B/B/A feature exclusions, then individual suspects. Close Esc within 5s; stay still for up to 7 minutes. Measures UI cadence, not engine FPS. Config is restored without saving.",
+                "Start external PresentMon capture first for game FPS. Without it, this scan measures UI cadence only. Close Esc within 5s; stay still for up to 7 minutes. Settings are restored without saving.",
                 "Investigate", (status, button) => runInGameBenchmark(list, status, button, "fps_" + mode));
         }
         createDevActionRow(list, "FpsStopRow", "FpsStopBtn", "FpsStopStatus", "", "Stop FPS investigation",

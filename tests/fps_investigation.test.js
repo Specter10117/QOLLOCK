@@ -20,13 +20,17 @@ function setup(ids = ["ql_keyboard", "ql_compass"], culprit = "ql_keyboard") {
 test("FPS investigation compares repeated UI cadence windows and restores every excluded owner", () => {
     const { hud, Q, enabled } = setup();
     let result;
-    Q.core.FpsInvestigation.start({ root: hud.root, onComplete: value => { result = value; } });
+    const windows = [];
+    Q.core.FpsInvestigation.start({ root: hud.root, onWindow: window => windows.push(window), onComplete: value => { result = value; } });
     hud.clock.advance(400000);
     assert.ok(result);
     assert.equal(result.reason, "complete");
     const keyboard = result.rows.find(row => row.ids.length === 1 && row.ids[0] === "ql_keyboard");
     assert.ok(keyboard.confirmed);
     assert.ok(keyboard.improvementMs > 10);
+    assert.equal(windows.length, result.rows.length * 4);
+    assert.equal(new Set(windows.map(window => window.trial + ":" + window.phase)).size, windows.length);
+    assert.ok(windows.every(window => window.endAt - window.startAt >= 3000));
     assert.match(result.report, /UI dispatch cadence/);
     assert.match(result.report, /not measured/);
     assert.deepEqual([...enabled].sort(), ["ql_compass", "ql_keyboard"]);

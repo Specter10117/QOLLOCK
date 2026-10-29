@@ -1292,7 +1292,7 @@
     "Customize hit and critical markers while preserving native hit timing.": "Customize hit and critical markers while preserving native hit timing.",
     "FPS investigation (Current Config)": "FPS investigation (Current Config)",
     "FPS investigation (Expanded Config)": "FPS investigation (Expanded Config)",
-    "Repeated A/B/B/A feature exclusions, then individual suspects. Close Esc within 5s; stay still for up to 7 minutes. Measures UI cadence, not engine FPS. Config is restored without saving.": "Repeated A/B/B/A feature exclusions, then individual suspects. Close Esc within 5s; stay still for up to 7 minutes. Measures UI cadence, not engine FPS. Config is restored without saving.",
+    "Start external PresentMon capture first for game FPS. Without it, this scan measures UI cadence only. Close Esc within 5s; stay still for up to 7 minutes. Settings are restored without saving.": "Start external PresentMon capture first for game FPS. Without it, this scan measures UI cadence only. Close Esc within 5s; stay still for up to 7 minutes. Settings are restored without saving.",
     "Investigate": "Investigate",
     "Stop FPS investigation": "Stop FPS investigation",
     "Restores excluded features and temporary settings. A partial report is copied when the scan finishes.": "Restores excluded features and temporary settings. A partial report is copied when the scan finishes.",

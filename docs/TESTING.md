@@ -505,6 +505,67 @@ condition retains core code and loaded static stylesheets, so it is not vanilla.
 Dev tests cover the actual request/result bridge and configuration restoration.
 These simulator checks do not verify native frame cadence or FPS.
 
+### Native game frame capture
+
+For game frame evidence, run the external collector before starting the same Dev
+investigation. Recompile/repack the source first: the App now emits one compact
+`[QOLLOCK:NativeFPS]` marker per completed window, outside sampling. The previous
+large text report can be truncated by the native console and is not used as the
+collector's transport. No in-game API for presented-frame timing is assumed.
+
+```powershell
+pwsh -NoProfile -File scripts/capture_game_frames.ps1
+```
+
+The collector requires Windows, PowerShell 7, Node and one running Deadlock
+process. It downloads the pinned official portable PresentMon executable into
+the user's local application-data cache and verifies its SHA-256 before use;
+it does not install a service. `-PresentMonPath` accepts an already downloaded
+copy of that exact executable. `-GameProcessId`, `-GameLog` and `-OutputDirectory`
+override discovery. Start Dev's Current/Expanded investigation within one minute,
+close Esc and keep the game focused. Completion/stop ends only this collector's
+unique ETW session. An eight-minute capture deadline bounds unattended runs.
+
+PresentMon records the selected game's native graphics Present events. Each CSV
+row supplies its QPC timestamp, Present interval and available display/CPU/GPU
+metrics. Two Windows QPC/UTC anchors align these events to the existing window
+boundaries; local formatted dates are not used. The analyzer rejects clock jumps,
+uncertain anchors, trace errors and ambiguous substantial swap chains. Foreground
+PID is sampled every half second: observed focus changes or missing coverage
+invalidate affected comparisons; briefer unobserved transitions remain possible.
+
+Results under `captures/native-fps-*/` include `frames.csv`, `capture.json`,
+PresentMon diagnostics and `report.txt`. The independent report ranks the actual
+tested conditions by native Present intervals, not by their UI score. Mean FPS
+is the reciprocal of mean interval, not an average of instantaneous FPS. Display
+cadence is reported separately when available; CPU/GPU busy values are context,
+not attribution to a JavaScript owner. Driver/frame-generation behavior can
+separate application submissions from displayed frames. PresentMon documents
+additional GPU-timing limitations with hardware-accelerated GPU scheduling.
+
+The in-game scan still chooses deeper follow-up by UI cadence. This external
+capture does not make that coverage exhaustive or attribute individual native
+draw calls. All conditions retain the same diagnostic instrumentation; its
+overhead is not a vanilla baseline. Scene stability and repeated comparisons
+remain necessary. A cancellation preserves completed trials and lists incomplete
+ones; missing markers from a reportedly complete run are an error.
+
+To reanalyze a preserved capture:
+
+```text
+node scripts/analyze_game_frames.js captures/<run>/frames.csv captures/<run>/capture.json
+```
+
+Use `-SwapChain <address>` only after identifying the game's intended render
+surface when multiple substantial swap chains are reported. `-ProbeSeconds 5`
+tests native capture without starting a mod scan; it cannot establish a feature's
+FPS cost. The parser/comparison regressions are in
+`tests/game_frame_analysis.test.js`. Collector availability has to be checked on
+the actual Windows client, independently of simulator tests.
+
+Sources: [PresentMon 2.6 console interface](https://github.com/GameTechDev/PresentMon/blob/v2.6.0/README-ConsoleApplication.md),
+[CSV timestamp/metric writer](https://github.com/GameTechDev/PresentMon/blob/v2.6.0/PresentMon/CsvOutput.cpp).
+
 ### Offline operation counts
 
 ```

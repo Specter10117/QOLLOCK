@@ -68,7 +68,7 @@
         lines.push("Excluding all registered owners does not unload QOLLOCK core scripts or static stylesheets.");
         return lines.join("\n");
     };
-    function start({ root, mode = "current", configuration = null, onComplete, onProgress = () => {} }) {
+    function start({ root, mode = "current", configuration = null, onComplete, onProgress = () => {}, onWindow = () => {} }) {
         if (active) active.stop("superseded");
         if (!P.isAlive(root) || typeof $.FrameTime !== "function") throw Error("UI frame clock or HUD unavailable");
         const registry = Q.core.FeatureRegistry;
@@ -192,7 +192,12 @@
                     nextCheck = Date.now() + 1000;
                 }
                 if (Date.now() < endAt) { schedule(0, frame); return; }
-                trial.windows.push({ ...summarize(values, readWork(), overflow), startAt, endAt: Date.now() });
+                const window = { ...summarize(values, readWork(), overflow), startAt, endAt: Date.now() };
+                trial.windows.push(window);
+                // Compact markers are emitted outside sampling. The native frame
+                // collector joins these UTC bounds to Windows QPC Present events.
+                onWindow({ trial: result.rows.length + 1, name: trial.name, ids: trial.ids, patch: trial.patch || null,
+                    phase: windowIndex, startAt, endAt: window.endAt });
                 windowIndex++;
                 if (windowIndex < 4) { beginWindow(); return; }
                 result.rows.push(assess(trial));
