@@ -7,16 +7,20 @@ const mean = values => values.length ? values.reduce((sum, value) => sum + value
 const percentile = (values, fraction) => values.length ? values.slice().sort((a, b) => a - b)[Math.ceil(values.length * fraction) - 1] : null;
 
 function clockMapping(anchors) {
-    if (!Array.isArray(anchors) || anchors.length !== 2) throw Error("Two Windows QPC/UTC clock anchors are required");
-    const [a, b] = anchors;
-    if (![a.qpc, b.qpc, a.utcMs, b.utcMs, a.frequency, b.frequency].every(Number.isFinite) ||
-        a.frequency <= 0 || a.frequency !== b.frequency || b.qpc <= a.qpc || b.utcMs <= a.utcMs) throw Error("Invalid clock anchors");
-    const elapsedMs = (b.qpc - a.qpc) * 1000 / a.frequency;
-    const driftMs = Math.abs(b.utcMs - a.utcMs - elapsedMs);
-    if (driftMs > 5 || anchors.some(anchor => !Number.isFinite(anchor.uncertaintyMs) || anchor.uncertaintyMs > 3)) {
+    if (!Array.isArray(anchors) || anchors.length < 2) throw Error("At least two Windows QPC/UTC clock anchors are required");
+    if (anchors.some((a, i) => ![a.qpc, a.utcMs, a.frequency, a.uncertaintyMs].every(Number.isFinite) ||
+        a.frequency <= 0 || a.frequency !== anchors[0].frequency || a.uncertaintyMs < 0 ||
+        (i && (a.qpc <= anchors[i - 1].qpc || a.utcMs <= anchors[i - 1].utcMs)))) throw Error("Invalid clock anchors");
+    const driftMs = Math.max(...anchors.slice(1).map((b, i) => Math.abs(b.utcMs - anchors[i].utcMs - (b.qpc - anchors[i].qpc) * 1000 / b.frequency)));
+    if (driftMs > 5 || anchors.some(anchor => anchor.uncertaintyMs > 3)) {
         throw Error("Windows clock discontinuity or uncertain QPC alignment; refusing to align trial windows");
     }
-    return { driftMs, at: qpc => a.utcMs + (qpc - a.qpc) * 1000 / a.frequency };
+    return { driftMs, at: qpc => {
+        let index = 0;
+        while (index < anchors.length - 2 && qpc > anchors[index + 1].qpc) index++;
+        const a = anchors[index], b = anchors[index + 1];
+        return a.utcMs + (qpc - a.qpc) * (b.utcMs - a.utcMs) / (b.qpc - a.qpc);
+    } };
 }
 
 function readFrames(csv, processId, clock, selectedSwapChain) {
@@ -78,6 +82,10 @@ function analyzeCapture(csv, meta) {
     const clock = clockMapping(meta.anchors);
     const { frames, swapChain, chainCounts } = readFrames(csv, meta.processId, clock, meta.swapChain);
     const focus = (meta.focus || []).map(point => ({ ...point, at: clock.at(point.qpc) })).sort((a, b) => a.at - b.at);
+    if (meta.kind === "minimap-suite" || (meta.windows || []).some(window => window.conditionId)) {
+        return { ...require("./analyze_minimap_frames").analyzeMinimap(meta, frames, focus, summarizeWindow),
+            processId: meta.processId, session: meta.session, swapChain, chainCounts, clockDriftMs: clock.driftMs, nativeFrames: frames.length };
+    }
     const trials = new Map();
     for (const window of meta.windows || []) {
         if (window.session !== meta.session) continue;
@@ -114,6 +122,7 @@ function analyzeCapture(csv, meta) {
 }
 
 function formatReport(result) {
+    if (result.kind === "minimap-suite") return require("./analyze_minimap_frames").formatMinimap(result);
     const f = value => value === null || value === undefined ? "n/a" : value.toFixed(2);
     const lines = ["=== QOLLOCK native game frame comparison ===",
         `Process=${result.processId}; swap chain=${result.swapChain}; native frames=${result.nativeFrames}; clock drift=${f(result.clockDriftMs)}ms`,
@@ -131,9 +140,10 @@ function formatReport(result) {
 
 if (require.main === module) {
     try {
-        const [csvPath, metaPath] = process.argv.slice(2);
-        if (!csvPath || !metaPath) throw Error("Usage: node scripts/analyze_game_frames.js <frames.csv> <capture.json>");
+        const [csvPath, metaPath, option, jsonPath] = process.argv.slice(2);
+        if (!csvPath || !metaPath || (option && (option !== "--json-output" || !jsonPath))) throw Error("Usage: node scripts/analyze_game_frames.js <frames.csv> <capture.json> [--json-output <new-file>]");
         const result = analyzeCapture(fs.readFileSync(csvPath, "utf8"), JSON.parse(fs.readFileSync(metaPath, "utf8")));
+        if (jsonPath) fs.writeFileSync(jsonPath, JSON.stringify(result, null, 2) + "\n", { flag: "wx" });
         process.stdout.write(formatReport(result) + "\n");
     } catch (error) { process.stderr.write(error.message + "\n"); process.exitCode = 1; }
 }

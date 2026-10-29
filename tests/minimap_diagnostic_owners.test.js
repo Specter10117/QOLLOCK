@@ -118,3 +118,27 @@ test("runtime diagnostics release geometry and decoration while retaining crates
     assert.equal(renderer.BHasClass("QOLFixedMinimapIcons"), true);
     assert.deepEqual(hud.clock.errors, []);
 });
+
+test("fine native/geometry controls release only their declared targets and restore them", () => {
+    const { hud, renderer, canvas, instance } = setup();
+    const lease = instance("ql_minimap_runtime").diagnostics.begin();
+    const before = lease.snapshot(), host = renderer.GetParent().GetParent().GetParent();
+    lease.apply({ releaseNativeTargets: ["renderer"] });
+    assert.equal(renderer.BHasClass("minimalist_minimap_active"), false);
+    assert.equal(renderer.BHasClass("QOLFixedMinimapIcons"), true);
+    assert.equal(canvas.IsValid(), true);
+    assert.equal(lease.snapshot().root.identity, before.root.identity);
+    lease.apply({ releasePlacement: true });
+    assert.equal(host.style.margin || "", "");
+    assert.equal(host.style.uiScale, "100%");
+    lease.apply({ releaseViewport: true });
+    assert.equal(renderer.BHasClass("QOLFixedMinimapIcons"), false);
+    assert.notEqual(host.style.margin, "");
+    lease.apply({ releaseGeometryRoles: ["renderer"] });
+    assert.equal(renderer.BHasClass("QOLFixedMinimapIcons"), false);
+    assert.equal(lease.snapshot().geometry.targets.viewport.present, true);
+    lease.restore();
+    assert.equal(renderer.BHasClass("QOLFixedMinimapIcons"), true);
+    assert.equal(renderer.BHasClass("minimalist_minimap_active"), true);
+    assert.deepEqual(hud.clock.errors, []);
+});

@@ -47,6 +47,10 @@ class removes it. `preserveClasses: true` instead captures original native
 membership: desired membership is the baseline or the caller's flag, and
 retirement restores the baseline. That baseline transfers across instance
 handoffs, so a previous instance's injected class cannot become a native default.
+Its read-only `verify()` checks settled records, current property/class leases
+and normalized readbacks without retrying any writes. `isReleased()` checks that
+no ownership records remain. These diagnostic checks distinguish a pending or
+overwritten native presentation from a successfully applied/released one.
 
 `preserveStyles: [property, ...]` is for native-relative code presentation, such
 as stamina rotation. `baseline(panel, property)` reads the original code value
@@ -111,6 +115,9 @@ and schedules cleanup-only retries until the retired handles are destroyed.
 Those callbacks never inspect active nodes, derive settings or recreate content;
 reuse of the same owner remains supported. A new instance cannot adopt an ID
 still occupied by a retired tree.
+The read-only `isReleased()` becomes true only when both active and retired
+records are empty, including cleanup retries. Registry disable alone does not
+prove that asynchronous panel deletion has finished.
 Partial construction can be retried through the same child calls. A new
 instance retires an existing foreign tree instead of adopting UI that the
 previous instance may already have queued for deletion. Default creation

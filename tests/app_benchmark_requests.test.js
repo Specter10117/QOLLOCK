@@ -50,14 +50,14 @@ test("minimap polling request uses expanded config and restores the canonical le
     const { Q, request } = setup();
     const baseline = Q.core.ConfigAdapter.exportToFlat();
     let scan;
-    Q.core.FpsInvestigation.start = options => {
+    Q.core.MinimapInvestigation.start = options => {
         scan = options;
         return { stop: () => options.onComplete({ reason: "cancelled", report: "minimap panels retained" }) };
     };
     request("fps_minimap_polling");
-    assert.equal(scan.mode, "minimap");
-    assert.equal(scan.configuration.baseline.ENABLE_MINIMAP_CRATE_OVERLAY, 1);
-    assert.equal(scan.configuration.baseline.ENABLE_MINIMAP_STATUES, 1);
+    assert.equal(scan.baseline.ENABLE_MINIMAP_CRATE_OVERLAY, 1);
+    assert.equal(scan.baseline.ENABLE_MINIMAP_STATUES, 1);
+    assert.equal(scan.baseline.MINIMAP_CAMP_NAMES, 1);
     request("fps_stop_minimap");
     assert.deepEqual(Q.core.ConfigAdapter.exportToFlat(), baseline);
 });
@@ -66,12 +66,12 @@ test("FPS safety timeout stops its diagnostic before restoring the lease", () =>
     const { hud, Q, request } = setup();
     const baseline = Q.core.ConfigAdapter.exportToFlat();
     let stopped = "";
-    Q.core.FpsInvestigation.start = options => ({ stop(reason) {
+    Q.core.MinimapInvestigation.start = options => ({ stop(reason) {
         stopped = reason;
         options.onComplete({ reason, report: "safety stop" });
     } });
     request("fps_minimap_safety");
-    hud.clock.advance(64000);
+    hud.clock.advanceBy(1804000, 10000);
     assert.equal(stopped, "safety-timeout");
     assert.deepEqual(Q.core.ConfigAdapter.exportToFlat(), baseline);
     assert.equal(JSON.parse(hud.root.GetAttributeString("QOL_Diag", "")).benchmark.token, "fps_minimap_safety");
@@ -81,25 +81,27 @@ test("FPS safety timeout stops its diagnostic before restoring the lease", () =>
 test("a new lease started by a FPS safety stop survives the retiring safety callback", () => {
     const { hud, Q, request } = setup();
     let first = true;
-    Q.core.FpsInvestigation.start = () => ({ stop() {
+    Q.core.MinimapInvestigation.start = () => ({ stop() {
         if (!first) return;
         first = false;
         request("fps_expanded_after_safety");
     } });
     request("fps_minimap_safety_reentry");
-    hud.clock.advance(64000);
+    hud.clock.advanceBy(1804000, 10000);
     assert.equal(first, false);
     assert.equal(Q.core.ConfigAdapter.exportToFlat().ENABLE_COMPASS, 1, "the old safety callback cannot restore over a new expanded lease");
     request("fps_stop_cleanup");
     assert.deepEqual(hud.clock.errors, []);
 });
 
-for (const mode of ["minimap", "minimap_visibility"]) test(`${mode} isolation traverses the real App/registry path and emits compact native windows`, () => {
+test("complete minimap suite traverses the real App/registry path and emits compact evidence packets", () => {
     const { hud, Q, g, request } = setup();
     // Model the next UI dispatch; the virtual clock otherwise fires zero-delay
     // schedules at the same instant. This is not a native cadence measurement.
     const schedule = g.$.Schedule;
     g.$.Schedule = (delay, callback) => schedule(delay || 0.016, callback);
+    const create = g.$.CreatePanel;
+    g.$.CreatePanel = (...args) => { const panel = create(...args); panel.actuallayoutwidth = panel.actuallayoutheight = 600; return panel; };
     const baseline = Q.core.ConfigAdapter.exportToFlat();
     let parent = hud.root;
     for (const props of [{ classes: ["HudCore"] }, { id: "gameplay_hud" }, { classes: ["clamp_width"] },
@@ -108,9 +110,9 @@ for (const mode of ["minimap", "minimap_visibility"]) test(`${mode} isolation tr
         parent = parent.addChild(hud.doc.create("Panel", props));
     }
     const renderer = parent;
-    const start = Q.core.FpsInvestigation.start;
+    const start = Q.core.MinimapInvestigation.start;
     let references;
-    Q.core.FpsInvestigation.start = options => start({ ...options, onWindow: window => {
+    Q.core.MinimapInvestigation.start = options => start({ ...options, onWindow: window => {
         const current = [renderer.FindChild("minimap_overlay_root"), renderer.FindChild("QOLMinimapLootRoot")];
         if (!references) references = current;
         assert.deepEqual(current, references, "actual feature trees are retained in all A/B conditions");
@@ -119,21 +121,41 @@ for (const mode of ["minimap", "minimap_visibility"]) test(`${mode} isolation tr
         assert.equal(Q.core.FeatureRegistry.isEnabled("ql_minimap_loot"), true);
         options.onWindow(window);
     } });
-    request("fps_" + mode + "_transport");
-    hud.clock.advance(55000);
+    request("fps_minimap_100_static-crates");
+    hud.clock.advanceBy(100000, 10000);
     const diag = JSON.parse(hud.root.GetAttributeString("QOL_Diag", ""));
     assert.equal(diag.benchmark.stats.reason, "complete");
-    assert.equal(diag.benchmark.stats.mode, mode);
-    assert.equal(diag.benchmark.stats.rows.length, 3);
+    assert.equal(diag.benchmark.stats.kind, "minimap-suite");
+    assert.equal(diag.benchmark.stats.completedBlocks, 6);
     const markers = hud.sandbox.messages.filter(line => line.startsWith("[QOLLOCK:NativeFPS] "));
     const values = markers.map(line => JSON.parse(line.slice("[QOLLOCK:NativeFPS] ".length)));
-    assert.equal(values.filter(value => value.type === "window").length, 12);
+    assert.equal(values.filter(value => value.type === "window").length, 24);
+    assert.ok(values.some(value => value.type === "packet" && value.packet === "context"));
+    assert.ok(values.some(value => value.type === "packet" && value.packet === "app-restoration"));
     assert.equal(values[0].type, "start");
     assert.equal(values.at(-1).type, "end");
-    assert.ok(values.every(value => value.session === "fps_" + mode + "_transport"));
+    assert.match(values[0].session, /^minimap_[0-9a-f]{8}_\d+$/);
+    assert.ok(values.every(value => value.session === values[0].session));
     assert.ok(markers.every(line => line.length < 2000), "native console truncation cannot cut transport markers");
     assert.deepEqual(Q.core.ConfigAdapter.exportToFlat(), baseline);
     assert.deepEqual(hud.clock.errors, []);
+});
+
+test("minimap replacement emits restoration evidence only after the retiring App config lease is restored", () => {
+    const { hud, Q, request } = setup();
+    Q.core.ConfigAdapter.loadFromFlat({ ENABLE_COMPASS: 0 });
+    Q.core.MinimapInvestigation.start = options => ({ stop: () => options.onComplete({ reason: "cancelled", report: "cancelled" }) });
+    request("fps_minimap_123");
+    assert.equal(Q.core.ConfigAdapter.exportToFlat().ENABLE_COMPASS, 1);
+    request("bm_1_normal_replace");
+    const values = hud.sandbox.messages.filter(line => line.startsWith("[QOLLOCK:NativeFPS] ")).map(line => JSON.parse(line.slice("[QOLLOCK:NativeFPS] ".length)));
+    const session = values.find(value => value.type === "start").session;
+    const { packets } = require("../scripts/analyze_minimap_frames").decodePackets(values.filter(value => value.type === "packet"), session);
+    const restored = packets.get("app-restoration");
+    assert.equal(restored.expectedConfig.ENABLE_COMPASS, 0);
+    assert.equal(restored.actualConfig.ENABLE_COMPASS, 0);
+    assert.equal(restored.stressLeaseActive, false);
+    assert.equal(Q.core.ConfigAdapter.exportToFlat().ENABLE_COMPASS, 0);
 });
 
 test("FPS layer trials use the App lease, reconcile owners and reject retired config writers", () => {

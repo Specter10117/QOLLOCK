@@ -505,74 +505,74 @@ condition retains core code and loaded static stylesheets, so it is not vanilla.
 Dev tests cover the actual request/result bridge and configuration restoration.
 These simulator checks do not verify native frame cadence or FPS.
 
-### Minimap polling isolation
+### Complete native minimap investigation
 
-Dev's **Minimap polling isolation (Expanded Config)** runs a fixed, short plan
-through the same configuration lease and native capture transport. It compares
-normal polling with paused managed poll callbacks while retaining enabled owners,
-created panels and native overrides. The three A/B/B/A trials cover both minimap
-owners together, then each individually, independently of the UI cadence score.
-The usual settling/sample windows and menu grace make a complete run about
-53 seconds. Start the external collector first, close Esc and keep the scene,
-camera and Alt/Tab state unchanged. After the progress label disappears, keep
-the game focused for another three seconds before returning to the collector.
+Dev's **Complete minimap investigation** replaces the separate polling and static
+visibility buttons with one native-first declared plan. Start the external collector,
+choose a stationary Midtown scene, leave condition IDs blank, click Investigate,
+and close Esc within five seconds. Keep the game focused, camera and view unchanged
+until the indicator disappears, then wait three seconds before switching windows.
+This is a long diagnostic run, not a ten-second benchmark; the UI estimates its duration.
+Do not use it during active gameplay.
 
-The observation session owns the pause. Completion, cancellation, deadline,
-errors and observer replacement release it without stopping/recreating loops.
-The diagnostic checks the native minimap owner chain and both reference roots;
-missing/replaced roots, changed view or HUD, and observed menu/shop/scoreboard/
-hideout transitions stop the run. App's safety timeout also stops the diagnostic
-before restoring its lease. Incoming configuration changes use the usual
-cancel-and-restore path.
+The plan in `core/ql_minimap_plan.js` independently repeats every selected contrast
+in separated ABBA/BAAB blocks. It covers whole owners, polling bodies, ownership
+sweeps, retained roots and individual reference groups, native presentation groups,
+interactions/retention, and composition policies together and per owner. UI cadence
+never selects its coverage. Geometry roles that can break a coherent size/scale
+chain are shipped as selectable refinements, with a presentation-confound warning.
+Inactive native targets have evidence-backed skips; they are not zero-cost findings.
 
-This condition removes managed poll callback work, including synchronous native
-calls; it does not isolate JavaScript from those calls. Events, one-shots,
-App/root-class updates, other owners and native minimap rendering keep running.
-An observed native improvement directs follow-up toward those callbacks, then
-separate ownership-sweep comparisons. No improvement does not prove a rendering
-bottleneck: a subsequent visible/hidden retained-root comparison is needed.
-Polling is temporarily frozen, so this mode must not be used during gameplay.
-Simulator tests check preserved trees, continuing unrelated work, native-window
-markers and resumed polling; they cannot establish native rendering or FPS.
+Feature-owned leases apply controls without changing persistent settings. Before
+sampling, both complete counts and native-style reconciliation/readbacks must pass.
+Disabled-owner evidence includes actual tree/style retirement, not merely registry
+state. Every successful reconciliation receives a full warming interval; the final
+proof is read-only and cannot rebuild a tree at sampling start. Failed baseline
+setup stops early. Completed windows carry before/after proofs, actual stage counts
+and UTC bounds. Polling probes require execution in the running state and no body
+execution in the paused state. Events, one-shots, other owners and native game
+rendering remain active. These exclusions do not isolate JavaScript from native calls.
 
-### Static minimap visibility isolation
+App leases an explicit expanded configuration, including populated location names;
+the full tested and canonical configurations accompany the plan. Completion, stop,
+replacement, errors and deadlines release interventions/poll pauses and restore the
+App configuration lease. Retiring contexts cannot enable a new generation's owners.
+Final transport follows App restoration; a successor-owned configuration is explicitly
+unverified for the old request. Immediate reconstruction evidence does not prove
+native layout/paint has completed.
 
-Dev's **Minimap static layer visibility (Expanded Config)** follows the polling
-check when poll pauses do not explain the native frame cost. Both minimap owners'
-managed polls stay paused in every A and B window. A retains the original code
-visibility; B collapses selected QOL-created reference roots without disabling
-features or removing children. The fixed trials hide both static roots, ordinary
-crates only, then the loot root only. The native renderer, moving map content and
-tunnels remain outside the hidden branches. Use the same collector, stationary
-scene and roughly 53-second procedure as the polling check.
+`report.txt` is designed to be pasted into a new chat without conversation history:
+source/game/capture identity, configuration, vectors, source functions, observed state,
+per-block native effects and uncertainty, interactions, missing/invalid/unexercised
+coverage and restoration. Raw proofs and a structured analysis remain in the capture.
+Noise comes from sham A/A blocks and repetition-level dispersion, not thousands of
+frames treated as independent experiments. Bounds are exploratory, not familywise
+confidence or proof that world/camera state was identical. A small bounded effect
+never means zero cost. Geometry/decorations alter appearance and visible workload;
+a speedup does not justify removing a necessary override or accepting broken visuals.
 
-The existing native-style owner preserves each root's original visibility code
-value, releases an originally absent override, and retries rejected retirement.
-Cancellation, errors, native replacement and normal completion release visibility
-before resuming normal polling. Rejected writes abort the diagnostic; pending
-restoration is reported instead of silently marking the cleanup successful.
-All polling-isolation context guards still apply, and an overwritten hidden
-visibility value also invalidates the run.
+The collector is one-way; it does not feed native quality back into the running HUD.
+For invalid/inconclusive conditions, start another capture and enter the report's
+comma-separated IDs in the same Dev row. A fresh sham is included automatically.
+This uses the already compiled controls, without another repack or game restart.
+The default full run executes per-owner cache variants; remaining geometry refinements
+and their source mapping are listed in the report.
 
-A native difference measures the contribution of visible static branches,
-including any layout, invalidation and composition work affected by collapse.
-It does not separate those engine costs or establish why a native cache is
-invalidated. External events/root-class changes still run, so stable scene and
-repeatability checks remain necessary. The simulator covers tree identity,
-constant paused-poll conditions, selective hiding, original-value restoration
-and error cleanup; computed visibility, native composition and FPS need the
-repacked client.
+`minimap_full_investigation`, `minimap_diagnostic_owners`, `minimap_native_analysis`
+and App/Dev regressions exercise the production request, lease, transport, validation
+and restoration paths. Simulator checks do not establish native visuals or FPS.
 
 ### Native game frame capture
 
 For game frame evidence, run the external collector before starting the same Dev
 investigation. Recompile/repack the source first: the App now emits one compact
-`[QOLLOCK:NativeFPS]` marker per completed window, outside sampling. The previous
+`[QOLLOCK:NativeFPS]` marker per completed window, outside sampling. Full minimap
+context/proofs use bounded checksummed packet chunks on the same transport. The previous
 large text report can be truncated by the native console and is not used as the
 collector's transport. No in-game API for presented-frame timing is assumed.
 
-```powershell
-pwsh -NoProfile -File scripts/capture_game_frames.ps1
+```text
+scripts\capture_game_frames.cmd
 ```
 
 The collector requires Windows, PowerShell 7, Node and one running Deadlock
@@ -580,21 +580,27 @@ process. It downloads the pinned official portable PresentMon executable into
 the user's local application-data cache and verifies its SHA-256 before use;
 it does not install a service. `-PresentMonPath` accepts an already downloaded
 copy of that exact executable. `-GameProcessId`, `-GameLog` and `-OutputDirectory`
-override discovery. Start Dev's Current/Expanded investigation or a minimap
-isolation test within one minute,
+override discovery. The CMD launcher locates PowerShell 7 and opens a persistent
+window, including a bundled desktop runtime when `pwsh` is absent from PATH.
+Start Dev's Complete minimap investigation (or the separate generic Current/Expanded
+feature scan) within one minute,
 close Esc and keep the game focused. Completion/stop ends only this collector's
-unique ETW session. An eight-minute capture deadline bounds unattended runs.
+unique ETW session. Launcher and runner deadlines bound unattended runs; `-MaxSeconds`
+overrides collection duration. The collector waits for the full minimap plan's end.
 
 PresentMon records the selected game's native graphics Present events. Each CSV
 row supplies its QPC timestamp, Present interval and available display/CPU/GPU
-metrics. Two Windows QPC/UTC anchors align these events to the existing window
-boundaries; local formatted dates are not used. The analyzer rejects clock jumps,
+metrics. Periodic Windows QPC/UTC anchors align these events to window boundaries
+using piecewise interpolation; local formatted dates are not used. The analyzer rejects clock jumps,
 uncertain anchors, trace errors and ambiguous substantial swap chains. Foreground
 PID is sampled every half second: observed focus changes or missing coverage
 invalidate affected comparisons; briefer unobserved transitions remain possible.
 
 Results under `captures/native-fps-*/` include `frames.csv`, `capture.json`,
-PresentMon diagnostics and `report.txt`. The independent report ranks the actual
+`source.json`, `native-analysis.json`, PresentMon diagnostics and `report.txt`.
+Source identity records local JS/CSS/XML hashes, selected loaded function hashes,
+Git state and available game binary identities. It does not prove all installed
+compiled resources or assets match local source. The independent report ranks the actual
 tested conditions by native Present intervals, not by their UI score. Mean FPS
 is the reciprocal of mean interval, not an average of instantaneous FPS. Display
 cadence is reported separately when available; CPU/GPU busy values are context,
@@ -602,12 +608,16 @@ not attribution to a JavaScript owner. Driver/frame-generation behavior can
 separate application submissions from displayed frames. PresentMon documents
 additional GPU-timing limitations with hardware-accelerated GPU scheduling.
 
-The in-game scan still chooses deeper follow-up by UI cadence. This external
-capture does not make that coverage exhaustive or attribute individual native
+The separate generic feature scan still chooses deeper follow-up by UI cadence;
+the complete minimap suite has its own fixed native-first coverage ledger. Neither
+attributes individual native
 draw calls. All conditions retain the same diagnostic instrumentation; its
 overhead is not a vanilla baseline. Scene stability and repeated comparisons
-remain necessary. A cancellation preserves completed trials and lists incomplete
-ones; missing markers from a reportedly complete run are an error.
+remain necessary. Cancellation/deadline preserves valid completed minimap blocks
+and lists every missing planned condition. Missing/corrupt proof chunks invalidate
+their blocks; a missing full-suite context refuses legacy fallback. Native trace
+acquisition errors/losses still reject attribution. Reanalysis needs the matching
+source/verifier revision recorded in the capture.
 
 To reanalyze a preserved capture:
 

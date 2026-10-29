@@ -73,20 +73,35 @@
             let markerPanels = [];
             let rangePanels = [];
             let createdComposition = "cache";
+            const released = { geometry: true, decoration: true };
+            let lastView = null;
+            let nativeReleaseResults = {};
             const probe = Q.core.minimapProbe;
             const diagnostic = probe.createOwner({
                 isActive: () => active,
-                allowed: Object.fromEntries(["hideRoot", "hideTunnel", "skipSweep", "releaseGeometry", "releaseDecoration"]
-                    .map(key => [key, value => typeof value === "boolean"]).concat([["composition", value => ["cache", "layer", "none"].includes(value)]])),
+                allowed: Object.fromEntries(["hideRoot", "hideTunnel", "skipSweep", "releaseGeometry", "releaseDecoration", "releasePlacement", "releaseViewport"]
+                    .map(key => [key, value => typeof value === "boolean"]).concat([
+                        ["composition", value => ["cache", "layer", "none"].includes(value)],
+                        ["releaseNativeTargets", value => Array.isArray(value) && value.every(key => ["renderer", "mapRender", "backgrounds", "canvas", "ranges"].includes(key))],
+                        ["releaseGeometryRoles", value => Array.isArray(value) && value.every(key => ["host", "viewport", "frame", "nativeContainer", "renderer"].includes(key))]
+                    ])),
                 apply: (next, previous) => {
                     if ((next.composition || "cache") !== (previous.composition || "cache")) releaseOverlays();
                     update();
                 },
                 snapshot: () => ({ owner: id, native: probe.panelState(renderer), root: probe.panelState(crates),
-                    tunnel: probe.panelState(tunnel), composition: createdComposition,
+                    tunnel: probe.panelState(tunnel), markers: probe.panelState(markers), composition: createdComposition, released: { ...released },
+                    reconciled: { geometry: geometry.verify(), decoration: nativeStyles.verify() },
                     counts: { total: markerPanels.filter(P.isAlive).length, expected: crateEntries.length },
-                    geometry: { anchor: probe.panelState(anchor), fixedIcons: renderer?.BHasClass("QOLFixedMinimapIcons") || false },
-                    decoration: { canvas: probe.panelState(canvas), mapRender: probe.panelState(mapRender), backgrounds: backgroundImages.map(probe.panelState) } })
+                    geometry: { anchor: probe.panelState(anchor), fixedIcons: renderer?.BHasClass("QOLFixedMinimapIcons") || false, ...geometry.inspect() },
+                    decoration: { canvas: probe.panelState(canvas), mapRender: probe.panelState(mapRender), backgrounds: backgroundImages.map(probe.panelState),
+                        releaseResults: { ...nativeReleaseResults }, activeTargets: {
+                            renderer: P.isAlive(renderer) && !!model?.minimalist && !lastView?.zoomed,
+                            mapRender: P.isAlive(mapRender) && !!model?.minimalist && !lastView?.zoomed,
+                            backgrounds: backgroundImages.some(P.isAlive) && !!model?.minimalist && !lastView?.zoomed,
+                            canvas: P.isAlive(canvas) && !!model?.iconColor,
+                            ranges: rangePanels.some(P.isAlive)
+                        } } })
             });
 
             function readModel() {
@@ -268,21 +283,27 @@
             }
 
             function render(model, view) {
-                if (diagnostic.controls?.releaseGeometry) geometry.release();
+                lastView = view;
+                if (diagnostic.controls?.releaseGeometry) released.geometry = geometry.release(true);
                 else {
                     geometry.setDrawOverUi(Boolean(view.drawOverUi));
-                    geometry.apply({ ...view, fixedIcons: model.fixedIcons, hidden: Q.presentation.shouldHide("minimap", Q.presentation.visibilityConfig(ctx), rootOwner) });
+                    released.geometry = geometry.apply({ ...view, fixedIcons: model.fixedIcons,
+                        hidden: Q.presentation.shouldHide("minimap", Q.presentation.visibilityConfig(ctx), rootOwner), diagnosticControls: diagnostic.controls });
                 }
-                if (diagnostic.controls?.releaseDecoration) nativeStyles.clear();
+                if (diagnostic.controls?.releaseDecoration) released.decoration = nativeStyles.clear();
                 else renderNativeDecoration(model, view);
                 renderTunnel(view);
                 renderCrates(model);
             }
 
             function renderNativeDecoration(model, view) {
+                const targets = diagnostic.controls?.releaseNativeTargets;
+                if (diagnostic.controls) nativeReleaseResults = {};
                 const minimalist = !view.zoomed && model.minimalist;
-                nativeStyles.apply(renderer, minimalist ? { backgroundColor: "rgba(0, 0, 0, 0)" } : {}, { minimalist_minimap_active: minimalist });
-                nativeStyles.apply(mapRender, minimalist ? { opacity: String(model.minimalOpacity), brightness: "1.0", washColor: "none" } : {});
+                const rendererResult = nativeStyles.apply(renderer, !targets?.includes("renderer") && minimalist ? { backgroundColor: "rgba(0, 0, 0, 0)" } : {},
+                    targets?.includes("renderer") ? {} : { minimalist_minimap_active: minimalist });
+                const mapResult = nativeStyles.apply(mapRender, !targets?.includes("mapRender") && minimalist ? { opacity: String(model.minimalOpacity), brightness: "1.0", washColor: "none" } : {});
+                if (diagnostic.controls) { nativeReleaseResults.renderer = rendererResult; nativeReleaseResults.mapRender = mapResult; nativeReleaseResults.backgrounds = true; }
                 // hud_minimap.css selects the surface/underground/tunnel layer
                 // with opacity. Preserve those native gates while fading it.
                 const midtown = hasClass(renderer, "dl_midtown");
@@ -290,10 +311,15 @@
                 for (const image of backgroundImages) {
                     const hidden = midtown && (image.BHasClass("backgroundImage1") ? underground || tunnels :
                         image.BHasClass("backgroundImage2") ? !underground : !tunnels);
-                    nativeStyles.apply(image, minimalist ? { opacity: hidden ? "0" : String(model.minimalOpacity) } : {});
+                    const applied = nativeStyles.apply(image, !targets?.includes("backgrounds") && minimalist ? { opacity: hidden ? "0" : String(model.minimalOpacity) } : {});
+                    if (diagnostic.controls) nativeReleaseResults.backgrounds = applied && nativeReleaseResults.backgrounds;
                 }
-                nativeStyles.apply(canvas, model.iconColor ? { washColor: model.iconColor } : {});
-                renderRange(view.size);
+                const canvasResult = nativeStyles.apply(canvas, !targets?.includes("canvas") && model.iconColor ? { washColor: model.iconColor } : {});
+                if (diagnostic.controls) nativeReleaseResults.canvas = canvasResult;
+                if (targets?.includes("ranges")) {
+                    nativeReleaseResults.ranges = true;
+                    for (const panel of rangePanels) nativeReleaseResults.ranges = nativeStyles.apply(panel, {}) && nativeReleaseResults.ranges;
+                } else renderRange(view.size);
             }
 
             function update() {
@@ -353,7 +379,8 @@
             }
 
             return {
-                diagnostics: { begin: diagnostic.begin },
+                diagnostics: { begin: diagnostic.begin, inspect: diagnostic.inspect,
+                    retirement: () => ({ inactive: !active, tree: tree.isReleased(), geometry: geometry.isReleased(), decoration: nativeStyles.isReleased() }) },
                 onEnable() { active = true; ctx.events?.on("engine:scoreboard_toggle", scoreboardRefresh); refresh(); },
                 onDisable: release,
                 onSettingsChanged: refresh

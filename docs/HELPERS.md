@@ -70,6 +70,10 @@ diagnostic lease controller, local panel evidence and creation-time composition
 property maps. It is loaded explicitly before those owners. It neither discovers
 native sources nor runs schedules; controls, rendering and restoration remain
 with the owning manifests. See the [minimap diagnostic contract](features/ql_minimap_runtime.md).
+`ql_minimap_plan.js` declares vectors/coverage and verifies evidence;
+`ql_minimap_investigation.js` orchestrates settling and proof windows in the HUD.
+They do not derive FPS from Scheduler dispatch. The external native analyzer
+consumes the same verifier contract and independently checks coverage/work execution.
 
 Feature settings hooks project shared root classes with
 `QOL.core.hud.refreshRootClasses(root)`, which reads the complete current config

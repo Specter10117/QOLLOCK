@@ -83,6 +83,15 @@ test("malformed CSV and incomplete native windows fail visibly", () => {
     assert.equal(cancelled.rows.length, 0);
 });
 
+test("long captures align against periodic clock anchors rather than rejecting accumulated small clock slew", () => {
+    const { csv, meta } = fixture();
+    meta.anchors[1].utcMs += 8;
+    meta.anchors.splice(1, 0, { qpc: 10000, utcMs: meta.anchors[0].utcMs + 10004, frequency: 1000, uncertaintyMs: 1 });
+    assert.equal(analyzeCapture(csv, meta).rows.length, 1);
+    meta.anchors[1].utcMs += 100;
+    assert.throws(() => analyzeCapture(csv, meta), /clock/i);
+});
+
 for (const warning of ["warning: 7 ETW buffers were lost.", "warning: 8 ETW events were lost.",
     "warning: 9 overflowed present events detected."]) {
     test(`lossy native traces are rejected even with exit zero: ${warning}`, () => {

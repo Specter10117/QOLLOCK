@@ -430,7 +430,21 @@
             return complete;
         };
         const clear = () => retain([]);
-        return { apply, retain, clear, baseline };
+        // Read-only diagnostic checks; no writes or cleanup retries.
+        const verify = () => {
+            try {
+                for (const [panel, record] of records) {
+                    if (!isPanelAlive(panel) || !record.settled) return false;
+                    for (const property of record.wantedProperties) {
+                        const leased = property === "position" ? positionKeys.every(key => held(panel, key)) : held(panel, styleKey(property));
+                        if (!leased || panel.style[property] !== record.readback.get(property)) return false;
+                    }
+                    for (const name of record.wantedClasses) if (!held(panel, "class:" + name) || panel.BHasClass(name) !== (record.classBaselines.get(name) || !!record.classValues[name])) return false;
+                }
+                return true;
+            } catch (_) { return false; }
+        };
+        return { apply, retain, clear, baseline, verify, isReleased: () => records.size === 0 };
     };
 
     const findRoot = (panel) => {
@@ -656,7 +670,7 @@
             sweep();
         };
         const dispose = () => { clear(); retryDeletion(); };
-        return { create, child, children, sweep, remove: discard, clear, dispose };
+        return { create, child, children, sweep, remove: discard, clear, dispose, isReleased: () => nodes.size === 0 && retired.size === 0 };
     };
 
     // ql_utils.js is loaded first in every context that includes panel helpers.

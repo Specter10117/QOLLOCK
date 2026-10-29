@@ -706,8 +706,8 @@
     let bmRunning = false;
     let bmToken = 0;
 
-    function runInGameBenchmark(container, statusLabel, actionBtn, isStressTest) {
-        const isScan = ["fps_current", "fps_expanded", "fps_minimap", "fps_minimap_visibility"].includes(isStressTest);
+    function runInGameBenchmark(container, statusLabel, actionBtn, isStressTest, conditionIds = []) {
+        const isScan = ["fps_current", "fps_expanded", "fps_minimap"].includes(isStressTest);
         const setStatus = (text, color) => {
             if (isAlive(statusLabel)) {
                 const translated = localize(text);
@@ -722,14 +722,17 @@
             }
         };
 
+        if (isStressTest === "fps_minimap" && conditionIds.some(id => !/^[a-z][a-z0-9-]{0,63}$/.test(id))) {
+            setStatus("Invalid condition IDs", "#cc4444"); return;
+        }
         if (diagnosticBusy(statusLabel)) return;
         const token = ++bmToken;
         bmRunning = true;
         setBtnActive(true);
 
-        const durSec = isScan ? (isStressTest.startsWith("fps_minimap") ? 60 : 420) : 10;
+        const durSec = isScan ? (isStressTest === "fps_minimap" ? 1800 : 420) : 10;
         const modeStr = isStressTest ? "stress" : "normal";
-        const forceToken = isScan ? `${isStressTest}_${Date.now()}` : `bm_${durSec}_${modeStr}_${Date.now()}`;
+        const forceToken = isScan ? `${isStressTest}_${Date.now()}${conditionIds.length ? "_" + conditionIds.join(",") : ""}` : `bm_${durSec}_${modeStr}_${Date.now()}`;
 
         const hudPanel = findHudPanel();
         if (!hudPanel || !hudPanel.SetAttributeString) {
@@ -800,7 +803,8 @@
                         $.Msg(`[QOLLock][DevTab] Benchmark finished: ${totalJs}ms in timed poll callbacks over ${durSec}s. Report ${copied ? "copied to clipboard" : "printed to console"}.`);
 
                         if (isScan) {
-                            setStatus("Investigation finished. Check console or clipboard.", "#e6b800");
+                            setStatus(isStressTest === "fps_minimap" && stats.reason !== "complete" ?
+                                "Investigation stopped. Check report for missing conditions." : "Investigation finished. Check console or clipboard.", "#e6b800");
                         } else if (copied) {
                             setStatus(format("Copied! {milliseconds}ms callbacks (Check ~)", { milliseconds: totalJs }), "#66cc99");
                             if (typeof setFeedback === "function") {
@@ -1230,7 +1234,7 @@
                 btn.SetPanelEvent("onactivate", () => onActivate(statusLbl, btn));
             }
 
-            return { row, btn, status: statusLbl };
+            return { row, btn, status: statusLbl, labelWrap };
         };
 
         createSep(list);
@@ -1238,15 +1242,18 @@
         // 2. In-Game Benchmarks
         createTitle(list, "In-Game Benchmarks");
 
-        createDevActionRow(list, "FpsMinimapVisibilityRow", "FpsMinimapVisibilityBtn", "FpsMinimapVisibilityStatus",
-            "s2r://panorama/images/icons/icon_play.vsvg", "Minimap static layer visibility (Expanded Config)",
-            "Start external PresentMon capture first. Both minimap polls stay paused while static reference layers are shown or hidden without deleting panels. Close Esc within 5s; keep the game focused and stay still without Alt/Tab for about 53s. Everything is restored automatically.",
-            "Investigate", (status, button) => runInGameBenchmark(list, status, button, "fps_minimap_visibility"));
-
-        createDevActionRow(list, "FpsMinimapRow", "FpsMinimapBtn", "FpsMinimapStatus",
-            "s2r://panorama/images/icons/icon_play.vsvg", "Minimap polling isolation (Expanded Config)",
-            "Start external PresentMon capture first. Compares normal and paused minimap polling while keeping panels visible. Close Esc within 5s; stay still without Alt/Tab for about 53s. Settings and polling are restored automatically.",
-            "Investigate", (status, button) => runInGameBenchmark(list, status, button, "fps_minimap"));
+        let minimapConditions = null;
+        const minimapAction = createDevActionRow(list, "FpsMinimapRow", "FpsMinimapBtn", "FpsMinimapStatus",
+            "s2r://panorama/images/icons/icon_play.vsvg", "Complete minimap investigation",
+            "Start the external native capture first. Tests owners, polling, sweeps, every reference layer, presentation and composition in repeated blocks. Close Esc within 5s; keep the scene and game focus unchanged for about 23 minutes. Expanded settings and all interventions are restored.",
+            "Investigate", (status, button) => runInGameBenchmark(list, status, button, "fps_minimap",
+                String(minimapConditions?.text || "").trim().split(/[,\s]+/).filter(Boolean)));
+        const minimapHint = $.CreatePanel("Label", minimapAction.labelWrap, "");
+        minimapHint.AddClass("SettingDescription");
+        minimapHint.text = localize("Optional: condition IDs from the report to repeat. Leave blank for the complete plan. No repack is needed for repeats.");
+        minimapConditions = $.CreatePanel("TextEntry", minimapAction.labelWrap, "FpsMinimapConditions");
+        minimapConditions.maxchars = 1200;
+        minimapConditions.style.width = "100%"; minimapConditions.style.height = "28px";
 
         for (const [mode, title] of [["current", "FPS investigation (Current Config)"], ["expanded", "FPS investigation (Expanded Config)"]]) {
             createDevActionRow(list, "FpsScanRow" + mode, "FpsScanBtn" + mode, "FpsScanStatus" + mode,

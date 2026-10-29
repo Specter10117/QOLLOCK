@@ -373,6 +373,8 @@
         }
         const fpsScan = QOL.core.FpsInvestigation?.getStatus();
         if (fpsScan) diag.fpsScan = fpsScan;
+        const minimapScan = QOL.core.MinimapInvestigation?.getStatus();
+        if (minimapScan) diag.minimapScan = minimapScan;
 
         return diag;
     };
@@ -398,7 +400,22 @@
         try { request?.handle?.stop?.(); }
         catch (e) { if (Logger) Logger.logWarn("Benchmark", `Benchmark stop failed: ${e?.message || e}`); }
         finally { if (request) request.stopping = false; }
-        if (request?.isFpsScan && lease && _stressBenchmark === lease) _restoreStressBenchmark(_hudPanel, "cancelled");
+        try {
+            if (request?.isFpsScan && lease && _stressBenchmark === lease) _restoreStressBenchmark(_hudPanel, "cancelled");
+        } finally {
+            const finalize = request?.finalizeNative;
+            if (request) request.finalizeNative = null;
+            finalize?.();
+        }
+    };
+
+    const _emitNativePacket = (session, packet, value) => {
+        const json = JSON.stringify(value), characters = Array.from(json), chunks = [];
+        for (let i = 0; i < characters.length; i += 350) chunks.push(characters.slice(i, i + 350).join(""));
+        const hash = QOL.core.MinimapInvestigation.digest(json);
+        chunks.forEach((data, index) => $.Msg("[QOLLOCK:NativeFPS] " + JSON.stringify({
+            type: "packet", session, packet, index, total: chunks.length, hash, data
+        })));
     };
 
     const _startRequestedBenchmark = (hudPanel, forceToken) => {
@@ -409,7 +426,9 @@
         _benchmarkRequest = request;
         const parts = forceToken.split("_");
         const isMinimapScan = isFpsScan && parts[1] === "minimap";
-        const durSec = isFpsScan ? (isMinimapScan ? 60 : 420) : parseFloat(parts[1]) || 10;
+        const nativeSession = isMinimapScan ? "minimap_" + (QOL.core.MinimapInvestigation?.digest?.(forceToken) || "missing") + "_" + Date.now() : forceToken;
+        const durSec = isFpsScan ? (isMinimapScan ? 1800 : 420) : parseFloat(parts[1]) || 10;
+        const selectedMinimapIds = isMinimapScan && /^\d+$/.test(parts[2] || "") ? parts.slice(3).join("_").split(",").filter(Boolean) : [];
         const isStress = isFpsScan ? parts[1] === "expanded" || isMinimapScan : parts[2] === "stress";
         const leasedConfig = isStress || isFpsScan;
         let fpsConfiguration = null;
@@ -443,6 +462,7 @@
                 }
 
                 const maxConfig = isStress ? _buildMaximalConfig() : QOL.mergeConfig(savedFlatConfig || QOL.buildDefaultConfig());
+                if (isMinimapScan) maxConfig.MINIMAP_CAMP_NAMES = 1;
                 stress.config = maxConfig;
 
                 if (globalState) {
@@ -463,7 +483,9 @@
                         const cleanup = restoring && request.stopping && _benchmarkRequest === null;
                         if ((_benchmarkRequest !== request && !cleanup) || _stressBenchmark !== stress) throw Error("temporary configuration lease retired");
                     };
-                    fpsConfiguration = { baseline, apply: patch => {
+                    fpsConfiguration = { baseline, canonical: savedFlatConfig ? { ...savedFlatConfig } : null,
+                        restoreTarget: () => stress.savedConfig ? { ...stress.savedConfig } : null,
+                        apply: patch => {
                         const restoring = Object.keys(patch).length === 0;
                         checkLease(restoring);
                         const config = { ...baseline, ...patch };
@@ -530,9 +552,32 @@
                     };
                     _writeDiagSnapshot(hudPanel, forceToken);
                 };
-                if (isFpsScan) $.Msg("[QOLLOCK:NativeFPS] " + JSON.stringify({ type: "start", session: forceToken }));
-                const handle = isFpsScan ? QOL.core.FpsInvestigation.start({
-                    root: hudPanel, mode: isMinimapScan ? (parts[2] === "visibility" ? "minimap_visibility" : "minimap") : isStress ? "expanded" : "current",
+                if (isFpsScan) $.Msg("[QOLLOCK:NativeFPS] " + JSON.stringify({ type: "start", session: nativeSession,
+                    ...(isMinimapScan ? { kind: "minimap-suite" } : {}) }));
+                const handle = isMinimapScan ? QOL.core.MinimapInvestigation.start({
+                    root: hudPanel, baseline: fpsConfiguration.baseline, canonical: fpsConfiguration.canonical,
+                    selectedIds: selectedMinimapIds,
+                    onProgress: () => _writeDiagSnapshot(hudPanel, forceToken),
+                    onPacket: (packet, value) => _emitNativePacket(nativeSession, packet, value),
+                    onWindow: window => $.Msg("[QOLLOCK:NativeFPS] " + JSON.stringify({ type: "window", session: nativeSession, ...window })),
+                    onComplete: result => {
+                        const { report, ...stats } = result;
+                        const expectedConfig = fpsConfiguration.restoreTarget();
+                        complete(report, stats);
+                        const finalize = () => {
+                            _emitNativePacket(nativeSession, "app-restoration", { expectedConfig,
+                                status: _benchmarkRequest && _benchmarkRequest !== request ? "successor-owned" : "restoration-observed",
+                                actualConfig: ConfigAdapter.exportToFlat(), enabledIds: FeatureRegistry.getEnabledIds().slice().sort(),
+                                successorActive: !!_benchmarkRequest, stressLeaseActive: !!_stressBenchmark,
+                                owners: Object.fromEntries(QOL.core.MinimapPlan.owners.map(id => [id, FeatureRegistry.getInstance(id)?.diagnostics?.inspect() || { active: false }])),
+                                observationScope: "immediate configuration/hooks state; queued native reconstruction may still be pending" });
+                            $.Msg("[QOLLOCK:NativeFPS] " + JSON.stringify({ type: "end", session: nativeSession, reason: result.reason }));
+                        };
+                        if (request.stopping) request.finalizeNative = finalize;
+                        else finalize();
+                    }
+                }) : isFpsScan ? QOL.core.FpsInvestigation.start({
+                    root: hudPanel, mode: isStress ? "expanded" : "current",
                     configuration: fpsConfiguration,
                     onProgress: () => _writeDiagSnapshot(hudPanel, forceToken),
                     onWindow: window => $.Msg("[QOLLOCK:NativeFPS] " + JSON.stringify({ type: "window", session: forceToken, ...window })),
@@ -549,7 +594,13 @@
                 if (_benchmarkRequest === request) {
                     _benchmarkRequest = null;
                     if (leasedConfig) _restoreStressBenchmark(hudPanel, "error");
+                    if (isMinimapScan && !_benchmarkRequest) {
+                        _lastBenchmarkReport = { token: forceToken, report: "Minimap investigation failed: " + String(bmErr),
+                            stats: { kind: "minimap-suite", reason: "setup-error" }, timestamp: _nowMs() };
+                        _writeDiagSnapshot(hudPanel, forceToken);
+                    }
                 }
+                if (isMinimapScan) $.Msg("[QOLLOCK:NativeFPS] " + JSON.stringify({ type: "end", session: nativeSession, reason: "setup-error: " + String(bmErr) }));
                 if (Logger) Logger.logWarn("Benchmark", `Benchmark start failed: ${bmErr.message || bmErr}`);
             }
         } else if (Logger) {

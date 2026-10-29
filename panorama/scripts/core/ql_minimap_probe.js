@@ -26,32 +26,38 @@
     };
     const createOwner = ({ isActive, allowed, apply, snapshot }) => {
         let current = null;
+        let currentControls = null;
+        const copy = controls => Object.fromEntries(Object.entries(controls).map(([key, value]) => [key, Array.isArray(value) ? value.slice() : value]));
         const stages = { updates: 0, sweeps: 0, skippedSweeps: 0, discovery: 0, render: 0, builds: 0 };
         const check = lease => { if (!isActive() || current !== lease) throw Error("minimap diagnostic lease retired"); };
         const api = {
-            get controls() { return current?.controls || null; }, stages,
-            cancel: () => { current = null; },
+            get controls() { return current ? currentControls : null; }, stages,
+            inspect: () => ({ ...snapshot(), active: isActive(), controls: copy(currentControls || {}), stages: { ...stages } }),
+            cancel: () => { current = null; currentControls = null; },
             begin: () => {
                 if (!isActive()) throw Error("minimap diagnostic owner inactive");
                 current?.restore();
                 for (const key of Object.keys(stages)) stages[key] = 0;
-                const lease = { controls: {},
+                currentControls = {};
+                const lease = {
                     apply: controls => {
                         check(lease);
                         for (const [key, value] of Object.entries(controls)) {
                             if (!allowed[key]?.(value)) throw Error("invalid minimap diagnostic control: " + key);
                         }
-                        const previous = lease.controls;
-                        lease.controls = { ...controls, ...(controls.hideGroups ? { hideGroups: controls.hideGroups.slice() } : {}) };
-                        apply(lease.controls, previous);
+                        const previous = currentControls;
+                        currentControls = copy(controls);
+                        apply(currentControls, previous);
                         return lease.snapshot();
                     },
-                    snapshot: () => { check(lease); return { ...snapshot(), controls: { ...lease.controls }, stages: { ...stages } }; },
+                    snapshot: () => { check(lease); return { ...snapshot(), controls: copy(currentControls), stages: { ...stages } }; },
                     restore: () => {
                         if (current !== lease) return;
-                        const previous = lease.controls;
+                        const previous = currentControls;
                         current = null;
+                        currentControls = null;
                         if (isActive()) apply({}, previous);
+                        return api.inspect();
                     }
                 };
                 current = lease;

@@ -5,7 +5,7 @@ param(
     [string]$GameLog = '',
     [string]$PresentMonPath = '',
     [string]$OutputDirectory = '',
-    [ValidateRange(30, 1200)][int]$MaxSeconds = 480,
+    [ValidateRange(30, 3600)][int]$MaxSeconds = 2100,
     [ValidateRange(0, 30)][int]$ProbeSeconds = 0,
     [string]$SwapChain = ''
 )
@@ -45,6 +45,22 @@ if (Test-Path -LiteralPath $OutputDirectory) { throw 'Output directory already e
 New-Item -ItemType Directory -Path $OutputDirectory | Out-Null
 $csvPath = Join-Path $OutputDirectory 'frames.csv'
 $metaPath = Join-Path $OutputDirectory 'capture.json'
+$sourcePath = Join-Path $OutputDirectory 'source.json'
+$sourceJson = & node (Join-Path $PSScriptRoot 'native_capture_identity.js')
+if ($LASTEXITCODE -ne 0) { throw 'Cannot identify local diagnostic sources; fix the reported source error before starting the investigation.' }
+$sourceJson | Set-Content -LiteralPath $sourcePath -Encoding utf8
+$sourceIdentity = $sourceJson | ConvertFrom-Json -AsHashtable
+$gameFiles = @($gameProcess.Path,
+    (Join-Path ([IO.Path]::GetDirectoryName($gameProcess.Path)) '..\..\citadel\bin\win64\client.dll'),
+    (Join-Path ([IO.Path]::GetDirectoryName($gameProcess.Path)) 'panorama.dll'))
+$gameIdentity = @($gameFiles | ForEach-Object {
+    $candidate = [IO.Path]::GetFullPath($_)
+    if (Test-Path -LiteralPath $candidate -PathType Leaf) {
+        $item = Get-Item -LiteralPath $candidate
+        @{ path = $candidate; bytes = $item.Length; modifiedUtc = $item.LastWriteTimeUtc.ToString('o');
+            fileVersion = $item.VersionInfo.FileVersion; sha256 = (Get-FileHash -LiteralPath $candidate -Algorithm SHA256).Hash.ToLowerInvariant() }
+    } else { @{ path = $candidate; missing = $true } }
+})
 
 Add-Type -TypeDefinition @'
 using System;
@@ -91,9 +107,11 @@ function New-CaptureProcess([string[]]$Arguments) {
 $traceName = 'QOLLOCK-' + [guid]::NewGuid().ToString('N')
 $duration = if ($ProbeSeconds) { $ProbeSeconds } else { $MaxSeconds }
 $nativeWindows = [Collections.Generic.List[object]]::new()
+$nativePackets = [Collections.Generic.List[object]]::new()
 $focus = [Collections.Generic.List[object]]::new()
 $anchors = @(Get-CaptureAnchor)
 $session = $null
+$kind = $null
 $reason = 'capture-only'
 $failure = $null
 $nativeProcess = $null
@@ -116,10 +134,16 @@ try {
     $errorTask = $nativeProcess.StandardError.ReadToEndAsync()
     $deadline = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() + $duration * 1000
     $startDeadline = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() + 60000
+    $anchorDeadline = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() + 30000
     Write-Host ('Capturing real game frames for PID ' + $targetProcessId + '. Output: ' + $OutputDirectory)
-    if (-not $ProbeSeconds) { Write-Host 'Start a minimap isolation test or FPS investigation in Dev within 60 seconds, close Esc, and keep the game focused. The capture stops with that investigation.' }
+    if (-not $ProbeSeconds) { Write-Host 'Start Complete minimap investigation in Dev within 60 seconds, close Esc within 5 seconds, and keep the same scene/game focus. Full plan: about 23 minutes; inactive native targets are skipped. Capture ends after the entire investigation.' }
     while (-not $nativeProcess.HasExited) {
+        if ($gameProcess.HasExited) { $reason = 'game exited'; break }
         $focus.Add(@{ qpc = [Diagnostics.Stopwatch]::GetTimestamp(); pid = [QollockCaptureForeground]::ProcessId() })
+        if ([DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() -ge $anchorDeadline) {
+            $anchors += Get-CaptureAnchor
+            $anchorDeadline = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() + 30000
+        }
         if (-not $ProbeSeconds) {
             if ($stream.Length -lt $stream.Position) { throw 'Game log was truncated during capture.' }
             $chunk = $partialLine + $reader.ReadToEnd()
@@ -128,9 +152,10 @@ try {
             for ($i = 0; $i -lt $lines.Length - 1; $i++) {
                 if ($lines[$i] -match '\[QOLLOCK:NativeFPS\] (\{.*\})\s*$') {
                     $marker = $Matches[1] | ConvertFrom-Json
-                    if ($marker.type -eq 'start' -and -not $session) { $session = [string]$marker.session }
+                    if ($marker.type -eq 'start' -and -not $session) { $session = [string]$marker.session; $kind = [string]$marker.kind }
                     if ($session -and $marker.session -eq $session) {
                         if ($marker.type -eq 'window') { $nativeWindows.Add($marker) }
+                        if ($marker.type -eq 'packet') { $nativePackets.Add($marker) }
                         if ($marker.type -eq 'end') { $reason = [string]$marker.reason; break }
                     }
                 }
@@ -143,7 +168,7 @@ try {
         if ([DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() -gt $deadline + 5000) { throw 'Native capture exceeded its deadline.' }
         Start-Sleep -Milliseconds 500
     }
-    if (-not $ProbeSeconds -and $reason -eq 'capture-only') { throw 'The investigation did not finish within the native capture window.' }
+    if (-not $ProbeSeconds -and $reason -eq 'capture-only') { $reason = 'capture deadline / missing investigation end; inspect declared coverage' }
 } catch { $failure = $_.Exception.Message }
 finally {
     if ($nativeProcess -and -not $nativeProcess.HasExited) {
@@ -163,17 +188,21 @@ finally {
         $stderr = $errorTask.GetAwaiter().GetResult()
         if ($nativeProcess.ExitCode -ne 0 -and -not $failure) { $failure = 'PresentMon exit code: ' + $nativeProcess.ExitCode }
     }
-    $meta = @{ processId = $targetProcessId; session = $session; reason = $reason; completed = (-not $failure);
+    $meta = @{ processId = $targetProcessId; session = $session; kind = $kind; reason = $reason; completed = (-not $failure);
         presentMonVersion = '2.6.0'; executableSha256 = $expectedDigest; swapChain = $SwapChain;
-        anchors = $anchors; focus = $focus.ToArray(); windows = $nativeWindows.ToArray();
+        anchors = $anchors; focus = $focus.ToArray(); windows = $nativeWindows.ToArray(); packets = $nativePackets.ToArray();
+        sourceIdentity = $sourceIdentity; gameIdentity = $gameIdentity;
         failure = $failure; stdout = $stdout; stderr = $stderr }
-    $meta | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $metaPath -Encoding utf8
+    $meta | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $metaPath -Encoding utf8
     $stdout | Set-Content -LiteralPath (Join-Path $OutputDirectory 'presentmon-stdout.txt') -Encoding utf8
     $stderr | Set-Content -LiteralPath (Join-Path $OutputDirectory 'presentmon-stderr.txt') -Encoding utf8
 }
 if ($failure) { throw $failure }
-$analysis = & node (Join-Path $PSScriptRoot 'analyze_game_frames.js') $csvPath $metaPath
+$analysis = & node (Join-Path $PSScriptRoot 'analyze_game_frames.js') $csvPath $metaPath --json-output (Join-Path $OutputDirectory 'native-analysis.json') 2> (Join-Path $OutputDirectory 'analysis-stderr.txt')
 $analysisExit = $LASTEXITCODE
 $analysis | Set-Content -LiteralPath (Join-Path $OutputDirectory 'report.txt') -Encoding utf8
 $analysis | Write-Output
 if ($analysisExit -ne 0) { throw 'Native frame analysis rejected the capture. Raw data and diagnostics are preserved in the output directory.' }
+Write-Host ('Report for a new chat: ' + (Join-Path $OutputDirectory 'report.txt'))
+try { Set-Clipboard -Value ($analysis -join [Environment]::NewLine); Write-Host 'The native report is copied to the clipboard.' }
+catch { Write-Warning ('Clipboard unavailable; use report.txt. ' + $_.Exception.Message) }

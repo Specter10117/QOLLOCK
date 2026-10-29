@@ -14,6 +14,10 @@
         let drawOverUi = false;
         const owned = P.createNativeStyleOwner();
         let hostStyles = {};
+        let diagnosticPlans = [];
+        let diagnosticTargets = null;
+        const roles = { minimap_persp: "host", minimap_container: "viewport", minimap_frame: "frame", HudMinimapContainer: "nativeContainer", hud_minimap: "renderer" };
+        const role = panel => roles[panel.id];
 
         function resolve(root) {
             const nextHost = resolver.resolve(root);
@@ -32,8 +36,11 @@
             return { host, panels, renderer, changed };
         }
 
-        function apply({ size, fixedIcons, zoomed, x, y, opacity, hidden }) {
+        function apply({ size, fixedIcons, zoomed, x, y, opacity, hidden, diagnosticControls = null }) {
             const sizeText = Math.round(size) + "px";
+            diagnosticTargets = diagnosticControls ? panels : null;
+            if (diagnosticControls || diagnosticPlans.length) diagnosticPlans = [];
+            let complete = true;
             for (const panel of panels) {
                 let styles = {};
                 if (panel === host) {
@@ -66,8 +73,17 @@
                     });
                 }
                 if (panel === host) hostStyles = styles;
-                owned.apply(panel, styles, panel.id === "hud_minimap" ? { [fixedClass]: fixedIcons } : {});
+                if (panel === host && diagnosticControls?.releasePlacement) {
+                    for (const key of ["align", "horizontalAlign", "verticalAlign", "margin", "marginTop", "marginRight", "marginBottom", "marginLeft", "opacity", "transformOrigin", "zIndex"]) delete styles[key];
+                }
+                const released = diagnosticControls?.releaseGeometryRoles?.includes(role(panel)) || (panel !== host && diagnosticControls?.releaseViewport);
+                const wantedStyles = released ? {} : styles;
+                const classes = !released && panel.id === "hud_minimap" ? { [fixedClass]: fixedIcons } : {};
+                const applied = owned.apply(panel, wantedStyles, classes);
+                complete = applied && complete;
+                if (diagnosticControls) diagnosticPlans.push({ role: role(panel), desired: { ...wantedStyles }, classes, applied });
             }
+            return complete;
         }
 
         function setDrawOverUi(active) {
@@ -80,15 +96,22 @@
             owned.apply(host, styles);
         }
 
-        function release() {
-            owned.clear();
+        function release(retainDiagnosticTargets = false) {
+            diagnosticTargets = retainDiagnosticTargets ? panels : null;
+            const complete = owned.clear();
             hostStyles = {};
             panels = [];
             host = null;
             drawOverUi = false;
             resolver.reset();
+            diagnosticPlans = [];
+            return complete;
         }
-        return { resolve, apply, setDrawOverUi, release, resetDiscovery: () => resolver.reset() };
+        const inspect = () => ({ targets: Object.fromEntries((diagnosticTargets || panels).map(panel => [role(panel), {
+            ...Q.core.minimapProbe.panelState(panel), code: Object.fromEntries(["width", "height", "uiScale", "overflow", "preTransformScale2d", "transformOrigin", "align", "horizontalAlign", "verticalAlign", "margin", "opacity", "zIndex", "visibility"].map(key => [key, P.isAlive(panel) ? panel.style[key] || "" : ""]))
+        }])),
+            plans: diagnosticPlans.map(plan => ({ ...plan, desired: { ...plan.desired }, classes: { ...plan.classes } })) });
+        return { resolve, apply, setDrawOverUi, release, inspect, verify: owned.verify, isReleased: owned.isReleased, resetDiscovery: () => resolver.reset() };
     }
     Q.features.minimapGeometry = { create };
 })();

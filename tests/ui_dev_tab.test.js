@@ -230,16 +230,20 @@ test("ui/dev_tab: render builds all dev sections and action buttons", () => {
     assert.ok(minimap, "the targeted diagnostic must be reachable from Dev");
     minimap._fire("onactivate");
     assert.match(env.hudPanel.GetAttributeString("QOL_DiagRequest", ""), /^fps_minimap_/);
+    assert.equal(list.FindChildTraverse("FpsMinimapVisibilityBtn"), null, "replace the narrow modes with one complete entry");
 });
 
-test("the static minimap visibility action requests its own retained-tree diagnostic", () => {
+test("the complete minimap action accepts selected IDs without saving settings", () => {
     const env = createTestEnvironment();
     const list = env.sandbox.$.CreatePanel("Panel", env.rootPanel, "SettingsList");
     env.sandbox.QOL.ui.devTab.render(list);
-    const button = list.FindChildTraverse("FpsMinimapVisibilityBtn");
+    const button = list.FindChildTraverse("FpsMinimapBtn");
     assert.ok(button);
+    const input = list.FindChildTraverse("FpsMinimapConditions");
+    assert.ok(input);
+    input.text = "static-crates, layer-routes";
     button._fire("onactivate");
-    assert.match(env.hudPanel.GetAttributeString("QOL_DiagRequest", ""), /^fps_minimap_visibility_/);
+    assert.match(env.hudPanel.GetAttributeString("QOL_DiagRequest", ""), /^fps_minimap_\d+_static-crates,layer-routes$/);
 });
 
 test("ui/dev_tab: runInGameBenchmark initiates benchmark request and copies report", () => {
@@ -257,7 +261,7 @@ test("ui/dev_tab: runInGameBenchmark initiates benchmark request and copies repo
     assert.ok(statusLabel.text.includes("10s left"), "Status should indicate 10s remaining");
 });
 
-for (const mode of ["current", "minimap", "minimap_visibility"]) test(`FPS investigation ${mode} UI requests its mode and copies its own final report`, () => {
+for (const mode of ["current", "minimap"]) test(`FPS investigation ${mode} UI requests its mode and copies its own final report`, () => {
     const env = createTestEnvironment();
     const label = env.sandbox.$.CreatePanel("Label", env.rootPanel, "ScanStatus");
     const button = env.sandbox.$.CreatePanel("Button", env.rootPanel, "ScanButton");

@@ -194,7 +194,8 @@
                 update();
             }
             return {
-                diagnostics: { begin: diagnostic.begin },
+                diagnostics: { begin: diagnostic.begin, inspect: diagnostic.inspect,
+                    retirement: () => ({ inactive: !active, tree: tree.isReleased() }) },
                 onEnable() { active = true; refresh(); loop = Q.core.Scheduler.createPollLoop(update, 0.5, id); },
                 onSettingsChanged: refresh,
                 onDisable() { active = false; diagnostic.cancel(); loop?.stop(); loop = null; clear(); tree.dispose(); rootOwner = model = null; }

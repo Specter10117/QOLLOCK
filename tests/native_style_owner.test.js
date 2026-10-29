@@ -14,6 +14,26 @@ function setup() {
     return { ...env, Q, $, add, P: Q.core.panel, baselinePending };
 }
 
+test("read-only native ownership evidence detects overwritten values/leases and waits for actual tree retirement", () => {
+    const env = setup(), panel = env.add("DiagnosticNative"), owner = env.P.createNativeStyleOwner();
+    assert.equal(owner.isReleased(), true);
+    owner.apply(panel, { opacity: "0.8" }, { DiagnosticClass: true });
+    assert.equal(owner.verify(), true);
+    panel.style.opacity = "0.2";
+    assert.equal(owner.verify(), false);
+    assert.equal(panel.style.opacity, "0.2", "verification cannot reconcile the overwritten style");
+    owner.apply(panel, { opacity: "0.8" }, { DiagnosticClass: true });
+    const next = env.P.createNativeStyleOwner(); next.apply(panel, { opacity: "0.8" });
+    assert.equal(owner.verify(), false, "same-value foreign lease is not this owner's proof");
+    owner.clear(); assert.equal(owner.isReleased(), true); next.clear();
+    const tree = env.P.createOwnedTree(), child = tree.create("Panel", panel, "DiagnosticChild"), remove = child.DeleteAsync;
+    child.DeleteAsync = () => {};
+    tree.dispose(); env.clock.advance(1000);
+    assert.equal(tree.isReleased(), false);
+    child.DeleteAsync = remove; env.clock.advance(1000);
+    assert.equal(tree.isReleased(), true);
+});
+
 test("border tint retirement cannot clear the next owner's composite border lease", () => {
     const env = setup(), panel = env.add("NativeBorder");
     const tint = env.P.createNativeStyleOwner(), next = env.P.createNativeStyleOwner();

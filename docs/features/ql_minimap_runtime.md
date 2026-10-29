@@ -45,6 +45,12 @@ hide. Loot groups can be hidden individually without retiring their children.
 Runtime controls separately release its geometry or native decoration overrides
 while preserving created references and native content. A temporary skip-sweep
 control is for causal measurements, not a change to normal lifetime recovery.
+Native decoration targets and coherent placement/viewport groups can be released
+independently; selectable individual geometry roles carry a visual/structural
+confound warning. `diagnostics.inspect()` reads state without acquiring a lease.
+`diagnostics.retirement()` remains callable on a retired instance and reports
+actual owned-tree/native-style cleanup completion. State proofs also validate
+native-style leases and current readbacks in ordinary baseline states.
 
 Creation-time composition variants (`cache`, `layer`, `none`) retire and rebuild
 only the owner's created trees; the runner must wait for complete reconstruction
