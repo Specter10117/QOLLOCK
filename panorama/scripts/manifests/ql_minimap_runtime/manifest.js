@@ -159,8 +159,8 @@
                 return found.host;
             }
 
-            function ensure(parent, panelId, previous) {
-                const panel = tree.child(parent, "Panel", panelId);
+            function ensure(parent, panelId, previous, properties) {
+                const panel = tree.child(parent, "Panel", panelId, properties);
                 if (previous !== panel) owned.delete(previous);
                 return panel;
             }
@@ -178,7 +178,9 @@
                 if (!model.crates || Q.core.hud.isInHideout(rootOwner) || Q.isStreetBrawlModeActive?.(rootOwner)) {
                     show(crates, false); return;
                 }
-                const next = ensure(renderer, "minimap_overlay_root", crates);
+                // Match the native top-bar composition cache: this entire static
+                // reference layer can be reused while the native map moves.
+                const next = ensure(renderer, "minimap_overlay_root", crates, { "always-cache-composition-layer": "true" });
                 if (next !== crates) {
                     for (const panel of [crates, markers, ...markerPanels]) owned.delete(panel);
                     crates = next; markers = null; markerPanels = []; crateData = null; crateReady = false;
