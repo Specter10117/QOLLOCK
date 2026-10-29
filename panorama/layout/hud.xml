@@ -25,6 +25,7 @@
 		<include src="s2r://panorama/scripts/core/ql_event_bus.vjs_c" />
 		<include src="s2r://panorama/scripts/core/ql_scheduler.vjs_c" />
 		<include src="s2r://panorama/scripts/core/ql_panel_helpers.vjs_c" />
+		<include src="s2r://panorama/scripts/core/ql_minimap_probe.vjs_c" />
 		<include src="s2r://panorama/scripts/core/ql_hud_state.vjs_c" />
 		<include src="s2r://panorama/scripts/core/ql_chat_messages.vjs_c" />
 		<include src="s2r://panorama/scripts/core/ql_hud.vjs_c" />

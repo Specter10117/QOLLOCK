@@ -36,10 +36,31 @@
             }
             const tree = P.createOwnedTree();
             const built = new Map();
+            const expectedCounts = new Map();
             let signatures = new WeakMap();
             let model = null, owner = null, rootOwner = null, layer = null, loop = null, active = false;
+            let createdComposition = "cache";
+            const probe = Q.core.minimapProbe;
+            const diagnostic = probe.createOwner({
+                isActive: () => active,
+                allowed: { hideRoot: value => typeof value === "boolean", skipSweep: value => typeof value === "boolean",
+                    hideGroups: value => Array.isArray(value) && value.every(key => groups.some(spec => spec[0] === key)),
+                    composition: value => ["cache", "layer", "none"].includes(value) },
+                apply: (next, previous) => {
+                    if ((next.composition || "cache") !== (previous.composition || "cache")) clear();
+                    update();
+                },
+                snapshot: () => {
+                    const observed = Object.fromEntries(groups.map(([key]) => {
+                        const panel = P.findChild(layer, "QOLMapLoot_" + key);
+                        return [key, { ...probe.panelState(panel), expected: expectedCounts.get(key) || 0 }];
+                    }));
+                    return { owner: id, native: probe.panelState(owner), root: probe.panelState(layer), composition: createdComposition,
+                        groups: observed, counts: { total: Object.values(observed).reduce((sum, value) => sum + (value.children || 0), 0) } };
+                }
+            });
 
-            function clear() { tree.clear(); built.clear(); signatures = new WeakMap(); layer = owner = null; }
+            function clear() { tree.clear(); built.clear(); expectedCounts.clear(); signatures = new WeakMap(); layer = owner = null; }
             function shown(panel, visible) { if (P.isAlive(panel) && panel.visible !== visible) panel.visible = visible; }
             function style(panel, values) {
                 const result = P.syncStyles(panel, values, signatures.get(panel));
@@ -95,6 +116,8 @@
 
             function build(spec, group) {
                 const list = plans(spec);
+                expectedCounts.set(spec[0], list.length);
+                if (diagnostic.controls) diagnostic.stages.builds++;
                 // Reconcile siblings in batches; no full-HUD searches or per-dot sibling scans.
                 const byType = new Map();
                 list.forEach((plan, index) => {
@@ -117,22 +140,24 @@
 
             function update() {
                 if (!active) return;
+                if (diagnostic.controls) { diagnostic.stages.updates++; diagnostic.stages.discovery++; }
                 const root = P.findHud($.GetContextPanel());
                 if (root !== rootOwner) { clear(); rootOwner = root; }
                 const native = P.isAlive(root) && (root.id === "Hud" || root.paneltype === "CitadelHud") ? nativeMap(root) : null;
                 if (native !== owner) { clear(); owner = native; }
                 if (!P.isAlive(owner) || !owner.BHasClass("dl_midtown") || Q.core.hud.isInHideout(root) || Q.isStreetBrawlModeActive?.(root)) { shown(layer, false); return; }
-                if (!tree.sweep()) { built.clear(); }
+                if (diagnostic.controls?.skipSweep) diagnostic.stages.skippedSweeps++;
+                else { if (diagnostic.controls) diagnostic.stages.sweeps++; if (!tree.sweep()) built.clear(); }
                 const previousLayer = layer;
                 // Native require-layer creates the offscreen composition target;
                 // always-cache alone only changes the policy of an existing one.
                 // Keep the moving native map outside this static reference layer.
                 layer = tree.child(owner, "Panel", "QOLMinimapLootRoot", {
                     hittest: "false", hittestchildren: "false",
-                    "require-composition-layer": "true", "always-cache-composition-layer": "true"
+                    ...probe.compositionProperties(diagnostic.controls?.composition)
                 });
                 if (!P.isAlive(layer)) return;
-                if (layer !== previousLayer) shown(layer, false);
+                if (layer !== previousLayer) { createdComposition = diagnostic.controls?.composition || "cache"; shown(layer, false); }
                 if (!style(layer, { width: "100%", height: "100%", ignoreParentFlow: "true", overflow: "noclip", opacity: String(model.MINIMAP_LOOT_OPACITY), zIndex: "10" })) { shown(layer, false); return; }
                 for (const spec of groups) {
                     const [key, setting] = spec;
@@ -140,13 +165,14 @@
                     if (!P.isAlive(group)) continue;
                     const wanted = key === "names" ? model[setting] > 0 : model[setting] === 1;
                     if (!wanted) { shown(group, false); continue; }
-                    if (built.get(key) === group) { shown(group, true); continue; }
+                    if (built.get(key) === group) { shown(group, !diagnostic.controls?.hideGroups?.includes(key)); continue; }
                     shown(group, false);
                     if (!style(group, { width: "100%", height: "100%", ignoreParentFlow: "true", overflow: "noclip", zIndex: key === "runs" ? "10" : "1" })) continue;
                     if (built.get(key) !== group && build(spec, group)) built.set(key, group);
-                    shown(group, built.get(key) === group);
+                    shown(group, built.get(key) === group && !diagnostic.controls?.hideGroups?.includes(key));
                 }
-                shown(layer, true);
+                shown(layer, !diagnostic.controls?.hideRoot);
+                if (diagnostic.controls) diagnostic.stages.render++;
             }
             function refresh() {
                 if (!active) return;
@@ -168,9 +194,10 @@
                 update();
             }
             return {
+                diagnostics: { begin: diagnostic.begin },
                 onEnable() { active = true; refresh(); loop = Q.core.Scheduler.createPollLoop(update, 0.5, id); },
                 onSettingsChanged: refresh,
-                onDisable() { active = false; loop?.stop(); loop = null; clear(); tree.dispose(); rootOwner = model = null; }
+                onDisable() { active = false; diagnostic.cancel(); loop?.stop(); loop = null; clear(); tree.dispose(); rootOwner = model = null; }
             };
         }
     });

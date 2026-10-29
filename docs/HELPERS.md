@@ -65,6 +65,12 @@ For HUD mode/class detection use [core HUD state](core/hud.md); for hero evidenc
 use [heroProbe](core/hero_probe.md). Both report observations, not authoritative
 local-player identity.
 
+The HUD-only `core/ql_minimap_probe.js` supplies the two minimap owners' transient
+diagnostic lease controller, local panel evidence and creation-time composition
+property maps. It is loaded explicitly before those owners. It neither discovers
+native sources nor runs schedules; controls, rendering and restoration remain
+with the owning manifests. See the [minimap diagnostic contract](features/ql_minimap_runtime.md).
+
 Feature settings hooks project shared root classes with
 `QOL.core.hud.refreshRootClasses(root)`, which reads the complete current config
 and live time/hideout evidence. A local bucket cannot safely project unrelated

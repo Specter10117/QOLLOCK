@@ -72,6 +72,22 @@
             let crateReady = false;
             let markerPanels = [];
             let rangePanels = [];
+            let createdComposition = "cache";
+            const probe = Q.core.minimapProbe;
+            const diagnostic = probe.createOwner({
+                isActive: () => active,
+                allowed: Object.fromEntries(["hideRoot", "hideTunnel", "skipSweep", "releaseGeometry", "releaseDecoration"]
+                    .map(key => [key, value => typeof value === "boolean"]).concat([["composition", value => ["cache", "layer", "none"].includes(value)]])),
+                apply: (next, previous) => {
+                    if ((next.composition || "cache") !== (previous.composition || "cache")) releaseOverlays();
+                    update();
+                },
+                snapshot: () => ({ owner: id, native: probe.panelState(renderer), root: probe.panelState(crates),
+                    tunnel: probe.panelState(tunnel), composition: createdComposition,
+                    counts: { total: markerPanels.filter(P.isAlive).length, expected: crateEntries.length },
+                    geometry: { anchor: probe.panelState(anchor), fixedIcons: renderer?.BHasClass("QOLFixedMinimapIcons") || false },
+                    decoration: { canvas: probe.panelState(canvas), mapRender: probe.panelState(mapRender), backgrounds: backgroundImages.map(probe.panelState) } })
+            });
 
             function readModel() {
                 const cfg = Q.presentation.captureVisibility(ctx, ctx.config.view());
@@ -171,7 +187,7 @@
                 const ready = style(tunnel, { backgroundImage: 'url("s2r://panorama/images/minimap/base/mm_tunnel_overlay_png_png.vtex")',
                     backgroundSize: "100% 100%", backgroundRepeat: "no-repeat", backgroundPosition: "center", opacity: view.tunnelOpacity.toFixed(2) });
                 P.setClass(tunnel, "tunnel_locked_on", ready);
-                show(tunnel, ready);
+                show(tunnel, ready && !diagnostic.controls?.hideTunnel);
             }
 
             function renderCrates(model) {
@@ -181,9 +197,10 @@
                 // Request one cached composition for the static crate tree.
                 // Requiring the layer is separate from retaining its cached image.
                 const next = tree.child(renderer, "Panel", "minimap_overlay_root", {
-                    "require-composition-layer": "true", "always-cache-composition-layer": "true"
+                    ...probe.compositionProperties(diagnostic.controls?.composition)
                 });
                 if (next !== crates) {
+                    createdComposition = diagnostic.controls?.composition || "cache";
                     for (const panel of [crates, markers, ...markerPanels]) owned.delete(panel);
                     crates = next; markers = null; markerPanels = []; crateData = null; crateReady = false;
                 }
@@ -213,6 +230,7 @@
                     owned.delete(markerPanels[index]); tree.remove("QOLMinimapCrateMarker" + index);
                 }
                 if (!crateReady) {
+                    if (diagnostic.controls) diagnostic.stages.builds++;
                     // update's ownership sweep already validates stable markers.
                     // Reconcile only after a retired node, new data or failed render.
                     const nextPanels = tree.children(markers, "Panel", crateEntries);
@@ -230,7 +248,7 @@
                         }) && crateReady;
                     });
                 }
-                show(crates, crateReady);
+                show(crates, crateReady && !diagnostic.controls?.hideRoot);
             }
 
             function renderRange(size) {
@@ -250,8 +268,18 @@
             }
 
             function render(model, view) {
-                geometry.setDrawOverUi(Boolean(view.drawOverUi));
-                geometry.apply({ ...view, fixedIcons: model.fixedIcons, hidden: Q.presentation.shouldHide("minimap", Q.presentation.visibilityConfig(ctx), rootOwner) });
+                if (diagnostic.controls?.releaseGeometry) geometry.release();
+                else {
+                    geometry.setDrawOverUi(Boolean(view.drawOverUi));
+                    geometry.apply({ ...view, fixedIcons: model.fixedIcons, hidden: Q.presentation.shouldHide("minimap", Q.presentation.visibilityConfig(ctx), rootOwner) });
+                }
+                if (diagnostic.controls?.releaseDecoration) nativeStyles.clear();
+                else renderNativeDecoration(model, view);
+                renderTunnel(view);
+                renderCrates(model);
+            }
+
+            function renderNativeDecoration(model, view) {
                 const minimalist = !view.zoomed && model.minimalist;
                 nativeStyles.apply(renderer, minimalist ? { backgroundColor: "rgba(0, 0, 0, 0)" } : {}, { minimalist_minimap_active: minimalist });
                 nativeStyles.apply(mapRender, minimalist ? { opacity: String(model.minimalOpacity), brightness: "1.0", washColor: "none" } : {});
@@ -266,21 +294,22 @@
                 }
                 nativeStyles.apply(canvas, model.iconColor ? { washColor: model.iconColor } : {});
                 renderRange(view.size);
-                renderTunnel(view);
-                renderCrates(model);
             }
 
             function update() {
                 if (!active) return;
+                if (diagnostic.controls) { diagnostic.stages.updates++; diagnostic.stages.discovery++; }
                 const root = P.findHud($.GetContextPanel());
                 if (root !== rootOwner) { releasePresentation(); rootOwner = root; }
-                if (!tree.sweep()) crateReady = false;
+                if (diagnostic.controls?.skipSweep) diagnostic.stages.skippedSweeps++;
+                else { if (diagnostic.controls) diagnostic.stages.sweeps++; if (!tree.sweep()) crateReady = false; }
                 if (!P.isAlive(root) || (root.id !== "Hud" && root.paneltype !== "CitadelHud")) { releasePresentation(); return; }
                 const host = discover(root);
                 if (!P.isAlive(host)) { show(tunnel, false); show(crates, false); return; }
                 const alt = model.alt && (hasClass(host, "gDetailView") || Q.core.hud.isClassActive("gDetailView"));
                 const tab = model.tab && Q.core.hud.isScoreboardOpen(root, host);
                 render(model, alt ? model.altView : tab ? model.tabView : model.base);
+                if (diagnostic.controls) diagnostic.stages.render++;
             }
 
             function syncLoop() {
@@ -295,6 +324,7 @@
 
             function release() {
                 active = false;
+                diagnostic.cancel();
                 ctx.events?.off("engine:scoreboard_toggle", scoreboardRefresh);
                 if (loop) { loop.stop(); loop = null; }
                 currentRate = 0;
@@ -323,6 +353,7 @@
             }
 
             return {
+                diagnostics: { begin: diagnostic.begin },
                 onEnable() { active = true; ctx.events?.on("engine:scoreboard_toggle", scoreboardRefresh); refresh(); },
                 onDisable: release,
                 onSettingsChanged: refresh

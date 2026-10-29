@@ -36,6 +36,25 @@ content and tunnels are not included in either tree; individual markers do not
 request their own composition layers.
 The original children still own their geometry, localization and setting gates.
 
+Both feature instances expose a diagnostic-only `diagnostics.begin()` lease to
+the minimap investigation runner. The lease has `apply(controls)`, `snapshot()`
+and `restore()`: controls are transient, do not alter configuration, and are
+rejected after disable or replacement by a newer lease. Visibility gates remain
+inside the owners, so recurring updates cannot accidentally undo a diagnostic
+hide. Loot groups can be hidden individually without retiring their children.
+Runtime controls separately release its geometry or native decoration overrides
+while preserving created references and native content. A temporary skip-sweep
+control is for causal measurements, not a change to normal lifetime recovery.
+
+Creation-time composition variants (`cache`, `layer`, `none`) retire and rebuild
+only the owner's created trees; the runner must wait for complete reconstruction
+before sampling. Restoring the lease returns to the production cache policy.
+Snapshots report actual handle identities, immediate child counts, expected
+marker counts, requested creation policy, local visibility/code/size evidence
+and stage counters. Local visibility evidence is not proof of native clipping,
+ancestor computed opacity or composition reuse. These diagnostic controls do
+not measure FPS; only the external native capture can establish frame effects.
+
 After repacking, compare native PresentMon frame captures in the same scene.
 Check cache updates after marker/route scale, opacity, group and district-name
 changes, Base/Alt/Tab resize, native zoom, rotation/flip and renderer replacement.
