@@ -106,6 +106,51 @@ test("loot opacity and toggles preserve marker trees while geometry refreshes on
     e.clean();
 });
 
+test("route strokes tile once per straight leg with map-relative dash spacing and fixed pixel thickness", () => {
+    const e = fixture();
+    // One 3-4-5 triangle leg, followed by a duplicate stop. These assumed
+    // native CSS values check our renderer inputs, not native rasterization.
+    e.Q.minimapLootData.runs = [{ lane: "blue", stops: [[0.10, 0.20], [0.13, 0.24], [0.13, 0.24]] }];
+    e.configure({ ENABLE_MINIMAP_CRATE_ROUTES: 1, MINIMAP_ROUTE_SCALE: 100 });
+    const routes = e.renderer.FindChildTraverse("QOLMapLoot_runs");
+    const strokes = routes.Children().filter(panel => panel.paneltype === "Panel");
+    assert.equal(strokes.length, 1, "one nonempty leg must not retain a panel per dash");
+    const stroke = strokes[0];
+    assert.equal(stroke.style.position, "9.000% 22.000% 0px");
+    assert.equal(stroke.style.width, "5.000%");
+    assert.equal(stroke.style.height, "2.00px");
+    assert.equal(stroke.style.marginTop, "-1.00px");
+    assert.ok(Math.abs(Number(stroke.style.transform.match(/rotateZ\((.+)deg\)/)[1]) - 53.1301023542) < 1e-9);
+    assert.equal(stroke.style.backgroundSize, "28.000% 100%");
+    assert.equal(stroke.style.backgroundPosition, "0px 0px");
+    assert.equal(stroke.style.backgroundRepeat, "repeat-x");
+    assert.equal(stroke.style.washColor, "#29b1cc");
+    assert.equal(stroke.style.opacity, "0.9");
+    const imagePath = stroke.style.backgroundImage.match(/^url\("s2r:\/\/(.+)"\)$/)[1];
+    const svg = fs.readFileSync(path.join(__dirname, "..", imagePath), "utf8");
+    const tileSize = svg.match(/<svg width="(\d+)" height="(\d+)"/);
+    const opaqueRect = svg.match(/<path fill="#FFFFFF" d="M0 0H(\d+)V(\d+)H0Z"/);
+    assert.ok(tileSize && opaqueRect, "the shared white tile must have a transparent trailing gap");
+    assert.equal(Number(opaqueRect[1]) / Number(tileSize[1]), 4 / 7);
+    assert.equal(Number(opaqueRect[2]), Number(tileSize[2]));
+    assert.equal(routes.Children().filter(panel => panel.paneltype === "Label").map(panel => panel.text).join(","), "3,2,1");
+    // The 28% tile is 1.4% of the map; its opaque 4/7 is 0.8%.
+    // At both sizes only length/spacing scale, never the stroke thickness.
+    for (const mapWidth of [360, 1440]) {
+        const legWidth = parseFloat(stroke.style.width) / 100 * mapWidth;
+        const period = parseFloat(stroke.style.backgroundSize) / 100 * legWidth;
+        assert.ok(Math.abs(period - mapWidth * 0.014) < 1e-9);
+        assert.ok(Math.abs(period * 4 / 7 - mapWidth * 0.008) < 1e-9);
+    }
+    e.configure({ MINIMAP_ROUTE_SCALE: 150, MINIMAP_LOOT_OPACITY: 0.4 });
+    assert.ok(routes.GetChild(0) === stroke, "appearance edits retain the leg");
+    assert.equal(stroke.style.height, "3.00px");
+    assert.equal(stroke.style.marginTop, "-1.50px");
+    assert.equal(stroke.style.backgroundSize, "28.000% 100%");
+    assert.equal(routes.GetParent().style.opacity, "0.4");
+    e.clean();
+});
+
 test("crate routes and crates follow their toggles at every game time, ignoring retired minute windows", () => {
     const e = fixture();
     e.configure({ ENABLE_MINIMAP_TOUGH_CRATES: 1, ENABLE_MINIMAP_CRATE_OVERLAY: 1, ENABLE_MINIMAP_CRATE_ROUTES: 1,
@@ -114,7 +159,9 @@ test("crate routes and crates follow their toggles at every game time, ignoring 
         e.setSecond(second); e.clock.advance(700);
         const routes = e.renderer.FindChildTraverse("QOLMapLoot_runs");
         assert.equal(routes.visible, true, `routes at ${second}s`);
-        assert.ok(routes.GetChildCount() > 100);
+        assert.equal(routes.Children().filter(panel => panel.paneltype === "Panel").length, 84,
+            "the supplied routes retain straight legs instead of their former 238 separate dashes");
+        assert.equal(routes.Children().filter(panel => panel.paneltype === "Label").length, 90);
         assert.equal(e.renderer.FindChildTraverse("QOLMapLoot_tough_crates").visible, true);
         assert.equal(e.renderer.FindChild("minimap_overlay_root").BHasClass("qol-hidden"), false);
     }

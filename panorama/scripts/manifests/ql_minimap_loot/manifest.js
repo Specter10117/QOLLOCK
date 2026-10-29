@@ -94,12 +94,15 @@
                         for (let index = 1; index < run.stops.length; index++) {
                             const a = run.stops[index - 1], b = run.stops[index];
                             const du = b[0] - a[0], dv = b[1] - a[1], length = Math.sqrt(du * du + dv * dv);
-                            for (let start = 0; start < length; start += 0.014) {
-                                const end = Math.min(length, start + 0.008), mid = (start + end) / 2 / length, width = end - start;
-                                entry(list, { ...at(a[0] + du * mid - width / 2, a[1] + dv * mid), width: pct(width),
-                                    height: px(2 * routeScale), marginTop: px(-routeScale), backgroundColor: laneColors[run.lane],
-                                    transform: "rotateZ(" + Math.atan2(dv, du) * 180 / Math.PI + "deg)", opacity: "0.9" });
-                            }
+                            if (!length) continue;
+                            // Native background-size percentages follow this leg's
+                            // width. The 4/7 texture retains the old .008/.014 map
+                            // dash pattern while height stays in independent pixels.
+                            entry(list, { ...at((a[0] + b[0] - length) / 2, (a[1] + b[1]) / 2), width: pct(length),
+                                height: px(2 * routeScale), marginTop: px(-routeScale),
+                                backgroundImage: 'url("s2r://panorama/images/qollock/minimap_route_dash.vsvg")',
+                                backgroundSize: pct(0.014 / length) + " 100%", backgroundPosition: "0px 0px", backgroundRepeat: "repeat-x",
+                                washColor: laneColors[run.lane], transform: "rotateZ(" + Math.atan2(dv, du) * 180 / Math.PI + "deg)", opacity: "0.9" });
                         }
                     }
                     for (let index = longest - 1; index >= 0; index--) for (const run of data.runs) {

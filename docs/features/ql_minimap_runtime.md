@@ -25,6 +25,19 @@ created groups and markers. Marker and route scale changes refresh only their
 affected geometry, including hidden groups before reveal; district-name selection
 retires only the name group. Disable/replacement retires all owned children.
 
+Route strokes use one owned panel per nonempty straight leg with a shared white
+dash texture, tinted by lane. Native background repetition clips the last tile
+at the leg endpoint. The tile period is a fraction of the leg width, preserving
+map-relative dash lengths and gaps while its height follows the pixel route
+scale. Native renderer resizing, zoom, rotation and flip therefore continue to
+position the strokes; numbered stops retain their individual loot-text
+orientation classes. The native CSS background-size, background-position and
+background-repeat contracts are exposed in the current client, including
+percentage sizes and repeat-x. After maintainer compile/repack, check dash
+spacing, endpoints, lane colors and stop numbers in Base/Alt/Tab, both icon-size
+modes and native zoom levels. Offline geometry checks do not establish texture
+filtering, native rendering or FPS gains.
+
 The ordinary-crate and loot roots request an offscreen native composition layer
 and its persistent cache through creation properties. Native inspection confirmed
 that `require-composition-layer` contributes a layer-creation reason, whereas
