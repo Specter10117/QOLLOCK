@@ -232,6 +232,16 @@ test("ui/dev_tab: render builds all dev sections and action buttons", () => {
     assert.match(env.hudPanel.GetAttributeString("QOL_DiagRequest", ""), /^fps_minimap_/);
 });
 
+test("the static minimap visibility action requests its own retained-tree diagnostic", () => {
+    const env = createTestEnvironment();
+    const list = env.sandbox.$.CreatePanel("Panel", env.rootPanel, "SettingsList");
+    env.sandbox.QOL.ui.devTab.render(list);
+    const button = list.FindChildTraverse("FpsMinimapVisibilityBtn");
+    assert.ok(button);
+    button._fire("onactivate");
+    assert.match(env.hudPanel.GetAttributeString("QOL_DiagRequest", ""), /^fps_minimap_visibility_/);
+});
+
 test("ui/dev_tab: runInGameBenchmark initiates benchmark request and copies report", () => {
     const env = createTestEnvironment();
     const { runInGameBenchmark } = env.sandbox.QOL.ui.devTab;
@@ -247,7 +257,7 @@ test("ui/dev_tab: runInGameBenchmark initiates benchmark request and copies repo
     assert.ok(statusLabel.text.includes("10s left"), "Status should indicate 10s remaining");
 });
 
-for (const mode of ["current", "minimap"]) test(`FPS investigation ${mode} UI requests its mode and copies its own final report`, () => {
+for (const mode of ["current", "minimap", "minimap_visibility"]) test(`FPS investigation ${mode} UI requests its mode and copies its own final report`, () => {
     const env = createTestEnvironment();
     const label = env.sandbox.$.CreatePanel("Label", env.rootPanel, "ScanStatus");
     const button = env.sandbox.$.CreatePanel("Button", env.rootPanel, "ScanButton");

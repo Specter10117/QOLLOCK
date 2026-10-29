@@ -45,9 +45,11 @@
     };
     const formatReport = result => {
         const f = value => value === null ? "n/a" : value.toFixed(2);
-        const lines = [result.mode === "minimap" ? "=== QOLLOCK minimap polling isolation ===" : "=== QOLLOCK feature exclusion investigation ===", `Result: ${result.reason} | Config: ${result.mode}`,
+        const visibilityOnly = result.mode === "minimap_visibility";
+        const lines = [visibilityOnly ? "=== QOLLOCK static minimap visibility isolation ===" : result.mode === "minimap" ? "=== QOLLOCK minimap polling isolation ===" : "=== QOLLOCK feature exclusion investigation ===", `Result: ${result.reason} | Config: ${result.mode}`,
             "Metric: UI dispatch cadence in ms (lower is better). Engine FPS, CPU/GPU and rendering time are not measured.",
-            result.mode === "minimap" ? "Each trial: polling / paused / paused / polling; panels retained. 1s settling and 3s sampling per window." :
+            visibilityOnly ? "Each trial: visible / hidden / hidden / visible; both minimap polls paused in every condition. Panels retained. 1s settling and 3s sampling per window." :
+                result.mode === "minimap" ? "Each trial: polling / paused / paused / polling; panels retained. 1s settling and 3s sampling per window." :
                 "Each trial: reference / excluded / excluded / reference, with 1s settling and 3s sampling per window.",
             "Cadence can be capped independently of game FPS. Confirm candidates using native telemetry in the same stationary scene.",
             "No effect does not clear a feature: inactive gameplay paths, UI caps and feature interactions can hide a cost.",
@@ -55,15 +57,18 @@
             "", "Candidates sorted by repeatable cadence improvement; these are leads, not proven FPS costs:"];
         for (const row of [...result.rows].sort((a, b) => (b.improvementMs || 0) - (a.improvementMs || 0))) {
             lines.push(`${row.confirmed ? "REPEATABLE" : "UNCONFIRMED"} ${row.name}: improvement=${f(row.improvementMs)}ms; reference=${f(row.referenceMs)}ms; ${row.quality}`,
-                row.pollPause ? `  Paused polls only: ${row.ids.join(", ")}; panels retained, events/settings/one-shots and other owners remain active.` :
+                row.hideLayers ? `  Hidden static roots: ${row.hideLayers.join(", ")}; both minimap polls paused in A and B, panels retained.` :
+                    row.pollPause ? `  Paused polls only: ${row.ids.join(", ")}; panels retained, events/settings/one-shots and other owners remain active.` :
                     row.patch ? `  Temporary settings: ${Object.entries(row.patch).map(([key, value]) => key + "=" + value).join(", ")}; baseline: ${Object.entries(row.baselineValues).map(([key, value]) => key + "=" + value).join(", ")}` : `  Excluded: ${row.ids.join(", ")}`);
             row.windows.forEach((window, i) => lines.push(`  ${["A", "B", "B", "A"][i]} wallStart=${window.startAt} wallEnd=${window.endAt} n=${window.samples} mean=${f(window.mean)} median=${f(window.median)} p95=${f(window.p95)} max=${f(window.max)} >33ms=${window.over33ms}; managed callbacks=${window.work.callbacks} callbackMs=${f(window.work.callbackMs)} errors=${window.work.errors}`));
         }
         if (!result.rows.some(row => row.confirmed)) lines.push("No repeatable candidate. Compare native telemetry; investigate rendering/static CSS and paths outside registered owners.");
-        if (result.mode === "minimap") {
-            lines.push("Fixed plan: both minimap owners, runtime only, loot only. Follow-up is independent of UI cadence.",
-                "This isolates managed poll callbacks, including synchronous native calls; it does not freeze events, one-shots, App/root classes or native map rendering.",
-                "No native improvement from paused polls is not proof of a rendering bottleneck; compare visible/hidden retained roots separately.");
+        if (result.mode === "minimap" || visibilityOnly) {
+            lines.push(visibilityOnly ? "Fixed plan: both static roots, ordinary crates only, loot only. Follow-up is independent of UI cadence." :
+                "Fixed plan: both minimap owners, runtime only, loot only. Follow-up is independent of UI cadence.",
+                "Events, one-shots, App/root classes, other owners and native map rendering remain active.",
+                visibilityOnly ? "A native difference measures the visible static branches, including possible layout/composition work; it does not identify individual rendering calls." :
+                    "No native improvement from paused polls is not proof of a rendering bottleneck; compare visible/hidden retained roots separately.");
             if (result.restoreErrors.length) lines.push("RESTORATION ERRORS: " + result.restoreErrors.join("; "));
             return lines.join("\n");
         }
@@ -82,8 +87,10 @@
         if (!P.isAlive(root) || typeof $.FrameTime !== "function") throw Error("UI frame clock or HUD unavailable");
         const registry = Q.core.FeatureRegistry;
         const enabledIds = registry.getEnabledIds().slice().sort();
-        const pollOnly = mode === "minimap";
+        const visibilityOnly = mode === "minimap_visibility";
+        const minimapScan = mode === "minimap" || visibilityOnly;
         const minimapIds = ["ql_minimap_runtime", "ql_minimap_loot"];
+        const minimapLayerIds = ["minimap_overlay_root", "QOLMinimapLootRoot"];
         const initialErrors = registry.getErrorCounts();
         const groups = new Map();
         for (const id of enabledIds) {
@@ -91,11 +98,14 @@
             if (!groups.has(name)) groups.set(name, []);
             groups.get(name).push(id);
         }
-        const queue = pollOnly ? [
+        const queue = visibilityOnly ? [minimapIds, [minimapIds[0]], [minimapIds[1]]].map(ids => ({
+            name: "Static minimap visibility: " + (ids.length === 2 ? "both roots" : minimapLayerIds[minimapIds.indexOf(ids[0])]) + " (both polls paused)",
+            ids, hideLayers: ids.map(id => minimapLayerIds[minimapIds.indexOf(id)])
+        })) : minimapScan ? [
             { name: "Minimap polling: both owners (panels retained)", ids: minimapIds, pollPause: true },
             ...minimapIds.map(id => ({ name: "Minimap polling: " + id + " (panels retained)", ids: [id], pollPause: true }))
         ] : [{ name: "All registered owners", ids: enabledIds }];
-        for (const [name, ids] of pollOnly ? [] : groups) {
+        for (const [name, ids] of minimapScan ? [] : groups) {
             for (let offset = 0; offset < ids.length; offset += 12) {
                 queue.push({ name: ids.length > 12 ? name + " #" + (offset / 12 + 1) : name, ids: ids.slice(offset, offset + 12) });
             }
@@ -103,13 +113,15 @@
         const baseline = configuration ? { ...configuration.baseline } : null;
         const result = { reason: "", mode, enabledIds, rows: [], restoreErrors: [], followUpIds: [], layerFollowUps: [] };
         const observation = Q.core.Scheduler.startWorkObservation();
+        const layerVisibility = visibilityOnly ? P.createNativeStyleOwner({ preserveStyles: ["visibility"] }) : null;
         const panels = P.createOwnedTree();
         let progressLabel = null;
         const context = $.GetContextPanel(), started = Date.now();
-        let stopped = false, timer = null, excluded = [], trial = null, windowIndex = 0, drilled = pollOnly;
-        let layersDrilled = pollOnly, temporaryConfig = false, expectedIds = enabledIds;
+        let stopped = false, timer = null, excluded = [], trial = null, windowIndex = 0, drilled = minimapScan;
+        let layersDrilled = minimapScan, temporaryConfig = false, expectedIds = enabledIds;
         let nextCheck = 0, scene = null;
         let minimapPanels = null, minimapView = null;
+        let hiddenLayers = [];
         // Verified hud_minimap.xml / native capture owner chain. Observe only
         // these roots; do not retain a paused tree after native replacement.
         const readMinimap = () => {
@@ -125,7 +137,11 @@
         };
         const restore = () => {
             let restored = true;
-            if (pollOnly) observation.pausePolling([]);
+            hiddenLayers = [];
+            if (layerVisibility && !layerVisibility.clear()) {
+                result.restoreErrors.push("static minimap visibility restoration pending"); restored = false;
+            }
+            if (minimapScan) observation.pausePolling([]);
             if (temporaryConfig) {
                 try { configuration.apply({}); temporaryConfig = false; }
                 catch (error) { result.restoreErrors.push("configuration: " + String(error)); restored = false; }
@@ -167,13 +183,14 @@
             if (!P.isAlive(root) || $.GetContextPanel() !== context || P.findHud(context) !== root) return "HUD replaced";
             // Current native hud.css hides HudCore while this class is active.
             if (root.BHasClass("ShowEscapeMenu")) return "escape menu opened";
-            if (pollOnly) {
+            if (minimapScan) {
                 if (!observation.isActive()) return "poll observation replaced";
                 if (minimapIds.some(id => !enabledIds.includes(id))) return "minimap owners unavailable";
                 const next = readMinimap();
                 if (next.some(panel => !P.isAlive(panel))) return "minimap reference layers unavailable";
                 if (minimapPanels && next.some((panel, index) => panel !== minimapPanels[index])) return "minimap replaced";
                 minimapPanels = next;
+                if (hiddenLayers.some(panel => panel.style.visibility !== "collapse")) return "diagnostic visibility overwritten";
                 const view = [next[3].BHasClass("gDetailView"), Q.core.hud.isClassActive("gDetailView"),
                     Q.core.hud.isScoreboardOpen(root, next[3]), next[6].BHasClass("dl_midtown")].join(",");
                 if (minimapView !== null && view !== minimapView) return "minimap view changed";
@@ -182,7 +199,7 @@
             const flags = ["gShopOpen", "gScoreboardOpen", "InHideout", "connectedToHideout"].map(name => root.BHasClass(name)).join(",");
             if (scene === null) scene = flags;
             else if (scene !== flags) return "HUD scene flags changed";
-            if (Date.now() - started > (pollOnly ? 60000 : 420000)) return "deadline";
+            if (Date.now() - started > (minimapScan ? 60000 : 420000)) return "deadline";
             const expected = expectedIds.join(",");
             if (registry.getEnabledIds().slice().sort().join(",") !== expected) return "feature coverage changed";
             const errors = registry.getErrorCounts();
@@ -193,8 +210,18 @@
             const failure = current();
             if (failure) { finish(failure); return; }
             if (!restore()) { finish("restoration failed"); return; }
+            // Both poll callbacks stay frozen for visible AND hidden windows.
+            // Only the QOL-created reference roots change visibility; native
+            // map content, child identity and feature enable state are retained.
+            if (visibilityOnly) observation.pausePolling(minimapIds);
             if (windowIndex === 1 || windowIndex === 2) {
-                if (trial.pollPause) {
+                if (trial.hideLayers) {
+                    for (const id of trial.hideLayers) {
+                        const panel = minimapPanels[7 + minimapLayerIds.indexOf(id)];
+                        if (!layerVisibility.apply(panel, { visibility: "collapse" })) throw Error("static minimap visibility rejected: " + id);
+                        hiddenLayers.push(panel);
+                    }
+                } else if (trial.pollPause) {
                     observation.pausePolling(trial.ids);
                 } else if (trial.patch) {
                     temporaryConfig = true;
@@ -209,7 +236,7 @@
                 }
             }
             status = { running: true, name: trial.name, window: windowIndex + 1, excluded: excluded.slice(),
-                pausedPolls: trial.pollPause && (windowIndex === 1 || windowIndex === 2) ? trial.ids.slice() : [],
+                pausedPolls: visibilityOnly ? minimapIds.slice() : trial.pollPause && (windowIndex === 1 || windowIndex === 2) ? trial.ids.slice() : [],
                 patch: trial.patch && (windowIndex === 1 || windowIndex === 2) ? { ...trial.patch } : null,
                 completed: result.rows.length, endAt: Date.now() + 4000 };
             if (P.isAlive(progressLabel)) progressLabel.text = `QOLLOCK ${result.rows.length + 1} · ${["A", "B", "B", "A"][windowIndex]} · ${trial.patch ? Object.keys(trial.patch)[0] : trial.ids[0]}${trial.ids.length > 1 ? " +" + (trial.ids.length - 1) : ""}`;

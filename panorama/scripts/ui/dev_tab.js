@@ -707,7 +707,7 @@
     let bmToken = 0;
 
     function runInGameBenchmark(container, statusLabel, actionBtn, isStressTest) {
-        const isScan = ["fps_current", "fps_expanded", "fps_minimap"].includes(isStressTest);
+        const isScan = ["fps_current", "fps_expanded", "fps_minimap", "fps_minimap_visibility"].includes(isStressTest);
         const setStatus = (text, color) => {
             if (isAlive(statusLabel)) {
                 const translated = localize(text);
@@ -727,7 +727,7 @@
         bmRunning = true;
         setBtnActive(true);
 
-        const durSec = isScan ? (isStressTest === "fps_minimap" ? 60 : 420) : 10;
+        const durSec = isScan ? (isStressTest.startsWith("fps_minimap") ? 60 : 420) : 10;
         const modeStr = isStressTest ? "stress" : "normal";
         const forceToken = isScan ? `${isStressTest}_${Date.now()}` : `bm_${durSec}_${modeStr}_${Date.now()}`;
 
@@ -1237,6 +1237,11 @@
 
         // 2. In-Game Benchmarks
         createTitle(list, "In-Game Benchmarks");
+
+        createDevActionRow(list, "FpsMinimapVisibilityRow", "FpsMinimapVisibilityBtn", "FpsMinimapVisibilityStatus",
+            "s2r://panorama/images/icons/icon_play.vsvg", "Minimap static layer visibility (Expanded Config)",
+            "Start external PresentMon capture first. Both minimap polls stay paused while static reference layers are shown or hidden without deleting panels. Close Esc within 5s; keep the game focused and stay still without Alt/Tab for about 53s. Everything is restored automatically.",
+            "Investigate", (status, button) => runInGameBenchmark(list, status, button, "fps_minimap_visibility"));
 
         createDevActionRow(list, "FpsMinimapRow", "FpsMinimapBtn", "FpsMinimapStatus",
             "s2r://panorama/images/icons/icon_play.vsvg", "Minimap polling isolation (Expanded Config)",

@@ -187,11 +187,83 @@ test("minimap polling trials retain visible panels and owner coverage through fi
     assert.deepEqual(hud.clock.errors, []);
 });
 
-for (const stop of ["cancel", "HUD", "renderer", "Alt", "error", "observer"]) {
-    test(`minimap poll pause restores callbacks after ${stop}`, () => {
-        const { hud, Q, renderer, counts } = minimapSetup();
+test("static minimap visibility trials pause both polls in A and B and restore original code visibility", () => {
+    const { hud, Q, enabled, roots, renderer, counts } = minimapSetup();
+    roots[0].style.visibility = "visible";
+    const background = renderer.addChild(hud.doc.create("Panel", { id: "native_background" }));
+    const nativeChild = roots[1].addChild(hud.doc.create("Panel", { id: "retained_loot_marker" }));
+    const windows = [], snapshots = [];
+    let result;
+    Q.core.FpsInvestigation.start({ root: hud.root, mode: "minimap_visibility",
+        onWindow: value => {
+            windows.push(value); snapshots.push({ ...counts });
+            const hidden = value.phase === 1 || value.phase === 2;
+            assert.equal(roots[0].style.visibility, hidden && value.trial !== 3 ? "collapse" : "visible");
+            assert.equal(roots[1].style.visibility, hidden && value.trial !== 2 ? "collapse" : undefined);
+            assert.equal(nativeChild.GetParent(), roots[1]);
+            assert.equal(nativeChild.IsValid(), true);
+            assert.equal(background.style.visibility, undefined, "native moving content must remain outside the diagnostic");
+            assert.deepEqual([...enabled].sort(), ["ql_keyboard", "ql_minimap_loot", "ql_minimap_runtime"]);
+        }, onComplete: value => { result = value; }
+    });
+    hud.clock.advance(55000);
+    assert.equal(result.reason, "complete");
+    assert.equal(windows.length, 12);
+    for (const id of ["ql_minimap_runtime", "ql_minimap_loot"]) {
+        assert.ok(snapshots.every(value => value[id] === snapshots[0][id]), "both polls must stay paused in every visible/hidden window");
+    }
+    assert.ok(snapshots.at(-1).ql_keyboard > snapshots[0].ql_keyboard);
+    assert.equal(roots[0].style.visibility, "visible");
+    assert.equal(roots[1].style.visibility, undefined, "an absent code override must be released, not replaced with visible");
+    assert.match(result.report, /visible \/ hidden \/ hidden \/ visible/);
+    const before = counts.ql_minimap_runtime;
+    hud.clock.advance(200);
+    assert.ok(counts.ql_minimap_runtime > before);
+    assert.deepEqual(hud.clock.errors, []);
+});
+
+test("a partial rejected visibility write restores the first root and resumes polling", () => {
+    const { hud, Q, roots, counts } = minimapSetup();
+    roots[0].style.visibility = "visible";
+    let value;
+    Object.defineProperty(roots[1].style, "visibility", {
+        configurable: true, get: () => value,
+        set: next => { if (next === "collapse") throw Error("native rejection"); value = next; }
+    });
+    let result;
+    Q.core.FpsInvestigation.start({ root: hud.root, mode: "minimap_visibility", onComplete: next => { result = next; } });
+    hud.clock.advance(11000);
+    assert.match(result.reason, /visibility rejected/);
+    assert.equal(roots[0].style.visibility, "visible");
+    assert.notEqual(roots[1].style.visibility, "collapse");
+    const before = counts.ql_minimap_runtime;
+    hud.clock.advance(200);
+    assert.ok(counts.ql_minimap_runtime > before);
+    assert.deepEqual(hud.clock.errors, []);
+});
+
+test("a rejected visibility release is reported and cleanup retries after cancellation", () => {
+    const { hud, Q, roots } = minimapSetup();
+    let result;
+    const scan = Q.core.FpsInvestigation.start({ root: hud.root, mode: "minimap_visibility", onComplete: next => { result = next; } });
+    hud.clock.advance(11000);
+    assert.equal(roots[1].style.visibility, "collapse");
+    const clear = roots[1].ClearPropertyFromCode;
+    roots[1].ClearPropertyFromCode = () => false;
+    scan.stop();
+    assert.ok(result.restoreErrors.length > 0);
+    roots[1].ClearPropertyFromCode = clear;
+    hud.clock.advance(300);
+    assert.equal(roots[1].style.visibility, undefined);
+    assert.deepEqual(hud.clock.errors, []);
+});
+
+for (const mode of ["minimap", "minimap_visibility"]) for (const stop of ["cancel", "HUD", "renderer", "Alt", "error", "observer"]) {
+    test(`${mode} isolation restores callbacks and visibility after ${stop}`, () => {
+        const { hud, Q, renderer, roots, counts } = minimapSetup();
+        roots[0].style.visibility = "visible";
         let result;
-        const scan = Q.core.FpsInvestigation.start({ root: hud.root, mode: "minimap", onComplete: value => { result = value; } });
+        const scan = Q.core.FpsInvestigation.start({ root: hud.root, mode, onComplete: value => { result = value; } });
         hud.clock.advance(11000);
         const paused = counts.ql_minimap_runtime;
         hud.clock.advance(100);
@@ -210,6 +282,8 @@ for (const stop of ["cancel", "HUD", "renderer", "Alt", "error", "observer"]) {
             hud.clock.advance(200);
             assert.ok(counts.ql_minimap_runtime > restored, "polling must resume after the diagnostic retires");
         }
+        if (roots[0].IsValid()) assert.equal(roots[0].style.visibility, "visible");
+        if (roots[1].IsValid()) assert.equal(roots[1].style.visibility, undefined);
         assert.deepEqual(hud.clock.errors, []);
     });
 }

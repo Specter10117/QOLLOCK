@@ -117,7 +117,7 @@ try {
     $deadline = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() + $duration * 1000
     $startDeadline = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() + 60000
     Write-Host ('Capturing real game frames for PID ' + $targetProcessId + '. Output: ' + $OutputDirectory)
-    if (-not $ProbeSeconds) { Write-Host 'Start Minimap polling isolation or FPS investigation in Dev within 60 seconds, close Esc, and keep the game focused. The capture stops with that investigation.' }
+    if (-not $ProbeSeconds) { Write-Host 'Start a minimap isolation test or FPS investigation in Dev within 60 seconds, close Esc, and keep the game focused. The capture stops with that investigation.' }
     while (-not $nativeProcess.HasExited) {
         $focus.Add(@{ qpc = [Diagnostics.Stopwatch]::GetTimestamp(); pid = [QollockCaptureForeground]::ProcessId() })
         if (-not $ProbeSeconds) {

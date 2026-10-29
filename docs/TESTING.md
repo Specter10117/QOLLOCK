@@ -535,6 +535,34 @@ Polling is temporarily frozen, so this mode must not be used during gameplay.
 Simulator tests check preserved trees, continuing unrelated work, native-window
 markers and resumed polling; they cannot establish native rendering or FPS.
 
+### Static minimap visibility isolation
+
+Dev's **Minimap static layer visibility (Expanded Config)** follows the polling
+check when poll pauses do not explain the native frame cost. Both minimap owners'
+managed polls stay paused in every A and B window. A retains the original code
+visibility; B collapses selected QOL-created reference roots without disabling
+features or removing children. The fixed trials hide both static roots, ordinary
+crates only, then the loot root only. The native renderer, moving map content and
+tunnels remain outside the hidden branches. Use the same collector, stationary
+scene and roughly 53-second procedure as the polling check.
+
+The existing native-style owner preserves each root's original visibility code
+value, releases an originally absent override, and retries rejected retirement.
+Cancellation, errors, native replacement and normal completion release visibility
+before resuming normal polling. Rejected writes abort the diagnostic; pending
+restoration is reported instead of silently marking the cleanup successful.
+All polling-isolation context guards still apply, and an overwritten hidden
+visibility value also invalidates the run.
+
+A native difference measures the contribution of visible static branches,
+including any layout, invalidation and composition work affected by collapse.
+It does not separate those engine costs or establish why a native cache is
+invalidated. External events/root-class changes still run, so stable scene and
+repeatability checks remain necessary. The simulator covers tree identity,
+constant paused-poll conditions, selective hiding, original-value restoration
+and error cleanup; computed visibility, native composition and FPS need the
+repacked client.
+
 ### Native game frame capture
 
 For game frame evidence, run the external collector before starting the same Dev
@@ -552,8 +580,8 @@ process. It downloads the pinned official portable PresentMon executable into
 the user's local application-data cache and verifies its SHA-256 before use;
 it does not install a service. `-PresentMonPath` accepts an already downloaded
 copy of that exact executable. `-GameProcessId`, `-GameLog` and `-OutputDirectory`
-override discovery. Start Dev's Current/Expanded investigation or minimap polling
-isolation within one minute,
+override discovery. Start Dev's Current/Expanded investigation or a minimap
+isolation test within one minute,
 close Esc and keep the game focused. Completion/stop ends only this collector's
 unique ETW session. An eight-minute capture deadline bounds unattended runs.
 

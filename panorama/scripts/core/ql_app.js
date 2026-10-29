@@ -532,7 +532,7 @@
                 };
                 if (isFpsScan) $.Msg("[QOLLOCK:NativeFPS] " + JSON.stringify({ type: "start", session: forceToken }));
                 const handle = isFpsScan ? QOL.core.FpsInvestigation.start({
-                    root: hudPanel, mode: isMinimapScan ? "minimap" : isStress ? "expanded" : "current",
+                    root: hudPanel, mode: isMinimapScan ? (parts[2] === "visibility" ? "minimap_visibility" : "minimap") : isStress ? "expanded" : "current",
                     configuration: fpsConfiguration,
                     onProgress: () => _writeDiagSnapshot(hudPanel, forceToken),
                     onWindow: window => $.Msg("[QOLLOCK:NativeFPS] " + JSON.stringify({ type: "window", session: forceToken, ...window })),

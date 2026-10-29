@@ -94,7 +94,7 @@ test("a new lease started by a FPS safety stop survives the retiring safety call
     assert.deepEqual(hud.clock.errors, []);
 });
 
-test("minimap isolation traverses the real App/registry path and emits compact native windows", () => {
+for (const mode of ["minimap", "minimap_visibility"]) test(`${mode} isolation traverses the real App/registry path and emits compact native windows`, () => {
     const { hud, Q, g, request } = setup();
     // Model the next UI dispatch; the virtual clock otherwise fires zero-delay
     // schedules at the same instant. This is not a native cadence measurement.
@@ -119,17 +119,18 @@ test("minimap isolation traverses the real App/registry path and emits compact n
         assert.equal(Q.core.FeatureRegistry.isEnabled("ql_minimap_loot"), true);
         options.onWindow(window);
     } });
-    request("fps_minimap_transport");
+    request("fps_" + mode + "_transport");
     hud.clock.advance(55000);
     const diag = JSON.parse(hud.root.GetAttributeString("QOL_Diag", ""));
     assert.equal(diag.benchmark.stats.reason, "complete");
+    assert.equal(diag.benchmark.stats.mode, mode);
     assert.equal(diag.benchmark.stats.rows.length, 3);
     const markers = hud.sandbox.messages.filter(line => line.startsWith("[QOLLOCK:NativeFPS] "));
     const values = markers.map(line => JSON.parse(line.slice("[QOLLOCK:NativeFPS] ".length)));
     assert.equal(values.filter(value => value.type === "window").length, 12);
     assert.equal(values[0].type, "start");
     assert.equal(values.at(-1).type, "end");
-    assert.ok(values.every(value => value.session === "fps_minimap_transport"));
+    assert.ok(values.every(value => value.session === "fps_" + mode + "_transport"));
     assert.ok(markers.every(line => line.length < 2000), "native console truncation cannot cut transport markers");
     assert.deepEqual(Q.core.ConfigAdapter.exportToFlat(), baseline);
     assert.deepEqual(hud.clock.errors, []);
