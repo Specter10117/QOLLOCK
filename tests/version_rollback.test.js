@@ -6,7 +6,7 @@ const load = require("./load_settings_environment");
 test("rolled-back version preserves current scales, colors and offsets in both sharing contexts", () => {
     const { global: g, hud } = load();
     assert.equal(g.QOL_SCHEMA_SEMVER, "4.0.5");
-    assert.equal(g.QOL.VERSION, "4.0.5");
+    assert.equal(g.QOL.VERSION, "4.1.0");
     assert.equal(g.QOL_LATEST_COMPACT_SEMVER, "4.0.5");
     for (const version of ["4.0.6", "4.0.7", "4.0.8", "4.0.9", "4.0.10"]) {
         assert.equal(g.QOL_COMPACT_SCHEMA_REGISTRY[version], undefined);
