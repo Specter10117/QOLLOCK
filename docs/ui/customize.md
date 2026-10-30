@@ -186,7 +186,14 @@ overall scale and independent offsets. AP and stamina offsets are applied by
 existing settings envelope without changing any published compact schema.
 
 Modern compact stats are measured through the active owner's HudStatBlock;
-expanded modifier rows do not enlarge the compact block's hit box. The coexisting legacy owner is
+their scale also applies to the sibling CoreStatFXLayer so native stat effects
+follow the compact block within the supported effect scale range. Above that
+range the effects have zero opacity; reducing the scale releases that opacity override.
+Custom scaling preserves the FX viewport's minimum
+dimensions and scales its bottom gap relative to the block's native docking,
+including the shop state, while compensating for the block's fixed left margin.
+Expanded modifier rows retain their independent scale
+and do not enlarge the compact block's hit box. The coexisting legacy owner is
 selected only when its content has layout; otherwise the active owner is used by
 both editor and gameplay manifest. Stamina frames measure the native foreground
 pips rather than an unrelated ability-charge widget.

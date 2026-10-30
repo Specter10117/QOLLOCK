@@ -1,5 +1,5 @@
 // ql_update_checker.js — public GitHub marker check for QOLLOCK releases.
-// Panorama has no fetch/XMLHttpRequest. It can load an image and report its
+// I'm not updating all of that to CitadelHTMLPanel because i believe it'll eat more RAM
 // dimensions, so a square GitHub marker means current and a wide one outdated.
 (function() {
     "use strict";

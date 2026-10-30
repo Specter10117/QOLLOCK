@@ -181,6 +181,130 @@ function scaleFixture(id = "souls") {
     return { ...env, q, cfg, panel, feature };
 }
 
+for (const nativeOwner of ["hudPlayerStats", "hudActivePlayerStats"]) {
+    test(`${nativeOwner}: compact stats and sibling effects share scale through native replacement and reset`, () => {
+        const { q, cfg, panel, feature, doc, clock } = scaleFixture("playerStats");
+        const wrapper = panel.GetParent();
+        if (nativeOwner === "hudActivePlayerStats") {
+            wrapper.SetParent(wrapper.GetParent().GetParent().GetParent());
+            wrapper.id = nativeOwner;
+        }
+        // Current native XML puts CoreStatFXLayer beside HudStatBlock and StatList.
+        // The simulator checks style ownership, not particle rendering/layout.
+        const list = wrapper.addChild(doc.create("Panel", { id: "StatList" }));
+        list.style.uiScale = "135%";
+        feature.onEnable();
+        cfg.STATS_POSITION_SCALE = 50; feature.onSettingsChanged();
+        assert.equal(panel.style.uiScale, "50%");
+        let effects = wrapper.addChild(doc.create("Panel", { id: "CoreStatFXLayer" }));
+        const particle = effects.addChild(doc.create("ParticleScenePanel", { id: "SpiritMaxStatFX" }));
+        particle.style.opacity = "0.7";
+        clock.advance(700);
+        assert.equal(effects.style.uiScale, "50%", "late effects follow compact scaling");
+        for (const percent of [125, 135]) {
+            cfg.STATS_POSITION_SCALE = percent; feature.onSettingsChanged();
+            assert.equal(panel.style.uiScale, percent + "%");
+            assert.equal(effects.style.uiScale, percent + "%");
+        }
+        const retired = effects;
+        retired.SetParent(doc.create("Panel", { id: "RetiredEffects" }));
+        effects = wrapper.addChild(doc.create("Panel", { id: "CoreStatFXLayer" }));
+        clock.advance(700);
+        assert.equal(retired.style.uiScale, undefined);
+        assert.equal(effects.style.uiScale, "135%");
+        cfg.STATS_POSITION_SCALE = 100; feature.onSettingsChanged();
+        assert.equal(panel.style.uiScale, undefined);
+        assert.equal(effects.style.uiScale, undefined);
+        cfg.STATS_POSITION_SCALE = 50; feature.onSettingsChanged();
+        feature.onDisable();
+        assert.equal(panel.style.uiScale, undefined);
+        assert.equal(effects.style.uiScale, undefined);
+        feature.onEnable();
+        assert.equal(panel.style.uiScale, "50%");
+        assert.equal(effects.style.uiScale, "50%");
+        feature.onDisable();
+        assert.equal(list.style.uiScale, "135%", "expanded stats retain independent scale");
+        assert.equal(wrapper.style.uiScale, undefined);
+        assert.equal(particle.style.opacity, "0.7", "native particle state is untouched");
+        assert.deepEqual(clock.errors, []);
+    });
+}
+
+for (const nativeOwner of ["hudPlayerStats", "hudActivePlayerStats"]) {
+    test(`${nativeOwner}: effects have zero opacity only above 135% and restore across replacement and disable`, () => {
+        const { cfg, panel, feature, doc, clock } = scaleFixture("playerStats");
+        const wrapper = panel.GetParent();
+        if (nativeOwner === "hudActivePlayerStats") {
+            wrapper.SetParent(wrapper.GetParent().GetParent().GetParent());
+            wrapper.id = nativeOwner;
+        }
+        cfg.STATS_POSITION_SCALE = 136;
+        feature.onEnable();
+        let effects = wrapper.addChild(doc.create("Panel", { id: "CoreStatFXLayer" }));
+        clock.advance(700);
+        assert.equal(effects.style.opacity, "0", "late effects are fully transparent above the limit");
+        assert.equal(effects.style.visibility, undefined, "effects stay in native layout");
+        assert.equal(panel.style.uiScale, "136%", "compact stats keep the requested scale");
+        assert.equal(panel.style.visibility, undefined);
+        cfg.STATS_POSITION_SCALE = 135; feature.onSettingsChanged();
+        assert.equal(effects.style.opacity, undefined, "the boundary releases the opacity override");
+        assert.equal(effects.style.uiScale, "135%");
+        cfg.STATS_POSITION_SCALE = 238; feature.onSettingsChanged();
+        assert.equal(effects.style.opacity, "0");
+        const retired = effects;
+        retired.SetParent(doc.create("Panel", { id: "RetiredEffects" }));
+        effects = wrapper.addChild(doc.create("Panel", { id: "CoreStatFXLayer" }));
+        clock.advance(700);
+        assert.equal(retired.style.opacity, undefined, "living retired effects are released");
+        assert.equal(effects.style.opacity, "0", "replacement effects inherit the limit");
+        feature.onDisable();
+        assert.equal(effects.style.opacity, undefined);
+        feature.onEnable();
+        assert.equal(effects.style.opacity, "0");
+        cfg.STATS_POSITION_SCALE = 100; feature.onSettingsChanged();
+        assert.equal(effects.style.opacity, undefined, "default scale restores native effects");
+        assert.equal(effects.style.uiScale, undefined);
+        feature.onDisable();
+        assert.deepEqual(clock.errors, []);
+    });
+}
+
+test("active stat effects preserve their captured viewport and relative bottom anchor at 135%", () => {
+    const { cfg, panel, feature, doc, hud, clock } = scaleFixture("playerStats");
+    const wrapper = panel.GetParent();
+    wrapper.SetParent(wrapper.GetParent().GetParent().GetParent());
+    wrapper.id = "hudActivePlayerStats";
+    const effects = wrapper.addChild(doc.create("Panel", { id: "CoreStatFXLayer" }));
+    cfg.STATS_POSITION_SCALE = 135;
+    feature.onEnable();
+    assert.equal(effects.style.minWidth, "300px");
+    assert.equal(effects.style.minHeight, "500px");
+    assert.equal(effects.style.marginLeft, "-7px");
+    assert.equal(effects.style.marginBottom, "301px");
+    // Debugger at 100%: owner height 1080, block top 770/height 90,
+    // FX top 300/height 500, particle top 270 within FX.
+    // This checks the requested constraint/anchor math, not native relayout.
+    const scale = 1.35;
+    const margin = parseFloat(effects.style.marginBottom);
+    const height = Math.max(parseFloat(effects.style.minHeight) * scale, Math.min(500 * scale, 1080 - margin));
+    assert.equal(height, 675);
+    const particleTop = 1080 - margin - height + 270 * scale;
+    const blockTop = 1080 - 220 - 90 * scale;
+    assert.equal(Math.round((particleTop - blockTop) * 10) / 10, -270,
+        "captured -200px particle-to-block offset scales proportionally");
+    assert.equal(panel.style.minHeight, undefined);
+    hud.root.AddClass("gShopOpen"); clock.advance(700);
+    assert.equal(effects.style.marginBottom, "290.5px", "native shop docking changes without a settings edit");
+    hud.root.RemoveClass("gShopOpen"); clock.advance(700);
+    assert.equal(effects.style.marginBottom, "301px");
+    cfg.STATS_POSITION_SCALE = 100; feature.onSettingsChanged();
+    for (const key of ["uiScale", "minWidth", "minHeight", "marginLeft", "marginBottom"]) assert.equal(effects.style[key], undefined);
+    cfg.STATS_POSITION_SCALE = 135; feature.onSettingsChanged();
+    feature.onDisable();
+    for (const key of ["uiScale", "minWidth", "minHeight", "marginLeft", "marginBottom"]) assert.equal(effects.style[key], undefined);
+    assert.deepEqual(clock.errors, []);
+});
+
 test("overall scale reasserts native feedback and retires rejected clears after disable", () => {
     const { cfg, panel, feature, clock } = scaleFixture();
     cfg.SOULS_SCALE = 150;

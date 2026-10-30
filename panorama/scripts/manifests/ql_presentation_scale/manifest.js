@@ -77,8 +77,25 @@
                         if (offset) styles[field.axis] = offset * (field.direction || 1) + "px";
                     }
                     if (Object.keys(styles).length) {
-                        geometryStyles.apply(panel, styles);
-                        geometryPanels.push(panel);
+                        // Native active-player-stats XML keeps particle effects
+                        // beside HudStatBlock; scale or hide them with it.
+                        const targets = element.id === "playerStats"
+                            ? [panel, P.findChild(owner, "CoreStatFXLayer")] : [panel];
+                        for (const target of targets.filter(P.isAlive)) {
+                            let targetStyles = styles;
+                            if (target !== panel) {
+                                // Native CSS owns a 300x500 FX viewport, with its
+                                // bottom 60px above the block (30px in shop).
+                                const blockBottom = hud.BHasClass("gShopOpen") ? 250 : 220;
+                                // TODO: I couldn't figure out how to scale these effects properly with player stats so anything more than 135% will just have 0% opacity
+                                targetStyles = value > 1.35 ? { opacity: "0" } : { ...styles, minWidth: "300px", minHeight: "500px",
+                                    // HudStatBlock's unscaled outer left margin is 20px.
+                                    marginLeft: Number((20 * (1 - value)).toFixed(2)) + "px",
+                                    marginBottom: Number((blockBottom + (280 - blockBottom) * value).toFixed(2)) + "px" };
+                            }
+                            geometryStyles.apply(target, targetStyles);
+                            geometryPanels.push(target);
+                        }
                     }
                 }
                 // Default opacity retires previous code writes without a new
