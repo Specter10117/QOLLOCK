@@ -60,6 +60,7 @@ in the client. Inspect the marked blocks and current owner before retiring one.
 | Layout(s) under `panorama/layout` | QOLLOCK addition / owning boundary |
 | --- | --- |
 | `hud.xml` | HUD script load graph, shared styles and class listeners used by HUD owners. |
+| `hud_event_indicator.xml` | Inner Fountain scale canvas; native event root positioning and all bound indicator children are preserved. |
 | `hud_escape_menu.xml` | Independent settings script/style context and settings controls. |
 | `hud_health_container.xml` | Shared healthbar scaling canvas, Minecraft containers, native number bindings and regen/damage presentation. |
 | `hud_gold_and_ap_container.xml` | Native `CitadelHeroImage` child inside the level amount; it is not FG's authoritative hero source. |

@@ -6,17 +6,21 @@ const path = require("node:path");
 const { parseCssImports } = require("../scripts/check_native_css_imports");
 const read = file => fs.readFileSync(path.join(__dirname, "../panorama/styles", file), "utf8");
 
-test("Fountain slider visually scales the event wrapper without changing native coordinate scale", () => {
+test("Fountain slider scales its own canvas without changing the native event root", () => {
     const css = read("qol_damage_fountain_full.css").replace(/\/\*[\s\S]*?\*\//g, "");
     const rules = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)];
     for (let percent = 50; percent <= 300; percent++) {
         if (percent === 100) continue;
-        const selector = ".damage_fountain_active.damage_fountain_scale_" + percent + " CitadelHudDamageEventIndicator.WindowRoot";
+        const selector = ".damage_fountain_active.damage_fountain_scale_" + percent +
+            " CitadelHudDamageEventIndicator.WindowRoot > #QOLFountainScaleCanvas";
         const rule = rules.find(([, selectors]) => selectors.trim() === selector);
         assert.ok(rule, selector);
-        assert.doesNotMatch(rule[2], /\bui-scale\s*:/, "native world-to-HUD placement must keep its coordinate scale");
-        assert.equal(Number(/pre-transform-scale2d:\s*([^;]+);/.exec(rule[2])[1]), percent / 100);
+        const scale = /transform:\s*scale3d\(([^)]+)\);/.exec(rule[2]);
+        assert.ok(scale, "the owned canvas must scale independently of native root writes and child animations");
+        assert.deepEqual(scale[1].split(",").map(Number), [percent / 100, percent / 100, 1]);
     }
+    assert.doesNotMatch(css, /\.damage_fountain_scale_\d+\s+CitadelHudDamageEventIndicator\.WindowRoot\s*\{/,
+        "slider rules must not write transforms or coordinate scale on the native root");
     const baseline = rules.find(([, selectors]) => selectors.split(",").some(selector =>
         selector.trim() === ".damage_fountain_active .distance_near.fountain1 .HudIndicatorContainer"));
     assert.ok(baseline);
@@ -24,7 +28,24 @@ test("Fountain slider visually scales the event wrapper without changing native 
     assert.doesNotMatch(css, /damage_fountain_(?:small|medium|large)_active/);
 });
 
-test("Fountain window geometry and scaling exclude native subtitles", () => {
+test("Fountain canvas retains native bindings and uses the native viewport without layout scaling", () => {
+    const layoutPath = path.join(__dirname, "../panorama/layout/hud_event_indicator.xml");
+    assert.ok(fs.existsSync(layoutPath), "native indicator layout must host the owned scale canvas");
+    const xml = fs.readFileSync(layoutPath, "utf8").replace(/<!--[\s\S]*?-->/g, "");
+    assert.match(xml, /<Panel class="WindowRoot"[^>]*>\s*<Panel id="QOLFountainScaleCanvas"[^>]*>\s*<Panel class="HudIndicatorContainer">/);
+    for (const binding of ['text="{s:value}"', 'text="{s:distance}m {s:effectiveness}%"', 'text="{s:desc}"']) {
+        assert.ok(xml.includes(binding), binding + " remains native");
+    }
+    const css = read("qol_damage_fountain_full.css").replace(/\/\*[\s\S]*?\*\//g, "");
+    const canvas = css.match(/(?:^|\})\s*#QOLFountainScaleCanvas\s*\{([^}]+)\}/);
+    assert.ok(canvas);
+    for (const property of ["width", "height"]) assert.match(canvas[1], new RegExp(property + ":\\s*100%;"));
+    assert.doesNotMatch(canvas[1], /\b(?:ui-scale|x|y)\s*:/);
+    assert.match(canvas[1], /overflow:\s*noclip;/);
+    assert.match(css, /\.damage_fountain_active\s+#QOLFountainScaleCanvas\s*\{\s*flow-children:\s*right;\s*\}/);
+});
+
+test("Fountain window geometry excludes native subtitles", () => {
     const css = read("qol_damage_fountain_full.css").replace(/\/\*[\s\S]*?\*\//g, "");
     const rules = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)];
     // The native Debugger capture identifies damage windows as this panel type;
@@ -32,7 +53,6 @@ test("Fountain window geometry and scaling exclude native subtitles", () => {
     const windows = rules.flatMap(([, selectors, body]) => selectors.split(",")
         .filter(selector => /\.Window(?:Root)?\s*$/.test(selector))
         .map(selector => ({ selector: selector.trim(), body })));
-    assert.ok(windows.length > 2, "includes geometry and slider scaling rules");
     for (const { selector } of windows) {
         assert.match(selector, / CitadelHudDamageEventIndicator\.Window(?:Root)?$/);
     }

@@ -15,9 +15,10 @@ baseline before the QOLLOCK rules and Fountain keyframes. These rules must load
 in the event indicator context; importing them only from HUD CSS is insufficient.
 
 Fountain size is a percentage slider in the Crosshair tab, separate from the
-damage font-size slider. It visually scales the native event wrapper without
-changing the coordinate scale used for world-to-HUD placement, leaving inner
-distance scales and keyframe animations intact; its neutral value preserves the
+damage font-size slider. The native event layout wraps its content in QOLLOCK's
+scale canvas. The slider transforms only this canvas. Native root placement and
+scale writes stay separate from presentation; inner distance scales and keyframe
+animations remain intact. Its neutral value preserves the
 former Medium presentation. Scale classes exist only while Fountain is enabled.
 The stylesheet shares identical rules and namespaces its animation names so disabling Fountain
 returns native indicators to their own presentation. Clean and visibility rules
@@ -30,3 +31,5 @@ clean mode and small/trooper filtering. A static hierarchy without those events
 does not establish native class coverage or animation behavior.
 Keep the same target in view while changing Fountain size: its indicators must
 remain anchored to the target rather than shift toward or away from screen origin.
+Also verify native values, descriptions and effectiveness bindings with Fountain
+disabled: the canvas remains in the native layout at its neutral scale.

@@ -87,6 +87,14 @@
       "auto_sync": false,
       "local_sha256": "ac2c9c8312f3c00ae2ee0f908707d69fb49ce5c98e0a1118d0695f11221f462b"
     },
+    "layout/hud_event_indicator.xml": {
+      "blob": "73dbf01bf669d9dd67c02c7fc4e9137472286af2",
+      "destination": "panorama/layout/hud_event_indicator.xml",
+      "kind": "xml",
+      "auto_sync": false,
+      "local_sha256": "aed2b04c4e28e27193f52be898732eecc0a0998231824ae526ca6bdff20e5e0a",
+      "base_commit": "d251cf9d9a796061c90f58724230b7e17b97121b"
+    },
     "layout/hud_gold_and_ap_container.xml": {
       "blob": "3108abc836c70c9918647eb758c5f394b5db9916",
       "destination": "panorama/layout/hud_gold_and_ap_container.xml",
