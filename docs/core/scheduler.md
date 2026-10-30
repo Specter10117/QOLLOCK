@@ -14,7 +14,7 @@ performance records live in the existing State.
 | `isBenchmarkActive()` | Reports the current benchmark flag. |
 | `formatBenchmarkReport(stats, durationSec, activeCount)` | Formats recorded benchmark data, not rendered frame timings. |
 | `getWorkSnapshot()` | Read-only array of `{id, polls, once}` outstanding managed tasks, without panel handles. |
-| `startWorkObservation()` | Opt-in bounded observation; returns `{sample(), stop()}`. Replaces the previous observer without changing scheduled production work. |
+| `startWorkObservation()` | Opt-in bounded observation; returns `{sample(), stop(), pausePolling(ids), isPollPaused(id), isActive()}`. Replacement retires the previous observer and releases its diagnostic poll pause. |
 
 The first tick has jitter up to half the interval. `reschedule` changes the rate
 for subsequent scheduling; it does not cancel and immediately restart a pending
@@ -40,11 +40,26 @@ not imply sub-millisecond precision. Stats cover synchronous callback/native
 work, not deferred layout, rendering, GPU work or all JS. Benchmark spike counts
 currently use a 4ms threshold; historical 8ms descriptions are obsolete.
 See [PROFILING.md](../PROFILING.md) for valid comparisons and client verification.
-The optional lookup probe temporarily wraps writable panel prototypes found in
-the starting HUD tree, restores them on completion or stop, and reports coverage.
-Unsupported native prototypes yield `unavailable`; changed or newly created
-panel prototypes can leave counts incomplete. The probe is only enabled by the
-current-config Dev benchmark, not by normal polling or the expanded-config run.
+The optional lookup probe temporarily wraps each writable `FindChildTraverse`
+instance binding found in the starting HUD tree. October 17 native client
+capability evidence showed these are own panel properties, so prototype-only
+hooks miss them. The bounded census runs before timing; completion/stop restores
+original own descriptors or removes only the observer's inherited shadow.
+Bindings replaced by someone else are preserved and reported as displaced.
+Readonly bindings remain uncovered; cleanup failures are counted. Retained
+wrapper aliases stop recording after the session stops.
+
+`panelsCovered` describes successfully wrapped bindings at the initial census,
+not all native calls. Earlier aliases, panels created later and other JS realms
+remain unobserved. A successful hook reports `partial-tree`, `fullModCoverage`
+remains false, and no visits/s or FPS estimate is derived from these counts.
+The legacy `prototypesHooked` field stays zero. This diagnostic runs only in the
+current-config Dev benchmark, not normal polling or the expanded-config run.
+
+Native configuration investigations use `startBenchmark` with `quiet: true` to
+retain the same callback accounting while suppressing startup, heartbeat and
+completion console output. The handle, timing and completion semantics are
+unchanged. This does not suppress feature-owned perf logging or overlays.
 
 ## Managed one-shot callbacks
 
@@ -64,6 +79,16 @@ and counts outstanding managed polls/one-shots. `stop()` detaches observation
 and returns per-owner totals plus sampled start/peak/end outstanding counts.
 Repeated stop calls return stable copies; an old stop cannot stop a newer observer.
 There are at most 128 owner rows; overflow is aggregated under `<other>`.
+
+The active observation may lease a diagnostic pause with `pausePolling(ids)`;
+an empty list resumes all its selected owners. Only managed recurring callbacks
+are skipped: tasks remain registered and scheduled at their normal cadence, and
+native context validity checks still run. Skipped callbacks do not count as
+executed work. One-shots, event/settings hooks and other owners continue. Stop
+or replacement releases the pause automatically; a retired observer cannot
+pause work again. `isActive()` lets the diagnostic reject superseded observation.
+This is for brief controlled comparisons with retained panels, not production
+work reduction: source discovery and lifecycle reconciliation are paused too.
 
 Observation creates no timers and performs no panel traversal or logging. The
 caller owns sampling and cancellation. Timing and per-callback aggregation only

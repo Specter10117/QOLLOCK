@@ -1,0 +1,610 @@
+"use strict";
+const test = require("node:test");
+const assert = require("node:assert/strict");
+const sim = require("../scripts/simulator");
+
+function fixture() {
+    const hud = sim.createHud({ inHideout: false });
+    hud.assertLoaded();
+    hud.sandbox.eval("Math.random = () => 0;"); // Make newly enabled poll phases deterministic.
+    const { $, QOL: Q } = hud.sandbox.global;
+    const add = (parent, id, classes = []) => {
+        const panel = $.CreatePanel("Panel", parent, id);
+        for (const cls of classes) panel.AddClass(cls);
+        return panel;
+    };
+    const core = add(hud.root, "", ["HudCore"]);
+    const gameplay = add(core, "gameplay_hud");
+    const label = (parent, id, value, classes = []) => {
+        const panel = $.CreatePanel("Label", parent, id);
+        panel.text = value;
+        for (const cls of classes) panel.AddClass(cls);
+        return panel;
+    };
+    const config = patch => Q.core.ConfigAdapter.loadFromFlat(patch);
+    const find = id => hud.root.FindChildTraverse(id);
+    const clean = () => { assert.deepEqual(hud.clock.errors, []); };
+    return { hud, Q, $, core, gameplay, add, label, config, find, clean };
+}
+
+function zipSources(env) {
+    const alive = env.add(env.gameplay, "gameplay_hud_alive");
+    const crosshair = env.add(alive, "crosshair");
+    const hints = env.$.CreatePanel("Citadel_AbilityHUDElement_ButtonHint", crosshair, "button_hints_container");
+    const bucket = env.add(env.add(hints, "RightContainer"), "", ["priority_bucket"]);
+    return { alive, crosshair, hints, bucket, effects: env.add(alive, "StatusEffects") };
+}
+
+test("small CSS features project the complete configuration and add no feature polls", () => {
+    const env = fixture();
+    const { Q, hud, core, add, config } = env;
+    const abilities = add(core, "AbilitiesContainer");
+    const native = add(abilities, "CosmeticAbilitiesMenu");
+    native.style.opacity = "0.75";
+    const createdPolls = [];
+    const createPoll = Q.core.Scheduler.createPollLoop;
+    Q.core.Scheduler.createPollLoop = (callback, interval, id) => {
+        createdPolls.push(id);
+        return createPoll(callback, interval, id);
+    };
+    config({ ENABLE_HIDE_MAGAZINE: 1, ENABLE_SIMPLIFY_ABILITY_ICONS: 1, ENABLE_NICKNAMES: 1,
+        ENABLE_HIDE_FAILED_HINT: 1, ENABLE_CLEAN_STACKS: 1, HEALTHBAR_TYPE: 5 });
+    assert.equal(hud.root.BHasClass("hide_magazine_active"), true);
+    assert.equal(hud.root.BHasClass("simplify_ability_icons_active"), true);
+    assert.equal(hud.root.BHasClass("nicknames_active"), true);
+    assert.equal(hud.root.BHasClass("hide_failed_hint_active"), true);
+    assert.equal(hud.root.BHasClass("clean_stacks_active"), false, "Minecraft healthbar keeps its stack gate");
+    Q.core.ConfigStore.set("ql_ability_icons", "ENABLE_HIDE_COSMETIC_ABILITY", true);
+    assert.equal(hud.root.BHasClass("hide_magazine_active"), true, "local feature changes retain unrelated settings");
+    assert.equal(hud.root.BHasClass("minecraft_healthbar_active"), true);
+    assert.equal(native.style.opacity, "0.75");
+    assert.equal(native.GetParent(), abilities);
+    for (const id of ["ql_ability_icons", "ql_cast_failed_hint", "ql_nicknames"])
+        assert.equal(createdPolls.includes(id), false, id);
+    env.clean();
+});
+
+test("damage impact owns only changed presentation properties and preserves native animation", () => {
+    const env = fixture();
+    const { Q, hud, core, add, config } = env;
+    const panel = add(core, "damage_impact");
+    panel.style.transform = "rotateZ(3deg)";
+    panel.style.preTransformScale2d = "1.07";
+    config({ DAMAGE_IMPACT_SCALE: 1.5, DAMAGE_IMPACT_X_OFFSET: 123, DAMAGE_IMPACT_OPACITY: 0.6 });
+    assert.equal(panel.style.uiScale, "120%");
+    assert.equal(panel.style.x, "123px");
+    assert.equal(panel.style.opacity, "0.60");
+    assert.equal(panel.style.y, undefined);
+    Q.core.ConfigStore.set("ql_damage_impact", "ENABLE_DAMAGE_IMPACT", false);
+    assert.equal(panel.BHasClass("qol-hidden"), true);
+    assert.equal(panel.style.visibility, "collapse");
+    config({ DAMAGE_IMPACT_SCALE: 1, DAMAGE_IMPACT_X_OFFSET: 0, DAMAGE_IMPACT_OPACITY: 1, ENABLE_DAMAGE_IMPACT: 1 });
+    assert.equal(panel.style.uiScale, undefined);
+    assert.equal(panel.style.x, undefined);
+    assert.equal(panel.style.opacity, undefined);
+    assert.equal(panel.style.visibility, undefined);
+    assert.equal(panel.style.transform, "rotateZ(3deg)");
+    assert.equal(panel.style.preTransformScale2d, "1.07");
+    panel.DeleteAsync(0); hud.clock.advance(1);
+    const replacement = add(core, "damage_impact");
+    config({ DAMAGE_IMPACT_X_OFFSET: 123 });
+    assert.equal(replacement.style.x, "123px", "settings bypass an earlier missing-panel retry deadline");
+    env.clean();
+});
+
+test("damage report offsets have one owner across visible, hidden, replacement and disable states", () => {
+    const env = fixture();
+    const { Q, hud, core, add, config } = env;
+    const panel = add(core, "CitadelHudDamageReport");
+    panel.style.opacity = "0.8";
+    panel.style.transform = "translateX(3px)";
+    config({ DAMAGE_REPORT_X_OFFSET: 357, DAMAGE_REPORT_Y_OFFSET: -1400, DAMAGE_REPORT_SCALE: 150,
+        DISABLE_DAMAGE_REPORT: 0, ENABLE_HIDE_MAGAZINE: 1 });
+    assert.equal(Q.core.FeatureRegistry.isEnabled("ql_damage_report"), true);
+    assert.equal(panel.style.x, "357px");
+    assert.equal(panel.style.y, "1400px", "runtime accepts the same range as Customize");
+    assert.equal(panel.style.uiScale, "150%");
+    Q.core.ConfigStore.set("ql_damage_report", "DISABLE_DAMAGE_REPORT", true);
+    assert.equal(hud.root.BHasClass("disable_damage_report_active"), true);
+    assert.equal(hud.root.BHasClass("hide_magazine_active"), true);
+    assert.equal(panel.style.x, "357px");
+    Q.core.ConfigStore.set("ql_damage_report", "DISABLE_DAMAGE_REPORT", false);
+    panel.DeleteAsync(0); hud.clock.advance(1);
+    const replacement = add(core, "CitadelHudDamageReport");
+    replacement.style.opacity = "0.9";
+    hud.clock.advance(600);
+    assert.equal(replacement.style.x, "357px");
+    Q.core.FeatureRegistry.disable("ql_damage_report"); hud.clock.advance(1200);
+    assert.equal(replacement.style.x, undefined, "core cannot reapply an offset after the owning feature stops");
+    assert.equal(replacement.style.y, undefined);
+    assert.equal(replacement.style.opacity, "0.9");
+    assert.equal(replacement.style.uiScale, "150%", "independent scale owner remains active");
+    env.clean();
+});
+
+for (const scenario of [
+    { id: "ql_damage_impact", panel: "damage_impact", key: "DAMAGE_IMPACT_X_OFFSET", alpha: "DAMAGE_IMPACT_OPACITY" },
+    { id: "ql_damage_report", panel: "CitadelHudDamageReport", key: "DAMAGE_REPORT_X_OFFSET" }
+]) test(`${scenario.id} restores native feedback and finishes rejected cleanup after stopping`, () => {
+    const env = fixture(); env.Q.core.App.shutdown();
+    const cfg = env.Q.buildDefaultConfig(); cfg[scenario.key] = 40;
+    if (scenario.alpha) cfg[scenario.alpha] = 0.4;
+    const panel = env.add(env.core, scenario.panel);
+    let reads = 0;
+    const feature = env.Q.core.FeatureRegistry.getManifest(scenario.id).create({ events: env.Q.core.EventBus,
+        id: scenario.id, config: { view() { reads++; return cfg; } }
+    });
+    feature.onEnable(); panel.style.x = "90px";
+    if (scenario.alpha) panel.style.opacity = "0.9";
+    env.hud.clock.advance(700);
+    assert.equal(panel.style.x, "40px");
+    if (scenario.alpha) assert.equal(panel.style.opacity, "0.40");
+    const clear = panel.ClearPropertyFromCode.bind(panel); let reject = true;
+    panel.ClearPropertyFromCode = property => reject && (property === "x" || property === "opacity") ? false : clear(property);
+    feature.onDisable(); const stoppedReads = reads;
+    reject = false; env.hud.clock.advance(700);
+    assert.equal(panel.style.x, undefined);
+    if (scenario.alpha) assert.equal(panel.style.opacity, undefined);
+    cfg[scenario.key] = 80; feature.onSettingsChanged(); env.hud.clock.advance(700);
+    assert.equal(panel.style.x, undefined); assert.equal(reads, stoppedReads);
+    env.clean();
+});
+
+test("combat overlay preserves indicator history, recovers owned labels and transitions phases", () => {
+    const env = fixture();
+    const { Q, hud, gameplay, add, config, find } = env;
+    const alert = add(gameplay, "InCombatAlert");
+    alert.AddClass("Visible");
+    config({ ENABLE_COMBAT_STATUS: 1, ENABLE_COMBAT_INDICATOR: 1, COMBAT_STATUS_SCALE: 150, COMBAT_STATUS_X_OFFSET: 80 });
+    const overlay = find("QOLCombatStatusOverlay");
+    assert.equal(overlay.style.visibility, "visible");
+    assert.equal(overlay.style.uiScale, "150%");
+    assert.equal(find("QOLCombatStatusState").text, "IN COMBAT");
+    hud.clock.advance(1000);
+    assert.equal(find("QOLCombatStatusTimer").text, "1.0s");
+    const oldLabel = find("QOLCombatStatusState");
+    oldLabel.DeleteAsync(0); hud.clock.advance(250);
+    assert.notEqual(find("QOLCombatStatusState"), oldLabel);
+    assert.equal(find("QOLCombatStatusState").text, "IN COMBAT");
+    alert.RemoveClass("Visible"); hud.clock.advance(250);
+    assert.equal(overlay.BHasClass("phase_recover"), true);
+    assert.equal(find("QOLCombatStatusState").text, "RECOVERING");
+    hud.clock.advance(3200);
+    assert.equal(overlay.BHasClass("phase_idle"), true);
+    alert.AddClass("Visible"); hud.clock.advance(250);
+    Q.core.ConfigStore.set("ql_combat_status", "ENABLE_COMBAT_STATUS", false); hud.clock.advance(1);
+    assert.equal(find("QOLCombatStatusOverlay"), null);
+    assert.equal(hud.root.BHasClass("combat_indicator_active"), true);
+    alert.RemoveClass("Visible"); hud.clock.advance(500);
+    assert.equal(hud.root.BHasClass("combat_indicator_active"), true, "disabling the readout preserves indicator recovery");
+    hud.clock.advance(3200); assert.equal(hud.root.BHasClass("combat_indicator_active"), false);
+    assert.equal(Object.hasOwn(Q.state, "combatStatus"), false);
+    assert.equal(alert.IsValid(), true);
+    env.clean();
+});
+
+test("zip boost distinguishes a ready hint from active buff and preserves cooldown through overlay replacement", () => {
+    const env = fixture();
+    const { hud, Q, add, label, config, find } = env;
+    const native = zipSources(env);
+    const hint = add(native.bucket, "citadel_ability_zipline_boost_", ["active"]);
+    const context = label(hint, "context_label", "42s");
+    const effects = native.effects;
+    config({ ENABLE_ZIP_BOOST: 1, ZIP_BOOST_SCALE: 150, ZIP_BOOST_X_OFFSET: 80, ZIP_BOOST_Y_OFFSET: 60 });
+    const first = find("QOLZipBoostOverlay");
+    assert.equal(first.BHasClass("in_use"), false);
+    assert.equal(find("QOLZipBoostState").text, "READY");
+    hint.AddClass("on_cooldown"); hud.clock.advance(500);
+    assert.equal(find("QOLZipBoostState").text, "COOLDOWN 42s");
+    first.DeleteAsync(0); hud.clock.advance(500);
+    const overlay = find("QOLZipBoostOverlay");
+    assert.notEqual(overlay, first);
+    assert.equal(overlay.style.uiScale, "150%");
+    assert.equal(overlay.style.x, "80px"); assert.equal(overlay.style.y, "-60px");
+    assert.equal(overlay.style.marginLeft, undefined);
+    assert.equal(find("QOLZipBoostState").text, "COOLDOWN 42s");
+    const buff = add(effects, "status_citadel_ability_zipline_boost"); hud.clock.advance(500);
+    assert.equal(overlay.BHasClass("in_use"), true);
+    assert.match(find("QOLZipBoostState").text, /^ACTIVE \d+s$/);
+    buff.DeleteAsync(0); hint.RemoveClass("on_cooldown"); hud.clock.advance(500);
+    assert.equal(find("QOLZipBoostState").text, "READY");
+    assert.equal(overlay.BHasClass("ready_flash"), true);
+    hud.clock.advance(2200); assert.equal(overlay.BHasClass("ready_flash"), false);
+    hud.root.AddClass("InHideout"); hud.clock.advance(500);
+    assert.equal(overlay.BHasClass("qol-hidden"), true);
+    assert.equal(context.text, "42s");
+    Q.core.ConfigStore.set("ql_zipboost", "ENABLE_ZIP_BOOST", false); hud.clock.advance(1);
+    assert.equal(find("QOLZipBoostOverlay"), null);
+    assert.equal(hint.IsValid(), true); assert.equal(effects.IsValid(), true);
+    env.clean();
+});
+
+test("better unsecured retains component scale, down-positive offsets and legacy icon/text setting", () => {
+    const env = fixture();
+    const { Q, hud, core, add, label, config, find } = env;
+    const stats = add(core, "StatsAndModsContainer");
+    const gold = add(add(stats, "LowerLeft"), "gold_and_ap_container");
+    const native = add(add(gold, "hudGoldContainer"), "", ["hudDeathGoldContainer"]);
+    const source = label(native, "hudDeathGoldLabel", "1.2k", ["death_penalty_gold"]);
+    const caption = label(native, "hudUnsecuredLabel", "Native caption");
+    const defaults = hud.sandbox.global.QOL_DEFAULT_CONFIG;
+    config({ ENABLE_BETTER_UNSECURED: 1, UNSECURED_SOULS_HUD_SCALE: 200,
+        UNSECURED_SOULS_HUD_X_OFFSET: 1999,
+        UNSECURED_SOULS_HUD_Y_OFFSET: defaults.UNSECURED_SOULS_HUD_Y_OFFSET - 1999,
+        ENABLE_BETTER_UNSECURED_SHOW_ICON: 0, ENABLE_BETTER_UNSECURED_SHOW_TEXT: 0,
+        ENABLE_BETTER_UNSECURED_SHOW_ICON_TEXT: 1 });
+    const overlay = find("QOLBetterUnsecuredOverlay");
+    assert.equal(overlay.style.marginLeft, "115px"); assert.equal(overlay.style.marginBottom, "130px");
+    assert.equal(overlay.style.x, (1999 - defaults.UNSECURED_SOULS_HUD_X_OFFSET) + "px"); assert.equal(overlay.style.y, "-1999px");
+    assert.equal(find("QOLBetterUnsecuredMirrorLabel").style.fontSize, "28px");
+    assert.equal(find("QOLBetterUnsecuredMirrorIcon").BHasClass("qol-hidden"), false);
+    assert.equal(find("QOLBetterUnsecuredMirrorText").BHasClass("qol-hidden"), false);
+    assert.equal(find("QOLBetterUnsecuredMirrorText").text, "Native caption");
+    const mirror = find("QOLBetterUnsecuredMirrorLabel");
+    mirror.DeleteAsync(0); hud.clock.advance(250);
+    assert.notEqual(find("QOLBetterUnsecuredMirrorLabel"), mirror);
+    assert.equal(find("QOLBetterUnsecuredMirrorLabel").text, "1.2k");
+    assert.equal(find("QOLBetterUnsecuredMirrorLabel").style.fontSize, "28px");
+    source.text = "0"; hud.clock.advance(250); assert.equal(overlay.BHasClass("qol-hidden"), true);
+    source.text = "125"; hud.clock.advance(250); assert.equal(overlay.BHasClass("qol-hidden"), false);
+    Q.core.ConfigStore.set("ql_better_unsecured_hud", "ENABLE_BETTER_UNSECURED", false); hud.clock.advance(1);
+    assert.equal(find("QOLBetterUnsecuredOverlay"), null);
+    assert.equal(source.text, "125"); assert.equal(caption.text, "Native caption");
+    env.clean();
+});
+
+test("only selected Unsecured Souls previews a zero amount in its owned mirror and retires the sample", () => {
+    const env = fixture();
+    const { hud, Q, core, add, label, config, find } = env;
+    const stats = add(core, "StatsAndModsContainer"), gold = add(add(stats, "LowerLeft"), "gold_and_ap_container");
+    const native = add(add(gold, "hudGoldContainer"), "", ["hudDeathGoldContainer"]);
+    const source = label(native, "hudDeathGoldLabel", "0", ["death_penalty_gold"]);
+    const caption = label(native, "hudUnsecuredLabel", "Native caption");
+    config({ ENABLE_BETTER_UNSECURED: 1, UNSECURED_SOULS_HUD_SCALE: 150, UNSECURED_SOULS_HUD_X_OFFSET: 55 });
+    const overlay = find("QOLBetterUnsecuredOverlay"), preview = Q.presentation.preview;
+    const canonical = Q.core.ConfigAdapter.exportToFlat(), before = JSON.stringify(canonical);
+    hud.sandbox.global.State.lastConfig = canonical;
+    const stamp = Q.core.persistence.getConfigChangeStamp(Q.core.persistence.getUIRoot());
+    hud.root.AddClass("QOLCustomizeActive");
+    const select = id => {
+        preview.write(hud.root, {}, "souls-sample", stamp, id);
+        preview.commit(preview.consume(hud.root, canonical)); hud.clock.advance(250);
+    };
+    select("ammo"); assert.equal(overlay.BHasClass("qol-hidden"), true);
+    select("unsecuredSouls"); assert.equal(overlay.BHasClass("qol-hidden"), false);
+    assert.equal(find("QOLBetterUnsecuredMirrorLabel").text, "100");
+    assert.equal(find("QOLBetterUnsecuredMirrorLabel").style.fontSize, "21px");
+    assert.equal(overlay.style.x, (55 - hud.sandbox.global.QOL_DEFAULT_CONFIG.UNSECURED_SOULS_HUD_X_OFFSET) + "px");
+    assert.equal(source.text, "0"); assert.equal(caption.text, "Native caption");
+    assert.equal(JSON.stringify(Q.core.ConfigAdapter.exportToFlat()), before);
+    source.text = "1.2k"; hud.clock.advance(250);
+    assert.equal(find("QOLBetterUnsecuredMirrorLabel").text, "1.2k", "live native amount replaces the sample");
+    source.text = "0"; select("ammo"); assert.equal(overlay.BHasClass("qol-hidden"), true);
+    select("unsecuredSouls"); preview.clear(hud.root, "souls-sample"); hud.clock.advance(250);
+    assert.equal(overlay.BHasClass("qol-hidden"), true, "withdrawal restores the native zero policy");
+    select("unsecuredSouls"); hud.clock.advance(2600);
+    assert.equal(overlay.BHasClass("qol-hidden"), true, "lease expiry hides the sample");
+    select("unsecuredSouls"); hud.root.RemoveClass("QOLCustomizeActive"); hud.clock.advance(250);
+    assert.equal(overlay.BHasClass("qol-hidden"), true, "leaving Customize hides the sample");
+    Q.core.FeatureRegistry.disable("ql_better_unsecured_hud"); hud.clock.advance(20);
+    assert.equal(find("QOLBetterUnsecuredOverlay"), null); assert.equal(source.text, "0");
+    env.clean();
+});
+
+test("selected Unsecured Souls can edit its owned sample before native source discovery and cleans up on withdrawal", () => {
+    const env = fixture();
+    const { hud, Q, config, find } = env;
+    config({ ENABLE_BETTER_UNSECURED: 1 });
+    assert.equal(find("QOLBetterUnsecuredOverlay"), null);
+    const preview = Q.presentation.preview, canonical = Q.core.ConfigAdapter.exportToFlat();
+    hud.sandbox.global.State.lastConfig = canonical;
+    hud.root.AddClass("QOLCustomizeActive");
+    preview.write(hud.root, {}, "absent-souls", Q.core.persistence.getConfigChangeStamp(Q.core.persistence.getUIRoot()), "unsecuredSouls");
+    preview.commit(preview.consume(hud.root, canonical)); hud.clock.advance(250);
+    assert.equal(find("QOLBetterUnsecuredOverlay").BHasClass("qol-hidden"), false);
+    assert.equal(find("QOLBetterUnsecuredMirrorLabel").text, "100");
+    assert.equal(find("hudDeathGoldLabel"), null, "no game-owned source is fabricated");
+    preview.clear(hud.root, "absent-souls"); hud.clock.advance(250);
+    assert.equal(find("QOLBetterUnsecuredOverlay"), null);
+    Q.core.FeatureRegistry.disable("ql_better_unsecured_hud");
+    env.clean();
+});
+
+test("unsecured timer forecasts gains and spending, resets on source replacement and owns only its overlay", () => {
+    const env = fixture();
+    const { Q, hud, core, gameplay, add, label, config, find } = env;
+    const top = add(core, "TopBar"); label(top, "GameTime", "0:00");
+    const stats = add(core, "StatsAndModsContainer"), lower = add(stats, "LowerLeft");
+    const gold = add(lower, "gold_and_ap_container"), body = add(gold, "hudGoldContainer");
+    const container = add(body, "", ["hudDeathGoldContainer"]);
+    const source = label(container, "hudDeathGoldLabel", "1000", ["death_penalty_gold"]);
+    config({ ENABLE_UNSECURED_SOUL_TIMER: 1, UNSECURED_SOUL_TIMER_SCALE: 200,
+        UNSECURED_SOUL_TIMER_X_OFFSET: -1999, UNSECURED_SOUL_TIMER_Y_OFFSET: -1501 });
+    hud.clock.advance(1);
+    const overlay = find("QOLUnsecuredSoulsOverlay");
+    const state = find("QOLUnsecuredSoulsState");
+    assert.equal(overlay.style.marginLeft, "-2519px"); assert.equal(overlay.style.marginBottom, "-1391px");
+    assert.equal(overlay.style.x, undefined); assert.equal(overlay.style.y, undefined);
+    assert.equal(state.style.fontSize, "32px"); assert.equal(state.text, "256s");
+    source.text = "990"; hud.clock.advance(200);
+    source.text = "980"; hud.clock.advance(200);
+    assert.equal(state.text, "253s", "a rapid balance decrease cannot be extrapolated as the conversion rate");
+    source.text = "1200"; hud.clock.advance(200);
+    assert.equal(state.text, "280s", "a gain starts a longer conversion forecast");
+    source.DeleteAsync(0); hud.clock.advance(1);
+    const replacement = label(container, "hudDeathGoldLabel", "500", ["death_penalty_gold"]); hud.clock.advance(200);
+    assert.equal(state.text, "174s", "the new source cannot inherit the previous deadline");
+    hud.root.AddClass("InHideout"); hud.clock.advance(200);
+    assert.equal(overlay.BHasClass("qol-hidden"), false);
+    Q.core.ConfigStore.set("ql_unsecured_souls_timer", "ENABLE_UNSECURED_SOUL_TIMER", false); hud.clock.advance(1);
+    assert.equal(find("QOLUnsecuredSoulsOverlay"), null);
+    assert.equal(replacement.text, "500");
+    env.clean();
+});
+
+function unsecuredTimerFixture(value, clockText = "0:00") {
+    const env = fixture();
+    const top = env.add(env.core, "TopBar");
+    const gameClock = env.add(top, "", ["GameClock"]);
+    const clockLabel = env.label(gameClock, "GameTime", clockText);
+    const stats = env.add(env.core, "StatsAndModsContainer");
+    const gold = env.add(env.add(stats, "LowerLeft"), "gold_and_ap_container");
+    const container = env.add(env.add(gold, "hudGoldContainer"), "", ["hudDeathGoldContainer"]);
+    const source = env.label(container, "hudDeathGoldLabel", value, ["death_penalty_gold"]);
+    env.config({ ENABLE_UNSECURED_SOUL_TIMER: 1 });
+    env.hud.clock.advance(1);
+    return { ...env, source, clockLabel, state: env.find("QOLUnsecuredSoulsState") };
+}
+
+test("unsecured timer forecasts the native conversion rule instead of capping slow decay with a heuristic", () => {
+    // Native convars: fixed 1.6, growth 0.08/min, remaining fraction 0.005,
+    // interval 1s. Literal times include falling remaining-based decay and
+    // flat-rate growth during conversion, rather than souls/currentRate.
+    for (const [souls, clock, expected] of [[50, "0:00", "29s"], [50, "10:00", "17s"],
+        [500, "10:00", "121s"], [1000, "10:00", "192s"], [1000, "20:00", "153s"]]) {
+        const env = unsecuredTimerFixture(String(souls), clock);
+        assert.equal(env.state.text, expected, `${souls} souls at ${clock}`);
+        env.clean();
+    }
+});
+
+test("small unsecured balances count down to full conversion without a 3s to 2s to 3s restart", () => {
+    const env = unsecuredTimerFixture("50");
+    assert.equal(env.state.text, "29s");
+    env.hud.clock.advance(2000);
+    env.source.text = "45"; env.clockLabel.text = "0:02"; env.hud.clock.advance(200);
+    assert.equal(env.state.text, "26s");
+    env.hud.clock.advance(800);
+    env.source.text = "43"; env.clockLabel.text = "0:03"; env.hud.clock.advance(200);
+    assert.equal(env.state.text, "25s");
+    env.hud.clock.advance(1000);
+    assert.equal(env.state.text, "24s", "one real second passes even between native label updates");
+    env.source.text = "42"; env.clockLabel.text = "0:04"; env.hud.clock.advance(200);
+    assert.ok(parseInt(env.state.text, 10) <= 24, "integer label rounding cannot add time back while souls decrease");
+    env.source.text = "100"; env.hud.clock.advance(200);
+    assert.ok(parseInt(env.state.text, 10) > 24, "new souls start a new longer forecast");
+    env.source.text = "0"; env.hud.clock.advance(200);
+    assert.equal(env.state.text, "");
+    env.clean();
+});
+
+test("unsecured conversion forecast follows a rounded native balance through the final soul", () => {
+    const env = unsecuredTimerFixture("50");
+    let previous = 0;
+    // Rounded balances from the extracted conversion rule at these seconds.
+    for (const [second, souls, expected] of [[1, 48, "28s"], [2, 46, "27s"], [3, 44, "26s"],
+        [5, 41, "24s"], [10, 32, "19s"], [15, 23, "14s"], [20, 14, "9s"],
+        [25, 6, "4s"], [28, 1, "1s"], [29, 0, ""]]) {
+        env.hud.clock.advance((second - previous) * 1000 - 200);
+        env.source.text = String(souls); env.clockLabel.text = `0:${String(second).padStart(2, "0")}`;
+        env.hud.clock.advance(200);
+        assert.equal(env.state.text, expected, `second ${second}: ${souls} souls`);
+        previous = second;
+    }
+    env.clean();
+});
+
+test("unsecured forecast rebases on late or rewound match time and unreadable amount recovery", () => {
+    const env = unsecuredTimerFixture("50");
+    env.clockLabel.text = "10:00"; env.hud.clock.advance(200);
+    assert.equal(env.state.text, "17s");
+    env.clockLabel.text = "0:00"; env.hud.clock.advance(200);
+    assert.equal(env.state.text, "29s", "a restarted match cannot retain the faster late-match forecast");
+    env.source.text = "{i:hud_death_gold_penalty}"; env.hud.clock.advance(200);
+    assert.equal(env.state.text, "--");
+    env.source.text = "50"; env.hud.clock.advance(200);
+    assert.equal(env.state.text, "29s", "unreadable periods cannot retain an old deadline");
+    env.clean();
+});
+
+test("unsecured timer retains saved margin coordinates and matching drag distance", () => {
+    const env = unsecuredTimerFixture("1000");
+    const overlay = env.find("QOLUnsecuredSoulsOverlay");
+    assert.equal(overlay.style.marginLeft, "-1370px");
+    assert.equal(overlay.style.marginBottom, "150px");
+    assert.equal(overlay.style.x, undefined);
+    assert.equal(overlay.style.y, undefined);
+    const settings = require("./load_settings_environment")();
+    const Q = settings.global.QOL;
+    const element = Q.presentation.elements.find(item => item.id === "unsecuredTimer");
+    const values = Q.ui.customizeGeometry.dragValues(element, overlay,
+        { UNSECURED_SOUL_TIMER_X_OFFSET: -850, UNSECURED_SOUL_TIMER_Y_OFFSET: 40 }, { x: 20, y: 10 });
+    assert.equal(values.UNSECURED_SOUL_TIMER_X_OFFSET, -810);
+    assert.equal(values.UNSECURED_SOUL_TIMER_Y_OFFSET, 30);
+    env.clean();
+});
+
+test("unsecured timer parses compact amounts without treating them as single souls", () => {
+    const env = unsecuredTimerFixture("1.2k");
+    assert.equal(env.state.text, "280s");
+    env.source.text = "1,200"; env.hud.clock.advance(200);
+    assert.equal(env.state.text, "280s");
+    env.clean();
+});
+
+test("unsecured timer counts down between changes without extrapolating the native refresh cadence", () => {
+    const env = unsecuredTimerFixture("1000");
+    env.hud.clock.advance(800);
+    env.source.text = "980"; env.hud.clock.advance(200);
+    assert.equal(env.state.text, "253s", "conversion follows the native rule regardless of the amount's refresh interval");
+    env.hud.clock.advance(1000);
+    assert.equal(env.state.text, "252s", "unchanged text must not postpone the deadline");
+    env.source.text = "940"; env.hud.clock.advance(200);
+    assert.ok(parseInt(env.state.text, 10) < 252);
+    env.source.text = "0"; env.hud.clock.advance(200);
+    assert.equal(env.state.text, "");
+    env.clean();
+});
+
+
+test("unsecured mirrors rebind still-live native sources and reset the timer estimate", () => {
+    const env = fixture();
+    const { hud, $, core, gameplay, add, label, config, find } = env;
+    const top = add(core, "TopBar"); label(top, "GameTime", "0:00");
+    const stats = add(core, "StatsAndModsContainer");
+    const lower = add(stats, "LowerLeft"), gold = add(lower, "gold_and_ap_container");
+    const body = add(gold, "hudGoldContainer");
+    const oldContainer = add(body, "", ["hudDeathGoldContainer"]);
+    const oldAmount = label(oldContainer, "hudDeathGoldLabel", "1000", ["death_penalty_gold"]);
+    config({ ENABLE_BETTER_UNSECURED: 1, ENABLE_UNSECURED_SOUL_TIMER: 1 });
+    hud.clock.advance(1);
+    oldAmount.text = "980"; hud.clock.advance(400);
+    assert.equal(find("QOLUnsecuredSoulsState").text, "253s");
+    const detached = $.CreatePanel("Panel", null, "DetachedUnsecuredSources");
+    oldContainer.SetParent(detached);
+    const currentContainer = add(body, "", ["hudDeathGoldContainer"]);
+    const amount = label(currentContainer, "hudDeathGoldLabel", "500", ["death_penalty_gold"]);
+    hud.clock.advance(2200);
+    assert.equal(find("QOLBetterUnsecuredMirrorLabel").text, "500");
+    assert.equal(find("QOLUnsecuredSoulsState").text, "172s", "replacement starts a fresh estimate and counts down for two seconds");
+    assert.equal(oldAmount.text, "980");
+    assert.equal(amount.IsValid(), true); assert.equal(oldContainer.IsValid(), true);
+    env.clean();
+});
+
+test("unsecured source discovery follows the native gold owner without full HUD refresh searches", () => {
+    const env = fixture();
+    const { hud, Q, core, add, label, config, find } = env;
+    const stats = add(core, "StatsAndModsContainer");
+    const lower = add(stats, "LowerLeft");
+    const makeGold = (parent, value) => {
+        const gold = add(parent, "gold_and_ap_container");
+        const container = add(add(gold, "hudGoldContainer"), "", ["hudDeathGoldContainer"]);
+        label(container, "hudDeathGoldLabel", value, ["death_penalty_gold"]);
+        return gold;
+    };
+    const first = makeGold(lower, "1000");
+    let broadGoldSearches = 0;
+    const traverse = hud.root.FindChildTraverse;
+    hud.root.FindChildTraverse = function (id) {
+        if (id === "gold_and_ap_container") broadGoldSearches++;
+        return traverse.call(this, id);
+    };
+    config({ ENABLE_UNSECURED_SOUL_TIMER: 1, ENABLE_BETTER_UNSECURED: 1 });
+    hud.clock.advance(6200);
+    assert.equal(find("QOLBetterUnsecuredMirrorLabel").text, "1000");
+    assert.equal(find("QOLUnsecuredSoulsState").text, "250s", "six elapsed seconds are not added back on each poll");
+    assert.equal(broadGoldSearches, 0, "verified native owners need no whole-HUD periodic rediscovery");
+
+    lower.id = "RetiredLowerLeft";
+    const replacementLower = add(stats, "LowerLeft");
+    makeGold(replacementLower, "500");
+    hud.clock.advance(2200);
+    assert.equal(first.IsValid(), true, "retired native source remains alive");
+    assert.equal(find("QOLBetterUnsecuredMirrorLabel").text, "500");
+    assert.equal(find("QOLUnsecuredSoulsState").text, "172s");
+    assert.equal(broadGoldSearches, 0);
+    for (const id of ["ql_unsecured_souls_timer", "ql_better_unsecured_hud"]) Q.core.FeatureRegistry.disable(id);
+    hud.clock.advance(20);
+    assert.equal(find("QOLBetterUnsecuredOverlay"), null);
+    assert.equal(find("QOLUnsecuredSoulsOverlay"), null);
+    env.clean();
+});
+
+test("better unsecured uses current native amount and caption owners through gaps and live replacements", () => {
+    const env = fixture(), { hud, Q, core, add, label, config, find } = env;
+    const stats = add(core, "StatsAndModsContainer"), lower = add(stats, "LowerLeft");
+    const body = add(add(lower, "gold_and_ap_container"), "hudGoldContainer");
+    const previous = add(body, "", ["hudDeathGoldContainer"]);
+    label(previous, "hudDeathGoldLabel", "500", ["death_penalty_gold"]);
+    label(previous, "hudUnsecuredLabel", "Retired caption");
+    config({ ENABLE_BETTER_UNSECURED: 1 });
+    assert.equal(find("QOLBetterUnsecuredMirrorLabel").text, "500");
+    previous.SetParent(add(body, "RetiredGoldComponent"));
+    hud.clock.advance(250);
+    assert.ok(!find("QOLBetterUnsecuredOverlay"), "a living retired component cannot supply a mirror");
+    const current = add(body, "", ["hudDeathGoldContainer"]);
+    const amount = label(current, "hudDeathGoldLabel", "250", ["death_penalty_gold"]);
+    hud.clock.advance(250);
+    assert.equal(find("QOLBetterUnsecuredMirrorLabel").text, "250");
+    assert.equal(find("QOLBetterUnsecuredMirrorText").text, "UNSECURED", "another gold component's caption is not a fallback");
+    const caption = label(current, "hudUnsecuredLabel", "Current caption");
+    amount.SetParent(previous);
+    label(current, "hudDeathGoldLabel", "700", ["death_penalty_gold"]);
+    hud.clock.advance(250);
+    assert.equal(find("QOLBetterUnsecuredMirrorLabel").text, "700");
+    assert.equal(find("QOLBetterUnsecuredMirrorText").text, "Current caption");
+    assert.equal(caption.text, "Current caption");
+    Q.core.FeatureRegistry.disable("ql_better_unsecured_hud"); hud.clock.advance(20);
+    assert.equal(find("QOLBetterUnsecuredOverlay"), null);
+    env.clean();
+});
+
+test("zip boost replaces living hints and status containers with the current gameplay sources", () => {
+    const env = fixture();
+    const { hud, $, add, label, config, find } = env;
+    const native = zipSources(env);
+    const oldHint = add(native.bucket, "citadel_ability_zipline_boost_", ["on_cooldown"]);
+    label(oldHint, "context_label", "42s");
+    const oldEffects = native.effects;
+    add(oldEffects, "status_citadel_ability_zipline_boost");
+    config({ ENABLE_ZIP_BOOST: 1 });
+    assert.match(find("QOLZipBoostState").text, /^ACTIVE /);
+    const detached = $.CreatePanel("Panel", null, "DetachedZipSources");
+    oldHint.SetParent(detached); oldEffects.SetParent(detached);
+    add(native.bucket, "citadel_ability_zipline_boost_", ["active"]);
+    add(native.alive, "StatusEffects");
+    hud.clock.advance(1800);
+    assert.equal(find("QOLZipBoostState").text, "READY");
+    assert.equal(oldHint.IsValid(), true); assert.equal(oldEffects.IsValid(), true);
+    env.clean();
+});
+
+test("zip boost ignores other components and follows the current native hint and effect owners", () => {
+    const env = fixture(), { hud, gameplay, add, label, config, find } = env;
+    const foreign = add(gameplay, "OtherComponent");
+    add(foreign, "citadel_ability_zipline_boost_", ["in_use"]);
+    add(add(foreign, "StatusEffects"), "status_citadel_ability_zipline_boost");
+    const native = zipSources(env);
+    config({ ENABLE_ZIP_BOOST: 1 });
+    assert.equal(find("QOLZipBoostState").text, "READY", "unrelated hints and status containers cannot supply active evidence");
+    const hint = add(native.bucket, "citadel_ability_zipline_boost_", ["on_cooldown"]);
+    label(hint, "context_label", "42s");
+    hud.clock.advance(1800);
+    assert.equal(find("QOLZipBoostState").text, "COOLDOWN 42s");
+    add(native.effects, "status_citadel_ability_zipline_boost"); hud.clock.advance(500);
+    assert.equal(find("QOLZipBoostOverlay").BHasClass("in_use"), true);
+    const retired = add(gameplay, "RetiredHintAndEffects");
+    native.hints.SetParent(retired); native.effects.SetParent(retired);
+    const hints = env.$.CreatePanel("Citadel_AbilityHUDElement_ButtonHint", native.crosshair, "button_hints_container");
+    // Placement can move between the XML's directional containers/buckets.
+    const bucket = add(add(hints, "LeftContainer"), "", ["priority_bucket"]);
+    add(bucket, "citadel_ability_zipline_boost_", ["active"]);
+    add(native.alive, "StatusEffects"); hud.clock.advance(500);
+    assert.equal(find("QOLZipBoostState").text, "READY");
+    assert.equal(find("QOLZipBoostOverlay").BHasClass("in_use"), false);
+    env.Q.core.FeatureRegistry.disable("ql_zipboost"); hud.clock.advance(20);
+    assert.ok(!find("QOLZipBoostOverlay")); env.clean();
+});
+
+test("zip boost cannot retain a living class-fallback hint outside the current hint owner", () => {
+    const env = fixture(), native = zipSources(env);
+    const old = env.add(native.bucket, "", ["citadel_ability_zipline_boost", "in_use"]);
+    env.config({ ENABLE_ZIP_BOOST: 1 });
+    assert.equal(env.find("QOLZipBoostOverlay").BHasClass("in_use"), true);
+    old.SetParent(env.add(env.gameplay, "RetiredClassHint"));
+    env.add(native.bucket, "", ["citadel_ability_zipline_boost", "active"]);
+    env.hud.clock.advance(500);
+    assert.equal(env.find("QOLZipBoostState").text, "READY");
+    env.Q.core.FeatureRegistry.disable("ql_zipboost"); env.hud.clock.advance(20); env.clean();
+});

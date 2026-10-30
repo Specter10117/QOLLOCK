@@ -129,6 +129,7 @@ function createTestEnvironment() {
         "utf8"
     );
     require("./load_ui_helpers")(sandbox);
+    vm.runInNewContext(fs.readFileSync(path.resolve(__dirname, "../panorama/scripts/ui/theme.js"), "utf8"), sandbox);
     vm.runInNewContext(devTabCode, sandbox);
 
     return {
@@ -172,7 +173,6 @@ test("ui/dev_tab: exports public API on QOL.ui.devTab and globalThis", () => {
     assert.strictEqual(typeof devApi.runFeatureIsolationTest, "function");
     assert.strictEqual(typeof devApi.runManifestTests, "function");
     assert.strictEqual(typeof devApi.requestPanelTreeDump, "function");
-    assert.strictEqual(typeof devApi.requestBuildStorageDryRun, "function");
     assert.strictEqual(typeof devApi.runFullTestSuite, "function");
     assert.strictEqual(typeof devApi.runPresetCycle, "function");
     assert.strictEqual(typeof devApi.copyDiagnosticsToClipboard, "function");
@@ -194,19 +194,6 @@ test("ui/dev_tab: requestPanelTreeDump writes force-sync token to HUD bridge", (
     const attr = env.hudPanel.GetAttributeString("QOL_DiagRequest", "");
     assert.ok(attr.startsWith("dt_"), "QOL_DiagRequest should start with dt_");
     assert.strictEqual(statusLabel.text, "Dumped to console log");
-});
-
-test("ui/dev_tab: requestBuildStorageDryRun writes QOL_BUILD_DUMP_TREE attribute", () => {
-    const env = createTestEnvironment();
-    const { requestBuildStorageDryRun } = env.sandbox.QOL.ui.devTab;
-
-    const statusLabel = env.sandbox.$.CreatePanel("Label", env.rootPanel, "TestStatus");
-    const ok = requestBuildStorageDryRun(statusLabel);
-
-    assert.strictEqual(ok, true);
-    const attr = env.hudPanel.GetAttributeString("QOL_BUILD_DUMP_TREE", "");
-    assert.strictEqual(attr, "1");
-    assert.strictEqual(statusLabel.text, "Dry run started");
 });
 
 test("ui/dev_tab: copyDiagnosticsToClipboard calls dumpDiagnostics and copies to clipboard", () => {
@@ -233,12 +220,32 @@ test("ui/dev_tab: render builds all dev sections and action buttons", () => {
     assert.ok(list.FindChildTraverse("FeatureTestBtn"), "Should render FeatureTestBtn");
     assert.ok(list.FindChildTraverse("ManifestTestBtn"), "Should render ManifestTestBtn");
     assert.ok(list.FindChildTraverse("TreeDumpBtn"), "Should render TreeDumpBtn");
-    assert.ok(list.FindChildTraverse("BsDumpBtn"), "Should render BsDumpBtn");
+    assert.equal(list.FindChildTraverse("BsDumpBtn"), null, "Do not offer the retired storage pipeline as a working test");
     assert.ok(list.FindChildTraverse("FullSuiteBtn"), "Should render FullSuiteBtn");
     assert.ok(list.FindChildTraverse("PresetCycleBtn"), "Should render PresetCycleBtn");
     assert.ok(list.FindChildTraverse("DiagCopyLogsBtn"), "Should render DiagCopyLogsBtn");
     assert.ok(list.FindChildTraverse("BenchmarkRunBtn"), "Should render BenchmarkRunBtn");
     assert.ok(list.FindChildTraverse("BenchmarkStressBtn"), "Should render BenchmarkStressBtn");
+    assert.equal(list.FindChildTraverse("FpsScanBtnexpanded"), null, "Expanded has one native investigation entry, without a competing cadence scan");
+    const minimap = list.FindChildTraverse("FpsMinimapBtn");
+    assert.ok(minimap, "the targeted diagnostic must be reachable from Dev");
+    minimap._fire("onactivate");
+    assert.match(env.hudPanel.GetAttributeString("QOL_DiagRequest", ""), /^fps_minimap_/);
+    assert.equal(list.FindChildTraverse("FpsMinimapVisibilityBtn"), null, "replace the narrow modes with one complete entry");
+});
+
+for (const [buttonId, inputId, mode, ids] of [["FpsMinimapBtn", "FpsMinimapConditions", "minimap", "static-crates,layer-routes"],
+    ["FpsConfigBtn", "FpsConfigConditions", "config", "whole-config,benchmark-instrumentation"]]) test(`the ${mode} native action accepts selected IDs without saving settings`, () => {
+    const env = createTestEnvironment();
+    const list = env.sandbox.$.CreatePanel("Panel", env.rootPanel, "SettingsList");
+    env.sandbox.QOL.ui.devTab.render(list);
+    const button = list.FindChildTraverse(buttonId);
+    assert.ok(button);
+    const input = list.FindChildTraverse(inputId);
+    assert.ok(input);
+    input.text = ids.replace(",", ", ");
+    button._fire("onactivate");
+    assert.match(env.hudPanel.GetAttributeString("QOL_DiagRequest", ""), new RegExp("^fps_" + mode + "_\\d+_" + ids + "$"));
 });
 
 test("ui/dev_tab: runInGameBenchmark initiates benchmark request and copies report", () => {
@@ -254,6 +261,32 @@ test("ui/dev_tab: runInGameBenchmark initiates benchmark request and copies repo
     assert.ok(reqToken.startsWith("bm_10_normal_"), "Must request 10s normal benchmark");
     assert.ok(actionBtn.BHasClass("CycleActive"), "Action button must be active");
     assert.ok(statusLabel.text.includes("10s left"), "Status should indicate 10s remaining");
+});
+
+for (const mode of ["current", "minimap", "config"]) test(`FPS investigation ${mode} UI preserves the correct report owner`, () => {
+    const env = createTestEnvironment();
+    const label = env.sandbox.$.CreatePanel("Label", env.rootPanel, "ScanStatus");
+    const button = env.sandbox.$.CreatePanel("Button", env.rootPanel, "ScanButton");
+    env.sandbox.QOL.ui.devTab.runInGameBenchmark(env.rootPanel, label, button, "fps_" + mode);
+    const token = env.hudPanel.GetAttributeString("QOL_DiagRequest", "");
+    assert.ok(token.startsWith("fps_" + mode + "_"));
+    env.sandbox.QOL.ui.configTab.tryCopyTextToClipboard("Actual external native report");
+    env.hudPanel.SetAttributeString("QOL_Diag", JSON.stringify({ benchmark: {
+        token, report: "UI cadence investigation report", stats: { reason: "complete" }
+    } }));
+    env.clock.advance(600);
+    assert.equal(env.getClipboardText(), mode !== "current" ? "Actual external native report" : "UI cadence investigation report");
+    if (mode !== "current") assert.match(label.text, /capture window/);
+    assert.equal(button.BHasClass("CycleActive"), false);
+    assert.doesNotMatch(label.text, /\?ms|callbacks/);
+});
+
+test("Expanded native action defaults to the short preflight instead of an unattended full scan", () => {
+    const env = createTestEnvironment();
+    const list = env.sandbox.$.CreatePanel("Panel", env.rootPanel, "SettingsList");
+    env.sandbox.QOL.ui.devTab.render(list);
+    list.FindChildTraverse("FpsConfigBtn")._fire("onactivate");
+    assert.match(env.hudPanel.GetAttributeString("QOL_DiagRequest", ""), /^fps_config_\d+_whole-config,benchmark-instrumentation$/);
 });
 
 test("audit displays a failed HUD observation as failure even when copying succeeds", () => {
@@ -272,6 +305,26 @@ test("audit displays a failed HUD observation as failure even when copying succe
     assert.equal(button.BHasClass("CycleActive"), false);
     assert.match(env.getClipboardText(), /source label missing/);
 });
+
+for (const method of ["runManifestTests", "runInGameEngineAudit", "runFullTestSuite"]) {
+    test(`${method} does not report success when the current registry has retired an owner`, () => {
+        const env = createTestEnvironment();
+        const label = env.sandbox.$.CreatePanel("Label", env.rootPanel, "Status");
+        const button = env.sandbox.$.CreatePanel("Button", env.rootPanel, "Action");
+        const api = env.sandbox.QOL.ui.devTab;
+        if (method === "runManifestTests") api[method](label, button);
+        else api[method](env.rootPanel, label, button);
+        env.hudPanel.SetAttributeString("QOL_Diag", JSON.stringify({
+            disabled: ["ql_topbar"], newErrors: {}, testResults: {
+                token: env.hudPanel.GetAttributeString("QOL_DiagRequest", ""),
+                summary: { total: 1, passed: 1, failed: 0, errors: 0, skipped: 0, notRun: 0 }, report: "Hook observed"
+            }
+        }));
+        env.clock.advance(500);
+        assert.equal(label.style.color, "#cc4444");
+        assert.match(label.text, /1 errors/);
+    });
+}
 
 test("audit rejects a stale report and shows timeout instead of success", () => {
     const env = createTestEnvironment();

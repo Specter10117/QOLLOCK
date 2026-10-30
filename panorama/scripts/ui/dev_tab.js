@@ -6,7 +6,6 @@
 //              Feature Isolation Test (FIT) execution & diagnostic polling,
 //              Manifest In-Game Test Suite runner (Phase T2),
 //              Live HUD panel tree dump to console for headless profiler,
-//              Build Storage pipeline dry run automation,
 //              Full test suite runner & compact clipboard report generation,
 //              Preset cycle stress test & auto-disable verification,
 //              Diagnostic log dump & clipboard copy,
@@ -34,6 +33,8 @@
     };
 
     const isAlive = Q.core.panel.isAlive;
+    const localize = text => globalThis.LocalizeSettingsText(text, true);
+    const format = (text, values) => Q.ui.theme.FormatSettingsText(text, values);
 
     // =========================================================================
     // HUD Bridge Panel Resolver
@@ -49,6 +50,45 @@
         } catch {
             return null;
         }
+    }
+
+    function diagnosticBusy(statusLabel) {
+        if (!(fitRunning || pcRunning || bmRunning || mtRunning || auditRunning || fsRunning || Q.ui.visualCheck?.isRunning())) return false;
+        if (isAlive(statusLabel)) statusLabel.text = localize("Another developer test is running.");
+        return true;
+    }
+
+    function diagnosticFailures(diag) {
+        return [...new Set([...(diag.disabled || []),
+            ...Object.keys(diag.newErrors || {}).filter(id => diag.newErrors[id] > 0)])];
+    }
+
+    // Both config tests publish temporary values through the existing save path.
+    // Keep newer user edits while rolling back the values owned by the test.
+    function captureConfigTest(statusLabel, actionBtn) {
+        const config = Q.getSettingsConfig();
+        const original = { ...config };
+        const context = $.GetContextPanel();
+        const hud = findHudPanel();
+        let expected = { ...config };
+        const remember = () => { expected = { ...config }; };
+        const ownsConfig = () => Q.getSettingsConfig() === config && $.GetContextPanel() === context;
+        const restore = () => {
+            if (!ownsConfig()) return;
+            const restored = { ...original };
+            for (const key of new Set([...Object.keys(config), ...Object.keys(expected)])) {
+                if (Object.is(config[key], expected[key])) continue;
+                if (Object.prototype.hasOwnProperty.call(config, key)) restored[key] = config[key];
+                else delete restored[key];
+            }
+            for (const key of Object.keys(config)) delete config[key];
+            Object.assign(config, restored);
+            globalThis.SaveAndSync();
+            remember();
+        };
+        return { config, restore, remember,
+            current: () => ownsConfig() && isAlive(context) && isAlive(statusLabel) && isAlive(actionBtn) &&
+                isAlive(hud) && findHudPanel() === hud && JSON.stringify(config) === JSON.stringify(expected) };
     }
 
     // =========================================================================
@@ -132,12 +172,15 @@
         const audit = result.engineAudit;
         let runtimeErrors = 0;
         for (const id of Object.keys(diag.newErrors || {})) runtimeErrors += diag.newErrors[id] || 0;
-        runtimeErrors = Math.max(runtimeErrors, audit?.runtimeErrors || 0);
+        runtimeErrors = Math.max(runtimeErrors, audit?.runtimeErrors || 0, diagnosticFailures(diag).length);
         const errors = s.errors + runtimeErrors + (audit?.readErrors || 0) + (audit?.bridgeErrors || 0);
         const unchecked = s.skipped + s.notRun;
         const incomplete = result.aborted || s.total === 0 || (audit && !audit.hudFound) || !result.report;
         return {
-            text: `Hooks: ${s.passed}/${s.total} OK, ${s.failed} failed, ${errors} errors, ${unchecked} unchecked${incomplete ? " (incomplete)" : ""}`,
+            text: format("Hooks: {passed}/{total} OK, {failed} failed, {errors} errors, {unchecked} unchecked{incomplete}", {
+                passed: s.passed, total: s.total, failed: s.failed, errors, unchecked,
+                incomplete: incomplete ? localize(" (incomplete)") : ""
+            }),
             color: (s.failed > 0 || errors > 0) ? "#cc4444" : (unchecked > 0 || incomplete) ? "#cc8844" : "#aaaaaa"
         };
     }
@@ -148,11 +191,12 @@
 
     let fitRunning = false;
     let fitToken = 0;
+    let fitRestore = null;
 
     function runFeatureIsolationTest(statusLabel, actionBtn) {
         const setStatus = (text, color) => {
             if (isAlive(statusLabel)) {
-                statusLabel.text = text;
+                statusLabel.text = localize(text);
                 statusLabel.style.color = color;
             }
         };
@@ -166,54 +210,28 @@
         if (fitRunning) {
             fitRunning = false;
             fitToken++;
+            const restore = fitRestore;
+            fitRestore = null;
+            if (restore) restore();
             setStatus("Stopped", "#aa8844");
             setBtnActive(false);
             return;
         }
 
-        const toggleKeys = [];
-        const seenKeys = {};
-        const defaultCfg = (typeof DEFAULT_CONFIG !== "undefined" && DEFAULT_CONFIG) ? DEFAULT_CONFIG : {};
-        const dcKeys = Object.keys(defaultCfg);
-        for (let i = 0; i < dcKeys.length; i++) {
-            const dk = dcKeys[i];
-            if ((dk.startsWith("ENABLE_") || dk.startsWith("HUD_") || dk.startsWith("SHOW_")) && !seenKeys[dk]) {
-                seenKeys[dk] = true;
-                toggleKeys.push(dk);
-            }
-        }
-
-        const presetsObj = (typeof PRESETS !== "undefined" && PRESETS) ? PRESETS : ((typeof globalThis !== "undefined" && (globalThis.QOL_PRESETS || globalThis.PRESETS)) ? (globalThis.QOL_PRESETS || globalThis.PRESETS) : {});
-        const presetNames = Object.keys(presetsObj);
-        for (let pi = 0; pi < presetNames.length; pi++) {
-            const presetCfg = presetsObj[presetNames[pi]];
-            if (!presetCfg) continue;
-            const pkKeys = Object.keys(presetCfg);
-            for (let pki = 0; pki < pkKeys.length; pki++) {
-                const pk = pkKeys[pki];
-                if ((pk.startsWith("ENABLE_") || pk.startsWith("HUD_") || pk.startsWith("SHOW_")) && !seenKeys[pk]) {
-                    seenKeys[pk] = true;
-                    toggleKeys.push(pk);
-                }
-            }
-        }
-
-        toggleKeys.sort();
-        const testQueue = toggleKeys.map((key) => ({ name: key, configKeys: [key] }));
+        if (diagnosticBusy(statusLabel)) return;
+        const testQueue = Q.settingsFields.filter(field => field.kind === "toggle")
+            .map(field => field.key).sort();
 
         if (testQueue.length === 0) {
             setStatus("No toggle keys found", "#cc4444");
             return;
         }
 
-        const modCfg = (typeof MOD_CONFIG !== "undefined" && MOD_CONFIG) ? MOD_CONFIG : {};
-        const savedConfig = {};
-        for (let ti = 0; ti < testQueue.length; ti++) {
-            const k = testQueue[ti].configKeys[0];
-            savedConfig[k] = modCfg[k];
-        }
-
+        const session = captureConfigTest(statusLabel, actionBtn);
+        const modCfg = session.config;
         const saveAndSync = (typeof SaveAndSync === "function") ? SaveAndSync : () => {};
+        const restore = session.restore;
+        fitRestore = restore;
 
         let passed = 0;
         let failed = 0;
@@ -226,30 +244,25 @@
 
         function runNext() {
             if (!fitRunning || token !== fitToken) return;
+            if (!session.current()) { stop(); return; }
             if (index >= testQueue.length) {
                 fitRunning = false;
                 setBtnActive(false);
-                for (let rk = 0; rk < toggleKeys.length; rk++) {
-                    const k = toggleKeys[rk];
-                    modCfg[k] = savedConfig[k];
-                }
-                saveAndSync();
+                fitRestore = null;
+                restore();
                 const color = (failed > 0) ? "#cc8844" : "#66cc99";
-                setStatus(`Done: ${passed} passed, ${failed} failed, ${skipped} skipped`, color);
+                setStatus(format("Done: {passed} passed, {failed} failed, {skipped} skipped", { passed, failed, skipped }), color);
                 $.Msg(`[QOLLock][FeatureTest] Complete — ${passed} passed, ${failed} failed, ${skipped} skipped`);
                 return;
             }
 
             const entry = testQueue[index];
-            const label = `[${index + 1}/${testQueue.length}] ${entry.name}`;
+            const label = `[${index + 1}/${testQueue.length}] ${entry}`;
             setStatus(label, "#66cc99");
 
             try {
-                for (let ek = 0; ek < entry.configKeys.length; ek++) {
-                    const ck = entry.configKeys[ek];
-                    modCfg[ck] = 1;
-                }
-                saveAndSync();
+                modCfg[entry] = Number(modCfg[entry]) === 1 ? 0 : 1;
+                try { saveAndSync(); } finally { session.remember(); }
 
                 const forceToken = `fit_${token}_${index}`;
                 const hudPanel = findHudPanel();
@@ -268,16 +281,13 @@
                 function pollFitDiag() {
                     pollAttempts++;
                     if (!fitRunning || token !== fitToken) return;
+                    if (!session.current()) { stop(); return; }
 
                     const nowMs = Date.now();
                     if ((nowMs - pollStartMs) > 5500) {
                         skipped++;
-                        $.Msg(`[QOLLock][FeatureTest] SKIP: ${entry.name} — diagnostic sync timeout`);
-                        for (let tdk = 0; tdk < entry.configKeys.length; tdk++) {
-                            const ck = entry.configKeys[tdk];
-                            modCfg[ck] = savedConfig[ck];
-                        }
-                        saveAndSync();
+                        $.Msg(`[QOLLock][FeatureTest] SKIP: ${entry} — diagnostic sync timeout`);
+                        restore();
                         index++;
                         $.Schedule(0.08, runNext);
                         return;
@@ -292,19 +302,15 @@
                         try {
                             const diag = JSON.parse(rawDiag);
                             if (diag.diagToken === forceToken) {
-                                const disabledFeatures = (diag.disabled && diag.disabled.length > 0) ? diag.disabled : [];
+                                const disabledFeatures = diagnosticFailures(diag);
                                 if (disabledFeatures.length > 0) {
                                     failed++;
-                                    $.Msg(`[QOLLock][FeatureTest] FAIL: ${entry.name} → auto-disabled: ${disabledFeatures.join(", ")}`);
+                                    $.Msg(`[QOLLock][FeatureTest] FAIL: ${entry} → diagnostic errors: ${disabledFeatures.join(", ")}`);
                                 } else {
                                     passed++;
                                 }
 
-                                for (let dk = 0; dk < entry.configKeys.length; dk++) {
-                                    const ck = entry.configKeys[dk];
-                                    modCfg[ck] = savedConfig[ck];
-                                }
-                                saveAndSync();
+                                restore();
 
                                 index++;
                                 $.Schedule(0.08, runNext);
@@ -318,15 +324,19 @@
                 $.Schedule(0.15, pollFitDiag);
             } catch (e) {
                 failed++;
-                $.Msg(`[QOLLock][FeatureTest] FAIL: ${entry.name} threw: ${e?.message || e}`);
-                for (let rk2 = 0; rk2 < entry.configKeys.length; rk2++) {
-                    const ck = entry.configKeys[rk2];
-                    modCfg[ck] = savedConfig[ck];
-                }
-                saveAndSync();
+                $.Msg(`[QOLLock][FeatureTest] FAIL: ${entry} threw: ${e?.message || e}`);
+                restore();
                 index++;
                 $.Schedule(0.08, runNext);
             }
+        }
+        function stop() {
+            fitRunning = false;
+            fitToken++;
+            fitRestore = null;
+            restore();
+            setBtnActive(false);
+            setStatus("Stopped", "#aa8844");
         }
         $.Schedule(0.1, runNext);
     }
@@ -341,7 +351,7 @@
     function runManifestTests(statusLabel, actionBtn) {
         const setStatus = (text, color) => {
             if (isAlive(statusLabel)) {
-                statusLabel.text = text;
+                statusLabel.text = localize(text);
                 statusLabel.style.color = color;
             }
         };
@@ -359,6 +369,7 @@
             setBtnActive(false);
             return;
         }
+        if (diagnosticBusy(statusLabel)) return;
 
         const token = ++mtToken;
         mtRunning = true;
@@ -435,14 +446,15 @@
     }
 
     // =========================================================================
-    // Panel Tree Dump & Build Storage Dry Run
+    // Panel Tree Dump & HUD State Recording
     // =========================================================================
 
     function requestPanelTreeDump(statusLabel) {
+        if (diagnosticBusy(statusLabel)) return false;
         const hudPanel = findHudPanel();
         if (!hudPanel || !hudPanel.SetAttributeString) {
             if (isAlive(statusLabel)) {
-                statusLabel.text = "Hud panel not found";
+                statusLabel.text = localize("Hud panel not found");
                 statusLabel.style.color = "#cc4444";
             }
             return false;
@@ -453,14 +465,14 @@
         } catch (e) {
             warnLog("settings", `TreeDump request failed: ${e?.message || e}`);
             if (isAlive(statusLabel)) {
-                statusLabel.text = "Request failed";
+                statusLabel.text = localize("Request failed");
                 statusLabel.style.color = "#cc4444";
             }
             return false;
         }
         $.Msg(`[QOLLock][TreeDump] requested, token: ${forceToken}`);
         if (isAlive(statusLabel)) {
-            statusLabel.text = "Dumped to console log";
+            statusLabel.text = localize("Dumped to console log");
             statusLabel.style.color = "#66cc99";
         }
         const setFeedback = Q.ui?.configTab?.setLocalizedConfigFeedbackMessage || globalThis.SetLocalizedConfigFeedbackMessage;
@@ -471,6 +483,7 @@
     }
 
     function requestHudStateObservation(statusLabel) {
+        if (diagnosticBusy(statusLabel)) return;
         const localize = text => globalThis.LocalizeSettingsText(text, true);
         const hud = findHudPanel();
         if (!isAlive(hud)) {
@@ -501,37 +514,6 @@
         if (isAlive(statusLabel)) statusLabel.text = localize(copied ? "HUD state report copied." : "Copy failed; see the console log.");
     }
 
-    function requestBuildStorageDryRun(statusLabel) {
-        const hudPanel = findHudPanel();
-        if (!hudPanel || !hudPanel.SetAttributeString) {
-            if (isAlive(statusLabel)) {
-                statusLabel.text = "Hud panel not found";
-                statusLabel.style.color = "#cc4444";
-            }
-            return false;
-        }
-        try {
-            hudPanel.SetAttributeString("QOL_BUILD_DUMP_TREE", "1");
-        } catch (e) {
-            warnLog("settings", `BuildStorage dry run failed: ${e?.message || e}`);
-            if (isAlive(statusLabel)) {
-                statusLabel.text = "Request failed";
-                statusLabel.style.color = "#cc4444";
-            }
-            return false;
-        }
-        $.Msg("[QOLLock][BuildStorage] requested tree dump dry run");
-        if (isAlive(statusLabel)) {
-            statusLabel.text = "Dry run started";
-            statusLabel.style.color = "#66cc99";
-        }
-        const setFeedback = Q.ui?.configTab?.setLocalizedConfigFeedbackMessage || globalThis.SetLocalizedConfigFeedbackMessage;
-        if (typeof setFeedback === "function") {
-            setFeedback("Build storage dry run started", "success", 5000);
-        }
-        return true;
-    }
-
     // =========================================================================
     // In-Game Engine Audit Runner (Spews directly to console ~)
     // =========================================================================
@@ -542,7 +524,7 @@
     function runInGameEngineAudit(container, statusLabel, actionBtn) {
         const setStatus = (text, color) => {
             if (isAlive(statusLabel)) {
-                statusLabel.text = text;
+                statusLabel.text = localize(text);
                 statusLabel.style.color = color;
             }
         };
@@ -553,7 +535,7 @@
             }
         };
 
-        if (auditRunning) return;
+        if (diagnosticBusy(statusLabel)) return;
         const token = ++auditToken;
         auditRunning = true;
         setBtnActive(true);
@@ -566,7 +548,7 @@
             if (!hudPanel || !hudPanel.SetAttributeString) throw new Error("HUD panel not found");
             hudPanel.SetAttributeString("QOL_DiagRequest", forceToken);
         } catch (e) {
-            setStatus(`Audit not started: ${e.message || e}`, "#cc4444");
+            setStatus(format("Audit not started: {error}", { error: e.message || e }), "#cc4444");
             auditRunning = false;
             setBtnActive(false);
             return;
@@ -610,7 +592,7 @@
                         }
 
                         const status = observationStatus(diag);
-                        setStatus(`${status.text} (${copied ? "copied" : "copy failed; check ~"})`, (copied || status.color === "#cc4444") ? status.color : "#cc8844");
+                        setStatus(format("{status} ({copy})", { status: status.text, copy: localize(copied ? "copied" : "copy failed; check ~") }), (copied || status.color === "#cc4444") ? status.color : "#cc8844");
                         auditRunning = false;
                         setBtnActive(false);
                         return;
@@ -635,7 +617,7 @@
     function runFullTestSuite(container, statusLabel, actionBtn) {
         const setStatus = (text, color) => {
             if (isAlive(statusLabel)) {
-                statusLabel.text = text;
+                statusLabel.text = localize(text);
                 statusLabel.style.color = color;
             }
         };
@@ -646,7 +628,7 @@
             }
         };
 
-        if (fsRunning) return;
+        if (diagnosticBusy(statusLabel)) return;
         const token = ++fsToken;
         fsRunning = true;
         setBtnActive(true);
@@ -703,7 +685,7 @@
                         }
 
                         const status = observationStatus(diag);
-                        setStatus(`${status.text} (${copied ? "copied" : "copy failed"})`, (copied || status.color === "#cc4444") ? status.color : "#cc8844");
+                        setStatus(format("{status} ({copy})", { status: status.text, copy: localize(copied ? "copied" : "copy failed") }), (copied || status.color === "#cc4444") ? status.color : "#cc8844");
                         fsRunning = false;
                         setBtnActive(false);
                         return;
@@ -724,11 +706,13 @@
     let bmRunning = false;
     let bmToken = 0;
 
-    function runInGameBenchmark(container, statusLabel, actionBtn, isStressTest) {
+    function runInGameBenchmark(container, statusLabel, actionBtn, isStressTest, conditionIds = []) {
+        const isScan = ["fps_current", "fps_expanded", "fps_minimap", "fps_config"].includes(isStressTest);
         const setStatus = (text, color) => {
             if (isAlive(statusLabel)) {
-                statusLabel.text = text;
-                statusLabel.style.color = color;
+                const translated = localize(text);
+                if (statusLabel.text !== translated) statusLabel.text = translated;
+                if (statusLabel.style.color !== color) statusLabel.style.color = color;
             }
         };
 
@@ -738,14 +722,17 @@
             }
         };
 
-        if (bmRunning) return;
+        if (["fps_minimap", "fps_config"].includes(isStressTest) && conditionIds.some(id => !/^[a-z][a-z0-9-]{0,63}$/.test(id))) {
+            setStatus("Invalid condition IDs", "#cc4444"); return;
+        }
+        if (diagnosticBusy(statusLabel)) return;
         const token = ++bmToken;
         bmRunning = true;
         setBtnActive(true);
 
-        const durSec = 10;
+        const durSec = isScan ? (isStressTest === "fps_config" ? 3300 : isStressTest === "fps_minimap" ? 1800 : 420) : 10;
         const modeStr = isStressTest ? "stress" : "normal";
-        const forceToken = `bm_${durSec}_${modeStr}_${Date.now()}`;
+        const forceToken = isScan ? `${isStressTest}_${Date.now()}${conditionIds.length ? "_" + conditionIds.join(",") : ""}` : `bm_${durSec}_${modeStr}_${Date.now()}`;
 
         const hudPanel = findHudPanel();
         if (!hudPanel || !hudPanel.SetAttributeString) {
@@ -761,7 +748,8 @@
         } catch {}
 
         const startTime = Date.now();
-        setStatus(`Benchmarking: ${durSec}s left...`, "#66cc99");
+        setStatus(isScan ? "Close the menu within 5 seconds and keep the scene stationary." :
+            format("Benchmarking: {seconds}s left...", { seconds: durSec }), "#66cc99");
 
         function pollBenchmark() {
             if (!bmRunning || token !== bmToken) return;
@@ -770,8 +758,10 @@
             const elapsedSec = Math.floor(elapsedMs / 1000);
             const remaining = Math.max(0, durSec - elapsedSec);
 
-            if (remaining > 0) {
-                setStatus(`Benchmarking: ${remaining}s left...`, "#66cc99");
+            if (isScan) {
+                setStatus("Investigation running. Opening Esc stops the scan.", "#66cc99");
+            } else if (remaining > 0) {
+                setStatus(format("Benchmarking: {seconds}s left...", { seconds: remaining }), "#66cc99");
             } else {
                 setStatus("Finalizing report...", "#66cc99");
             }
@@ -794,31 +784,38 @@
                     const diag = JSON.parse(rawDiag);
                     if (diag.benchmark && diag.benchmark.token === forceToken) {
                         const report = diag.benchmark.report || "";
-                        const hiddenEntry = $.CreatePanel("TextEntry", container, "BenchmarkCopyTextEntry");
-                        hiddenEntry.text = report;
-                        hiddenEntry.multiline = true;
-                        hiddenEntry.maxchars = Math.max(report.length + 100, 2000);
-
-                        const tryCopy = Q.ui?.configTab?.tryCopyTextToClipboard || globalThis.TryCopyTextToClipboard;
-                        const copied = (typeof tryCopy === "function") ? tryCopy(report, hiddenEntry) : false;
-
-                        if (isAlive(hiddenEntry)) {
-                            try { hiddenEntry.DeleteAsync(0); } catch {}
+                        const nativeReport = ["fps_minimap", "fps_config"].includes(isStressTest);
+                        let copied = false;
+                        if (!nativeReport) {
+                            const hiddenEntry = $.CreatePanel("TextEntry", container, "BenchmarkCopyTextEntry");
+                            hiddenEntry.text = report;
+                            hiddenEntry.multiline = true;
+                            hiddenEntry.maxchars = Math.max(report.length + 100, 2000);
+                            const tryCopy = Q.ui?.configTab?.tryCopyTextToClipboard || globalThis.TryCopyTextToClipboard;
+                            copied = (typeof tryCopy === "function") ? tryCopy(report, hiddenEntry) : false;
+                            if (isAlive(hiddenEntry)) {
+                                try { hiddenEntry.DeleteAsync(0); } catch {}
+                            }
                         }
 
                         const stats = diag.benchmark.stats || {};
                         const totalJs = (typeof stats.totalJsMs === "number") ? stats.totalJsMs.toFixed(1) : "?";
                         const setFeedback = Q.ui?.configTab?.setLocalizedConfigFeedbackMessage || globalThis.SetLocalizedConfigFeedbackMessage;
 
-                        $.Msg(`[QOLLock][DevTab] Benchmark finished: ${totalJs}ms in timed poll callbacks over ${durSec}s. Report ${copied ? "copied to clipboard" : "printed to console"}.`);
+                        if (nativeReport) $.Msg("[QOLLock][DevTab] Native scan ended; the external capture window produces and copies the FPS report.\n" + report);
+                        else $.Msg(`[QOLLock][DevTab] Benchmark finished: ${totalJs}ms in timed poll callbacks over ${durSec}s. Report ${copied ? "copied to clipboard" : "printed to console"}.`);
 
-                        if (copied) {
-                            setStatus(`Copied! ${totalJs}ms callbacks (Check ~)`, "#66cc99");
+                        if (isScan) {
+                            setStatus(nativeReport ? stats.reason !== "complete" ?
+                                "Investigation stopped. Check the external report for missing conditions." :
+                                "Investigation finished. Wait for the native report in the capture window." : "Investigation finished. Check console or clipboard.", "#e6b800");
+                        } else if (copied) {
+                            setStatus(format("Copied! {milliseconds}ms callbacks (Check ~)", { milliseconds: totalJs }), "#66cc99");
                             if (typeof setFeedback === "function") {
                                 setFeedback("Benchmark report copied to clipboard!", "success", 4000);
                             }
                         } else {
-                            setStatus(`Done: ${totalJs}ms callbacks (Check ~)`, "#e6b800");
+                            setStatus(format("Done: {milliseconds}ms callbacks (Check ~)", { milliseconds: totalJs }), "#e6b800");
                             if (typeof setFeedback === "function") {
                                 setFeedback("Benchmark finished! Check console (~).", "info", 4000);
                             }
@@ -847,11 +844,12 @@
     let pcRunning = false;
     let pcToken = 0;
     let pcResults = [];
+    let pcRestore = null;
 
     function runPresetCycle(statusLabel, actionBtn) {
         const setStatus = (text, color) => {
             if (isAlive(statusLabel)) {
-                statusLabel.text = text;
+                statusLabel.text = localize(text);
                 statusLabel.style.color = color;
             }
         };
@@ -867,16 +865,20 @@
         if (pcRunning) {
             pcRunning = false;
             pcToken++;
+            const restore = pcRestore;
+            pcRestore = null;
+            if (restore) restore();
             setBtnActive(false);
             const done = pcResults.length;
             const presetsForTotal = (typeof PRESETS !== "undefined" && PRESETS) ? PRESETS : ((typeof globalThis !== "undefined" && (globalThis.QOL_PRESETS || globalThis.PRESETS)) ? (globalThis.QOL_PRESETS || globalThis.PRESETS) : {});
             const total = Object.keys(presetsForTotal).length;
-            setStatus(`Stopped (${done} of ${total})`, "#aa8844");
+            setStatus(format("Stopped ({done} of {total})", { done, total }), "#aa8844");
             if (typeof setFeedback === "function") {
-                setFeedback(`Stopped after ${done} presets.`, "info", 2400);
+                setFeedback(format("Stopped ({done} of {total})", { done, total }), "info", 2400);
             }
             return;
         }
+        if (diagnosticBusy(statusLabel)) return;
 
         const presetsObj = (typeof PRESETS !== "undefined" && PRESETS) ? PRESETS : ((typeof globalThis !== "undefined" && (globalThis.QOL_PRESETS || globalThis.PRESETS)) ? (globalThis.QOL_PRESETS || globalThis.PRESETS) : {});
         const presetNames = Object.keys(presetsObj).sort();
@@ -884,6 +886,8 @@
             setStatus("No presets found.", "#cc4444");
             return;
         }
+        const session = captureConfigTest(statusLabel, actionBtn);
+        pcRestore = session.restore;
 
         pcRunning = true;
         pcResults = [];
@@ -895,9 +899,12 @@
 
         function runNext() {
             if (!pcRunning || token !== pcToken) return;
+            if (!session.current()) { stop(); return; }
 
             if (index >= presetNames.length) {
                 pcRunning = false;
+                pcRestore = null;
+                session.restore();
                 setBtnActive(false);
                 let passed = 0;
                 let failed = 0;
@@ -914,7 +921,7 @@
                     }
                 }
                 const summaryColor = (failed > 0) ? "#cc8844" : "#66cc99";
-                const summary = `Done: ${passed} passed, ${failed} failed`;
+                const summary = format("Done: {passed} passed, {failed} failed", { passed, failed });
                 setStatus(summary, summaryColor);
                 $.Msg(`[QOLLock][presetCycle] === SUMMARY: ${summary} ===`);
                 if (failNames.length > 0) {
@@ -950,21 +957,20 @@
             let applyOk = true;
             let applyErr = "";
             try {
-                const applyPresetFn = Q.ui?.presets?.applyPresetByName || globalThis.ApplyPresetByName;
-                if (typeof applyPresetFn === "function") {
-                    applyPresetFn(presetName);
-                } else {
-                    throw new Error("ApplyPresetByName not available");
-                }
+                // Resolve the current preset without changing runtime preset-name
+                // bookkeeping or rebuilding the card that owns this test.
+                const candidate = Q.ui.presets.buildPresetCandidateConfigByName(presetName);
+                if (!candidate || !Q.ui.presets.applyPresetConfig(candidate)) throw new Error("Preset not available");
+                globalThis.SaveAndSync();
             } catch (e) {
                 applyOk = false;
                 applyErr = e?.message || String(e || "");
                 $.Msg(`[QOLLock][presetCycle] ApplyPresetByName failed for '${presetName}': ${applyErr}`);
-            }
+            } finally { session.remember(); }
 
             if (!applyOk) {
                 pcResults.push({ name: presetName, passed: false, autoDisabled: [], featuresLoaded: 0, timeMs: Date.now() - startMs, exception: applyErr });
-                setStatus(`${label} — EXCEPTION`, "#cc4444");
+                setStatus(format("{label} — EXCEPTION", { label }), "#cc4444");
                 index++;
                 $.Schedule(0.05, runNext);
                 return;
@@ -987,6 +993,7 @@
             function pollDiag() {
                 pollAttempts++;
                 if (!pcRunning || token !== pcToken) return;
+                if (!session.current()) { stop(); return; }
 
                 const nowMs = Date.now();
                 const elapsedPollMs = nowMs - pollStartMs;
@@ -994,7 +1001,7 @@
                 if (elapsedPollMs > maxPollMs) {
                     pcResults.push({ name: presetName, passed: false, autoDisabled: [], featuresLoaded: 0, timeMs: nowMs - startMs, timeout: true });
                     $.Msg(`[QOLLock][presetCycle] ${label} — TIMEOUT (no diagnostic sync after ${Math.round(elapsedPollMs)}ms)`);
-                    setStatus(`${label} — TIMEOUT`, "#cc8844");
+                    setStatus(format("{label} — TIMEOUT", { label }), "#cc8844");
                     index++;
                     $.Schedule(0.05, runNext);
                     return;
@@ -1011,7 +1018,7 @@
                         const diag = JSON.parse(rawDiag);
                         if (diag.diagToken === forceToken) {
                             const elapsedMs = nowMs - startMs;
-                            const autoDisabled = (diag.disabled) ? diag.disabled : [];
+                            const autoDisabled = diagnosticFailures(diag);
                             const features = (diag.features) ? diag.features : [];
                             const isSuccess = autoDisabled.length === 0;
 
@@ -1023,7 +1030,7 @@
                                 timeMs: elapsedMs
                             });
 
-                            const statusStr = isSuccess ? "OK" : `FAIL: ${autoDisabled.join(", ")}`;
+                            const statusStr = isSuccess ? "OK" : format("FAIL: {features}", { features: autoDisabled.join(", ") });
                             const color = isSuccess ? "#66cc99" : "#cc4444";
                             $.Msg(`[QOLLock][presetCycle] ${label} — ${statusStr} (${features.length} features, ${elapsedMs}ms, ${pollAttempts} polls)`);
                             setStatus(`${label} — ${statusStr}`, color);
@@ -1042,6 +1049,14 @@
             $.Schedule(0.15, pollDiag);
         }
 
+        function stop() {
+            pcRunning = false;
+            pcToken++;
+            pcRestore = null;
+            session.restore();
+            setBtnActive(false);
+            setStatus("Stopped", "#aa8844");
+        }
         $.Schedule(0.1, runNext);
     }
 
@@ -1161,14 +1176,14 @@
             label.style.fontWeight = "bold";
             label.style.fontSize = "13px";
             label.style.color = "#e8ecea";
-            label.text = titleText;
+            label.text = localize(titleText);
 
             if (descText) {
                 const desc = $.CreatePanel("Label", labelWrap, "");
                 desc.AddClass("SettingDescription");
                 desc.style.fontSize = "12px";
                 desc.style.color = "#7c8480";
-                desc.text = descText;
+                desc.text = localize(descText);
             }
 
             const actionGroup = $.CreatePanel("Panel", row, "");
@@ -1180,7 +1195,7 @@
             let statusLbl = null;
             if (statusId) {
                 statusLbl = $.CreatePanel("Label", actionGroup, statusId);
-                statusLbl.text = "Idle";
+                statusLbl.text = localize("Idle");
                 statusLbl.style.fontSize = "12px";
                 statusLbl.style.color = "#7c8480";
                 statusLbl.style.marginRight = "10px";
@@ -1217,19 +1232,58 @@
             btnLabel.style.fontSize = "12px";
             btnLabel.style.fontWeight = "bold";
             btnLabel.style.verticalAlign = "center";
-            btnLabel.text = btnText;
+            btnLabel.text = localize(btnText);
 
             if (typeof onActivate === "function") {
                 btn.SetPanelEvent("onactivate", () => onActivate(statusLbl, btn));
             }
 
-            return { row, btn, status: statusLbl };
+            return { row, btn, status: statusLbl, labelWrap };
         };
 
         createSep(list);
 
         // 2. In-Game Benchmarks
         createTitle(list, "In-Game Benchmarks");
+
+        let minimapConditions = null;
+        const minimapAction = createDevActionRow(list, "FpsMinimapRow", "FpsMinimapBtn", "FpsMinimapStatus",
+            "s2r://panorama/images/icons/icon_play.vsvg", "Complete minimap investigation",
+            "Start the external native capture first. Tests owners, polling, sweeps, every reference layer, presentation and composition in repeated blocks. Close Esc within 5s; keep the scene and game focus unchanged for about 23 minutes. Expanded settings and all interventions are restored.",
+            "Investigate", (status, button) => runInGameBenchmark(list, status, button, "fps_minimap",
+                String(minimapConditions?.text || "").trim().split(/[,\s]+/).filter(Boolean)));
+        const minimapHint = $.CreatePanel("Label", minimapAction.labelWrap, "");
+        minimapHint.AddClass("SettingDescription");
+        minimapHint.text = localize("Optional: condition IDs from the report to repeat. Leave blank for the complete plan. No repack is needed for repeats.");
+        minimapConditions = $.CreatePanel("TextEntry", minimapAction.labelWrap, "FpsMinimapConditions");
+        minimapConditions.maxchars = 1200;
+        minimapConditions.style.width = "100%"; minimapConditions.style.height = "28px";
+
+        let configConditions = null;
+        const configAction = createDevActionRow(list, "FpsConfigRow", "FpsConfigBtn", "FpsConfigStatus",
+            "s2r://panorama/images/icons/icon_play.vsvg", "Expanded configuration investigation",
+            "Start external native capture first. The prefilled IDs run a two-minute preflight: ordinary versus expanded settings, benchmark overhead and noise. Check the native report before a long scan. Clear the IDs for all setting groups, up to 55 minutes. Close Esc within 5s and keep scene and focus unchanged. Settings are restored without saving.",
+            "Investigate", (status, button) => runInGameBenchmark(list, status, button, "fps_config",
+                String(configConditions?.text || "").trim().split(/[,\s]+/).filter(Boolean)));
+        const configHint = $.CreatePanel("Label", configAction.labelWrap, "");
+        configHint.AddClass("SettingDescription");
+        configHint.text = localize("Optional: condition IDs from the report to repeat. Leave blank for the complete plan. No repack is needed for repeats.");
+        configConditions = $.CreatePanel("TextEntry", configAction.labelWrap, "FpsConfigConditions");
+        configConditions.text = "whole-config,benchmark-instrumentation";
+        configConditions.maxchars = 1200;
+        configConditions.style.width = "100%"; configConditions.style.height = "28px";
+
+        createDevActionRow(list, "FpsScanRowcurrent", "FpsScanBtncurrent", "FpsScanStatuscurrent",
+            "s2r://panorama/images/icons/icon_play.vsvg", "FPS investigation (Current Config)",
+            "Start external PresentMon capture first for game FPS. Without it, this scan measures UI cadence only. Close Esc within 5s; stay still for up to 7 minutes. Settings are restored without saving.",
+            "Investigate", (status, button) => runInGameBenchmark(list, status, button, "fps_current"));
+        createDevActionRow(list, "FpsStopRow", "FpsStopBtn", "FpsStopStatus", "", "Stop FPS investigation",
+            "Restores excluded features and temporary settings. A partial report is copied when the scan finishes.", "Stop",
+            status => {
+                const hud = findHudPanel();
+                if (hud) hud.SetAttributeString("QOL_DiagRequest", "fps_stop_" + Date.now());
+                if (isAlive(status)) status.text = localize("Stop requested");
+            });
 
         createDevActionRow(
             list,
@@ -1249,9 +1303,9 @@
             "BenchmarkRunBtn",
             "BenchmarkNormalStatus",
             "s2r://panorama/images/icons/icon_play.vsvg",
-            globalThis.LocalizeSettingsText("Benchmark (Current Config)", true),
-            globalThis.LocalizeSettingsText("Measure Scheduler polls and FindChildTraverse calls for 10 seconds with current settings. Native panel visits and FPS are unavailable.", true),
-            globalThis.LocalizeSettingsText("Run Current (10s)", true),
+            "Benchmark (Current Config)",
+            "Measure Scheduler polls and FindChildTraverse calls for 10 seconds with current settings. Native panel visits and FPS are unavailable.",
+            "Run Current (10s)",
             (statusLbl, btn) => runInGameBenchmark(list, statusLbl, btn, false)
         );
 
@@ -1263,10 +1317,11 @@
         createDevActionRow(
             list, "DevVisualCheckRow", "VisualCheckBtn", "VisualCheckStatus",
             "s2r://panorama/images/icons/icon_play.vsvg",
-            globalThis.LocalizeSettingsText("HUD settings walkthrough", true),
-            globalThis.LocalizeSettingsText("Open in a match or sandbox. Compare HUD changes and test gameplay. Stop restores settings without saving the test values.", true),
-            globalThis.LocalizeSettingsText("Start", true),
+            "HUD settings walkthrough",
+            "Open in a match or sandbox. Compare HUD changes and test gameplay. Stop restores settings without saving the test values.",
+            "Start",
             (statusLbl) => {
+                if (diagnosticBusy(statusLbl)) return;
                 const started = Q.ui.visualCheck?.start(() => {
                     if (isAlive(statusLbl)) statusLbl.text = globalThis.LocalizeSettingsText("Settings restored", true);
                 });
@@ -1276,15 +1331,15 @@
 
         createDevActionRow(list, "DevHudStateRow", "HudStateStartBtn", "HudStateStartStatus",
             "s2r://panorama/images/icons/icon_play.vsvg",
-            globalThis.LocalizeSettingsText("HUD state recording", true),
-            globalThis.LocalizeSettingsText("Record HUD states and managed callback activity for 60 seconds. Reproduce the stutter or return to hideout. Settings are unchanged.", true),
-            globalThis.LocalizeSettingsText("Record HUD states", true),
+            "HUD state recording",
+            "Record HUD states and managed callback activity for 60 seconds. Reproduce the stutter or return to hideout. Settings are unchanged.",
+            "Record HUD states",
             status => requestHudStateObservation(status));
         createDevActionRow(list, "DevHudStateCopyRow", "HudStateCopyBtn", "HudStateCopyStatus",
             "s2r://panorama/images/icons/icon_copy.vsvg",
-            globalThis.LocalizeSettingsText("HUD state report", true),
-            globalThis.LocalizeSettingsText("After recording, copy HUD transitions, callback timings, delivery delays and active task counts. This is not an FPS measurement.", true),
-            globalThis.LocalizeSettingsText("Copy HUD state report", true),
+            "HUD state report",
+            "After recording, copy HUD transitions, callback timings, delivery delays and active task counts. This is not an FPS measurement.",
+            "Copy HUD state report",
             status => copyHudStateObservation(list, status));
 
         createDevActionRow(
@@ -1294,7 +1349,7 @@
             "FeatureTestStatus",
             "s2r://panorama/images/icons/icon_play.vsvg",
             "Feature Test",
-            "Test each feature individually (enable → verify → disable).",
+            "Flip each current toggle and observe HUD diagnostics. Restores settings afterward; does not verify rendering or gameplay.",
             "Run Feature Test",
             (statusLbl, btn) => runFeatureIsolationTest(statusLbl, btn)
         );
@@ -1321,18 +1376,6 @@
             "Dump the live panel tree to the console log for the offline profiler. Requires HUD context; save your console log afterwards.",
             "Dump Tree",
             (statusLbl) => requestPanelTreeDump(statusLbl)
-        );
-
-        createDevActionRow(
-            list,
-            "DevBsDumpRow",
-            "BsDumpBtn",
-            "BsDumpStatus",
-            "s2r://panorama/images/icons/icon_play.vsvg",
-            "Build Storage Dry Run",
-            "Perform a dry run of the build storage pipeline (switch hero, open shop, open popup) and dump tree to console. Requires HUD context.",
-            "Run Storage Test",
-            (statusLbl) => requestBuildStorageDryRun(statusLbl)
         );
 
         createDevActionRow(
@@ -1366,7 +1409,7 @@
             "PresetCycleStatus",
             "s2r://panorama/images/icons/icon_reorder.vsvg",
             "Preset Cycle",
-            "Apply every preset and verify no features auto-disable. Click again to stop.",
+            "Temporarily cycle presets and observe HUD errors. Stop or completion restores settings; does not verify rendering or gameplay.",
             "Cycle Presets",
             (statusLbl, btn) => runPresetCycle(statusLbl, btn)
         );
@@ -1402,7 +1445,6 @@
         requestPanelTreeDump,
         requestHudStateObservation,
         copyHudStateObservation,
-        requestBuildStorageDryRun,
         runFullTestSuite,
         runPresetCycle,
         runInGameBenchmark,

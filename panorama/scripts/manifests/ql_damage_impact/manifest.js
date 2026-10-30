@@ -1,124 +1,84 @@
-// features/ql_damage_impact/manifest.js
-// =============================================================================
-// QOLLOCK — Damage Impact HUD (position, scale, opacity)
-// =============================================================================
-// OWNS:        Damage impact panel: position, scale, opacity, visibility
-// DOES NOT OWN: Damage numbers, crosshair, other HUD panels
-// DEPENDS ON:  QOL.core.FeatureRegistry
-// CONFIG KEYS: ENABLE_DAMAGE_IMPACT, DAMAGE_IMPACT_SCALE, DAMAGE_IMPACT_OPACITY,
-//              DAMAGE_IMPACT_X_OFFSET, DAMAGE_IMPACT_Y_OFFSET
-// STATE:       State.damageImpactRuntimeStyleSig, State.cachedPanels.damageImpactPanel
-// PATTERN:     Settings-driven with a slow poll for replaced native panels.
-// =============================================================================
-
-(function() {
+// OWNS: Directional damage indicator offsets, overall scale, opacity and visibility.
+// DOES NOT OWN: Damage events, native animation transforms or damage-number children.
+// Source: Hud > .HudCore > damage_impact; hud_damage_impact.css uses ui-scale: 80%.
+(() => {
     "use strict";
-
-    var FR = QOL.core.FeatureRegistry;
-    if (!FR) { $.Msg("[QOLLock] damage_impact: FeatureRegistry not found — aborting"); return; }
-
-    FR.register({
+    QOL.core.FeatureRegistry.register({
         id: "ql_damage_impact",
-        // Keep the visibility controller alive when the indicator is hidden so
-        // it can hide native panels created after the setting changes.
+        // Hidden indicators still need replacement discovery.
         enabledByDefault: true,
         settings: [
-            { key: "ENABLE_DAMAGE_IMPACT", type: "toggle", default: true },
-            { key: "DAMAGE_IMPACT_SCALE", type: "slider", min: 0.5, max: 2.0, step: 0.05, default: 1.0 },
-            { key: "DAMAGE_IMPACT_OPACITY", type: "slider", min: 0, max: 1, step: 0.05, default: 1.0 },
-            { key: "DAMAGE_IMPACT_X_OFFSET", type: "slider", min: -1000, max: 1000, step: 5, default: 0 },
-            { key: "DAMAGE_IMPACT_Y_OFFSET", type: "slider", min: -1000, max: 1000, step: 5, default: 0 }
+            ...QOL.presentation.stateSettings("ql_damage_impact"),
+            { key: "ENABLE_DAMAGE_IMPACT", type: "toggle" },
+            { key: "DAMAGE_IMPACT_SCALE", type: "slider" },
+            { key: "DAMAGE_IMPACT_OPACITY", type: "slider" },
+            { key: "DAMAGE_IMPACT_X_OFFSET", type: "slider" },
+            { key: "DAMAGE_IMPACT_Y_OFFSET", type: "slider" }
         ],
-        create: function(ctx) {
-            var _lastSig = "";
-            var _lastPanel = null;
-            var _loop = null;
-            var _clearStyle = QOL.utils.ClearStyleSafe;
-            var _isAlive = QOL.core.panel.isAlive;
+        create(ctx) {
+            const P = QOL.core.panel;
+            const resolver = QOL.panelCache.createIdResolver("damage_impact", {
+                retryMs: 500, ownerPath: [{ id: "Hud", optional: true }, { className: "HudCore" }]
+            });
+            const styles = P.createNativeStyleOwner({ resetValues: { x: "0px", y: "0px" } });
+            let model = null, loop = null, active = false;
 
-            function _reset(panel) {
-                if (!_isAlive(panel)) return;
-                _clearStyle(panel, "x");
-                _clearStyle(panel, "y");
-                _clearStyle(panel, "opacity");
-                _clearStyle(panel, "preTransformScale2d");
-                _clearStyle(panel, "uiScale");
-                if (panel.SetHasClass) panel.SetHasClass("qol-hidden", false);
+            function readModel() {
+                const cfg = QOL.presentation.captureVisibility(ctx, ctx.config.view());
+                const styles = {};
+                const x = Math.round(Number(cfg.DAMAGE_IMPACT_X_OFFSET)) || 0;
+                const y = Math.round(Number(cfg.DAMAGE_IMPACT_Y_OFFSET)) || 0;
+                const scale = Number(cfg.DAMAGE_IMPACT_SCALE);
+                const opacity = QOL.utils.NormalizeOpacityNumber(cfg.DAMAGE_IMPACT_OPACITY ?? 1, 1);
+                if (x !== 0) styles.x = x + "px";
+                if (y !== 0) styles.y = -y + "px";
+                if (Number.isFinite(scale) && scale !== 1) styles.uiScale = Number((scale * 80).toFixed(2)) + "%";
+                if (opacity !== 1) styles.opacity = opacity.toFixed(2);
+                const hidden = Number(cfg.ENABLE_DAMAGE_IMPACT) !== 1;
+                if (hidden) styles.visibility = "collapse";
+                return { hidden, styles };
             }
 
-            function _hasNonDefault(cfg) {
-                if (!cfg) return false;
-                return Number(cfg.ENABLE_DAMAGE_IMPACT) !== 1 ||
-                    Number(cfg.DAMAGE_IMPACT_SCALE) !== 1.0 ||
-                    Number(cfg.DAMAGE_IMPACT_OPACITY) !== 1.0 ||
-                    Number(cfg.DAMAGE_IMPACT_X_OFFSET) !== 0 ||
-                    Number(cfg.DAMAGE_IMPACT_Y_OFFSET) !== 0;
+            function update() {
+                if (!active) return;
+                const root = P.findHud($.GetContextPanel());
+                const panel = P.isAlive(root) && (root.id === "Hud" || root.paneltype === "CitadelHud") ? resolver.resolve(root) : null;
+                styles.retain(panel ? [panel] : []);
+                if (panel) styles.apply(panel, QOL.presentation.visibilityStyles("damageImpact", QOL.presentation.visibilityConfig(ctx), root, model.styles), { "qol-hidden": model.hidden });
             }
 
-            function _apply(cfg) {
-                var root = $.GetContextPanel();
-                var panel = root && root.FindChildTraverse ? root.FindChildTraverse("damage_impact") : null;
-                if (panel !== _lastPanel) {
-                    _reset(_lastPanel);
-                    _lastPanel = panel;
-                    _lastSig = "";
-                }
-                if (!panel) return;
-
-                var active = _hasNonDefault(cfg);
-                var enabled = Number(cfg.ENABLE_DAMAGE_IMPACT) === 1;
-                var ox = Math.round(Number(active ? cfg.DAMAGE_IMPACT_X_OFFSET : 0)) || 0;
-                var oy = Math.round(Number(active ? cfg.DAMAGE_IMPACT_Y_OFFSET : 0)) || 0;
-                var op = active ? Number(cfg.DAMAGE_IMPACT_OPACITY).toFixed(2) : "1.00";
-                var sc = active ? Number(cfg.DAMAGE_IMPACT_SCALE).toFixed(2) : "1.00";
-
-                var sig = ox + "|" + oy + "|" + op + "|" + sc + "|" + (enabled ? "1" : "0") + "|" + (active ? "1" : "0");
-                if (_lastSig === sig) return;
-                _lastSig = sig;
-
-                if (!active) {
-                    _reset(panel);
-                    return;
-                }
-
-                panel.style.x = ox + "px";
-                panel.style.y = (-oy) + "px";
-                panel.style.opacity = op;
-                panel.style.preTransformScale2d = "1.00, 1.00";
-                // Vanilla Deadlock baseline for .damageImpactContainer is ui-scale: 80% (hud_damage_impact.css:10)
-                var baseScalePercent = 80;
-                panel.style.uiScale = Math.round(Number(sc) * baseScalePercent) + "%";
-                if (panel.SetHasClass) panel.SetHasClass("qol-hidden", !enabled);
+            function refreshSettings() {
+                if (!active) return;
+                model = readModel();
+                resolver.reset();
+                update();
             }
 
-            return {
-                onEnable: function() {
-                    _apply(ctx.config.all());
-                    var S = QOL.core.Scheduler;
-                    _loop = S && S.createPollLoop ? S.createPollLoop(function() {
-                        var root = $.GetContextPanel();
-                        var current = root && root.FindChildTraverse ? root.FindChildTraverse("damage_impact") : null;
-                        if (current !== _lastPanel) _apply(ctx.config.all());
-                    }, 0.5, ctx.id) : null;
+            return QOL.presentation.bindVisibility(ctx, {
+                onEnable() {
+                    active = true;
+                    refreshSettings();
+                    loop = QOL.core.Scheduler.createPollLoop(update, 0.5, ctx.id);
                 },
-                onDisable: function() {
-                    if (_loop) { _loop.stop(); _loop = null; }
-                    var S = QOL.core.Scheduler;
-                    if (S) S.cancelAllForFeature(ctx.id);
-                    _lastSig = "";
-                    _reset(_lastPanel);
-                    _lastPanel = null;
-                },
-                onSettingsChanged: function() { _apply(ctx.config.all()); }
-            };
+                onSettingsChanged: refreshSettings,
+                onDisable() {
+                    active = false;
+                    if (loop) { loop.stop(); loop = null; }
+                    styles.clear();
+                    model = null;
+                    resolver.reset();
+                }
+            }, update);
         },
-        test: function(ctx) {
+        test() {
             try {
-                var root = $.GetContextPanel();
-                var panel = root ? root.FindChildTraverse("damage_impact") : null;
+                const panel = QOL.core.panel.findTraverse($.GetContextPanel(), "damage_impact");
                 if (!panel) return null;
-                return { passed: true, name: "Damage impact panel exists", message: "", assertions: [{ passed: true, name: "damage_impact panel exists" }] };
-            } catch(e) { return { passed: false, name: "Damage impact panel check", message: (e && e.message ? e.message : String(e)) }; }
+                return { passed: true, name: "Damage impact panel exists", message: "",
+                    assertions: [{ passed: true, name: "damage_impact panel exists" }] };
+            } catch (e) {
+                return { passed: false, name: "Damage impact panel check", message: e.message || String(e) };
+            }
         }
     });
 })();

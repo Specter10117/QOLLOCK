@@ -30,7 +30,7 @@
     }
 
     // Create sub-namespace buckets
-    Q.VERSION = Q.VERSION || "4.0.5";
+    Q.VERSION = Q.VERSION || "4.1.0";
     try {
         const ctxId = $.GetContextPanel()?.id || "";
         Q.ROLE = (ctxId === "EscapeMenu") ? "em" : "hud";
@@ -58,30 +58,6 @@
     Q.core.Logger = Q.core.logger;
     Q.core.app = Q.core.app || {};
     Q.core.App = Q.core.app;
-
-    // Resilient QOL.import fallback for transitional features
-    if (!Q.import) {
-        Q.import = (names) => {
-            const out = {};
-            if (!Array.isArray(names)) return out;
-            for (const k of names) {
-                if (k === "state") {
-                    out.state = Q.state || (typeof State !== "undefined" ? State : {});
-                } else if (k === "utils") {
-                    out.utils = (typeof QOL_UTILS !== "undefined" ? QOL_UTILS : {});
-                } else if (k === "getCachedPanel") {
-                    out.getCachedPanel = Q.getCachedPanel || ((key) => (typeof State !== "undefined" && State.cachedPanels ? State.cachedPanels[key] : null));
-                } else if (k === "setCachedPanel") {
-                    out.setCachedPanel = Q.setCachedPanel || ((key, val) => {
-                        if (typeof State !== "undefined" && State.cachedPanels) { State.cachedPanels[key] = val; }
-                    });
-                } else {
-                    out[k] = Q[k];
-                }
-            }
-            return out;
-        };
-    }
 
     // Mark as initialized so subsequent loads are no-ops
     Q.core.__initialized = true;

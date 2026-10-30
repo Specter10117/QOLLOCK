@@ -9,6 +9,33 @@ const path = require("node:path");
 // the compiler can remove more spaces, but source must fit without relying on it.
 const SELECTOR_LIST_MAX_BYTES = 2047;
 
+// Project compatibility rule: the keyboard and event-indicator regressions
+// both introduced multiple negations on one component. A descendant or a new
+// comma-separated selector may use its own single negation.
+function hasChainedNegations(selector) {
+    let depth = 0;
+    let quote = null;
+    let negations = 0;
+    for (let index = 0; index < selector.length; index++) {
+        const token = selector[index];
+        if (token === "\\") { index++; continue; }
+        if (quote) {
+            if (token === quote) quote = null;
+            continue;
+        }
+        if (token === "\"" || token === "'") { quote = token; continue; }
+        if (!depth) {
+            if (/[\s,>+~]/.test(token)) negations = 0;
+            else if (selector.slice(index, index + 5).toLowerCase() === ":not(") {
+                if (++negations > 1) return true;
+            }
+        }
+        if (token === "(" || token === "[") depth++;
+        else if (token === ")" || token === "]") depth--;
+    }
+    return false;
+}
+
 function scanSource(source, file = "<source>") {
     const stack = [];
     const openings = "{([";
@@ -58,6 +85,9 @@ function scanSource(source, file = "<source>") {
             const bytes = Buffer.byteLength(selector, "utf8");
             if (!selector.startsWith("@") && bytes > SELECTOR_LIST_MAX_BYTES) {
                 return [issue(`Selector list is ${bytes} bytes; source budget is ${SELECTOR_LIST_MAX_BYTES}. Split the rule before the client's 2048-byte buffer overflows.`, headerPosition || position)];
+            }
+            if (!selector.startsWith("@") && hasChainedNegations(selector)) {
+                return [issue("Chained :not() selectors are forbidden by the Panorama compatibility gate. Use positive classes or separate rules; keep at most one :not() per selector component.", headerPosition || position)];
             }
         }
         if (token === "{" || token === "}" || token === ";") {

@@ -1,19 +1,10 @@
 // scripts/import_tree_dump.js
 // =============================================================================
-// Import a [QOLTREE] hierarchy or a [QOLSUM] aggregate from the game log.
+// Import completed receiver JSON, a [QOLTREE] hierarchy or a [QOLSUM] aggregate.
 // =============================================================================
-// The headless profiler's tree (simulator/perf/hud_tree.js) is assembled from layout
-// XML plus hand-modelled guesses about what C++ creates at runtime. Its numbers are
-// therefore relative to a guess, and the guesses have been wrong by more than an
-// order of magnitude in both directions: it ranked ql_nicknames at ~1% of mod cost
-// while the in-game overlay measured it as the most expensive feature in the mod
-// (2.4ms avg, 9ms peak), and ranked ql_showrank at 13.5% where the game measured
-// 1-3ms total.
-//
-// The Dev Panel button writes an aggregate summary, which this importer can
-// validate and save. It has no ancestry and cannot drive profile_hud.js --tree.
-// That mode requires a complete per-panel Hud dump, which is usually too large
-// for the game's rolling console log.
+// Prefer completed native Debugger receiver captures for whole-HUD replay.
+// Dev Panel aggregate summaries have no ancestry and support inventory only.
+// Rolling console logs are suitable for small focused trees, not whole-HUD export.
 //
 //   node scripts/import_tree_dump.js <console.log> [-o out.json]
 //   node scripts/import_tree_dump.js <console.log> --stats

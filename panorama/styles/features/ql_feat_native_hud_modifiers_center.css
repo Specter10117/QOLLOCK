@@ -1,0 +1,11 @@
+/* QOLLOCK overrides for hud_modifiers_center.css; loaded after the native baseline. */
+
+.legacy_cooldowns_active #fancy_progress_container
+{
+	visibility: collapse;
+}
+
+.legacy_cooldowns_active #basic_progress_container
+{
+	visibility: visible;
+}

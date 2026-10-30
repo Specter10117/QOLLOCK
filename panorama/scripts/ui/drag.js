@@ -18,11 +18,8 @@
         return;
     }
 
-    let _dragHandleLeft = null;
-    let _dragHandleRight = null;
-    let _dragParentPanel = null;
-    let _dragHandlersBoundLeft = false;
-    let _dragHandlersBoundRight = false;
+    let dragOwner = null;
+    const dragBindings = new WeakMap();
 
     const isAlive = Q.core.panel.isAlive;
 
@@ -220,9 +217,19 @@
 
         const handlePanel = handles.left;
         const handlePanelRight = handles.right;
-
+        if (!dragOwner || dragOwner.header !== headerPanel || dragOwner.panel !== dragPanel ||
+            dragOwner.left !== handlePanel || dragOwner.right !== handlePanelRight) {
+            for (const previous of [dragOwner?.left, dragOwner?.right]) {
+                if (isAlive(previous) && previous !== handlePanel && previous !== handlePanelRight) {
+                    try { previous.SetDraggable(false); } catch (_) {}
+                }
+            }
+            dragOwner = { header: headerPanel, panel: dragPanel, left: handlePanel, right: handlePanelRight,
+                parent: dragPanel.GetParent ? dragPanel.GetParent() : null };
+        }
+        const owner = dragOwner;
         const updateBounds = () => {
-            if (isAlive(headerPanel) && isAlive(handlePanel) && isAlive(handlePanelRight)) {
+            if (owner === dragOwner && isAlive(headerPanel) && isAlive(handlePanel) && isAlive(handlePanelRight)) {
                 updateSettingsHeaderDragAreaBounds(headerPanel, handlePanel, handlePanelRight);
             }
         };
@@ -234,54 +241,36 @@
             $.Schedule(0.12, updateBounds);
         }
 
-        if (!isAlive(_dragParentPanel)) {
-            _dragParentPanel = dragPanel.GetParent ? dragPanel.GetParent() : null;
-        }
-
         const enabled = isDragEnabled();
         if (typeof handlePanel.SetDraggable === "function") handlePanel.SetDraggable(enabled);
         if (typeof handlePanelRight.SetDraggable === "function") handlePanelRight.SetDraggable(enabled);
 
         if (typeof $.RegisterEventHandler === "function") {
-            if (!_dragHandlersBoundLeft) {
-                $.RegisterEventHandler("DragStart", handlePanel, (_p, dragEvent) => {
-                    if (!isDragEnabled() || !isAlive(dragPanel)) return;
-                    dragEvent.displayPanel = dragPanel;
-                    dragEvent.removePositionBeforeDrop = false;
-                    try { dragPanel.style.align = "left top"; } catch (_) {}
-                });
-
-                $.RegisterEventHandler("DragEnd", handlePanel, (_p, droppedPanel) => {
-                    if (!isAlive(droppedPanel)) return;
-                    if (isAlive(_dragParentPanel) && typeof droppedPanel.SetParent === "function") {
-                        droppedPanel.SetParent(_dragParentPanel);
-                    }
-                    try { droppedPanel.style.align = "left top"; } catch (_) {}
-                });
-                _dragHandlersBoundLeft = true;
-            }
-
-            if (!_dragHandlersBoundRight) {
-                $.RegisterEventHandler("DragStart", handlePanelRight, (_p, dragEvent) => {
-                    if (!isDragEnabled() || !isAlive(dragPanel)) return;
-                    dragEvent.displayPanel = dragPanel;
-                    dragEvent.removePositionBeforeDrop = false;
-                    try { dragPanel.style.align = "left top"; } catch (_) {}
-                });
-
-                $.RegisterEventHandler("DragEnd", handlePanelRight, (_p, droppedPanel) => {
-                    if (!isAlive(droppedPanel)) return;
-                    if (isAlive(_dragParentPanel) && typeof droppedPanel.SetParent === "function") {
-                        droppedPanel.SetParent(_dragParentPanel);
-                    }
-                    try { droppedPanel.style.align = "left top"; } catch (_) {}
-                });
-                _dragHandlersBoundRight = true;
+            for (const handle of [handlePanel, handlePanelRight]) {
+                let binding = dragBindings.get(handle);
+                if (!binding) { binding = { owner, start: false, end: false }; dragBindings.set(handle, binding); }
+                binding.owner = owner;
+                if (!binding.start) {
+                    $.RegisterEventHandler("DragStart", handle, (_p, dragEvent) => {
+                        const current = binding.owner;
+                        if (current !== dragOwner || !isDragEnabled() || !isAlive(current.panel)) return;
+                        dragEvent.displayPanel = current.panel;
+                        dragEvent.removePositionBeforeDrop = false;
+                        try { current.panel.style.align = "left top"; } catch (_) {}
+                    });
+                    binding.start = true;
+                }
+                if (!binding.end) {
+                    $.RegisterEventHandler("DragEnd", handle, (_p, droppedPanel) => {
+                        const current = binding.owner;
+                        if (current !== dragOwner || !isAlive(droppedPanel) || droppedPanel !== current.panel) return;
+                        if (isAlive(current.parent) && typeof droppedPanel.SetParent === "function") droppedPanel.SetParent(current.parent);
+                        try { droppedPanel.style.align = "left top"; } catch (_) {}
+                    });
+                    binding.end = true;
+                }
             }
         }
-
-        _dragHandleLeft = handlePanel;
-        _dragHandleRight = handlePanelRight;
     };
 
     const wireDragToggleButton = (btn, win) => {

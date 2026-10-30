@@ -1,0 +1,40 @@
+/* Hit timing and the host's opacity stay native outside a leased editor sample. */
+#hit_markers.qol-custom-hitmarker > .hit_marker
+{
+    visibility: collapse;
+}
+
+#QOLHitMarkerNormal,
+#QOLHitMarkerCrit
+{
+    width: 100%;
+    height: 100%;
+    ignore-parent-flow: true;
+    visibility: collapse;
+    overflow: noclip;
+}
+
+#QOLHitMarkerNormal > Panel,
+#QOLHitMarkerCrit > Panel
+{
+    horizontal-align: center_nopixelsnap;
+    vertical-align: center_nopixelsnap;
+    ignore-parent-flow: true;
+    overflow: noclip;
+}
+
+.show_hit_marker #hit_markers.qol-custom-hitmarker #QOLHitMarkerNormal,
+#hit_markers.qol-hitmarker-preview #QOLHitMarkerNormal
+{
+    visibility: visible;
+}
+
+.show_crit_hit_marker #hit_markers.qol-custom-hitmarker #QOLHitMarkerNormal
+{
+    visibility: collapse;
+}
+
+.show_crit_hit_marker #hit_markers.qol-custom-hitmarker #QOLHitMarkerCrit
+{
+    visibility: visible;
+}

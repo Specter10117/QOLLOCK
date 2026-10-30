@@ -4,13 +4,17 @@ import worker, { check, preflight } from "../tools/updater/worker.mjs";
 
 const latest = "a".repeat(40);
 const baseline = "b".repeat(40);
-const manifest = { files: { "styles/hud.css": { blob: "old" } } };
+const manifest = { repository: "SteamTracking/GameTracking-Deadlock", files: { "styles/hud.css": { blob: "old" } } };
 
 function fixture(blob = "old", initial = {}) {
     let state = initial;
     let dispatches = 0;
     let failed = false;
     let pendingStatus = "in_progress";
+    let conclusion = "success";
+    let listingTruncated = false;
+    let noRun = false;
+    const watched = structuredClone(manifest);
     const previousFetch = globalThis.fetch;
     globalThis.fetch = async (url, options = {}) => {
         if (failed) return Response.json({}, { status: 500 });
@@ -18,13 +22,14 @@ function fixture(blob = "old", initial = {}) {
             dispatches++;
             return new Response(null, { status: 204 });
         }
-        if (url.includes("contents/upstream.json")) return Response.json({ content: btoa(JSON.stringify(manifest)) });
+        if (url.includes("contents/upstream.json")) return Response.json({ content: btoa(JSON.stringify(watched)) });
         if (url.includes("commits/master")) return Response.json({ sha: latest });
-        if (url.includes("actions/workflows/")) return Response.json({ workflow_runs: [{
+        if (url.includes("actions/workflows/")) return Response.json({ workflow_runs: noRun ? [] : [{
             display_title: `QOLLOCK native update ${latest}`, created_at: new Date().toISOString(),
-            status: pendingStatus, conclusion: "success"
+            status: pendingStatus, conclusion
         }] });
         if (url.includes("?recursive=1")) return Response.json({
+            truncated: listingTruncated,
             tree: url.includes("styles-tree") ? [{ type: "blob", path: "hud.css", sha: blob }] : []
         });
         return Response.json({ tree: ["game", "citadel", "pak01_dir", "panorama", "styles", "layout"]
@@ -35,7 +40,9 @@ function fixture(blob = "old", initial = {}) {
         async put(key, value) { state = JSON.parse(value); }
     } };
     return { env, get state() { return state; }, get dispatches() { return dispatches; },
-        fail() { failed = true; }, complete() { pendingStatus = "completed"; },
+        watched,
+        fail() { failed = true; }, complete(result = "success") { pendingStatus = "completed"; conclusion = result; },
+        truncate() { listingTruncated = true; }, hideRun() { noRun = true; },
         restore() { globalThis.fetch = previousFetch; } };
 }
 
@@ -65,6 +72,67 @@ test("failed GitHub reads preserve the previous checkpoint", async t => {
     data.fail();
     await assert.rejects(check(data.env), /GitHub returned 500/);
     assert.equal(data.state.checked_sha, baseline);
+    assert.equal(data.dispatches, 0);
+});
+
+test("failed reviews back off without acknowledging the native update", async t => {
+    const data = fixture("new", { checked_sha: baseline });
+    t.after(() => data.restore());
+    await check(data.env);
+    data.complete("failure");
+    assert.equal((await check(data.env)).status, "review-failed");
+    assert.equal(data.state.checked_sha, baseline);
+    assert.equal(data.state.pending, undefined);
+    assert.equal((await check(data.env)).status, "retry-later");
+    assert.equal(data.dispatches, 1);
+});
+
+test("an expired missing review is retried without accepting its checkpoint", async t => {
+    const data = fixture("new", { checked_sha: baseline,
+        pending: { sha: latest, identity: "unaccepted", created_at: Date.now() - 3600001 } });
+    t.after(() => data.restore());
+    data.hideRun();
+    assert.equal((await check(data.env)).status, "review-failed");
+    assert.equal(data.state.checked_sha, baseline);
+    assert.equal(data.state.identity, undefined);
+    assert.equal(data.dispatches, 0);
+});
+
+test("an expired backoff dispatches the unacknowledged update again", async t => {
+    const data = fixture("new", { checked_sha: baseline, retry_after: Date.now() - 1 });
+    t.after(() => data.restore());
+    assert.equal((await check(data.env)).status, "dispatched");
+    assert.equal(data.state.checked_sha, baseline);
+    assert.equal(data.state.pending.sha, latest);
+});
+
+test("incomplete native trees cannot dispatch or advance a checkpoint", async t => {
+    const data = fixture("new", { checked_sha: baseline });
+    t.after(() => data.restore());
+    data.truncate();
+    await assert.rejects(check(data.env), /Incomplete native/);
+    assert.deepEqual(data.state, { checked_sha: baseline });
+    assert.equal(data.dispatches, 0);
+});
+
+test("new watched paths are checked even when the upstream commit has not changed", async t => {
+    const data = fixture();
+    t.after(() => data.restore());
+    assert.equal((await check(data.env)).status, "unrelated-update");
+    assert.equal((await check(data.env)).status, "unchanged");
+    data.watched.files["layout/new.xml"] = { blob: "previous-native-blob" };
+    assert.equal((await check(data.env)).status, "dispatched");
+    assert.equal(data.dispatches, 1);
+    // The new watched file is absent upstream: that removal needs review too.
+    assert.ok(data.state.pending.identity.includes('["layout/new.xml",null]'));
+});
+
+test("invalid runtime manifests preserve the last successful checkpoint", async t => {
+    const data = fixture("new", { checked_sha: baseline });
+    t.after(() => data.restore());
+    data.watched.repository = "unexpected/repository";
+    await assert.rejects(check(data.env), /Invalid watched-resource manifest/);
+    assert.deepEqual(data.state, { checked_sha: baseline });
     assert.equal(data.dispatches, 0);
 });
 

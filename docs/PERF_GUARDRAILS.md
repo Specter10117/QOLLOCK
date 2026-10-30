@@ -28,8 +28,10 @@ constraints, not claims that every existing feature already satisfies them.
   A miss can walk the entire subtree; it is not a cheap no-op.
 - Back off unsuccessful discovery where the source is legitimately absent. Check
   recovery after it appears or is recreated; a permanent negative cache is wrong.
-- `QOL.panelCache.resolve` validates liveness, not ownership by its new parent.
-  Clear/rebind owned entries explicitly. Do not clear another feature's cache.
+- `QOL.panelCache.resolve` validates liveness and ancestry under the requested
+  parent/ID and re-resolves moved handles. It has no missing-result backoff or
+  feature lifecycle cleanup; callers still own their cache keys and rebinding.
+  Do not clear another feature's cache.
 - Keep bounded/local traversal where ordering, identity or depth is part of the
   feature contract. A generic helper is not automatically a cheaper equivalent.
 
@@ -68,12 +70,12 @@ constraints, not claims that every existing feature already satisfies them.
 ```text
 node scripts/profile_hud.js --seconds 20 --save before
 node scripts/profile_hud.js --seconds 20 --compare before
-node scripts/audit_panel_ids.js
+node scripts/audit_lookups_vs_capture.js --json
 ```
 
-Compare the same tree, player count, feature configuration and warm-up. Retain raw
+Compare the same capture, feature configuration and warm-up. Retain raw
 operation counts and collected callback errors; weighted cost is an estimate, not
-milliseconds or FPS. Audit-panel-ID misses are investigation candidates: C++ and
+milliseconds or FPS. Unobserved dependencies are investigation candidates: C++ and
 dynamic IDs can create panels absent from scanned XML/JS sources.
 
 There is no current `tests/perf_guards.test.js` gate. Use the current commands in

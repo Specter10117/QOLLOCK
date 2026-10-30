@@ -6,23 +6,80 @@ Provides Deadlock-specific HUD element discovery, match mode detection (Hideout,
 ## Dependencies
 - `panorama/scripts/core/ql_namespace.js` (`QOL.core.hud`)
 - `panorama/scripts/core/ql_panel_helpers.js` (`QOL.core.panel`)
+- `panorama/scripts/core/ql_hud_state.js` (`QOL.hudState`, shared scoreboard observation)
 
 ## Interface (`QOL.core.hud`)
 - `findHud(preferredRoot)`: Resolves and returns the main `#Hud` panel (delegates to `QOL.core.panel.findHud`).
 - `isInHideout(root)`: Checks if player is in sandbox/testing/hideout mode (`connectedToHideout` / `InHideout` classes).
 - `isGameplayHudShown(root)`: Reports native combat-HUD presentation evidence; requires a real Hud, joined-team state and a visible native `gameplay_hud` ancestry.
 - `isStreetBrawl(root)`: Checks if active match is in Street Brawl mode (`gamemode_streetbrawl`).
-- `isClassActive(className)`: Checks if a given class token is active on the HUD root.
-- `applyRootClasses(root, config, timestamp, force)`: Synchronizes feature CSS classes onto the root container based on active configuration settings.
+- `isClassActive(className)`: Checks the HUD root, native `gameplay_hud` and abilities container for a class token.
+- `applyRootClasses(root, config, timestamp, hideoutConnected)`: Synchronizes feature CSS classes onto the root container based on the complete active configuration and live HUD evidence.
+- `refreshRootClasses(root)`: Projects the complete current flat config from ConfigAdapter. Feature hooks use this entry point; passing a local settings slice to `applyRootClasses` would reset unrelated classes.
+
+The core projector owns shared root class decisions. Basic cooldown classes and
+native item layout belong solely to the passive-cooldown manifest; damage-report
+offsets belong solely to the damage-report manifest. These native owners release
+their code properties independently of shared root-class projection.
+
+Core class/signature records remain private. Living root/abilities replacements
+release the previous owner's QOLLOCK classes and receive the accepted config;
+retirement and partial root/ability-class writes retry, including rejected returns and mismatched native readback. Only accepted class writes enter a completed signature; successful members of a partial pass avoid redundant writes. Mode observations bind the
+current supplied HUD instead of inheriting an older live context's cache.
+
+Core reports native combat evidence through a private resolver for the current
+shop alert and the retained root class signals. `ql_combat_indicator` owns
+healthbar/root indicator classes and recovery history independently of the
+`ql_combat_status` text readout. Disabling that readout preserves the indicator;
+each owner releases its own classes/panels/work. Reload-circle exception evidence
+also follows the current native progress source. The former unconsumed legacy
+cooldown attribute writer is removed; working root CSS settings remain.
+
+Urn/networth difference content belongs to `ql_urn_tracker`; core only projects
+its CSS gate. The manifest owns source reconciliation and its created readout;
+there are no core mutation exports or shared `State` caches for that overlay.
+Native team scores take precedence when both exist; otherwise the retained
+per-player string gold bindings supply totals. Hideout/disable retire created UI,
+without mutating native score labels. This is separate from the rift timer.
+
+Target/hint geometry belongs solely to `ql_target_shapes`. Core projects its CSS
+gates but does not mutate that instance's discovery/signature caches. The target
+owner derives settings in hooks and reconciles moved/replaced native children.
+
+Native chat visibility/geometry belongs to the independent `ql_chat_geometry`
+manifest. Core does not apply/reset chat transforms; image and translation
+owners share only the read-only native label selector in `ql_chat_messages.js`.
+
+Core also owns native quickbuy mode/count projection and the self-warning bridge
+attribute. Their scoped resolvers follow current verified hosts; a living retired
+host releases QOLLOCK classes/attributes without changing native content or
+animation. A new host receives the complete accepted configuration even when its
+values equal the previous generation. Failed writes/retirement remain retryable,
+and the root quickbuy count is published before a conditional native queue exists.
+These presentation/retirement records are private to the core owner.
+
+Complete-config CSS projection also observes transient registry presentation
+availability. Explicit disable, failed enable and auto-disable release the
+affected central presentation rules to native/CSS policy while retaining the
+accepted config. A successful enable restores those rules before/after the new
+owner hook. The release map belongs to core; features do not fight the projector
+with a second writer or reset persistent values to make cleanup work. Damage-number retirement releases all centrally projected clean/fountain/small/trooper/cumulative gates along with that owner's inline styles.
 
 Use `QOL.core.hud.isInHideout(root)` for the shared two-class predicate.
 Compass, cursor, zipboost, urn timer, Rejuvenator, minimap timers, legacy passive
-audio, item mirror, stat bonuses, stats position and recent purchases call this
+audio, item mirror, stats position and recent purchases call this
 helper directly or through a local function reference. HUD discovery is cached;
 the helper reads current classes on each call rather than caching mode state.
 Do not duplicate the predicate through two `isClassActive` calls or legacy
 fallbacks. Feature-specific intro/visibility rules remain separate, and the
 unsecured-souls timer intentionally has no hideout suppression.
+
+The former always-true custom-context predicate and gameplay-root fallback are
+removed. Content owners resolve their verified native parents and wait when
+those parents are absent; a menu/loading root is not a gameplay anchor. Zip
+boost, unsecured readouts and combat text own their complete
+created trees through the panel helper, including moved children and rapid
+disable/re-enable generations. New HUDs reset their private observation history.
 
 ## Combat HUD visibility
 
@@ -58,9 +115,13 @@ core panel helper directly rather than a mutable legacy alias.
 
 ## Scoreboard and life evidence
 
-`isScoreboardOpen(root, anchor)` reads persistent `gScoreboardOpen` class state
-from HUD ancestors, a supplied live anchor, or the cached native `minimap_persp`
-GlobalClassListener. It does not infer visibility by counting toggle events.
+`isScoreboardOpen(root, anchor)` delegates to shared `QOL.hudState`, loaded in
+both HUD and settings contexts. It first checks `gScoreboardOpen` on HUD ancestors,
+then the stationary native `DamageReportGlobalClassListener`. Only when that
+listener is absent does it fall back to a supplied live anchor or the native
+`minimap_persp` GlobalClassListener. The stationary listener takes precedence
+because Draw Over UI can reparent the minimap. Toggle events prompt a refresh;
+they do not provide visibility state.
 
 `readHudLifeState(root)` requires a real Hud/CitadelHud and exactly one of `alive`
 or `dead`. It returns `unknown` for missing/ambiguous classes, `spec_mode`,

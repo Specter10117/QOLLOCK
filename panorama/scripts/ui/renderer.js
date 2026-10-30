@@ -352,6 +352,7 @@
     // =========================================================================
 
     const createSlider = (parent, setting, currentValue, onChange, description) => {
+        setting = { ...setting, ...Q.settings?.get(setting.key) };
         const rowObj = createRow(parent, { ...setting, type: "slider", description });
         if (!rowObj) return null;
         const group = rowObj.controlGroup || rowObj.row;
@@ -362,35 +363,21 @@
         let value = (typeof currentValue === "number") ? currentValue :
             ((typeof setting.default === "number") ? setting.default : min);
 
-        const isFloat = (step < 1) || (max <= 5.0 && (setting.key?.includes("OPACITY") || setting.key?.includes("SCALE")));
-        const isPercent = setting.unit === "%" || (isFloat && setting.key?.includes("OPACITY"));
-        const isSeconds = setting.unit === "s" || setting.isSeconds;
-        const isAngle = setting.unit === "°" || setting.isAngle || setting.type === "angle_slider";
-
-        const stepStr = String(step);
-        const dot = stepStr.indexOf(".");
-        const decimals = dot !== -1 ? stepStr.length - dot - 1 : (isFloat ? 2 : 0);
-        const scaleFactor = Math.pow(10, decimals);
-
-        const formatValue = (v) => {
-            const num = Number(v);
-            if (!isFinite(num)) return "0";
-            if (isPercent) return `${Math.round(Math.max(0, Math.min(1, num)) * 100)}%`;
-            if (isSeconds) return `${Math.round(num)}s`;
-            if (isAngle) return `${Math.round(num)}°`;
-            if (decimals > 0) return num.toFixed(decimals);
-            return String(Math.round(num));
-        };
-
-        const parseValue = (text) => {
-            const raw = String(text || "").trim().replace(",", ".");
-            if (!raw) return null;
-            let parsed = parseFloat(raw);
-            if (!isFinite(parsed)) return null;
-            if (isPercent && (raw.includes("%") || parsed > 1)) {
-                parsed = parsed / 100;
-            }
-            return snapToStep(parsed, step, min, max);
+        const contract = Q.settings?.get(setting.key);
+        const factor = contract?.displayFactor || setting.displayFactor || 1;
+        const unit = contract?.unit ?? setting.unit ?? "";
+        const display = value => (Q.settings?.toDisplayValue(setting.key, value) ?? value) * factor;
+        const stored = value => Q.settings?.fromDisplayValue(setting.key, value / factor) ?? value / factor;
+        const normalize = value => contract ? Q.settings.normalize(setting.key, value) : snapToStep(value, step, min, max);
+        const scaleFactor = factor;
+        const formatValue = value => String(Number(Number(display(value)).toFixed(6))) + unit;
+        const parseValue = text => {
+            let raw = String(text ?? "").trim().replace(",", ".");
+            if (unit && raw.endsWith(unit)) raw = raw.slice(0, -unit.length).trim();
+            if (!/^[+-]?(?:\d+(?:\.\d+)?|\.\d+)$/.test(raw)) return null;
+            const value = stored(Number(raw));
+            if (contract) return Q.settings.normalize(setting.key, value, false);
+            return value >= min && value <= max ? snapToStep(value, step, min, max) : null;
         };
 
         const sliderValueGroup = createPanel("Panel", group, "");
@@ -406,9 +393,10 @@
         slider.AddClass("HorizontalSlider");
 
         try {
-            slider.min = Math.round(min * scaleFactor);
-            slider.max = Math.round(max * scaleFactor);
-            slider.value = Math.round(value * scaleFactor);
+            const shownBounds = Q.settings?.displayBounds(setting.key, min, max) || { min, max };
+            slider.min = shownBounds.min * scaleFactor;
+            slider.max = shownBounds.max * scaleFactor;
+            slider.value = display(value);
             if (typeof slider.SetShowDefaultValue === "function") slider.SetShowDefaultValue(false);
             if (typeof slider.SetRequiresSelection === "function") slider.SetRequiresSelection(false);
         } catch (_) {}
@@ -422,7 +410,7 @@
         let debounceTimer = null;
         const commitValue = (nextVal, immediate = false) => {
             const clamped = Math.max(min, Math.min(max, nextVal));
-            value = snapToStep(clamped, step, min, max);
+            value = normalize(clamped);
             if (valueInput) valueInput.text = formatValue(value);
 
             if (immediate) {
@@ -448,7 +436,7 @@
         };
 
         slider.SetPanelEvent("onvaluechanged", () => {
-            const desired = Number(slider.value) / scaleFactor;
+            const desired = stored(Number(slider.value));
             commitValue(desired, false);
         });
 
@@ -456,14 +444,15 @@
             valueInput.SetPanelEvent("oninputsubmit", () => {
                 const parsed = parseValue(valueInput.text);
                 if (parsed !== null) {
-                    try { slider.value = Math.round(parsed * scaleFactor); } catch (_) {}
+                    valueInput.RemoveClass("Invalid");
+                    try { slider.value = display(parsed); } catch (_) {}
                     commitValue(parsed, true);
                     valueInput.AddClass("ValueSavedFlash");
                     $.Schedule(0.28, () => {
                         if (isAlive(valueInput)) valueInput.RemoveClass("ValueSavedFlash");
                     });
                 } else {
-                    valueInput.text = formatValue(value);
+                    valueInput.AddClass("Invalid");
                 }
             });
 
@@ -473,7 +462,7 @@
         }
 
         const resetBtn = createResetButton(rowObj.labelContainer || group, setting, value, onChange, (def) => {
-            try { slider.value = Math.round(def * scaleFactor); } catch (_) {}
+            try { slider.value = display(def); } catch (_) {}
             commitValue(def, true);
         });
 
@@ -482,8 +471,8 @@
             slider,
             input: valueInput,
             update: (nextVal) => {
-                value = snapToStep(nextVal, step, min, max);
-                try { slider.value = Math.round(value * scaleFactor); } catch (_) {}
+                value = normalize(nextVal);
+                try { slider.value = display(value); } catch (_) {}
                 if (valueInput) valueInput.text = formatValue(value);
                 resetBtn?.updateNotDefault(value);
             },
@@ -1097,11 +1086,6 @@
             }
             if (enableKey) {
                 updateDependents(enableKey, next);
-                if (typeof globalThis !== "undefined" && typeof globalThis.ShowConfigPreviewForConfigId === "function") {
-                    try { globalThis.ShowConfigPreviewForConfigId(enableKey); } catch (_) {}
-                } else if (Q?.preview?.showConfigPreviewForConfigId) {
-                    try { Q.preview.showConfigPreviewForConfigId(enableKey); } catch (_) {}
-                }
             }
         };
 

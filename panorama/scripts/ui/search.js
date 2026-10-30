@@ -572,7 +572,9 @@
                     if (typeof gSearchResultRenderMode !== "undefined") gSearchResultRenderMode = true;
                     globalThis.gSearchResultRenderMode = true;
                     try {
-                        if (inlineSecondaryOption && createSecondaryToggle) {
+                        if (row.type === "customize") {
+                            rowPanel = Q.ui.customize?.createEntryAction(list, row.options?.[0]?.elementId);
+                        } else if (inlineSecondaryOption && createSecondaryToggle) {
                             rowPanel = createSecondaryToggle(
                                 list,
                                 row.label,
@@ -640,7 +642,6 @@
         const ensureHosts = (typeof EnsureSettingsListHosts === "function") ? EnsureSettingsListHosts : globalThis.EnsureSettingsListHosts;
         const hosts = ensureHosts ? ensureHosts(list) : null;
         if (!hosts || !hosts.searchHost || !hosts.searchHost.IsValid || !hosts.searchHost.IsValid()) return false;
-        if (Q.preview?.hideAll) Q.preview.hideAll();
         if (typeof SetActiveSettingsListRenderSignature === "function") SetActiveSettingsListRenderSignature("__search__");
         else if (typeof globalThis.SetActiveSettingsListRenderSignature === "function") globalThis.SetActiveSettingsListRenderSignature("__search__");
         if (typeof ResetSettingsListRowSyncRegistry === "function") ResetSettingsListRowSyncRegistry();

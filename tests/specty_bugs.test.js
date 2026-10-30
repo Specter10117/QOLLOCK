@@ -2,7 +2,7 @@
 // =============================================================================
 // Unit tests verifying fixes for the 5 Specty reported bugs:
 // 1. "Cant edit any ammo settings" - ql_ammo activates on custom scale/offset/angle/color
-// 2. "Enabling Visual on Ammo makes it really tiny? DIsabling it makes it big" - neutral scale leaves font size null
+// 2. "Enabling Visual on Ammo makes it really tiny? DIsabling it makes it big" - neutral scale releases font size
 // 3. "Cant move qol lock settings menu anymore" - DragToggleBtnRail in tabFooter
 // 4. "Hitting X on QolLock settings also closes the escape menu" - CitadelResumePlaying not fired
 // 5. Unsecured Plus must recover after zero souls or a temporarily missing source.
@@ -18,7 +18,7 @@ const vm = require("node:vm");
 
 const sim = require("../scripts/simulator/index.js");
 
-test("Bug 1 & 2: ql_ammo enables when slider is customized and neutral scale leaves font size null", () => {
+test("Bug 1 & 2: ql_ammo enables when slider is customized and neutral scale releases font size", () => {
     const hud = sim.createHud();
     hud.assertLoaded();
     const QOL = hud.sandbox.global.QOL;
@@ -28,9 +28,13 @@ test("Bug 1 & 2: ql_ammo enables when slider is customized and neutral scale lea
     // 1. Initially disabled at neutral defaults
     assert.strictEqual(FR.isEnabled("ql_ammo"), false, "ql_ammo should initially be disabled");
 
-    // Create dummy ammo panel in the DOM
-    const root = hud.root;
+    // Match the native gun owner rather than relying on HUD-wide discovery.
+    const $ = hud.sandbox.global.$;
+    let root = $.CreatePanel("Panel", hud.root, ""); root.AddClass("HudCore");
+    for (const id of ["gameplay_hud", "gameplay_hud_alive", "crosshair", "gun", "gun_data"]) root = $.CreatePanel("Panel", root, id);
     const ap = hud.sandbox.global.$.CreatePanel("Panel", root, "ammo_panel");
+    ap.style.x = "50%";
+    ap.style.y = "85px";
     const labelCurrent = hud.sandbox.global.$.CreatePanel("Label", ap, "current");
     labelCurrent.AddClass("weapon_ammo");
     const labelMax = hud.sandbox.global.$.CreatePanel("Label", ap, "max");
@@ -47,7 +51,7 @@ test("Bug 1 & 2: ql_ammo enables when slider is customized and neutral scale lea
     assert.strictEqual(FR.isEnabled("ql_ammo"), true, "ql_ammo should be enabled when AMMO_CURRENT_SCALE is customized");
     assert.strictEqual(labelCurrent.style.fontSize, "24px", "Scaled font size should be 24px (16 * 1.5)");
 
-    // 3. Enabling Visual with 100% scale must NOT force 16px (must leave fontSize null)
+    // 3. Neutral Visual releases the owned font size to native styling.
     const neutralConfig = Object.assign({}, defaultCfg, {
         ENABLE_AMMO_STATUS: 1,
         AMMO_CURRENT_SCALE: 100,
@@ -57,8 +61,8 @@ test("Bug 1 & 2: ql_ammo enables when slider is customized and neutral scale lea
     hud.clock.advance(1000);
 
     assert.strictEqual(FR.isEnabled("ql_ammo"), true, "ql_ammo should be enabled when ENABLE_AMMO_STATUS is 1");
-    assert.strictEqual(labelCurrent.style.fontSize, null, "Neutral scale (100) must keep fontSize null to preserve game scaling");
-    assert.strictEqual(labelCurrent.style.width, null, "Neutral scale (100) must keep width null");
+    assert.ok(!labelCurrent.style.fontSize, "Neutral scale (100) releases code fontSize to preserve game scaling");
+    assert.ok(!labelCurrent.style.width, "Neutral scale (100) releases code width");
 
     // 4. Disabling clears all styles
     const disabledConfig = Object.assign({}, defaultCfg, {
@@ -70,9 +74,11 @@ test("Bug 1 & 2: ql_ammo enables when slider is customized and neutral scale lea
     hud.clock.advance(1000);
 
     assert.strictEqual(FR.isEnabled("ql_ammo"), false, "ql_ammo should be disabled when all settings neutral");
-    assert.strictEqual(labelCurrent.style.fontSize, null);
-    assert.strictEqual(ap.style.x, "0px");
-    assert.strictEqual(ap.style.y, "80px");
+    assert.ok(!labelCurrent.style.fontSize);
+    assert.strictEqual(ap.style.marginLeft, undefined);
+    assert.strictEqual(ap.style.marginTop, undefined);
+    assert.strictEqual(ap.style.x, "50%");
+    assert.strictEqual(ap.style.y, "85px");
 });
 
 test("Bug 3: setupSettingsWindowDragging attaches drag handles to header without rail toggle button", () => {
@@ -235,9 +241,12 @@ test("Unsecured Plus recovers after zero souls and a late native label", () => {
     const root = hud.root;
     // IDs/classes from Valve's hud.xml and hud_gold_and_ap_container.xml.
     // This fixture checks JS visibility transitions, not Panorama rendering.
-    const stats = create("Panel", root, "StatsAndModsContainer");
-    const gold = create("Panel", stats, "gold_and_ap_container");
-    const container = create("Panel", gold, "");
+    const core = create("Panel", root, ""); core.AddClass("HudCore");
+    const stats = create("Panel", core, "StatsAndModsContainer");
+    const lower = create("Panel", stats, "LowerLeft");
+    const gold = create("Panel", lower, "gold_and_ap_container");
+    const body = create("Panel", gold, "hudGoldContainer");
+    const container = create("Panel", body, "");
     container.AddClass("hudDeathGoldContainer");
     const config = Object.assign({}, hud.sandbox.global.QOL_DEFAULT_CONFIG, {
         ENABLE_BETTER_UNSECURED: 1
@@ -247,7 +256,7 @@ test("Unsecured Plus recovers after zero souls and a late native label", () => {
     const overlay = root.FindChildTraverse("QOLBetterUnsecuredOverlay");
     assert.ok(overlay.BHasClass("qol-hidden"), "No source yet: overlay stays hidden");
 
-    const label = create("Label", container, "hudDealthGoldLabel");
+    const label = create("Label", container, "hudDeathGoldLabel");
     label.AddClass("death_penalty_gold");
     const mirror = overlay.FindChildTraverse("QOLBetterUnsecuredMirrorLabel");
     for (const value of ["125", "0", "250", "0", "125"]) {

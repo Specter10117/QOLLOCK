@@ -22,29 +22,29 @@
 
     const localize = Q.ui.renderer.localize;
 
-    const isRussian = Q.ui.renderer.isRussian;
+    const format = (text, values) => Q.ui.theme.FormatSettingsText(text, values);
 
     const getExportPrefix = () => {
         const semver = globalThis.QOL_SCHEMA_SEMVER ||
-            globalThis.LATEST_COMPACT_SEMVER ||
             Q.VERSION ||
             "4.0.0";
-        return `[QOL-${String(semver).replace(/\./g, "-")}]:`;
+        const formatMarker = Q.persistence?.serializeSettingsCode ? "-C" : "";
+        return `[QOL-${String(semver).replace(/\./g, "-")}${formatMarker}]:`;
     };
 
     const getCurrentExportSettingsString = (config) => {
         const conf = config || globalThis.MOD_CONFIG || {};
-        const compact = Q.persistence?.serializeCompactV2?.(conf) ||
-            (typeof globalThis.SerializeCompactV2 === "function" ? globalThis.SerializeCompactV2(conf) : "");
-        const encoded = Q.persistence?.toBase64Url?.(compact) ||
-            (typeof globalThis.ToBase64Url === "function" ? globalThis.ToBase64Url(compact) : "");
+        const payload = Q.persistence?.serializeSettingsCode?.(conf) || Q.persistence?.serializeSettings?.(conf) ||
+            (typeof globalThis.SerializeSettings === "function" ? globalThis.SerializeSettings(conf) : "");
+        const encoded = Q.persistence?.toBase64Url?.(payload) ||
+            (typeof globalThis.ToBase64Url === "function" ? globalThis.ToBase64Url(payload) : "");
         return getExportPrefix() + encoded;
     };
 
     const formatExportSettingsDisplayString = (rawExport) => {
         if (!rawExport) return "";
         const normalized = String(rawExport).replace(/\s+/g, "");
-        const prefixMatch = normalized.match(/^\[QOL-\d+-\d+-\d+\]:/i);
+        const prefixMatch = normalized.match(/^\[QOL-\d+-\d+-\d+(?:-C)?\]:/i);
         const prefixLen = prefixMatch ? prefixMatch[0].length : 0;
         const payloadLen = normalized.length - prefixLen;
         if (payloadLen <= 24) return normalized;
@@ -57,7 +57,7 @@
     const formatImportSettingsDisplayString = (rawImport) => {
         if (!rawImport) return "";
         const normalized = String(rawImport).replace(/\s+/g, "");
-        if (!/^\[QOL-\d+-\d+-\d+\]:/i.test(normalized)) {
+        if (!/^\[QOL-\d+-\d+-\d+(?:-C)?\]:/i.test(normalized)) {
             return rawImport;
         }
         return formatExportSettingsDisplayString(normalized);
@@ -131,15 +131,13 @@
         label.SetHasClass("FeedbackWarning", tone === "warning");
         label.SetHasClass("FeedbackError", tone === "error");
 
+        const token = ++gConfigFeedbackClearToken;
         const hold = Math.max(0, Math.round(Number(holdMs) || 0));
         if (hold <= 0) return;
-
-        gConfigFeedbackClearToken++;
-        const token = gConfigFeedbackClearToken;
         if (typeof $.Schedule === "function") {
             $.Schedule(hold / 1000.0, () => {
                 if (token !== gConfigFeedbackClearToken) return;
-                if (!isAlive(gConfigFeedbackLabel)) return;
+                if (!isAlive(label) || gConfigFeedbackLabel !== label) return;
                 gConfigFeedbackLabel.text = "";
                 gConfigFeedbackLabel.SetHasClass("FeedbackInfo", true);
                 gConfigFeedbackLabel.SetHasClass("FeedbackSuccess", false);
@@ -216,13 +214,13 @@
                     warnSection.AddClass("AutoDisableWarning");
                     const warnTitle = $.CreatePanel("Label", warnSection, "AutoDisableWarningTitle");
                     warnTitle.AddClass("ConfigFeedbackLabel");
-                    warnTitle.text = "Some QOLLOCK features were auto-disabled due to errors:";
+                    warnTitle.text = localize("Some QOLLOCK features were auto-disabled due to errors:", true);
                     const warnList = $.CreatePanel("Label", warnSection, "AutoDisableWarningList");
                     warnList.AddClass("ConfigFeedbackText");
                     warnList.text = filtered.join(", ");
                     const warnHint = $.CreatePanel("Label", warnSection, "AutoDisableWarningHint");
                     warnHint.AddClass("ConfigFeedbackText");
-                    warnHint.text = "Restart your game to re-enable these features.";
+                    warnHint.text = localize("Restart your game to re-enable these features.", true);
                 }
             } catch {}
         }
@@ -231,7 +229,7 @@
         if (globalThis.gSearchCollectMode && globalThis.gSearchCollectState) {
             if (typeof globalThis.CreateSectionTitle === "function" && typeof globalThis.CreateRow === "function") {
                 globalThis.CreateSectionTitle(list, "General");
-                globalThis.CreateRow(list, "Preview", "PREVIEWS_ENABLED", "toggle", null, null, null, null, "Realtime Changes");
+                globalThis.CreateRow(list, "Auto-Save Changes", "AUTO_SAVE_CHANGES", "toggle", null, null, null, null, "Automatically save settings after changes.");
                 globalThis.CreateRow(list, "Update Checker", "ENABLE_UPDATE_CHECKER", "toggle", null, null, null, null, "Check for new QOLLOCK releases when opening settings.");
                 globalThis.CreateRow(list, "Language", "LANGUAGE", "dropdown", null, null, null, globalThis.SETTINGS_LANGUAGE_OPTIONS);
                 globalThis.CreateRow(list, "Theme", "SETTINGS_THEME", "buttongroup", null, null, null, globalThis.SETTINGS_THEME_OPTIONS);
@@ -279,7 +277,7 @@
             globalThis.CreateSectionTitle(cardGeneral, "General");
         }
         if (typeof globalThis.CreateRow === "function") {
-            globalThis.CreateRow(cardGeneral, "Preview Changes", "PREVIEWS_ENABLED", "toggle", null, null, null, null, "Realtime Changes");
+            globalThis.CreateRow(cardGeneral, "Auto-Save Changes", "AUTO_SAVE_CHANGES", "toggle", null, null, null, null, "Automatically save settings after changes.");
             globalThis.CreateRow(cardGeneral, "Update Checker", "ENABLE_UPDATE_CHECKER", "toggle", null, null, null, null, "Check for new QOLLOCK releases when opening settings.");
             globalThis.CreateRow(cardGeneral, "Language", "LANGUAGE", "dropdown", null, null, null, globalThis.SETTINGS_LANGUAGE_OPTIONS);
             globalThis.CreateRow(cardGeneral, "Theme", "SETTINGS_THEME", "buttongroup", null, null, null, globalThis.SETTINGS_THEME_OPTIONS);
@@ -305,7 +303,7 @@
         const exportTextEntry = $.CreatePanel("TextEntry", cardExport, "ConfigExportTextEntry");
         exportTextEntry.AddClass("ConfigTextEntry");
         exportTextEntry.multiline = true;
-        exportTextEntry.maxchars = 2000;
+        exportTextEntry.maxchars = 1000000;
         exportTextEntry.text = formatExportSettingsDisplayString(getCurrentExportSettingsString());
         exportTextEntry.SetPanelEvent("onfocus", () => {
             if (typeof exportTextEntry.SelectAll === "function") {
@@ -361,6 +359,7 @@
         const importTextEntry = $.CreatePanel("TextEntry", cardImport, "ConfigImportTextEntry");
         importTextEntry.AddClass("ConfigTextEntry");
         importTextEntry.multiline = true;
+        importTextEntry.maxchars = 1000000;
         importTextEntry.text = "";
         let importFormattingInProgress = false;
         importTextEntry.SetPanelEvent("ontextentrychange", () => {
@@ -388,6 +387,11 @@
                     const parseImportFn = Q.ui.modal?.tryApplyImportStringWithDiagnostics ||
                         globalThis.TryApplyImportStringWithDiagnostics;
                     const importResult = parseImportFn ? parseImportFn(raw) : null;
+                    if (importResult?.requiresUpdate) {
+                        const error = new Error("Unsupported settings code");
+                        error.requiresUpdate = true;
+                        throw error;
+                    }
                     if (!importResult || importResult.ok !== true || !importResult.parsedConfig || !importResult.candidateConfig) {
                         throw new Error("Invalid import string");
                     }
@@ -398,9 +402,9 @@
                     const schemaText = importResult.schemaVersion
                         ? (`[QOL-${String(importResult.schemaVersion).replace(/\./g, "-")}]`)
                         : "[unknown]";
-                    const detailsText = isRussian()
-                        ? (`Схема ${schemaText} | clamp=${String(importResult.clampedKeys)} | unknown=${String(importResult.unknownKeys)}`)
-                        : (`Schema ${schemaText} | clamped=${String(importResult.clampedKeys)} | unknown=${String(importResult.unknownKeys)}`);
+                    const detailsText = format("Schema {schema} | clamped={clamped} | unknown={unknown}", {
+                        schema: schemaText, clamped: importResult.clampedKeys, unknown: importResult.unknownKeys
+                    });
 
                     const openModalFn = Q.ui.modal?.openConfigDiffPreviewModal ||
                         globalThis.OpenConfigDiffPreviewModal;
@@ -408,7 +412,7 @@
 
                     openModalFn({
                         title: "Settings Changes",
-                        summary: `Changes: ${diffRows.length}`,
+                        summary: format("Changes: {count}", { count: diffRows.length }),
                         details: detailsText,
                         rows: diffRows,
                         applyText: "Confirm",
@@ -421,7 +425,7 @@
                                     : "english";
                                 const appliedDiag = Q.persistence.applyParsedConfigWithDiagnostics(
                                     importResult.parsedConfig,
-                                    importResult.schemaVersion || globalThis.LATEST_COMPACT_SEMVER
+                                    importResult.schemaVersion || globalThis.QOL_SCHEMA_SEMVER
                                 );
                                 if (typeof globalThis.SaveAndSync === "function") {
                                     globalThis.SaveAndSync();
@@ -435,9 +439,9 @@
                                 }
                                 applyBtn.RemoveClass("FailureState");
                                 applyBtn.AddClass("SuccessState");
-                                const diagText = isRussian()
-                                    ? (`Импорт ${schemaText} применен. clamp=${String(appliedDiag.clampedKeys)} unknown=${String(appliedDiag.unknownKeys)}`)
-                                    : (`Import ${schemaText} applied. clamped=${String(appliedDiag.clampedKeys)} unknown=${String(appliedDiag.unknownKeys)}`);
+                                const diagText = format("Import {schema} applied. clamped={clamped} unknown={unknown}", {
+                                    schema: schemaText, clamped: appliedDiag.clampedKeys, unknown: appliedDiag.unknownKeys
+                                });
                                 const diagTone = (appliedDiag.unknownKeys > 0 || appliedDiag.clampedKeys > 0) ? "warning" : "success";
                                 setConfigFeedbackMessage(diagText, diagTone, 3000);
                                 if (!didRefreshLanguageUi && typeof globalThis.RequestSettingsListRefresh === "function") {
@@ -462,14 +466,16 @@
                             }
                         },
                     });
-                } catch {
+                } catch (error) {
                     if (isAlive(importHeader)) {
                         importHeader.text = localize("ERROR: Invalid String", true);
                         if (importHeader.style) importHeader.style.color = "#ff4d4d";
                     }
                     applyBtn.RemoveClass("SuccessState");
                     applyBtn.AddClass("FailureState");
-                    setLocalizedConfigFeedbackMessage("Invalid import string.", "error", 2600);
+                    setLocalizedConfigFeedbackMessage(error.requiresUpdate
+                        ? "Unsupported settings code. Update QOLLOCK and try again."
+                        : "Invalid import string.", "error", 2600);
                     if (typeof $.Schedule === "function") {
                         $.Schedule(0.35, () => {
                             if (isAlive(applyBtn)) applyBtn.RemoveClass("FailureState");

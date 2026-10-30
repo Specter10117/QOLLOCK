@@ -43,6 +43,6 @@ scripts/simulator/perf/runs/
 # Local pre-update source snapshots. Keep these across game updates.
 scripts/game_update_runs/
 
-# Additional native snapshots and generated audits stay local. The historical
-# tracked fixture remains available; portable tests do not depend on it.
-captures/*.json
+# Local native snapshots and generated reports. Shared regression inputs live
+# under tests/fixtures/hud/, outside this ignored scratch directory.
+/captures/

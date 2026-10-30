@@ -5,8 +5,8 @@ before changing runtime code, settings or visible text. It describes the current
 source architecture, not a proposed rewrite. Detailed subsystem documents remain
 linked below; old migration plans and audit snapshots are not current API specs.
 
-Reconciled with source on **2026-09-26**. Paths are relative to this repository
-unless explicitly absolute. Source files and active XML includes settle questions
+Paths are relative to this repository unless explicitly absolute. Source files
+and active XML includes settle questions
 about implementation; the maintainer's Panorama Debugger settles questions about
 the native panel tree. Neither this guide nor a green simulator run proves
 in-game behavior.
@@ -80,7 +80,7 @@ Node/npm are development tools, not the in-game runtime.
 | Profile page | [citadel_db_page_profile.xml](panorama/layout/citadel_db_page_profile.xml) | Profile-specific callbacks and statlocker behavior |
 | Profile card | [profile_card.xml](panorama/layout/profile_card.xml) | Card-specific rank/statlocker scripts and callbacks |
 | Quickbuy | [hud_quickbuy.xml](panorama/layout/hud_quickbuy.xml) | Quickbuy total-summary script and local panel lifecycle |
-| Hero testing | [hud_hero_testing.xml](panorama/layout/hud_hero_testing.xml) | Sandbox/hero-testing controls and their context-specific APIs |
+| Hero testing | Native game `hud_hero_testing.xml`; [hero_testing_menu.css](panorama/styles/hero_testing_menu.css) | Native sandbox controls; QOLLOCK owns CSS visibility/placement through the HUD settings projector |
 
 The HUD and settings have separate JavaScript contexts. Their `QOL` objects,
 config objects and event buses are not shared memory. Cross-context communication
@@ -93,7 +93,7 @@ Healthbar shared code and variants load before their dispatcher manifest. Respec
 real dependency ordering even where an XML comment says manifests are independent.
 
 **Settings order:** namespace/utilities/panel helpers/shared presets/bridge/config
--> locale catalogs -> arcade/previews/tooltips/persistence/update checker -> UI
+-> locale catalogs -> arcade/tooltips/persistence/update checker -> UI
 metadata/renderer/modules -> `ql_settings.js`. The settings context deliberately
 has no gameplay FeatureRegistry or feature manifests. Shared low-level core
 helpers being present does not mean all HUD services exist there.
@@ -103,6 +103,15 @@ load graph: `hudScripts()`, `settingsScripts()` and `parseLayoutScripts(layoutPa
 read actual includes and ignore XML comments. Do not maintain a second hardcoded
 script/feature list. Likewise, stale comments saying “disabled” do not disable an
 active include.
+
+Do not retain a native XML copy with no QOLLOCK changes. The hero-testing layout
+is supplied by the game; its former override was identical to the current extract
+after line-ending normalization. Its former JavaScript extension had no active
+include or XML callbacks and is removed. CSS extensions still apply to the native
+layout. See [native layout ownership](docs/NATIVE_LAYOUTS.md) before removing a
+layout: many native entry points are created by C++ rather than another mod XML.
+The party layout also remains native: its placement extension uses the game's
+existing `citadel_party.css` include rather than an extra XML stylesheet include.
 
 Panorama provides `$.CreatePanel`, `$.Schedule`, native panel methods and event
 APIs. Do not assume DOM `window`/`document`, `fetch`, `XMLHttpRequest`, WebSockets,
@@ -117,22 +126,31 @@ are compatibility guards, not evidence that browser APIs are available in HUD.
 | `panorama/scripts/core/ql_namespace.js` | Base `QOL`, `QOL.core`, `QOL.ui`, `QOL.features` namespaces |
 | `panorama/scripts/core/ql_app.js` | HUD boot, flat-config synchronization, feature enable-state reconciliation and client bridges |
 | `panorama/scripts/core/ql_feature_registry.js` | Manifest registration, scoped feature contexts and lifecycle |
+| `panorama/scripts/core/ql_fps_investigation.js` | Temporary feature exclusion trials and bounded UI dispatch cadence observations; App owns the configuration lease |
+| `panorama/scripts/core/ql_config_investigation.js` | Native-first Expanded Config deltas, shared/CSS settings groups, benchmark accounting contrast and optional single-key refinements; App owns the configuration lease |
+| `panorama/scripts/core/ql_minimap_plan.js`, `ql_minimap_investigation.js`, `ql_minimap_probe.js` | Native-first declared contrasts, feature-owned controls, state/retirement proofs and capture transport; App owns expanded configuration restoration |
 | `panorama/scripts/core/ql_config_store.js`, `ql_config_adapter.js` | Feature config buckets and flat/bucket conversion |
 | `panorama/scripts/ql_config.js` | Canonical input parsing, normalization and config constants shared with settings |
-| `panorama/scripts/ql_shared_presets.js` | Default values, presets, compact schemas/codecs, shared constants and compatibility exports |
+| `panorama/scripts/ql_shared_presets.js` | Default values, presets, independent current settings catalog, JSON codec and shared constants |
+| `panorama/scripts/ql_settings_contract.js` | Shared setting types, numeric normalization, units and display conversion |
+| `panorama/scripts/ql_legacy_compact.js` | Frozen compact tables and binary import decoder; never a source of current settings metadata |
+| `panorama/scripts/core/ql_codec.js` | Pure JSON storage/lossless sharing writer and compatibility reader adapters; no UI actions, loader queues or runtime State |
+| `panorama/scripts/ql_settings_code.js` | Lossless clipboard writer/reader and append-only ID/reference dictionary; independent of current defaults and historical compact layouts |
 | `panorama/scripts/core/ql_persistence.js` | Live config publication, revisions/edit stamps and root selection |
 | `panorama/scripts/core/ql_storage_bridge.js` | Embedded HTML/localStorage protocol and asynchronous save/load coordination |
 | `panorama/scripts/ql_bridge.js` | Named cross-context channel descriptors and panel-attribute access |
 | `panorama/scripts/ql_utils.js` | Leaf utilities: validity, numbers, time, styles, attributes, palette and traversal |
 | `panorama/scripts/core/ql_panel_helpers.js` | Shared panel creation, lookup, styling and cleanup APIs |
-| `panorama/scripts/core/ql_hud.js`, `ql_hero_probe.js` | HUD/player discovery and current-player/hero evidence |
-| `panorama/scripts/ql_state.js`, `ql_panelcache.js` | Existing shared runtime state and typed caches; not persistent user settings |
+| `panorama/scripts/core/ql_hud.js`, `ql_hud_state.js`, `ql_hero_probe.js` | HUD/player discovery and current-player/hero evidence |
+| `panorama/scripts/core/ql_chat_messages.js`, `manifests/ql_chat_geometry/` | Read-only native chat label selection and independent native chat geometry; image/translation manifests own message children |
+| `panorama/scripts/ql_state.js`, `ql_panelcache.js` | Shared runtime snapshots and one typed panel-cache owner; compatibility names delegate to that cache. Private feature bookkeeping stays in its owner and is not persistent user settings |
 | `panorama/scripts/manifests/<id>/manifest.js` | Gameplay feature config declaration and lifecycle implementation |
 | `panorama/scripts/manifests/ql_healthbar/` | One dispatcher plus shared code and five variant implementations |
 | `panorama/scripts/ql_settings.js` | Mutable settings-side `MOD_CONFIG`, module dependency injection and bootstrap |
 | `panorama/scripts/ql_settings_persistence.js` | Settings-side normalization, publication, import/export and update glue |
 | `panorama/scripts/ui/` | Settings shell, metadata, controls, registered tab renderers, search, drag, modals, themes and storage UI |
-| `panorama/scripts/ql_settings_previews.js` | Preview ownership, positioning and update dispatch |
+| `panorama/scripts/manifests/ql_presentation_scale/` | Independent ui-scale overrides and additional opacity controls; default releases native overrides, content remains with existing feature owners |
+| `panorama/scripts/ql_customize_data.js`, `customize/`, `core/ql_customize_preview.js`, `ui/customize/` | Shared presentation capabilities, transient HUD preview and settings editor; see [Customize](docs/ui/customize.md) |
 | `panorama/scripts/ql_settings_tooltips.js` | Shared tooltip creation, text and scroll/position tracking |
 | `panorama/scripts/ql_settings_loc/` | Shipped runtime locale dictionaries; the UI text source of truth |
 | `panorama/scripts/ql_arcade_games.js` | Six arcade games and settings-side on-death bridge; not another settings implementation |
@@ -168,9 +186,16 @@ Active gameplay implementations register in
 `panorama/scripts/manifests/<id>/manifest.js`. Read an analogous existing manifest
 and [FeatureRegistry](docs/core/feature_registry.md) before adding one. Registration
 metadata and the `create(ctx)` factory are separate from the returned instance's
-`onEnable`, `onDisable`, `onSettingsChanged` and optional read-only `test` hooks.
+`onEnable`, `onDisable` and `onSettingsChanged` hooks. The optional read-only
+`test(ctx)` belongs to the manifest and is invoked by ManifestTests.
+Use the current [manifest implementation pattern](docs/MANIFEST_STYLE.md) and
+scaffold; native discovery/model/rendering/release remain feature-owned.
 
 The registry registers settings and a synthetic `enabled` key in ConfigStore.
+Existing persisted defaults and slider metadata are resolved from the shared
+catalog at registration, so overlapping owners agree on units and initial values.
+ConfigStore maintains one logical value per persisted key and atomically updates
+every declaring owner; synthetic `enabled` and local keys remain scoped.
 Enable policy can use `isEnabled(cfg)`, `enableKey`, OR-combined `enableKeys`, or
 default/always-on behavior. Custom predicates take precedence; an `enableKey`
 name alone does not describe a manifest with an additional predicate. Numeric
@@ -190,20 +215,31 @@ not automatically a persisted setting or an exposed control.
 `(key, value, allSettings)`. Read current values through `ctx.config`. React to
 configuration in the hook; poll only observations that require polling. A HUD
 hook is downstream of cross-context publication/polling, not a zero-latency path.
+For batch loads, `changes` includes every changed setting in that owner and all
+owner buckets are committed before hooks run. `key` identifies only the first
+changed setting. Shared HUD classes use `core.hud.refreshRootClasses(root)`;
+never pass a feature bucket to the whole-HUD projector.
 
 Use `QOL.core.Scheduler.createPollLoop(callback, seconds, ctx.id)` for recurring
 feature work. It returns `{stop(), reschedule(seconds)}`. `Scheduler.schedule`
 is an alias for a recurring loop, **not** a one-shot timer. The first tick is
 staggered; `reschedule` affects subsequent scheduling without restarting the
-pending tick. `cancelAllForFeature(id)` only owns managed loops for that ID.
+pending tick. `cancelAllForFeature(id)` owns managed loops and one-shots for that ID,
+including `scheduleOnce(callback, delaySec, featureId)`.
 See [scheduler](docs/core/scheduler.md) for error/timing behavior.
 
 On disable, undo owned classes/styles/panels, unregister your event handlers,
 cancel raw scheduled callbacks and clear owned caches. The registry cancels
-managed loops after cleanup, but does not automatically unsubscribe `ctx.events`
-listeners or cancel unrelated `$.Schedule` handles. Zero can be a valid native
+managed work after cleanup and retires `ctx.events` listeners before cleanup,
+including partial factory/enable failures. It does not cancel unrelated raw
+`$.Schedule` handles or events registered outside the context. Zero can be a valid native
 schedule handle: use explicit null-state tracking where you own cancellation.
 Token-guard delayed callbacks when cancellation alone cannot prevent stale work.
+
+The shared native-style owner has a separate cleanup-only retry for rejected
+retirement. It may finish after feature disable, without reading settings or
+reapplying presentation, and protects fields claimed by a new instance. See
+[panel helpers](docs/core/panel_helpers.md); this is not a second feature poll loop.
 
 Scheduler stops a loop when its captured native context is invalid. Ten
 consecutive observed poll errors cause registry auto-disable; a successful tick
@@ -212,7 +248,8 @@ blanket catch and thereby bypass observation. Handle expected stale panels
 without log spam. Lifecycle exceptions and poll exceptions have different paths.
 
 `core/ql_app.js` boots last, loads flat configuration, populates feature buckets,
-boots the registry and polls the config bridge every 0.25 seconds. It forwards
+boots the registry and normally polls the config bridge every 0.25 seconds
+(0.05 seconds during an active Customize interaction, outside stress benchmarking). It forwards
 native shop, scoreboard, escape-menu and game-state signals to `engine:*` events.
 Those events are notifications, not guaranteed final native layout snapshots.
 The optional ForceShopClosed listener is a compatibility probe, not proof that
@@ -228,7 +265,7 @@ There are several related representations, not one interchangeable object:
 | `MOD_CONFIG` | Mutable escape-menu settings object; obtain it at use time via `QOL.getSettingsConfig()` |
 | ConfigStore feature buckets | HUD-side schema-validated slices consumed by manifests |
 | `State.lastConfig` | Existing HUD flat runtime snapshot; not the settings realm's object |
-| Versioned envelope / compact code | Storage and sharing formats; independent of package/release version |
+| JSON envelope / settings code | Storage / current lossless clipboard sharing; historical compact codes remain import-only. Format versions are independent of package/release versions |
 | `QOL_PRESETS` | Named preset values layered over defaults by the preset application flow |
 
 [ConfigAdapter](docs/core/config_adapter.md) builds key ownership from registered
@@ -238,8 +275,9 @@ key-to-feature mapping or add an obsolete `ql_core.js` dispatcher entry.
 
 [ConfigStore](docs/core/config_store.md) validates registered bucket keys. Flat
 0/1 toggles become booleans; exports convert booleans back to 0/1. Dropdown values
-are not universally numeric. Slider validation/rounding is not the compact
-codec's step grid. Adding a manifest field does **not** add it to flat defaults,
+are not universally numeric. Catalog sliders normalize to the current settings
+step; uncataloged local sliders use decimal rounding. Historical compact grids
+are import-only. Adding a manifest field does **not** add it to flat defaults,
 settings controls or serialized schemas.
 
 ### Required setting change path
@@ -258,19 +296,21 @@ settings controls or serialized schemas.
 5. Handle changes in every owning runtime and dependent feature. Preserve
    disable/reset behavior and root-class ownership. Do not add a second poller
    for configuration that already arrives through `onSettingsChanged`.
-6. If the value is shareable, extend the current versioned compact schema using
-   existing schema utilities; preserve old field order, bounds, steps and
-   historical defaults. Update relevant normalizers/migrations and export/import
-   paths. Do not edit a historical schema in place or silently lose precision.
+6. Add independent current control metadata to `QOL_SETTINGS_FIELDS` and append
+   a permanent ID/reference entry to the settings-code dictionary. Never change
+   previous entries when defaults or ranges change. Storage keeps the JSON
+   envelope; clipboard sharing uses lossless settings codes. Historical compact
+   layouts remain frozen import-only data. See [settings codes](docs/core/settings_codes.md).
+   Version changes still require explicit maintainer authorization.
 7. Check reset, preset application, settings -> HUD propagation and a complete
    export/import round-trip, including boundaries and invalid input. Retain
    existing regression coverage that exercises the affected contract.
 
-Procedural sliders in `ui/controls.js` commit on the existing compact field's
-step grid within the intersection of UI/schema bounds, anchored at schema min.
-Invalid typed text preserves the previous value. New UI precision cannot exceed
-what the wire format preserves. Other renderers/number consumers are not
-necessarily identical; inspect the actual path instead of generalizing this rule.
+Procedural sliders in `ui/controls.js` use the current catalog step and accepted
+value domain. Thumb travel can be narrower, especially for positions; accepted
+exact values must survive row refresh outside that travel. Storage and sharing
+preserve accepted precision. Inspect actual renderers and runtime consumers; their native
+presentation semantics are separate from serialization.
 
 Use `QOL.parseStoredConfig` for side-effect-free asynchronous restore validation.
 It rejects invalid structures and normalizes recognized primitive settings.
@@ -323,10 +363,12 @@ For new text:
 - Verify English, Russian and an incomplete locale on the actual surface when
   changing visible UI. A dictionary load/count check is not a hardcoded-text audit.
 
-Current runtime codes and exported catalog codes differ in two places:
+Runtime codes, filename suffixes and exported catalog codes can differ:
 Brazilian Portuguese is `pt-br` at runtime, `pt_br` in filenames, `pt-BR` in JSON;
 Belarusian is `by` at runtime and `be` in JSON. Use `scripts/locales_helper.js`
 rather than constructing names. A website-only locale is not a shipped locale.
+Chinese uses runtime `zh` and exchange `zh-CN`; historical `zh` JSON is readable,
+but the reviewed `zh-CN` catalog takes precedence when both are supplied.
 
 ### Translation workflow
 
@@ -343,12 +385,15 @@ npm run translations:export
 npm run translations:json:export
 npm run translations:missing
 npm run translations:labels
-node scripts/import_locales_json.js D:/GitHub2/QOLLOCK-translations/locales
+npm run translations:sync -- ../QOLLOCK-translations/locales --dry-run
+npm run translations:context
 ```
 
 Plain JSON export defaults to `translations/locales`; CSV to `translations`.
-The `.bat` wrappers have additional sibling-directory behavior. The normal JSON
-export merge preserves community translations and orphan entries; `--replace`
+The BAT wrappers default to a sibling public checkout without hidden Git actions.
+Three-way sync preserves local corrections and blocks independent edit conflicts;
+its recorded public ancestor also permits safe export of local corrections.
+Normal JSON export preserves newer community translations and orphan entries; `--replace`
 discards that protection. Export does not import community changes. Reverse sync
 is reviewed/manual, and does not compile/repack the mod. Missing-string tools
 have limited coverage; neither proves that all dynamic copy is localized.
@@ -370,6 +415,11 @@ revisions. `QOL_CONFIG_EDIT_REV` tracks dirty intent before publication.
 for 0.3 seconds. This distinction prevents a pending restore from overwriting a
 slider edit made before its save flush. `getConfigChangeStamp(root)` combines
 root/HUD published and dirty generations.
+
+`ui/cloud_sync.js` observes published user changes for optional debounced durable
+Auto-Save through `storageBridge.saveSettings`. It owns one in-flight save and
+one latest pending snapshot; disabling it saves the off preference once. Manual
+Save, explicit Load and Clear cancel queued Auto-Save.
 
 The storage API is exposed as `QOL.core.storageBridge`, `QOL.core.storage` and
 `QOLStorageBridge`. Use `saveSettings`, `loadSettings`, `clearSettings` for
@@ -418,6 +468,7 @@ load the HUD FeatureRegistry: a new manifest alone cannot render settings there.
 | Gameplay tabs | `ui/gameplay_tabs.js` |
 | General Settings / Config | `ui/config_tab.js` |
 | Presets | `ui/presets.js` |
+| Live preset preview | `ui/preset_preview.js`, shared leased transport in `core/ql_customize_preview.js` |
 | Support | `ui/support.js` |
 | Audio | `ui/audio.js` |
 | Console / Arcade | `ui/console_tab.js`, `ui/arcade_tab.js` |
@@ -434,19 +485,16 @@ Legacy globals such as `CreateRow` delegate to extracted modules; they are not
 independent implementations to edit in `ql_settings.js`.
 
 Reuse the controls' save, search-collection, tooltip, reset, changed-state,
-row-sync and preview behavior. A hand-built slider can look correct while losing
+row-sync behavior. A hand-built slider can look correct while losing
 wire precision, reset keys or search results. Cached rows need synchronization
 when settings change outside that row; do not leave stale captured `MOD_CONFIG`
 references after config replacement. Read current config through the accessor.
 
-`QOL.preview.showForConfigId(configId)` dispatches supported previews;
-`hideAll()` and `wirePreviewToggleButton(buttonPanel)` manage visibility/master
-control. Feature-specific detection helpers live in `ql_settings_previews.js`.
-Previews are settings-owned, not the gameplay overlay. They can remain useful
-where gameplay features are suppressed. Their host scaling/live-anchor fallback
-logic does not prove pixel-perfect alignment at every resolution.
+The old floating Preview Changes samples are removed. Live Customize and preset
+previews use the shared leased HUD transport; see [preview ownership](docs/ui/previews.md).
 
-`QOL.tooltip` owns tooltip reuse, deferred hide and row tooltip behavior.
+`QOL.tooltip` owns tooltip reuse, deferred hide and row tooltip behavior; see
+[tooltip ownership](docs/ui/tooltips.md).
 Preserve scroll suppression and coordinate conversion. Closing QOLLOCK settings
 is not the same as resuming Deadlock; the shell's close path preserves the native
 escape menu. The manual visual walkthrough has temporary-setting restoration and
@@ -466,6 +514,16 @@ See [tabs/layout](docs/ui/tabs_and_layout.md), [controls](docs/ui/controls.md),
   `panorama/styles/ql_settings.css` and the escape-menu style chain.
 - `panorama/styles/features/ql_feat_*.css` names remain valid even though runtime
   JS has moved to `manifests/`. Do not infer a matching old JS filename from CSS.
+- Native stylesheet extensions are import manifests: the existing `base/`
+  import is followed by context-specific `features/ql_feat_native_*.css` rules.
+  Keep their native XML includes and cascade order; these extensions also load
+  in independently created native components. `hud_health.css` loads design
+  tokens before its baseline, and `hud.css` retains its placement extension
+  before the shared/global imports. Base-only wrappers need no empty feature.
+  `citadel_db_page_training.css` and `objectives_map.css` remain full legacy
+  replacements: adding current native baselines would restore rules those
+  replacements intentionally omit. Shared/custom sheets, including settings
+  and `hud_timer.css`, have no native baseline to import.
 - `panorama/styles/base/` retains game styles used by overrides. Compare a
   proposed override with the extracted game source before changing broad rules.
   Avoid affecting unrelated HUD or native menu panels with an unscoped selector.
@@ -501,15 +559,15 @@ race a scheduled callback, and asynchronous deletion is not instantaneous.
 
 | Question | Evidence source |
 | --- | --- |
-| Native layouts, classes, CSS syntax and script examples | `G:\GameTracking-Deadlock\game\citadel\pak01_dir\panorama\` |
-| Native localized game strings | `G:\GameTracking-Deadlock\game\citadel\resource\localization\` |
-| Console command/ConVar names | `D:\GitHub2\panorama-deadlock-stuff\cvarlist.txt` |
-| Native strings/functions as investigation leads | `D:\GitHub2\panorama-deadlock-stuff\strings_dump\` and its DLL directories |
+| Native layouts, classes, CSS syntax and script examples | Updated GameTracking checkout: `game/citadel/pak01_dir/panorama/` |
+| Native localized game strings | GameTracking: `game/citadel/resource/localization/` |
+| Console command/ConVar names | Current game convar dump; checked-in registry evidence records its extraction source |
+| Native strings/functions as investigation leads | Maintainer-supplied dumps from the installed game DLLs; names alone do not establish call signatures |
 | Checked-in API name evidence used by CI | `scripts/data/game_api_registry.json` |
 | Actual panel ancestry, identity, class state and readable labels | Maintainer's in-game Panorama Debugger |
 
 Much of the live tree is C++-generated. Failure to find an ID in XML or in
-`scripts/audit_panel_ids.js` is **not proof of absence**. When blocked, ask for a
+`scripts/audit_lookups_vs_capture.js` is **not proof of absence**. When blocked, ask for a
 specific debugger capture: scenario, target panel, parent chain, relevant child
 IDs/classes and values. Do not assume the maintainer has a writable JS console
 or that a browser automation endpoint exists.
@@ -527,7 +585,7 @@ is navigation, not evidence of tested gameplay behavior.
   dispatcher. `HEALTHBAR_TYPE` is numeric 0–5, not string theme names. Shared
   accent/position cleanup can run even when a specific replacement style is off.
   Never profile only the default style and generalize the result to Minecraft.
-- **Passive cooldowns:** Basic native-panel styling, legacy audio/layout work,
+- **Passive cooldowns:** Basic native-panel styling, reminder audio,
   Advanced item mirrors and signature press flashes share some keys but have
   different responsibilities. Preserve category/exception matching and source
   identity; do not replace them with one generic class search.
@@ -563,19 +621,23 @@ CI uses Node 24 and `npm ci`, followed by `npm test`.
 npm test
 node panorama/scripts/tools/qollock_smoke_test.js
 node scripts/validate_compact_schema.js
+npm run check:styles
 npm run check:api
 npm run lint
 npm run lint:all
 ```
 
-`npm test` currently runs HUD loading smoke, `node --test tests/*.test.js`,
-compact-schema validation, API checking and ESLint, in that order. There is no
+`npm test` runs HUD loading smoke, stylesheet checks, the Node `tests/*.test.js`
+suite with file concurrency limited to four, compact-schema validation, API
+checking and ESLint, in that order. CI also runs separate Python automation,
+Worker and isolated Windows builder checks; see [TESTING.md](docs/TESTING.md). There is no
 separate build-storage fuzz command in that pipeline. Do not copy obsolete
 pipeline names or past test counts into a new check.
 
 | Check | What it establishes | What it does not establish |
 | --- | --- | --- |
 | HUD smoke | Scripts from active `hud.xml` includes load; missing includes fail; manifests register | Settings rendering, hook execution or live gameplay |
+| Stylesheet scanner | Source delimiter, selector-budget and negation-chain checks | Full native CSS grammar, resource compilation or rendering |
 | Node regressions | Assertions on production JS under the test's stated fixtures/model | Native bindings, visual layout, universal feature coverage |
 | Compact-schema validator | Codec transformations and compatibility cases it exercises | Every value accepted by every UI control |
 | API checker | Known static command/event names; unknown names/parse errors fail | Native signature, dispatchability, availability or dynamic expressions |
@@ -618,8 +680,9 @@ operators at the end of the preceding line: the project enforces this for Valve
 minifier/ASI compatibility. `npm run lint` hides warnings; `lint:all` shows them.
 Do not add a name to the globals list merely to silence a missing dependency.
 
-`scripts/git-hooks/pre-commit` is an additional local check for staged JS, not a
-replacement for the full npm gate. `setup-hooks.sh` installs it; do not silently
+`scripts/git-hooks/pre-commit` is an optional local template that runs the same
+complete `npm test` gate for every commit, including CSS/XML changes. The retired
+grep-based migration checks are removed. `setup-hooks.sh` installs it; do not silently
 install/replace hooks as part of an unrelated code/documentation change.
 
 ### Performance and live-client evidence
@@ -628,10 +691,10 @@ install/replace hooks as part of an unrelated code/documentation change.
 node scripts/profile_hud.js --seconds 20 --save before
 node scripts/profile_hud.js --seconds 20 --compare before
 node scripts/profile_hud.js --seconds 20 --healthbar 5
-node scripts/audit_panel_ids.js
+node scripts/audit_lookups_vs_capture.js --json
 ```
 
-Compare identical trees, player counts, feature configuration and warm-up
+Compare identical captures, feature configuration and warm-up
 conditions. Default profiling does not exercise every healthbar variant;
 `--healthbar 5` selects Minecraft but does not remove model fidelity limits.
 A full-tree miss can cost more than a hit. Avoid repeated unsuccessful probes,
@@ -672,7 +735,7 @@ Record untested cases honestly. See [TEST_CHECKLIST.md](docs/TEST_CHECKLIST.md).
    Ask about new defaults rather than borrowing an unrelated feature's value.
 4. Handle off/on, hidden/visible, destroyed/replaced source and match transitions.
    Reset style signatures on panel replacement; leave no delayed resurrection.
-5. Localize any new/changed copy. Reuse controls, preview dispatch and tooltip
+5. Localize any new/changed copy. Reuse controls and tooltip
    infrastructure; update the relevant catalogs/metadata, not just the caption.
 6. Exercise the affected path and existing regressions. For performance changes,
    compare the same scenario and report raw counters separately from game timing.

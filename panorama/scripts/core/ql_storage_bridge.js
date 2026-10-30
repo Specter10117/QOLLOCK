@@ -46,10 +46,9 @@
     let _pendingRequests = {};
     let _requestQueue = [];
     let _activeRequest = null;
-    let _watchdogTimer = null;
+    let _watchdog = null;
     let _initAttempts = 0;
     let _oldPageLogged = false;
-    let _cachedPageRetryScheduled = false;
     let _hasAutoloaded = false;
     let _autoloadEnabled = false;
     let _autoloadState = null;
@@ -228,17 +227,15 @@
                     break;
                 }
             }
+            if (typeof req.callback === "function") {
+                try { req.callback(err || null, err ? null : data); }
+                catch (e) { _logWarn(`Storage callback failed: ${e?.message || e}`); }
+            }
             if (err) {
-                if (typeof req.callback === "function") {
-                    try { req.callback(err, null); } catch (_) {}
-                }
                 if (typeof req.reject === "function") {
                     req.reject(err);
                 }
             } else {
-                if (typeof req.callback === "function") {
-                    try { req.callback(null, data); } catch (_) {}
-                }
                 if (typeof req.resolve === "function") {
                     req.resolve(data);
                 }
@@ -287,11 +284,11 @@
             if (typeof resp.savePartAck === "number") {
                 const nextPart = resp.savePartAck + 1;
                 if (pending.saveChunks && nextPart < pending.saveChunks.length) {
-                    _resetPendingTimer(pending, reqId);
                     const b64Key = pending.b64Key;
                     const b64Chunk = pending.saveChunks[nextPart];
                     const total = pending.saveChunks.length;
                     try {
+                        _resetPendingTimer(pending, reqId);
                         _sendFragment("saveChunk", [b64Key, nextPart, total, b64Chunk, reqId, true]);
                     } catch (e) {
                         _finishRequest(reqId, new Error(`Failed to send save chunk ${nextPart}: ${e?.message || e}`), null);
@@ -323,8 +320,8 @@
 
                 const nextPart = pending.expectedPart;
                 if (nextPart < resp.total) {
-                    _resetPendingTimer(pending, reqId);
                     try {
+                        _resetPendingTimer(pending, reqId);
                         _sendFragment("next", [reqId, nextPart]);
                     } catch (e) {
                         _finishRequest(reqId, new Error(`Failed to request chunk ${nextPart}: ${e?.message || e}`), null);
@@ -344,6 +341,25 @@
         } catch (eUnhandled) {
             _logWarn(`Unhandled error in _handleResponse: ${eUnhandled?.message || eUnhandled}`);
         }
+    };
+
+    const _cancelWatchdog = () => {
+        const watchdog = _watchdog;
+        _watchdog = null;
+        if (!watchdog || watchdog.handle === null || typeof $.CancelScheduled !== "function") return;
+        try { $.CancelScheduled(watchdog.handle); } catch (_) {}
+    };
+
+    const _scheduleWatchdog = (delaySec, cachedPageRetry = false) => {
+        if (typeof $.Schedule !== "function") return;
+        _cancelWatchdog();
+        const watchdog = { handle: null, cachedPageRetry };
+        _watchdog = watchdog;
+        watchdog.handle = $.Schedule(delaySec, () => {
+            if (_watchdog !== watchdog) return;
+            _watchdog = null;
+            _watchdogTick();
+        });
     };
 
     /**
@@ -369,13 +385,7 @@
                     }
                 } catch (_) {}
             }
-            if (_watchdogTimer) {
-                if (typeof $.CancelScheduled === "function") {
-                    try { $.CancelScheduled(_watchdogTimer); } catch (_) {}
-                }
-                _watchdogTimer = null;
-            }
-            _cachedPageRetryScheduled = false;
+            _cancelWatchdog();
 
             _runAutoload();
             return;
@@ -387,13 +397,7 @@
                 _oldPageLogged = true;
                 _logWarn("Outdated cached bridge page: waiting for fragment protocol v1.");
             }
-            if (!_cachedPageRetryScheduled && typeof $.Schedule === "function") {
-                _cachedPageRetryScheduled = true;
-                if (_watchdogTimer && typeof $.CancelScheduled === "function") {
-                    try { $.CancelScheduled(_watchdogTimer); } catch (_) {}
-                }
-                _watchdogTimer = $.Schedule(CACHED_PAGE_RETRY_SEC, _watchdogTick);
-            }
+            if (!_watchdog?.cachedPageRetry) _scheduleWatchdog(CACHED_PAGE_RETRY_SEC, true);
             return;
         }
 
@@ -413,14 +417,10 @@
      * Watchdog to verify the bridge achieves ready state after creation.
      */
     const _watchdogTick = () => {
-        _watchdogTimer = null;
-        _cachedPageRetryScheduled = false;
         if (_bridgeReady) return;
         _initAttempts++;
         if (_initAttempts < MAX_INIT_ATTEMPTS) {
-            if (typeof $.Schedule === "function") {
-                _watchdogTimer = $.Schedule(WATCHDOG_INTERVAL_SEC, _watchdogTick);
-            }
+            _scheduleWatchdog(WATCHDOG_INTERVAL_SEC);
             if (_isPanelAlive(_bridgePanel) && typeof _bridgePanel.SetURL === "function") {
                 _log(`Watchdog: bridge not ready yet (attempt ${_initAttempts}/${MAX_INIT_ATTEMPTS}), retrying URL navigation...`);
                 _bridgePanel.SetURL(BRIDGE_URL);
@@ -454,12 +454,12 @@
                 lastResponseSeq: 0,
                 chunks: null,
                 start: () => {
-                    if (!_isPanelAlive(_bridgePanel) || typeof _bridgePanel.SetURL !== "function") {
-                        const err = new Error("Bridge panel unavailable");
-                        return _finishRequest(reqId, err, null);
-                    }
-                    _resetPendingTimer(req, reqId);
                     try {
+                        if (!_isPanelAlive(_bridgePanel) || typeof _bridgePanel.SetURL !== "function") {
+                            const err = new Error("Bridge panel unavailable");
+                            return _finishRequest(reqId, err, null);
+                        }
+                        _resetPendingTimer(req, reqId);
                         startFn(reqId);
                     } catch (e) {
                         _finishRequest(reqId, e, null);
@@ -471,13 +471,16 @@
             _pendingRequests[reqId] = req;
             _requestQueue.push(req);
 
-            // Always arm the timeout timer immediately so unstarted requests cannot hang indefinitely
-            _resetPendingTimer(req, reqId);
-
-            if (_bridgeReady) {
-                _processQueue();
-            } else {
-                _logWarn(`Bridge not ready yet; request ${reqId} queued (queue depth: ${_requestQueue.length})`);
+            try {
+                // Always arm immediately so unstarted requests cannot hang indefinitely.
+                _resetPendingTimer(req, reqId);
+                if (_bridgeReady) {
+                    _processQueue();
+                } else {
+                    _logWarn(`Bridge not ready yet; request ${reqId} queued (queue depth: ${_requestQueue.length})`);
+                }
+            } catch (e) {
+                _finishRequest(reqId, e, null);
             }
         });
 
@@ -552,7 +555,6 @@
         _bridgeReady = false;
         _initAttempts = 0;
         _oldPageLogged = false;
-        _cachedPageRetryScheduled = false;
 
         if (typeof panel.SetURL === "function") {
             try {
@@ -563,12 +565,7 @@
             }
         }
 
-        if (typeof $.Schedule === "function") {
-            if (_watchdogTimer) {
-                try { $.CancelScheduled(_watchdogTimer); } catch (_) {}
-            }
-            _watchdogTimer = $.Schedule(WATCHDOG_INTERVAL_SEC, _watchdogTick);
-        }
+        _scheduleWatchdog(WATCHDOG_INTERVAL_SEC);
 
         return _bridgePanel;
     };
@@ -629,9 +626,18 @@
         return Q.parseStoredConfig(raw);
     };
 
+    const _refreshDefaultPreset = async (raw, mainSave, saveTarget) => {
+        try { await Q.ui?.presets?.onDefaultSaved(raw, mainSave, saveTarget); }
+        catch (error) {
+            _log(`Personal preset save tracking failed: ${error.message || error}`);
+            if (mainSave) throw error;
+        }
+    };
+
     /** Save a validated snapshot. Acknowledgment confirms CEF, not just UI sync. */
-    const saveSettings = (configOrRaw, callback) => {
+    const _saveSettings = (configOrRaw, publish, callback) => {
         let rawToSave;
+        const saveTarget = publish ? Q.ui?.presets?.getSaveTarget?.() : undefined;
         try {
             const config = configOrRaw === undefined
                 ? ((typeof MOD_CONFIG !== "undefined" && MOD_CONFIG) || globalThis.MOD_CONFIG || {})
@@ -640,16 +646,27 @@
             rawToSave = WrapConfigForStorage(_parseStoredSettings(rawToSave));
             const root = _findRootPanel();
             _markSettingsIntent(root);
-            if (_isPanelAlive(root)) Q.core.persistence.writeStorageConfigRawToUi(root, rawToSave);
+            if (publish && _isPanelAlive(root)) Q.core.persistence.writeStorageConfigRawToUi(root, rawToSave);
         } catch (err) {
             return _withCallback(Promise.reject(err), callback);
         }
-        const promise = save(SETTINGS_STORAGE_KEY, rawToSave).then(() => {
-            _log(`saveSettings succeeded (${rawToSave.length} characters).`);
+        const promise = (async () => {
+            if (publish && Q.ui?.presets?.savePersonalSettings) {
+                await Q.ui.presets.savePersonalSettings(rawToSave, saveTarget);
+            } else {
+                await save(SETTINGS_STORAGE_KEY, rawToSave);
+                await _refreshDefaultPreset(rawToSave, publish, saveTarget);
+            }
+            _log(`${publish ? "saveSettings" : "saveStartupSettings"} succeeded (${rawToSave.length} characters).`);
             return { ok: true, timestamp: Date.now() };
-        });
+        })();
         return _withCallback(promise, callback);
     };
+
+    const saveSettings = (configOrRaw, callback) => _saveSettings(configOrRaw, true, callback);
+
+    // Use the existing startup save slot without applying it to this session.
+    const saveStartupSettings = (configOrRaw, callback) => _saveSettings(configOrRaw, false, callback);
 
     // Validation and normalization happen before publishing any attributes or
     // changing MOD_CONFIG/State. Parsing failures cannot reset a live session.
@@ -688,15 +705,22 @@
 
     /** Explicit load may replace preceding edits, never edits made while waiting. */
     const loadSettings = (callback) => {
+        Q.ui?.cloudSync?.autoSave?.cancel();
         const root = _findRootPanel();
         _markSettingsIntent(root);
         return _withCallback(_loadSettings(_captureRestoreState()), callback);
     };
 
     const clearSettings = (callback) => {
+        Q.ui?.cloudSync?.autoSave?.cancel();
         // Clearing storage is also user intent: an older restore must not undo it.
         _markSettingsIntent(_findRootPanel());
-        return _withCallback(remove(SETTINGS_STORAGE_KEY).then(() => ({ ok: true })), callback);
+        const clearing = (async () => {
+            await remove(SETTINGS_STORAGE_KEY);
+            await _refreshDefaultPreset(null, false);
+            return { ok: true };
+        })();
+        return _withCallback(clearing, callback);
     };
 
     const storageBridgeApi = {
@@ -708,6 +732,7 @@
         load,
         remove,
         saveSettings,
+        saveStartupSettings,
         loadSettings,
         clearSettings,
         _onHtmlTitle,

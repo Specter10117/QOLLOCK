@@ -8,7 +8,7 @@ in-game evidence.
 
 Most Deadlock panels are created dynamically by C++ game code. Layout XML often
 contains only the surrounding containers. A missing XML declaration or a miss in
-`scripts/audit_panel_ids.js` does not prove that a panel cannot exist.
+`scripts/audit_lookups_vs_capture.js` does not prove that a panel cannot exist.
 
 Use the extracted game files and maintainer's Panorama Debugger. Request the
 specific scenario, parent chain, child IDs/classes and label values you need.
@@ -54,6 +54,32 @@ different scales. The current positioning code accounts for `actualuiscale_x`
 and `actualuiscale_y`; copying physical pixel coordinates straight into CSS can
 double-scale overlays on 1440p/4K displays. Reuse the relevant tooltip, preview
 or drag path and verify actual positioning in Panorama.
+
+## Customize: native ammo clipping remains unresolved
+
+The maintainer reported native Current/Max Ammo disappearing when moved down
+beyond approximately `Y = -65` in Customize. A later client screenshot showed
+Current Ammo partially clipped within a visible selection frame at
+horizontal offset `56`, vertical offset `-30` and text size `300%`. These are
+reported reproduction values, not a verified universal clipping threshold.
+
+Three attempted fixes failed client verification and were removed:
+
+1. Moving gated `overflow: noclip` rules from HUD CSS into native gun stylesheet
+   chains and also opening the crosshair host's overflow.
+2. Replacing positional opposing margins with native-relative `translate3d`,
+   preserving the original transform and measuring Ammo frames through compositor
+   coordinates. The native digits still clipped.
+3. Applying owned inline `overflow: noclip` directly to the native digit panels
+   and their actual ancestor chain through crosshair, with native overwrite repair
+   and restoration on Reset, replacement and disable. The maintainer reported
+   that clipping persisted.
+
+The offline suites passed for these attempts, but they checked requested styles,
+geometry calculations and lifecycle handling rather than native clipping. The
+October 3 Debugger capture supplies panel ancestry; it does not contain computed
+clipping state at the time of this failure. The cause remains unconfirmed, and
+none of these attempts should be cited as a working fix.
 
 ## Helper semantics and style ownership
 

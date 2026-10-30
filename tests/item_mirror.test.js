@@ -5,27 +5,38 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
+const { parseLayoutScripts } = require("../scripts/simulator/layout");
 
 function fixture() {
     let manifest;
     let now = 10000;
     let gameplayShown = true;
-    const code = fs.readFileSync(path.join(__dirname, "../panorama/scripts/manifests/ql_item_mirror/manifest.js"), "utf8");
-    // Expose private operations only in this VM, while executing the real manifest.
+    const code = fs.readFileSync(path.join(__dirname, "../panorama/scripts/manifests/ql_item_mirror/controller.js"), "utf8");
+    // Expose private operations only in this VM, while executing the active modules.
     const instrumented = code.replace("onEnable: function() {", `
-        sync: _syncMirrorItemFromSourceMulti,
-        reconcile: _reconcileItemMirrorSourcesMulti,
-        discover: _buildItemMirrorSourcesMulti,
+        sync: renderer._syncMirrorItemFromSourceMulti,
+        reconcile: native._reconcileItemMirrorSourcesMulti,
+        discover: native._buildItemMirrorSourcesMulti,
         gameplayShown: _isItemMirrorGameplayShown,
-        style: _getInlineStyleProperty,
+        style: native._getInlineStyleProperty,
         onEnable: function() {`);
+    assert.notEqual(instrumented, code, "private fixture hook must match the current controller lifecycle");
     const scheduled = [];
     const sandbox = {
         Date: { now: () => now },
         QOL: {
+            features: {},
+            // This private renderer fixture does not run the HUD lifecycle.
+            presentation: { stateSettings: () => [], bindVisibility: (_ctx, hooks) => hooks },
+            panelCache: { createIdResolver: () => ({ resolve: () => null, reset() {} }) },
             core: {
                 FeatureRegistry: { register: m => { manifest = m; } },
                 Logger: { logWarn: m => { throw new Error(m); } },
+                Scheduler: { scheduleOnce: (callback, delay) => {
+                    const entry = { delay, callback, cancelled: false };
+                    scheduled.push(entry);
+                    return { stop: () => { entry.cancelled = true; } };
+                } },
                 hud: { isGameplayHudShown: () => gameplayShown }
             },
             utils: { PerfNowMs: () => now, IsPanelValid: p => !!p && p.valid !== false }
@@ -33,7 +44,13 @@ function fixture() {
         QOL_UTILS: { SetPanelOpacitySafe: (p, value) => { p.style.opacity = value; } },
         $: { Schedule: (delay, callback) => { scheduled.push({ delay, callback }); } }
     };
-    vm.runInNewContext(instrumented, sandbox);
+    const layout = parseLayoutScripts(path.resolve(__dirname, "../panorama/layout/hud.xml"));
+    const modules = layout.scripts.filter(script => script.src.includes("/manifests/ql_item_mirror/"));
+    assert.equal(modules.length, 5, "load the complete active owner graph");
+    for (const script of modules) {
+        const source = script.absPath.endsWith("controller.js") ? instrumented : fs.readFileSync(script.absPath, "utf8");
+        vm.runInNewContext(source, sandbox);
+    }
     const api = manifest.create({});
     let searches = 0;
     let text = "";
@@ -184,6 +201,25 @@ test("item mirror retries immediately on source replacement or a new cooldown", 
     assert.equal(f.slot.cooldownText.text, "20");
 });
 
+test("item mirror reconciles rebuilt duplicates by acquisition order across semantic and class fallbacks", () => {
+    const f = fixture();
+    const match = (iconSrc, targetIconSrc = "target-a") => ({ ...f.source, ownerIcon: f.owner(), iconContainer: {},
+        itemClassName: "magicBurst", iconSrc, targetIconSrc });
+    const original = [match("red", "target-b"), match("red"), match("red"), match("blue")];
+    const previous = f.api.reconcile(original);
+    const keys = Array.from(previous, source => source.key);
+    previous.reverse(); // Native discovery order must not choose acquisition identity.
+    const semantic = match("red"), lateImage = match("gray"), otherTarget = match("red", "target-b"), extra = match("gray");
+    const next = f.api.reconcile([original[2], semantic, lateImage, otherTarget, extra]);
+    const byOwner = new Map(Array.from(next, source => [source.ownerIcon, source]));
+    assert.equal(byOwner.get(original[2].ownerIcon).key, keys[2], "panel identity wins before semantic buckets");
+    assert.equal(byOwner.get(semantic.ownerIcon).key, keys[1], "semantic fallback claims the oldest unused duplicate");
+    assert.equal(byOwner.get(lateImage.ownerIcon).key, keys[3], "class fallback skips used entries and a different target icon");
+    assert.equal(byOwner.get(otherTarget.ownerIcon).key, keys[0], "a class-rejected candidate remains available to its semantic identity");
+    assert.ok(!keys.includes(byOwner.get(extra.ownerIcon).key), "an exhausted bucket cannot claim an identity twice");
+    assert.deepEqual(Array.from(next, source => source.acquisitionOrder), [0, 1, 2, 3, 4]);
+});
+
 test("item mirror inline style fallback matches whole properties and can be reused", () => {
     const f = fixture();
     const panel = { GetAttributeString: () => "background-clip: border-box; OPACITY: 0.5; clip: radial(50% 50%, 0deg, 90deg); visibility: visible;" };
@@ -193,6 +229,59 @@ test("item mirror inline style fallback matches whole properties and can be reus
         assert.equal(f.api.style(panel, "visibility"), "visible");
     }
     assert.equal(f.api.style({ GetAttributeString: () => "background-clip: border-box" }, "clip"), "");
+});
+
+for (const direction of [-1, 1]) {
+    test("item mirror estimates radial cooldown in direction " + direction + " and prioritizes late native text", () => {
+        const f = fixture(); f.tick(0);
+        f.source.cooldownMask.style.clip = `radial(50% 50%, 0deg, ${180 + direction * 20}deg)`;
+        f.tick(200);
+        assert.equal(f.slot.cooldownText.text, "2");
+        f.source.cooldownMask.style.clip = `radial(50% 50%, 0deg, ${180 + direction * 100}deg)`;
+        f.tick(800);
+        assert.equal(f.slot.cooldownText.text, "0.8");
+        f.setText("19s"); f.tick(1000);
+        assert.equal(f.slot.cooldownText.text, "19", "numeric native text overrides the radial estimate");
+        f.api.onDisable();
+    });
+}
+
+test("item mirror discards radial speed when a semantic item's native mask is replaced", () => {
+    const f = fixture(); f.tick(0);
+    f.source.cooldownMask.style.clip = "radial(50% 50%, 0deg, 160deg)";
+    f.tick(200); assert.equal(f.slot.cooldownText.text, "2");
+    f.source.cooldownMask = { style: { clip: "radial(50% 50%, 0deg, 350deg)" }, GetAttributeString: (_key, fallback) => fallback };
+    f.tick(200);
+    assert.equal(f.slot.cooldownText.style.visibility, "collapse", "a new mask needs its own velocity samples");
+    assert.equal(f.scheduled.length, 0, "source replacement is not a completion event");
+    f.source.cooldownMask.style.clip = "radial(50% 50%, 0deg, 345deg)";
+    f.tick(200);
+    assert.equal(f.slot.cooldownText.text, "14", "old display locks and velocity cannot cap the new estimate");
+    f.api.onDisable();
+});
+
+test("item mirror keeps fractional estimates monotonic and resets them on a rapid new cooldown", () => {
+    const f = fixture(); f.tick(0);
+    const radial = (degrees, ms) => {
+        f.source.cooldownMask.style.clip = `radial(50% 50%, 0deg, ${degrees}deg)`;
+        f.tick(ms);
+    };
+    radial(160, 200); assert.equal(f.slot.cooldownText.text, "2");
+    radial(80, 800); assert.equal(f.slot.cooldownText.text, "0.8");
+    radial(79, 800);
+    assert.equal(f.slot.cooldownText.text, "0.8", "a slower radial slope cannot raise a fractional display lock above one second");
+    f.setCooling(false); f.tick(50);
+    assert.equal(f.slot.cooldownText.style.visibility, "collapse");
+    f.setCooling(true); radial(350, 50);
+    assert.equal(f.slot.cooldownText.style.visibility, "collapse", "a new cooldown needs fresh samples");
+    radial(340, 100);
+    assert.equal(f.slot.cooldownText.text, "4", "the preceding fractional lock cannot cap the next cooldown");
+    radial(240, 100);
+    assert.equal(f.slot.cooldownText.style.visibility, "collapse", "rapid retrigger suppresses the early derived fraction");
+    radial(239, 1000);
+    assert.equal(f.slot.cooldownText.style.visibility, "visible");
+    assert.equal(f.slot.cooldownText.text, "0.7", "fractional display recovers when retrigger suppression expires");
+    f.api.onDisable();
 });
 
 test("item mirror discovers every purchased item when native classes live on anonymous owner panels", () => {

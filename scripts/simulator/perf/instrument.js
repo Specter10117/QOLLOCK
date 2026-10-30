@@ -1,7 +1,7 @@
 // scripts/simulator/perf/instrument.js
 // =============================================================================
-// Patches the simulator's Panel/Document so every engine-facing operation the
-// mod performs is counted and attributed. See counters.js for what and why.
+// Patches selected simulator Panel/Document operations for attributed counts.
+// This is partial API coverage, not all engine-facing work; see READ_COVERAGE.
 // =============================================================================
 // This monkey-patches the classes exported by ../panel.js rather than
 // subclassing them, because ../index.js constructs Panels internally and we want
@@ -11,43 +11,61 @@
 // `counters.enabled` is set.
 //
 // FIDELITY NOTE: the node counts here come from the simulator's own tree, so
-// they are only as realistic as that tree. hud_tree.js builds one calibrated
-// against the real vanilla layouts (~10k panel elements across 457 files, of
-// which a live match HUD instantiates a few thousand). Absolute numbers are
-// describe modeled operations only. Ratios and before/after deltas require the
+// they are only as realistic as that tree. hud_tree.js imports the supplied
+// native capture; it does not compose XML or seed synthetic native panels.
+// Absolute numbers describe modeled operations only. Before/after deltas require the
 // same inputs and coverage; they do not establish ratios of native CPU cost.
 // =============================================================================
 
 "use strict";
 
 const { Panel, Document } = require("../panel.js");
+const { descendants } = require("../search.js");
 const { Counters } = require("./counters.js");
 
 const counters = new Counters();
 let _installed = false;
+const PANEL_READ_PROPERTIES = ["visible", "enabled", "actuallayoutwidth", "actuallayoutheight", "actualxoffset", "actualyoffset"];
+const READ_COVERAGE = {
+    styleReads: "String-key panel.style[property] gets; panel.style itself and setter comparisons are excluded",
+    classReads: ["BHasClass"],
+    propertyReads: ["text", ...PANEL_READ_PROPERTIES],
+    aggregation: "Owner/kind/property (class name for BHasClass), pooled across panels; no panel identity or repeated-value evidence",
+    unavailable: ["native getter/setter cost and CSS normalization", "unlisted panel properties/APIs", "color computation and other pure JavaScript work", "visual changes, layout, frame times and FPS"],
+};
+const ENUMERATION_COVERAGE = {
+    requests: ["Children", "GetChild", "GetChildCount"],
+    childrenReturnedReferences: "Number of references returned by explicit Children() calls, including repeated returns of the same child",
+    getChildRequests: "Requested child slots, including out-of-range slots; no claim of native visits or allocations",
+    exclusions: "Native-search model internals use private children and are excluded; direct private access and unlisted APIs are unobserved",
+    unavailable: ["native enumeration cost", "JavaScript work after enumeration", "layout, frame times and FPS"],
+};
 
-/**
- * Count nodes in a depth-first walk, mirroring Panel.FindChildTraverse exactly
- * (self excluded, pre-order, stopping at the first matching descendant).
- * These are model visits, not observed native traversal steps.
- *
- * We deliberately do NOT reuse the original method and infer the count: the
- * whole point is to know how many nodes were touched, and only a
- * reimplementation can report that.
- */
+/** Count model visits using the same search order as the plain simulator. */
 function walkCount(root, id) {
-    const stack = [];
-    for (let i = root._children.length - 1; i >= 0; i--) stack.push(root._children[i]);
     let visited = 0;
-    while (stack.length > 0) {
-        const node = stack.pop();
+    for (const node of descendants(root)) {
         visited++;
-        if (node.id === id) {
-            return { found: node, visited };
-        }
-        for (let i = node._children.length - 1; i >= 0; i--) stack.push(node._children[i]);
+        if (node.id === id) return { found: node, visited };
     }
     return { found: null, visited };
+}
+
+// Optional detail observer. Counters retain attempted-write accounting; a trace
+// also sees a rejected modeled mutation even when production catches the error.
+function mutateStyle(panel, property, operation, previousValue, requestedValue, changed, mutate) {
+    const observe = counters.enabled && counters.onStyleWrite;
+    let failure = null, outcome = "completed";
+    try { silently(mutate); }
+    catch (error) { failure = error; outcome = "threw"; throw error; }
+    finally {
+        if (typeof observe === "function") observe({
+            panel, label: counters.label, property: String(property), operation,
+            previousValue, requestedValue, changed,
+            outcome,
+            error: outcome === "threw" ? String(failure?.message || failure) : null,
+        });
+    }
 }
 
 function install() {
@@ -77,14 +95,10 @@ function install() {
         this._assertValid("FindChildrenWithClassTraverse");
         if (!className) return [];
         const out = [];
-        const stack = [];
         let visited = 0;
-        for (let i = this._children.length - 1; i >= 0; i--) stack.push(this._children[i]);
-        while (stack.length > 0) {
-            const node = stack.pop();
+        for (const node of descendants(this)) {
             visited++;
             if (node._classes.has(className)) out.push(node);
-            for (let i = node._children.length - 1; i >= 0; i--) stack.push(node._children[i]);
         }
         counters.recordClassTraverse(visited);
         if (counters.enabled && typeof counters.onClassTraverse === "function") {
@@ -94,6 +108,7 @@ function install() {
                 label: counters.label,
                 rootPanel: this,
                 matches: out.length,
+                results: out.slice(),
                 found: out[0] || null,
                 visited
             });
@@ -125,7 +140,24 @@ function install() {
         return res;
     };
 
+    // These are explicit production enumeration requests, not search visits.
+    for (const [method, key] of [["Children", "childrenRequests"], ["GetChild", "getChildRequests"], ["GetChildCount", "getChildCountRequests"]]) {
+        const original = Panel.prototype[method];
+        Panel.prototype[method] = function (...args) {
+            counters.add(key);
+            const result = original.apply(this, args);
+            if (method === "Children") counters.add("childrenReturnedReferences", result.length);
+            return result;
+        };
+    }
+
     // ── Classes ───────────────────────────────────────────────────────────
+    const origHasClass = Panel.prototype.BHasClass;
+    Panel.prototype.BHasClass = function (className) {
+        counters.recordRead("classReads", typeof className === "string" ? className : "<non-string>");
+        return origHasClass.call(this, className);
+    };
+
     Panel.prototype.AddClass = function (className) {
         this._assertValid("AddClass");
         if (!className) return;
@@ -150,6 +182,12 @@ function install() {
         counters.add(had === want ? "classWritesRedundant" : "classWritesChanged", 1);
         if (want) this._classes.add(className);
         else this._classes.delete(className);
+    };
+    // ToggleClass's model implementation calls BHasClass internally. Native
+    // ToggleClass is one setter call, not a production BHasClass request.
+    Panel.prototype.ToggleClass = function (className) {
+        this._assertValid("ToggleClass");
+        this.SetHasClass(className, !this._classes.has(className));
     };
 
     // ── Attributes ────────────────────────────────────────────────────────
@@ -177,6 +215,7 @@ function install() {
     Object.defineProperty(Panel.prototype, "text", {
         configurable: true,
         get() {
+            counters.recordRead("propertyReads", "text");
             return this._text === undefined ? "" : this._text;
         },
         set(v) {
@@ -192,9 +231,20 @@ function install() {
         },
     });
 
+    for (const property of PANEL_READ_PROPERTIES) {
+        Object.defineProperty(Panel.prototype, property, {
+            configurable: true,
+            get() {
+                counters.recordRead("propertyReads", property);
+                return this["_prof_" + property];
+            },
+            set(value) { this["_prof_" + property] = value; },
+        });
+    }
+
     // ── Style ─────────────────────────────────────────────────────────────
     // The unpatched Panel exposes `style` as a plain object. Swap it for a Proxy
-    // that traps writes so we can separate changed from redundant. Created lazily
+    // that traps reads/writes so we can separate changed from redundant. Created lazily
     // per panel: most panels in a 4000-node tree are never styled by the mod, and
     // a Proxy each would be pure harness overhead.
     Object.defineProperty(Panel.prototype, "style", {
@@ -202,12 +252,20 @@ function install() {
         get() {
             if (this._styleProxy) return this._styleProxy;
             const store = this._styleStore || (this._styleStore = {});
+            const panel = this;
             this._styleProxy = new Proxy(store, {
+                get(target, prop, receiver) {
+                    if (typeof prop === "string") counters.recordRead("styleReads", prop);
+                    // Fixture proxies can wrap an earlier instrumented style.
+                    // Count the outer request once, not nested model traps.
+                    return silently(() => Reflect.get(target, prop, receiver));
+                },
                 set(target, prop, value) {
                     const next = value === undefined || value === null ? "" : String(value);
-                    const changed = target[prop] !== next;
+                    const previous = silently(() => target[prop]);
+                    const changed = previous !== next;
                     counters.recordStyleWrite(String(prop), changed);
-                    target[prop] = next;
+                    mutateStyle(panel, prop, "set", previous, next, changed, () => { target[prop] = next; });
                     return true;
                 },
                 deleteProperty(target, prop) {
@@ -215,7 +273,8 @@ function install() {
                     // write: the engine recomputes the cascaded value.
                     const had = Object.prototype.hasOwnProperty.call(target, prop);
                     counters.recordStyleWrite(String(prop) + ":clear", had);
-                    delete target[prop];
+                    const previous = counters.enabled && typeof counters.onStyleWrite === "function" ? silently(() => target[prop]) : undefined;
+                    mutateStyle(panel, prop, "delete", previous, null, had, () => { delete target[prop]; });
                     return true;
                 },
             });
@@ -259,4 +318,4 @@ function silently(fn) {
     }
 }
 
-module.exports = { install, counters, silently, walkCount };
+module.exports = { install, counters, silently, walkCount, READ_COVERAGE, ENUMERATION_COVERAGE };

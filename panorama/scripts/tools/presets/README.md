@@ -1,75 +1,34 @@
-# Player preset update tools
+# Historical player preset tools
 
-One-shot **developer** tools (run with Node, never loaded by the game) for turning
-player-submitted share codes into entries in `ql_shared_presets.js`.
+`decode_presets.js` and `apply_presets.js` are one-shot tools retained for old
+binary share codes. They are not loaded by the game and are not the current
+settings importer.
 
-## Background
+The decoder accepts version-tagged `[QOL-x-y-z]:...` binary tokens from its
+hardcoded `PRESETS` array. It loads `ql_utils.js`, `ql_shared_presets.js` and
+`ql_legacy_compact.js`, then writes sparse differences from current defaults to
+`decoded_presets.json` beside the tool. Its hero-index mapping and missing-field
+fallbacks are local historical logic, so its result is not guaranteed to match
+the production importer's migrations.
 
-Players post their HUD as a compact share code in the Discord channel, e.g.:
+Current Export writes lossless settings codes. This decoder does not load
+`ql_settings_code.js` or use the current canonical parsing path; do not feed new
+exports into it or use it to validate their compatibility. See
+[settings codes](../../../../docs/core/settings_codes.md) and
+[preset maintenance](../../../../docs/PRESET_BINDINGS.md).
 
-```
-[QOL-3-1-6]:Aig0SxQjZMhM7gclk6kBZCAD...
-```
+For a deliberate old-code update:
 
-That string is the player's config bit-packed against a versioned schema and
-base64url-encoded — the same format the in-game **Export** button produces.
+1. Review the full token, schema and hero mapping before editing `PRESETS`.
+2. Run `node panorama/scripts/tools/presets/decode_presets.js` from the repo root
+   and inspect every decoded value and error. Successful file output alone is
+   insufficient: individual decode errors are printed and can leave missing entries.
+3. Review `TARGETS` and each existing preset block before running
+   `node panorama/scripts/tools/presets/apply_presets.js`. It rewrites matching
+   blocks in `ql_shared_presets.js` in place; it is not an interactive editor.
+4. Review the source diff, exercise application and export/import through the
+   production settings path, then run `npm test` before committing.
 
-Inside `ql_shared_presets.js` presets are stored **decoded**, as sparse JS objects
-holding only the keys that differ from `QOL_DEFAULT_CONFIG`:
-
-```js
-QOL_PRESETS["Synthronix"] = {
-    DEFAULT_HERO: "hero_haze",
-    ENABLE_BUFF_HUD: 1,
-    ...
-};
-```
-
-So "updating a preset" = decode the player's share code back into such an object
-and write it into the file. These tools do exactly that using the mod's **own**
-codec (`QOL_CODEC`) and schema registry — no reimplementation, so the result is
-byte-identical to what the in-game importer would produce.
-
-## Workflow
-
-1. Edit the `PRESETS` array near the bottom of `decode_presets.js` — one entry per
-   player: `{ key: "<QOL_PRESETS key>", code: "<full [QOL-x-y-z]:... string>" }`.
-   The `key` must match the key used in `QOL_PRESETS` / `BuildCommunityPresetEntries()`
-   (e.g. the "Munchkin" button maps to the preset key `munchkinman`).
-
-2. Decode:
-   ```
-   node panorama/scripts/tools/presets/decode_presets.js
-   ```
-   Prints each decoded preset and writes `decoded_presets.json`. Sanity-check the
-   key counts and `DEFAULT_HERO` values against what the player posted.
-
-3. Mark each preset's storage form in the `TARGETS` array in `apply_presets.js`:
-   - `assign` — defined as `QOL_PRESETS["Key"] = { ... };`
-   - `member` — defined inline in the big `QOL_PRESETS = { ... }` literal as `"Key": { ... },`
-
-   Find the form with:
-   ```
-   grep -nE '(QOL_PRESETS\["Key"\] = \{|^\s*"Key": \{)' panorama/scripts/ql_shared_presets.js
-   ```
-
-4. Apply (rewrites `ql_shared_presets.js` in place):
-   ```
-   node panorama/scripts/tools/presets/apply_presets.js
-   ```
-
-5. Verify the file still parses and review the diff:
-   ```
-   node -e 'const fs=require("fs"),vm=require("vm");const s={$:{Msg(){}},console};s.window=s;vm.createContext(s);vm.runInContext(fs.readFileSync("panorama/scripts/ql_shared_presets.js","utf8"),s);console.log("presets:",Object.keys(s.QOL_PRESETS).length)'
-   git diff panorama/scripts/ql_shared_presets.js
-   ```
-
-## Notes
-
-- Keys equal to the default are intentionally dropped (presets are diffs; apply
-  overlays them onto `QOL_DEFAULT_CONFIG`). That's why a player whose default hero
-  is `hero_werewolf` (Silver) gets no `DEFAULT_HERO` line.
-- Output keys are emitted alphabetically; the apply step preserves each preset's
-  existing storage form and indentation.
-- Old schema versions (3.1.3, 3.1.4, ...) still decode because the registry keeps
-  every historical schema. The decoded object is current-key already.
+Presets can be sparse or complete objects. Do not infer the current default hero,
+roster or codec format from the historical examples in these tools. Neither tool
+publishes settings, compiles a mod or proves client behavior.

@@ -9,7 +9,11 @@ test("healthbar accent and native position react in hideout and reset", () => {
     hud.assertLoaded();
     const { $, QOL: Q } = hud.sandbox.global;
     const container = $.CreatePanel("Panel", hud.root, "health_and_abilities_container");
-    const frame = $.CreatePanel("Panel", container, "health_bar_frame");
+    const content = $.CreatePanel("Panel", container, "HealthBarContent");
+    const bars = $.CreatePanel("Panel", content, "hud_health_bars");
+    const line = $.CreatePanel("Panel", bars, ""); line.AddClass("health_bar_line");
+    const border = $.CreatePanel("Panel", line, ""); border.AddClass("health_bar_border");
+    const frame = $.CreatePanel("Panel", border, "health_bar_frame");
     Q.core.ConfigStore.set("ql_healthbar", "PLAYER_HEALTHBAR_X_OFFSET", 100);
     Q.core.ConfigStore.set("ql_healthbar", "PLAYER_HEALTHBAR_ACCENT_COLOR", 3);
     hud.clock.advance(600);
@@ -18,7 +22,7 @@ test("healthbar accent and native position react in hideout and reset", () => {
 
     frame.DeleteAsync(0);
     hud.clock.advance(1);
-    const replacement = $.CreatePanel("Panel", container, "health_bar_frame");
+    const replacement = $.CreatePanel("Panel", border, "health_bar_frame");
     hud.clock.advance(600);
     assert.equal(replacement.style.washColor, Q.core.panel.resolvePaletteColor(3));
 
@@ -100,8 +104,8 @@ test("bottom bar checks its known parent between periodic full-HUD searches", ()
         return original.call(this, id);
     };
     const cfg = { HUD_BOTTOM_BAR_ENABLED: 1, BOTTOM_BAR_X_OFFSET: 100 };
-    const feature = Q.core.FeatureRegistry.getManifest("ql_bottom_bar").create({
-        id: "ql_bottom_bar", config: { all: () => cfg }
+    const feature = Q.core.FeatureRegistry.getManifest("ql_bottom_bar").create({ events: Q.core.EventBus,
+        id: "ql_bottom_bar", config: { view: () => cfg }
     });
     feature.onEnable();
     assert.equal(first.style.x, "100px");
@@ -125,13 +129,16 @@ test("souls offsets follow a replacement panel without another setting edit", ()
     const hud = createHud({ inHideout: true });
     hud.assertLoaded();
     const { $, QOL: Q } = hud.sandbox.global;
-    const first = $.CreatePanel("Panel", hud.root, "gold_and_ap_container");
+    const core = $.CreatePanel("Panel", hud.root, ""); core.AddClass("HudCore");
+    const stats = $.CreatePanel("Panel", core, "StatsAndModsContainer");
+    const left = $.CreatePanel("Panel", stats, "LowerLeft");
+    const first = $.CreatePanel("Panel", left, "gold_and_ap_container");
     Q.core.ConfigStore.set("ql_souls", "SOULS_X_OFFSET", 100);
     hud.clock.advance(1100);
     assert.equal(first.style.x, "100px");
     first.DeleteAsync(0);
     hud.clock.advance(1);
-    const replacement = $.CreatePanel("Panel", hud.root, "gold_and_ap_container");
+    const replacement = $.CreatePanel("Panel", left, "gold_and_ap_container");
     hud.clock.advance(1100);
     assert.equal(replacement.style.x, "100px");
     Q.core.ConfigStore.set("ql_souls", "SOULS_X_OFFSET", 0);
@@ -143,16 +150,18 @@ test("ammo geometry and late text targets survive hideout panel replacement", ()
     const hud = createHud({ inHideout: true });
     hud.assertLoaded();
     const { $, QOL: Q } = hud.sandbox.global;
-    const first = $.CreatePanel("Panel", hud.root, "ammo_panel");
+    let gun = $.CreatePanel("Panel", hud.root, ""); gun.AddClass("HudCore");
+    for (const id of ["gameplay_hud", "gameplay_hud_alive", "crosshair", "gun", "gun_data"]) gun = $.CreatePanel("Panel", gun, id);
+    const first = $.CreatePanel("Panel", gun, "ammo_panel");
     Q.core.ConfigStore.set("ql_ammo", "AMMO_PANEL_X_OFFSET", 100);
     Q.core.ConfigStore.set("ql_ammo", "AMMO_TEXT_COLOR", 3);
     hud.clock.advance(600);
-    assert.equal(first.style.x, "100px");
+    assert.equal(first.style.marginLeft, "100px");
     first.DeleteAsync(0);
     hud.clock.advance(1);
-    const replacement = $.CreatePanel("Panel", hud.root, "ammo_panel");
+    const replacement = $.CreatePanel("Panel", gun, "ammo_panel");
     hud.clock.advance(600);
-    assert.equal(replacement.style.x, "100px");
+    assert.equal(replacement.style.marginLeft, "100px");
     const text = $.CreatePanel("Label", replacement, "AmmoText");
     text.AddClass("weapon_ammo");
     hud.clock.advance(600);
@@ -160,16 +169,19 @@ test("ammo geometry and late text targets survive hideout panel replacement", ()
     text.style.color = "#ffffff";
     hud.clock.advance(600);
     assert.equal(text.style.color, Q.core.panel.resolvePaletteColor(3), "selected ammo color survives native rewrites");
-    const clip = $.CreatePanel("Panel", hud.root, "clip_status");
+    const clip = $.CreatePanel("Panel", gun, "clip_status");
     const ring = $.CreatePanel("Panel", clip, "ClipRing");
+    ring.style.transform = "rotateZ(23deg)";
     Q.core.ConfigStore.set("ql_ammo", "AMMO_CLIP_ANGLE", 45);
     hud.clock.advance(600);
-    assert.equal(ring.style.transform, "rotateZ(-45deg)");
+    assert.equal(clip.style.transform, "rotateZ(-45deg)");
+    assert.equal(ring.style.transform, "rotateZ(23deg)", "engine-owned ring geometry is preserved");
     ring.DeleteAsync(0);
     hud.clock.advance(1);
     const newRing = $.CreatePanel("Panel", clip, "ClipRing");
     hud.clock.advance(600);
-    assert.equal(newRing.style.transform, "rotateZ(-45deg)");
+    assert.equal(clip.style.transform, "rotateZ(-45deg)");
+    assert.equal(newRing.style.transform, undefined);
     assert.deepEqual(hud.clock.errors, []);
 });
 
@@ -221,8 +233,13 @@ for (const scenario of [
         const hud = createHud({ inHideout: true });
         hud.assertLoaded();
         const { $, QOL: Q } = hud.sandbox.global;
-        const parent = scenario.shop ? hud.game.shopPanel :
+        let parent = scenario.shop ? $.CreatePanel("Panel", hud.root, "CitadelHudHeroShop") :
             scenario.parentId ? $.CreatePanel("Panel", hud.root, scenario.parentId) : hud.root;
+        if (scenario.feature === "ql_souls") {
+            const core = $.CreatePanel("Panel", hud.root, ""); core.AddClass("HudCore");
+            const stats = $.CreatePanel("Panel", core, "StatsAndModsContainer");
+            parent = $.CreatePanel("Panel", stats, "LowerLeft");
+        }
         const first = $.CreatePanel("Panel", parent, scenario.id);
         if (scenario.panelClass) first.AddClass(scenario.panelClass);
         if (scenario.offsetKey) Q.core.ConfigStore.set(scenario.feature, scenario.offsetKey, 100);
@@ -253,7 +270,7 @@ test("shop layout follows replacement MainPanel with unchanged settings", () => 
     const hud = createHud({ inHideout: true });
     hud.assertLoaded();
     const { $, QOL: Q } = hud.sandbox.global;
-    const shop = hud.game.shopPanel;
+    const shop = $.CreatePanel("Panel", hud.root, "CitadelHudHeroShop");
     const first = $.CreatePanel("Panel", shop, "MainPanel");
     Q.core.ConfigStore.set("ql_heroshop", "SHOP_OFFSET_X", 100);
     assert.equal(Q.core.FeatureRegistry.isEnabled("ql_heroshop"), true);
@@ -279,6 +296,8 @@ test("keyboard overlay keeps its wash on a recreated overlay", () => {
     const hud = createHud({ inHideout: true });
     hud.assertLoaded();
     const Q = hud.sandbox.global.QOL;
+    const core = hud.sandbox.global.$.CreatePanel("Panel", hud.root, ""); core.AddClass("HudCore");
+    hud.sandbox.global.$.CreatePanel("Panel", core, "gameplay_hud");
     Q.core.ConfigStore.set("ql_keyboard", "ENABLE_KEYBOARD_OVERLAY", true);
     Q.core.ConfigStore.set("ql_keyboard", "KEYBOARD_OVERLAY_WASH_COLOR", 3);
     hud.clock.advance(500);
@@ -305,32 +324,34 @@ test("reload label gets its configured style after replacement", () => {
     hud.clock.advance(600);
     const first = reticle.FindChildTraverse("QOLReloadCooldownText");
     assert.ok(first);
-    assert.equal(first.style.marginLeft, "20px");
+    assert.equal(first.style.x, "20px");
     first.DeleteAsync(0);
     hud.clock.advance(600);
     const replacement = reticle.FindChildTraverse("QOLReloadCooldownText");
     assert.ok(replacement);
     assert.notEqual(replacement, first);
-    assert.equal(replacement.style.marginLeft, "20px");
+    assert.equal(replacement.style.x, "20px");
     assert.deepEqual(hud.clock.errors, []);
 });
 
 test("combat status reapplies layout to a recreated overlay", () => {
     const hud = createHud({ inHideout: true });
     hud.assertLoaded();
-    const Q = hud.sandbox.global.QOL;
+    const { $, QOL: Q } = hud.sandbox.global;
+    const core = $.CreatePanel("Panel", hud.root, ""); core.AddClass("HudCore");
+    $.CreatePanel("Panel", core, "gameplay_hud");
     Q.core.ConfigStore.set("ql_combat_status", "ENABLE_COMBAT_STATUS", true);
     Q.core.ConfigStore.set("ql_combat_status", "COMBAT_STATUS_X_OFFSET", 100);
     hud.clock.advance(500);
     const first = hud.root.FindChildTraverse("QOLCombatStatusOverlay");
     assert.ok(first);
-    assert.equal(first.style.marginLeft, "100px");
+    assert.equal(first.style.x, "100px");
     first.DeleteAsync(0);
     hud.clock.advance(500);
     const replacement = hud.root.FindChildTraverse("QOLCombatStatusOverlay");
     assert.ok(replacement);
     assert.notEqual(replacement, first);
-    assert.equal(replacement.style.marginLeft, "100px");
+    assert.equal(replacement.style.x, "100px");
     assert.deepEqual(hud.clock.errors, []);
 });
 
@@ -338,8 +359,12 @@ test("build ID reapplies text and layout to a recreated label", () => {
     const hud = createHud({ inHideout: true });
     hud.assertLoaded();
     const { $, QOL: Q } = hud.sandbox.global;
-    const lowerLeft = $.CreatePanel("Panel", hud.root, "LowerLeft");
-    const source = $.CreatePanel("Label", hud.root, "SelectedBuildInfoTitle");
+    const core = $.CreatePanel("Panel", hud.root, ""); core.AddClass("HudCore");
+    const stats = $.CreatePanel("Panel", core, "StatsAndModsContainer");
+    const lowerLeft = $.CreatePanel("Panel", stats, "LowerLeft");
+    const builds = $.CreatePanel("Panel", core, "CitadelHudHeroBuilds");
+    const info = $.CreatePanel("Panel", builds, "SelectedBuildInfo");
+    const source = $.CreatePanel("Label", info, "SelectedBuildInfoTitle");
     source.text = "123 - Example - 1";
     Q.core.ConfigStore.set("ql_show_build_id", "ENABLE_SHOW_BUILD_ID", true);
     hud.clock.advance(1100);

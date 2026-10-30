@@ -13,15 +13,15 @@
 
 "use strict";
 
-var fs = require("fs");
-var path = require("path");
-var vm = require("vm");
-var layout = require("../../../scripts/simulator/layout.js");
+const fs = require("fs");
+const path = require("path");
+const vm = require("vm");
+const layout = require("../../../scripts/simulator/layout.js");
 
-var SCRIPTS_DIR = path.resolve(__dirname, "..");
+const SCRIPTS_DIR = path.resolve(__dirname, "..");
 
 // ── Mock Panorama globals ──
-var mockLog = [];
+const mockLog = [];
 global.$ = {
     Msg: function() { mockLog.push("[Msg] " + Array.prototype.join.call(arguments, " ")); },
     Schedule: function(delay, cb) { return setTimeout(cb, delay * 1000); },
@@ -53,17 +53,17 @@ global.window = global;
 global.globalThis = global;
 
 // The layout owns load order, including feature helpers and the app entry point.
-var HUD_LOAD_ORDER = layout.hudScripts().scripts.map(function(entry) {
+const HUD_LOAD_ORDER = layout.hudScripts().scripts.map(function(entry) {
     return path.relative(SCRIPTS_DIR, entry.absPath);
 });
 
 // ── Run a single file ──
 function runFile(filePath) {
-    var fullPath = path.join(SCRIPTS_DIR, filePath);
+    const fullPath = path.join(SCRIPTS_DIR, filePath);
     if (!fs.existsSync(fullPath)) {
         return { file: filePath, status: "FAIL", error: "Included script not found" };
     }
-    var src = fs.readFileSync(fullPath, "utf8");
+    const src = fs.readFileSync(fullPath, "utf8");
     try {
         vm.runInNewContext(src, global, { filename: filePath, timeout: 5000 });
         return { file: filePath, status: "PASS" };
@@ -76,13 +76,13 @@ function runFile(filePath) {
 console.log("=== QOLLOCK Smoke Test ===");
 console.log("Mock Panorama: $.Msg, $.Schedule, $.GetContextPanel, etc.\n");
 
-var results = [];
-var passCount = 0, failCount = 0;
+const results = [];
+let passCount = 0, failCount = 0;
 
 // Load exactly what the game loads, including core/ql_app.js.
 console.log("── HUD Layout Scripts ──");
 HUD_LOAD_ORDER.forEach(function(file) {
-    var r = runFile(file);
+    const r = runFile(file);
     results.push(r);
     if (r.status === "PASS") { passCount++; console.log("  PASS " + file); }
     else { failCount++; console.log("  FAIL " + file + ": " + r.error); }
@@ -92,13 +92,13 @@ HUD_LOAD_ORDER.forEach(function(file) {
 // ── Structural check: manifest test hooks ──
 console.log("\n── Manifest Test Hooks (structural) ──");
 try {
-    var QOL = global.QOL || (typeof QOL !== "undefined" ? QOL : null);
+    const QOL = global.QOL || null;
     if (QOL && QOL.core && QOL.core.FeatureRegistry) {
-        var FR = QOL.core.FeatureRegistry;
-        var ids = FR.getRegisteredIds();
-        var withTest = 0, withoutTest = 0;
+        const FR = QOL.core.FeatureRegistry;
+        const ids = FR.getRegisteredIds();
+        let withTest = 0, withoutTest = 0;
         ids.forEach(function(id) {
-            var m = FR.getManifest(id);
+            const m = FR.getManifest(id);
             if (m && typeof m.test === "function") {
                 withTest++;
                 console.log("  TEST " + id);

@@ -52,6 +52,8 @@
     let _settingsOpenGuardUntilMs = 0;
     let _cancelConsumedUntilMs = 0;
     let _uiBuilt = false;
+    let _tabTransitionTimer = null;
+    let _tabTransitionGeneration = 0;
 
     // =========================================================================
     // Shell Resolution
@@ -68,8 +70,6 @@
     };
 
     const findShell = () => {
-        if (isAlive(_window)) return _window;
-
         let ctx = null;
         try {
             ctx = $.GetContextPanel ? $.GetContextPanel() : null;
@@ -84,6 +84,31 @@
             (root?.FindChildTraverse ? root.FindChildTraverse("SettingsWindow") : null);
 
         if (!candidate || !isAlive(candidate)) return null;
+        if (candidate === _window) return _window;
+        if (isAlive(_window)) _window.RemoveClass("Visible");
+        if (isAlive(_contentList)) _contentList.RemoveClass("TabFading");
+        _tabTransitionGeneration++;
+        if (_tabTransitionTimer !== null) {
+            try { $.CancelScheduled(_tabTransitionTimer); } catch (_) {}
+            _tabTransitionTimer = null;
+        }
+        if (_window) {
+            _tabButtons.clear();
+            _settingsListLastRenderSig = "";
+            _settingsListSearchModeActive = false;
+            _settingsListActiveRenderSig = "";
+            _settingsListRowSyncFns = [];
+            for (const key of Object.keys(_settingsListContentPanelBySig)) delete _settingsListContentPanelBySig[key];
+            for (const key of Object.keys(_settingsListRowSyncFnsBySig)) delete _settingsListRowSyncFnsBySig[key];
+            _settingsListRefreshToken++;
+            _settingsListSoftRefreshToken++;
+            _settingsListRefreshForcePending = false;
+            _uiBuilt = false;
+            globalThis.gSettingsUiBuilt = false;
+            globalThis.gSettingsListLastRenderSig = "";
+            globalThis.gSettingsListActiveRenderSig = "";
+            globalThis.gSettingsListSearchModeActive = false;
+        }
 
         _window = candidate;
         _window.hittest = true;
@@ -385,7 +410,7 @@
                 versionText.AddClass("FooterVersionLabelText");
                 versionText.text = (typeof MOD_DISPLAY_VERSION !== "undefined")
                     ? MOD_DISPLAY_VERSION
-                    : (Q.VERSION || "4.0.5");
+                    : (Q.VERSION || "4.1.0");
             }
 
             versionBtn.SetPanelEvent("onactivate", () => {
@@ -814,7 +839,7 @@
             const placeholder = createPanel("Label", container, "");
             if (placeholder) {
                 placeholder.AddClass("SettingRow");
-                placeholder.text = `${localize(getTabDisplayName(tabId))} — content ready.`;
+                placeholder.text = localize("{tab} — content ready.", true).replace("{tab}", localize(getTabDisplayName(tabId)));
             }
         }
     };
@@ -903,7 +928,6 @@
         showSettingsListTabPanel(list, renderSig);
 
         if (contentCreated || shouldRebuildCurrentSig) {
-            if (Q.preview?.hideAll) Q.preview.hideAll();
             resetSettingsListRowSyncRegistry();
             contentPanel.RemoveAndDeleteChildren();
             renderCurrentTabContent(contentPanel);
@@ -934,11 +958,16 @@
                 : (String(activeQuery || "").trim().length > 0));
 
         if (!tabName) return;
-        if (curTab === tabName && !isSearchActive) return;
+        if (curTab === tabName && !isSearchActive && _tabTransitionTimer === null) return;
 
         let root = null;
         try { root = (typeof $.GetContextPanel === "function") ? $.GetContextPanel() : null; } catch (_) {}
         const win = findShell() || root;
+        const transition = ++_tabTransitionGeneration;
+        if (_tabTransitionTimer !== null) {
+            try { $.CancelScheduled(_tabTransitionTimer); } catch (_) {}
+            _tabTransitionTimer = null;
+        }
         const tabBar = (win && win.FindChildTraverse ? win.FindChildTraverse("SettingsTabBar") : null) || _tabBar;
         const list = (win && win.FindChildTraverse ? win.FindChildTraverse("SettingsList") : null) || _contentList;
 
@@ -982,8 +1011,11 @@
         ) {
             list.AddClass("TabFading");
             if (typeof $.Schedule === "function") {
-                $.Schedule(0.2, () => {
-                    if (!isAlive(list) || !isAlive(tabBar)) return;
+                _tabTransitionTimer = $.Schedule(0.2, () => {
+                    if (transition !== _tabTransitionGeneration) return;
+                    _tabTransitionTimer = null;
+                    if (!isAlive(list) || !isAlive(tabBar) || findShell() !== win ||
+                        win.FindChildTraverse("SettingsList") !== list || win.FindChildTraverse("SettingsTabBar") !== tabBar) return;
                     _activeTab = tabName;
                     globalThis.currentTab = tabName;
                     syncTabActiveStates(tabBar);
@@ -1003,6 +1035,7 @@
         globalThis.currentTab = tabName;
         syncTabActiveStates(tabBar);
         if (isAlive(list)) {
+            list.RemoveClass("TabFading");
             updateListContent(list, true);
         }
         if (typeof UpdatePresetHighlightPollingState === "function") {
@@ -1017,7 +1050,8 @@
     // =========================================================================
 
     const isOpen = () => {
-        return !!(_window && isAlive(_window) && _window.BHasClass("Visible"));
+        const win = findShell();
+        return !!(isAlive(win) && win.BHasClass("Visible"));
     };
 
     const closeSettingsSideModalsIfOpen = () => {
@@ -1096,7 +1130,6 @@
             } else if (typeof globalThis.StopPresetHighlightPolling === "function") {
                 globalThis.StopPresetHighlightPolling();
             }
-            try { Q.preview?.hideAll?.(); } catch (_) {}
             closeSettingsSideModalsIfOpen();
             try { Q.arcade?.closeAllModals?.(); } catch (_) {}
             Q.events?.emit?.("ui:settings_closed");
@@ -1110,6 +1143,8 @@
             : _settingsOpenGuardUntilMs;
         if (!ignoreGuard && now < guardUntil) return;
         Q.ui.visualCheck?.onMenuClosed();
+        Q.ui.customize?.onMenuClosed();
+        Q.ui.presetPreview?.stop(false);
 
         const ctx = (typeof $.GetContextPanel === "function") ? $.GetContextPanel() : null;
         const win = (ctx && ctx.FindChildTraverse ? ctx.FindChildTraverse("SettingsWindow") : null) || findShell();
@@ -1128,13 +1163,23 @@
         } else if (typeof globalThis.StopPresetHighlightPolling === "function") {
             globalThis.StopPresetHighlightPolling();
         }
-        try { Q.preview?.hideAll?.(); } catch (_) {}
         closeSettingsSideModalsIfOpen();
         try { Q.arcade?.closeAllModals?.(); } catch (_) {}
         Q.events?.emit?.("ui:settings_closed");
     };
 
+    const handleCustomizeCancel = () => {
+        const now = getNowMs();
+        if (now < _cancelConsumedUntilMs) return true;
+        if (!Q.ui.customize?.isRunning() && !Q.ui.presetPreview?.isRunning()) return false;
+        _cancelConsumedUntilMs = now + 100;
+        if (Q.ui.presetPreview?.isRunning()) Q.ui.presetPreview.stop();
+        else Q.ui.customize.stop();
+        return true;
+    };
+
     const handleModSettingsCancel = () => {
+        if (handleCustomizeCancel()) return true;
         const now = getNowMs();
         if (now < _cancelConsumedUntilMs) return true;
         if (isOpen()) {
@@ -1431,7 +1476,7 @@
                     footerVersionText.AddClass("FooterVersionLabelText");
                     footerVersionText.text = (typeof MOD_DISPLAY_VERSION !== "undefined")
                         ? MOD_DISPLAY_VERSION
-                        : (Q.VERSION || "4.0.5");
+                        : (Q.VERSION || "4.1.0");
                 }
                 footerVersionLabel.SetPanelEvent("onactivate", () => {
                     setActiveTabAndRefresh("Dev");
@@ -1459,8 +1504,6 @@
         if (staleSubHeaderActions) staleSubHeaderActions.DeleteAsync(0);
         const dragBtnRailExisting = tabHost.FindChildTraverse("DragToggleBtnRail");
         if (dragBtnRailExisting) dragBtnRailExisting.DeleteAsync(0);
-        const previewBtnRailExisting = tabHost.FindChildTraverse("PreviewToggleBtnRail");
-        if (previewBtnRailExisting) previewBtnRailExisting.DeleteAsync(0);
         const impBtnRailExisting = tabHost.FindChildTraverse("ImportSettingsBtnRail");
         if (impBtnRailExisting) impBtnRailExisting.DeleteAsync(0);
         const expBtnRailExisting = tabHost.FindChildTraverse("ExportSettingsBtnRail");
@@ -1523,33 +1566,6 @@
                 }
             }
 
-            let headerVer = header.FindChildTraverse("ModVersionLabelTop");
-            if (!headerVer) {
-                headerVer = createPanel("Button", header, "ModVersionLabelTop");
-                if (headerVer) {
-                    headerVer.AddClass("HeaderMoglockLinkButton");
-                    headerVer.hittest = true;
-                    headerVer.hittestchildren = true;
-                    headerVer.style.zIndex = "7";
-                    headerVer.SetPanelEvent("onactivate", () => {
-                        try { $.DispatchEvent("ExternalBrowserGoToURL", "https://moglock.gg/"); } catch (_) {}
-                    });
-                    const headerVerPrefix = createPanel("Label", headerVer, "ModVersionLabelTopPrefix");
-                    if (headerVerPrefix) headerVerPrefix.text = localize("by", true);
-                    const headerVerDomain = createPanel("Label", headerVer, "ModVersionLabelTopDomain");
-                    if (headerVerDomain) headerVerDomain.text = localize("moglock.gg", true);
-                }
-            } else {
-                const headerVerPrefix = headerVer.FindChildTraverse("ModVersionLabelTopPrefix");
-                if (headerVerPrefix) headerVerPrefix.text = localize("by", true);
-                const headerVerDomain = headerVer.FindChildTraverse("ModVersionLabelTopDomain");
-                if (headerVerDomain) headerVerDomain.text = localize("moglock.gg", true);
-            }
-            if (headerVer) {
-                headerVer.visible = !isMunfins;
-                headerVer.style.visibility = isMunfins ? "collapse" : "visible";
-            }
-
             if (typeof ApplySettingsHeaderLogoTheme === "function") {
                 ApplySettingsHeaderLogoTheme(theme);
             } else if (Q.ui?.theme?.applyHeaderLogoTheme) {
@@ -1577,13 +1593,10 @@
             }
 
             // Ensure header children ordering:
-            // [Logo] [Accent: QOL] [Title: LOCK] [by moglock.gg] [CenterHost: Search] [CloseBtn: X]
+            // [Logo] [Accent: QOL] [Title: LOCK] [CenterHost: Search] [CloseBtn: X]
             if (header.MoveChildBefore) {
                 if (headerCenterHost && closeBtnHeader) {
                     try { header.MoveChildBefore(headerCenterHost, closeBtnHeader); } catch (_) {}
-                }
-                if (headerVer && headerCenterHost) {
-                    try { header.MoveChildBefore(headerVer, headerCenterHost); } catch (_) {}
                 }
             }
 
@@ -2206,6 +2219,7 @@
         const bg = root?.FindChildTraverse ? root.FindChildTraverse("EscapeBackground") : null;
         if (bg && isAlive(bg)) {
             bg.SetPanelEvent("onactivate", () => {
+                if (Q.ui.customize?.isRunning() || Q.ui.presetPreview?.isRunning()) return;
                 if (isOpen()) {
                     setOpen(false);
                 } else {
@@ -2214,7 +2228,7 @@
             });
         }
 
-        // Keep the XML root's native CitadelResumePlaying() fallback. The root
+        // Keep the XML root's resume-event fallback. The root
         // is the context panel itself, so FindChildTraverse("EscapeMenu")
         // cannot locate it as a descendant.
     };
@@ -2253,6 +2267,8 @@
                     : _settingsOpenGuardUntilMs;
                 if (now < guardUntil) return;
                 Q.ui.visualCheck?.onMenuClosed();
+                Q.ui.customize?.onMenuClosed();
+                Q.ui.presetPreview?.stop(false);
                 const ctx = (typeof $.GetContextPanel === "function") ? $.GetContextPanel() : null;
                 const win = (ctx && ctx.FindChildTraverse ? ctx.FindChildTraverse("SettingsWindow") : null) || findShell();
                 if (win) win.RemoveClass("Visible");
@@ -2263,7 +2279,6 @@
                 try { Q.tooltip?.hideRowTooltip?.(); } catch (_) {}
                 if (typeof StopPresetHighlightPolling === "function") StopPresetHighlightPolling();
                 else if (typeof globalThis.StopPresetHighlightPolling === "function") globalThis.StopPresetHighlightPolling();
-                try { Q.preview?.hideAll?.(); } catch (_) {}
                 closeSettingsSideModalsIfOpen();
                 try { Q.arcade?.closeAllModals?.(); } catch (_) {}
                 Q.events?.emit?.("ui:settings_closed");
@@ -2323,6 +2338,7 @@
         toggleSettingsWindow,
         forceCloseModSettings,
         handleModSettingsCancel,
+        handleCustomizeCancel,
         closeOpenSettingsDropdowns,
         syncTabActiveStates,
         setActiveTabAndRefresh,
@@ -2340,6 +2356,7 @@
     $.ToggleSettingsWindow = () => windowApi.toggleSettingsWindow();
     $.ForceCloseModSettings = (ignoreGuard) => windowApi.forceCloseModSettings(ignoreGuard);
     $.HandleModSettingsCancel = () => windowApi.handleModSettingsCancel();
+    $.HandleCustomizeCancel = () => windowApi.handleCustomizeCancel();
     $.IsModSettingsOpen = () => windowApi.isOpen();
 
     globalThis.BuildUI = buildUI;

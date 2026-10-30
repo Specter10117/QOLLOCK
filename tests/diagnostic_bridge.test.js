@@ -26,6 +26,19 @@ test("boot writes initial diagnostic snapshot to QOL_Diag", () => {
     assert.strictEqual(typeof diag.errors, "object", "diag.errors must be an object");
 });
 
+test("diagnostics report a current manifest retired after consecutive poll errors", () => {
+    const hud = sim.createHud();
+    const Q = hud.sandbox.global.QOL;
+    const registry = Q.core.FeatureRegistry;
+    registry.register({ id: "diagnostic_failure", enabledByDefault: true, settings: [],
+        create: () => ({ onEnable() {}, onDisable() {} }) });
+    registry.enable("diagnostic_failure");
+    for (let i = 0; i < 10; i++) Q.core.EventBus.emit("scheduler:error", { featureId: "diagnostic_failure", message: "injected poll failure" });
+    assert.equal(registry.isEnabled("diagnostic_failure"), false);
+    assert.ok(Q.core.App.buildDiagSnapshot().disabled.includes("diagnostic_failure"));
+    assert.ok(!Q.core.App.buildDiagSnapshot().disabled.includes("ql_compass"), "an ordinary disabled setting is not a runtime failure");
+});
+
 test("QOL_DiagRequest with force token updates QOL_Diag with matching diagToken", () => {
     const hud = sim.createHud();
     hud.assertLoaded();
@@ -91,7 +104,10 @@ test("QOL_DiagRequest with bm_ token triggers benchmark and writes benchmark rep
     assert.ok(diag.benchmark.report.includes("QOLLOCK IN-GAME BENCHMARK REPORT"), "Report must include benchmark header");
     assert.strictEqual(typeof diag.benchmark.stats.totalJsMs, "number", "stats.totalJsMs must be a number");
     const lookups = diag.benchmark.stats.lookupStats;
-    assert.strictEqual(lookups.status, "active");
+    assert.strictEqual(lookups.status, "partial-tree");
+    assert.strictEqual(lookups.fullModCoverage, false);
+    assert.strictEqual(lookups.prototypesHooked, 0);
+    assert.strictEqual(lookups.restoreErrors, 0);
     assert.ok(lookups.panelsScanned > 0);
     assert.strictEqual(lookups.panelsCovered, lookups.panelsScanned);
     assert.ok(lookups.totalCalls >= lookups.pollCalls);

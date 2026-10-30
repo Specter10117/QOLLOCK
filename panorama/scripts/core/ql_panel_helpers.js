@@ -2,7 +2,9 @@
 // QOLLOCK — core/ql_panel_helpers.js
 // =============================================================================
 // OWNS:        Safe panel utility functions: isPanelAlive, findHud, syncStyles,
-//              safeCreatePanel, safeDeletePanel, setClass, setVisible.
+//              safeCreatePanel, safeDeletePanel, setClass, setVisible and
+//              ownership of attempted native styles/classes and exclusively
+//              QOL-created trees.
 //              isPanelAlive uses typeof check (not truthy) — mandatory for
 //              correct destroyed-panel detection.
 // DOES NOT OWN: Panel caching (PanelCache), feature lifecycle (FeatureRegistry)
@@ -143,13 +145,306 @@
         return { changed: true, sig: succeeded ? sig : null };
     };
 
+    const nativeStylePropertyName = QOL_UTILS.NativeStylePropertyName;
     const clearStyleProperty = (panel, prop) => {
         if (!isPanelAlive(panel) || typeof prop !== "string") return false;
         try {
-            return panel.ClearPropertyFromCode(prop.replace(/[A-Z]/g, c => "-" + c.toLowerCase())) !== false;
+            return panel.ClearPropertyFromCode(nativeStylePropertyName(prop)) !== false;
         } catch (_) {
             return false;
         }
+    };
+
+    const nativeStyleLeases = new Map();
+    const nativeClassBaselines = new Map();
+    const nativeCodeBaselines = new Map();
+    const compositeCodeBaselines = new Map();
+    const compositeComponents = {
+        "style:font": ["fontSize", "fontFamily", "fontWeight", "fontStyle"],
+        "style:margin": ["marginLeft", "marginRight", "marginTop", "marginBottom"]
+    };
+    const styleKey = property => "style:" + nativeStylePropertyName(property);
+    const positionKeys = ["style:x", "style:y", "style:position"];
+    // Own only attempted code properties/classes; native discovery and lifetime
+    // remain with each caller. Rejected cleanup stays recorded for the next pass.
+    const createNativeStyleOwner = ({ resetValues = {}, releasePosition = true, preserveClasses = false, preserveStyles = [] } = {}) => {
+        const records = new Map();
+        const resets = { ...resetValues };
+        const preserved = new Set(preserveStyles.map(styleKey));
+        const identity = {};
+        let pending = null, generation = 0;
+        const claim = (panel, key, property) => {
+            if (compositeComponents[key]) {
+                if (!compositeCodeBaselines.has(panel)) compositeCodeBaselines.set(panel, new Map());
+                const groups = compositeCodeBaselines.get(panel);
+                if (!groups.has(key)) {
+                    const values = new Map();
+                    for (const component of compositeComponents[key]) {
+                        const value = panel.style[component];
+                        if (value !== undefined && value !== null && value !== "") values.set(component, value);
+                    }
+                    groups.set(key, { values, owned: new Set() });
+                }
+                const fields = groups.get(key).owned;
+                if (key === "style:" + property) {
+                    for (const component of compositeComponents[key]) fields.add(component);
+                } else fields.add(property.replace(/-([a-z])/g, (_, c) => c.toUpperCase()));
+            }
+            if (!nativeStyleLeases.has(panel)) nativeStyleLeases.set(panel, new Map());
+            nativeStyleLeases.get(panel).set(key, identity);
+        };
+        const held = (panel, key) => nativeStyleLeases.get(panel)?.get(key) === identity;
+        const foreignPosition = panel => positionKeys.some(key => {
+            const owner = nativeStyleLeases.get(panel)?.get(key);
+            return owner && owner !== identity;
+        });
+        const drop = (panel, key) => {
+            const leases = nativeStyleLeases.get(panel);
+            if (leases?.get(key) === identity) {
+                leases.delete(key);
+                const code = nativeCodeBaselines.get(panel);
+                code?.delete(key);
+                if (code && !code.size) nativeCodeBaselines.delete(panel);
+                const groups = compositeCodeBaselines.get(panel);
+                groups?.delete(key);
+                if (groups && !groups.size) compositeCodeBaselines.delete(panel);
+                if (key.startsWith("class:")) {
+                    const baselines = nativeClassBaselines.get(panel);
+                    baselines?.delete(key);
+                    if (baselines && !baselines.size) nativeClassBaselines.delete(panel);
+                }
+            }
+            if (leases && !leases.size) nativeStyleLeases.delete(panel);
+        };
+        const cancelCleanup = () => {
+            generation++;
+            if (pending !== null) {
+                try { $.CancelScheduled(pending); } catch (_) {}
+                pending = null;
+            }
+        };
+        const baseline = (panel, property) => {
+            const key = styleKey(property);
+            if (!isPanelAlive(panel) || !preserved.has(key)) return "";
+            const values = nativeCodeBaselines.get(panel);
+            if (values?.has(key)) return values.get(key);
+            const current = panel.style[property];
+            const value = current === null || current === undefined ? "" : String(current);
+            return key === "style:transform" && value === "none" ? "" : value;
+        };
+        const clearProperty = (panel, record, property) => {
+            try {
+                const key = styleKey(property);
+                if (property === "position" && held(panel, key)) {
+                    const neutral = Object.prototype.hasOwnProperty.call(resets, property) ? resets[property] : null;
+                    const components = neutral === null ? [] : String(neutral).trim().split(/\s+/);
+                    if (!foreignPosition(panel)) {
+                        if (neutral !== null) panel.style.position = neutral;
+                        for (const [index, axis] of ["x", "y"].entries()) {
+                            if (components[index]) panel.style[axis] = components[index];
+                            if (!clearStyleProperty(panel, axis)) return false;
+                        }
+                        if (!clearStyleProperty(panel, "position")) return false;
+                    } else {
+                        // A newer owner may take only one component of a prior
+                        // compound write. Release the remaining components
+                        // individually, preserving the newer owner's coordinate.
+                        for (const [index, axis] of ["x", "y"].entries()) {
+                            if (!held(panel, styleKey(axis))) continue;
+                            if (components[index]) panel.style[axis] = components[index];
+                            if (!clearStyleProperty(panel, axis)) return false;
+                        }
+                    }
+                    for (const positionKey of positionKeys) drop(panel, positionKey);
+                } else if (held(panel, key)) {
+                    const original = preserved.has(key) ? baseline(panel, property) : "";
+                    if (original) panel.style[property] = original;
+                    else {
+                        for (const component of record.properties) {
+                            if (styleKey(component) === key && !record.wantedProperties.has(component) &&
+                                Object.prototype.hasOwnProperty.call(resets, component)) panel.style[component] = resets[component];
+                        }
+                        if (!clearStyleProperty(panel, property)) return false;
+                        const group = compositeCodeBaselines.get(panel)?.get(key);
+                        if (group) {
+                            // Component setters share one native code slot. Keep
+                            // original code fields never claimed by these owners.
+                            for (const [component, value] of group.values) {
+                                if (!group.owned.has(component)) panel.style[component] = value;
+                            }
+                        }
+                    }
+                    // An axis assignment and position share native storage.
+                    // Clear the aggregate only after the last desired axis,
+                    // respecting component leases held by other owners.
+                    if (releasePosition && (property === "x" || property === "y") &&
+                        !record.wantedProperties.has("x") && !record.wantedProperties.has("y") &&
+                        !record.wantedProperties.has("position") && !foreignPosition(panel) &&
+                        !clearStyleProperty(panel, "position")) return false;
+                }
+                drop(panel, key);
+                for (const component of record.properties) {
+                    if (styleKey(component) === key && !record.wantedProperties.has(component)) record.properties.delete(component);
+                }
+                record.signature = null;
+                return true;
+            } catch (_) { return false; }
+        };
+        const reconcileClass = (panel, name, value) => {
+            setClass(panel, name, value);
+            try { return panel.BHasClass(name) === value; } catch (_) { return false; }
+        };
+        const cleanup = (panel) => {
+            const record = records.get(panel);
+            if (!record) return true;
+            if (!isPanelAlive(panel)) { records.delete(panel); nativeStyleLeases.delete(panel); nativeClassBaselines.delete(panel); nativeCodeBaselines.delete(panel); compositeCodeBaselines.delete(panel); return true; }
+            let complete = true;
+            const attempted = new Set();
+            for (const property of record.properties) {
+                const key = styleKey(property);
+                if (record.wantedProperties.has(property) || attempted.has(key)) continue;
+                attempted.add(key);
+                if (!clearProperty(panel, record, property)) complete = false;
+            }
+            for (const name of record.classes) {
+                if (record.wantedClasses.has(name)) continue;
+                const key = "class:" + name;
+                if (!held(panel, key) || reconcileClass(panel, name, record.classBaselines.get(name))) {
+                    record.classes.delete(name); drop(panel, key);
+                    record.classBaselines.delete(name);
+                } else complete = false;
+            }
+            if (!record.properties.size && !record.classes.size) records.delete(panel);
+            return complete;
+        };
+        const retryCleanup = () => {
+            if (pending !== null || typeof $.Schedule !== "function") return;
+            const token = generation;
+            pending = $.Schedule(0.25, () => {
+                if (token !== generation) return;
+                pending = null;
+                let complete = true;
+                for (const panel of records.keys()) if (!cleanup(panel)) complete = false;
+                if (!complete) retryCleanup();
+            });
+        };
+        const release = (panel) => {
+            const record = records.get(panel);
+            if (!record) return true;
+            record.settled = false;
+            record.wantedProperties.clear(); record.wantedClasses.clear();
+            return cleanup(panel);
+        };
+        const apply = (panel, styles, classes = {}) => {
+            if (!isPanelAlive(panel)) { release(panel); return false; }
+            const properties = Object.keys(styles), names = Object.keys(classes);
+            let record = records.get(panel);
+            let validatedStyles = false, previous;
+            // A settled presentation still validates native feedback and leases,
+            // but needs no new ownership sets, baseline claims or signatures.
+            if (record?.settled && record.properties.size === properties.length && record.classes.size === names.length) {
+                try {
+                    const unchangedStyles = properties.every(property =>
+                        Object.prototype.hasOwnProperty.call(record.styles, property) && record.styles[property] === styles[property] &&
+                        (property === "position" ? positionKeys.every(key => held(panel, key)) : held(panel, styleKey(property))) &&
+                        panel.style[property] === record.readback.get(property));
+                    previous = unchangedStyles ? record.signature : null;
+                    validatedStyles = true;
+                    const unchangedClasses = unchangedStyles && names.every(name =>
+                        Object.prototype.hasOwnProperty.call(record.classValues, name) && record.classValues[name] === !!classes[name] &&
+                        held(panel, "class:" + name) && panel.BHasClass(name) === (record.classBaselines.get(name) || !!classes[name]));
+                    if (unchangedClasses) return true;
+                } catch (_) { /* Retry through the ordinary partial-write path. */ }
+            }
+            if (!record && !properties.length && !names.length) return true;
+            if (!record) {
+                record = { properties: new Set(), classes: new Set(), classBaselines: new Map(), wantedProperties: new Set(), wantedClasses: new Set(), signature: null, readback: new Map() };
+                records.set(panel, record);
+            }
+            record.settled = false;
+            record.wantedProperties = new Set(properties); record.wantedClasses = new Set(names);
+            let complete = cleanup(panel);
+            if (!complete) retryCleanup();
+            records.set(panel, record);
+            for (const name of names) {
+                const key = "class:" + name;
+                // Carry the original baseline through instance handoffs, including
+                // when a prior cleanup was rejected. Never sample its own override.
+                if (!nativeClassBaselines.has(panel)) nativeClassBaselines.set(panel, new Map());
+                const baselines = nativeClassBaselines.get(panel);
+                if (!baselines.has(key)) {
+                    let baseline = false;
+                    try { baseline = preserveClasses && panel.BHasClass(name); } catch (_) {}
+                    baselines.set(key, baseline);
+                }
+                const baseline = preserveClasses && baselines.get(key);
+                record.classBaselines.set(name, !!baseline);
+                record.classes.add(name);
+                claim(panel, key);
+                if (!reconcileClass(panel, name, !!baseline || !!classes[name])) complete = false;
+            }
+            if (!validatedStyles) {
+                previous = record.signature;
+                try {
+                    for (const property of properties) {
+                        const leased = property === "position" ? positionKeys.every(key => held(panel, key)) : held(panel, styleKey(property));
+                        if (!leased || panel.style[property] !== record.readback.get(property)) previous = null;
+                    }
+                } catch (_) { previous = null; }
+            }
+            // Record ownership before a partial native write can fail.
+            for (const property of properties) {
+                const key = styleKey(property);
+                if (preserved.has(key)) {
+                    const original = baseline(panel, property);
+                    if (!nativeCodeBaselines.has(panel)) nativeCodeBaselines.set(panel, new Map());
+                    nativeCodeBaselines.get(panel).set(key, original);
+                }
+                record.properties.add(property);
+                if (property === "position") for (const key of positionKeys) claim(panel, key);
+                else claim(panel, styleKey(property), property);
+            }
+            const result = syncStyles(panel, styles, previous);
+            record.signature = result.sig;
+            if (record.signature === null) complete = false;
+            else if (result.changed) {
+                record.readback.clear();
+                try {
+                    for (const property of properties) record.readback.set(property, panel.style[property]);
+                } catch (_) { record.signature = null; complete = false; }
+            }
+            if (!record.properties.size && !record.classes.size) records.delete(panel);
+            if (complete) {
+                record.styles = { ...styles };
+                record.classValues = Object.fromEntries(names.map(name => [name, !!classes[name]]));
+                record.settled = true;
+            }
+            return complete;
+        };
+        const retain = (panels) => {
+            const current = new Set(panels);
+            let complete = true;
+            for (const panel of records.keys()) if (!current.has(panel) && !release(panel)) complete = false;
+            if (!complete) retryCleanup();
+            else if (!records.size) cancelCleanup();
+            return complete;
+        };
+        const clear = () => retain([]);
+        // Read-only diagnostic checks; no writes or cleanup retries.
+        const verify = () => {
+            try {
+                for (const [panel, record] of records) {
+                    if (!isPanelAlive(panel) || !record.settled) return false;
+                    for (const property of record.wantedProperties) {
+                        const leased = property === "position" ? positionKeys.every(key => held(panel, key)) : held(panel, styleKey(property));
+                        if (!leased || panel.style[property] !== record.readback.get(property)) return false;
+                    }
+                    for (const name of record.wantedClasses) if (!held(panel, "class:" + name) || panel.BHasClass(name) !== (record.classBaselines.get(name) || !!record.classValues[name])) return false;
+                }
+                return true;
+            } catch (_) { return false; }
+        };
+        return { apply, retain, clear, baseline, verify, isReleased: () => records.size === 0 };
     };
 
     const findRoot = (panel) => {
@@ -244,6 +539,18 @@
         }
     };
 
+    const findChildByClass = (parent, className) => {
+        if (!isPanelAlive(parent) || typeof className !== "string" || !className) return null;
+        try {
+            const count = parent.GetChildCount();
+            for (let index = 0; index < count; index++) {
+                const child = parent.GetChild(index);
+                if (hasClassToken(child, className)) return child;
+            }
+        } catch (_) { /* Native children may retire during enumeration. */ }
+        return null;
+    };
+
     const findTraverse = (root, id) => {
         if (!isPanelAlive(root) || !id) return null;
         try {
@@ -251,6 +558,119 @@
         } catch (_) {
             return null;
         }
+    };
+
+    // Instance-local ownership of exclusively QOL-created IDs/handles. Native parent
+    // selection, content, signatures and scheduling stay with the caller.
+    const createOwnedTree = () => {
+        const nodes = new Map(), retired = new Set();
+        let pendingDeletion = null;
+        const retryDeletion = () => {
+            if (!retired.size || pendingDeletion !== null || typeof $.Schedule !== "function") return;
+            pendingDeletion = $.Schedule(0.25, () => {
+                pendingDeletion = null;
+                for (const panel of retired) {
+                    if (!isPanelAlive(panel)) retired.delete(panel);
+                    else safeDeletePanel(panel);
+                }
+                retryDeletion();
+            });
+        };
+        // One immediate-child snapshot per parent/pass preserves FindChild's
+        // first-ID priority without N separate sibling walks for N markers.
+        const indexChildren = parent => {
+            const index = new Map();
+            if (!isPanelAlive(parent)) return index;
+            try {
+                for (const panel of parent.Children()) {
+                    if (isPanelAlive(panel) && !index.has(panel.id)) index.set(panel.id, panel);
+                }
+            } catch (_) { index.clear(); }
+            return index;
+        };
+        const retire = panel => {
+            if (!isPanelAlive(panel)) return;
+            setVisible(panel, false);
+            safeDeletePanel(panel);
+            retired.add(panel);
+            retryDeletion();
+        };
+        const discard = id => {
+            const record = nodes.get(id);
+            if (!record) return;
+            nodes.delete(id);
+            // Expected ancestry tracks children even after native reparenting.
+            for (const [childId, child] of [...nodes]) {
+                if (child.parent === record.panel) discard(childId);
+            }
+            retire(record.panel);
+        };
+        const sweep = () => {
+            const previousSize = nodes.size;
+            const parents = new Map();
+            for (const [id, record] of [...nodes]) {
+                if (record.handle) {
+                    let attached = false;
+                    try { attached = isPanelAlive(record.panel) && isPanelAlive(record.parent) && record.panel.GetParent() === record.parent; } catch (_) {}
+                    if (!attached) discard(id);
+                    continue;
+                }
+                if (!parents.has(record.parent)) parents.set(record.parent, indexChildren(record.parent));
+                if (!isPanelAlive(record.panel) || !isPanelAlive(record.parent) ||
+                    parents.get(record.parent).get(id) !== record.panel) discard(id);
+            }
+            for (const panel of retired) {
+                if (!isPanelAlive(panel)) retired.delete(panel);
+                else safeDeletePanel(panel);
+            }
+            return nodes.size === previousSize;
+        };
+        const ensureChild = (parent, type, id, properties, next) => {
+            if (!id) return null;
+            const previous = nodes.get(id);
+            if (previous && (previous.panel !== next || previous.parent !== parent)) discard(id);
+            if (!isPanelAlive(parent)) return null;
+            // A rapid re-enable can still find the previous instance's tree
+            // before DeleteAsync finishes. Never adopt that pending deletion.
+            if (isPanelAlive(next) && (!nodes.has(id) || retired.has(next))) { retire(next); return null; }
+            const creation = { hittest: "false", hittestchildren: "false", ...properties };
+            const panel = isPanelAlive(next) ? next : safeCreatePanel(type, parent, id, creation);
+            if (!isPanelAlive(panel)) return null;
+            if (!nodes.has(id)) nodes.set(id, { panel, parent });
+            // Keep the owned node recorded before potentially failing native
+            // property writes; later reconciliation retries these flags.
+            for (const key of ["hittest", "hittestchildren"]) {
+                if ((creation[key] === false || creation[key] === "false") && panel[key] !== false) panel[key] = false;
+            }
+            return panel;
+        };
+        const child = (parent, type, id, properties) => ensureChild(parent, type, id, properties, findChild(parent, id));
+        // Fresh creation owns the returned handle directly, including anonymous
+        // nodes. Never look up/adopt an existing native child or fabricate IDs.
+        // Preserve caller creation properties, including interactive controls.
+        const create = (type, parent, id = "", properties) => {
+            const panel = safeCreatePanel(type, parent, id, properties);
+            if (isPanelAlive(panel)) nodes.set(panel, { panel, parent, handle: true });
+            return panel;
+        };
+        const children = (parent, type, entries) => {
+            const index = indexChildren(parent);
+            return entries.map(({ id, properties }) => {
+                const panel = ensureChild(parent, type, id, properties, index.get(id) || null);
+                if (panel) index.set(id, panel);
+                return panel;
+            });
+        };
+        const clear = () => {
+            // Every owned descendant is already recorded, including moved handles.
+            // Bulk retirement needs no per-node branch discovery through discard().
+            const records = [...nodes.values()].reverse();
+            nodes.clear();
+            for (const record of records) retire(record.panel);
+            sweep();
+        };
+        const dispose = () => { clear(); retryDeletion(); };
+        return { create, child, children, sweep, remove: discard, clear, dispose, isReleased: () => nodes.size === 0 && retired.size === 0 };
     };
 
     // ql_utils.js is loaded first in every context that includes panel helpers.
@@ -286,9 +706,12 @@
         createPanel: safeCreatePanel,
         delete: safeDeletePanel,
         deletePanel: safeDeletePanel,
+        createOwnedTree,
+        createNativeStyleOwner,
         findRoot,
         findHud,
         findChild,
+        findChildByClass,
         findTraverse,
         setClass,
         setVisible,

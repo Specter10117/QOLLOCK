@@ -12,21 +12,27 @@ which numeric label, or which live HUD instance is authoritative.
 | Validate a native handle | `QOL_UTILS.IsPanelValid(panel)` or `QOL.core.panel.isAlive(panel)` | `ql_utils.js`; same function via aliases, including `QOL.utils.IsPanelValid`. |
 | Validate a panel list | `QOL_UTILS.IsPanelListValid(list)` | Empty lists are false; distinguish an empty cached result separately if needed. |
 | Create / delete panels | `QOL.core.panel.create(type, parent, id, properties)` / `QOL.core.panel.delete(panel)` | `core/ql_panel_helpers.js`; deletion is asynchronous. |
+| Own a created overlay tree | `QOL.core.panel.createOwnedTree()` | Instance-local `child(parent, type, id, properties?)`, `children(parent, type, entries)`, fresh `create(type, parent, id?, properties?)`, `sweep()`, `remove(idOrHandle)`, `clear()` and `dispose()`. Reconciled IDs must be unique; fresh creation owns anonymous handles without native adoption. See [panel API](core/panel_helpers.md). |
 | Find a known direct-child ID | `QOL.core.panel.findChild(parent, id)` | Does not search arbitrary descendants. |
+| Find a known direct-child class | `QOL.core.panel.findChildByClass(parent, className)` | First valid immediate match, with indexed enumeration and no descendant fallback. Missing or retiring native children return null. |
 | Find a known descendant ID | `QOL.core.panel.findTraverse(root, id)` | Supply the narrowest authoritative root; duplicate IDs in other subtrees are possible. |
-| Find descendants by class | `QOL_UTILS.FindPanelsByClass(root, className)` / `QOL_UTILS.FindFirstPanelByClass(root, className)` | Native class traversal; the latter filters for valid handles. |
+| Find descendants by class | `QOL_UTILS.FindPanelsByClass(root, className)` / `QOL_UTILS.FindFirstPanelByClass(root, className)` | Native result order; the latter short-circuits a valid direct-child match and retains descendant traversal on a miss. |
 | Find a parent-chain match | `QOL_UTILS.FindAncestorWithClass(panel, className)` / `QOL_UTILS.HasClassInHierarchy(panel, className)` | Includes starting panel; catches native class/parent access failures, but the walk is uncapped. |
 | Resolve context root / HUD | `QOL.core.panel.findRoot(panel?)` / `QOL.core.panel.findHud(preferredRoot)` | See [panel API](core/panel_helpers.md); root fallback does not establish gameplay state. |
 | Read first descendant text | `QOL.core.panel.readTextDeep(panel, maxDepth)` | Bounded search, unsuitable when another nonempty label can precede the desired one. |
+| Read a native chat message's text label | `QOL.core.chatMessages.findLabel(message)` | HUD-only `core/ql_chat_messages.js`; verified top `MessageText`, earlier direct labels and current bottom `.Text > Label`. Consumers own source selection and lifetime. |
 | Read / write a panel attribute | `QOL_UTILS.SafeGetAttribute(panel, key, fallback)` / `QOL_UTILS.SafeSetAttribute(panel, key, value)` | Generic string access, not revision-aware config publication. |
 | Change one style if different | `QOL_UTILS.SetStyleIfChanged(panel, property, value)` | Only when native read-back semantics suit comparison. |
 | Reassert one style | `QOL_UTILS.SetStyleSafe(panel, property, value)` | Use when a native owner may overwrite the value; do not make deliberate reassertion conditional. |
 | Normalize opacity / clear style | `QOL_UTILS.SetPanelOpacitySafe(panel, value, fallback)` / `QOL.core.panel.clearStyleProperty(panel, property)` | Opacity clamps and formats; clearing uses native ClearPropertyFromCode. |
+| Resolve a native code style key | `QOL_UTILS.NativeStylePropertyName(property)` | Converts camelCase aliases and native border/font/margin components to the stored composite symbol used by both clear helpers. |
 | Apply a style map | `QOL.core.panel.syncStyles(panel, styles, lastSig)` | Caller owns signature and invalidation; writes the whole map when signature changes. |
+| Own native code styles/classes | `QOL.core.panel.createNativeStyleOwner(options?)` | Instance `apply(panel, styles, classes?)`, `retain(panels)`, `clear()` and optional preserved-style `baseline(panel, property)` track attempted writes, native readback and rejected retirement. Caller selects sources, neutral `resetValues`, or explicitly preserved native code/class baselines; see [panel API](core/panel_helpers.md). |
 | Set a class / visibility | `QOL.core.panel.setClass(panel, className, active)` / `QOL.core.panel.setVisible(panel, visible)` | Class setter compares before writing; visible setter does not. |
 | Resolve a palette color | `QOL.core.panel.normalizePaletteIndex(value)` / `QOL.core.panel.resolvePaletteColor(value)` | Both delegate to `QOL_UTILS`; read the palette from the leaf utility. |
 | Cache a handle / list | `QOL.panelCache.getPanel(key)` / `QOL.panelCache.setPanel(key, panel)` / `QOL.panelCache.getList(key)` / `QOL.panelCache.setList(key, list)` | `ql_panelcache.js`; getters reject invalid handles/lists. |
 | Resolve cached ID | `QOL.panelCache.resolve(parent, cacheKey, traverseId)` | Keys resolution by parent and ID, validates live ancestry, and re-resolves after reparenting. |
+| Own a native ID resolver | `QOL.panelCache.createIdResolver(id, options)` | Instance-local `resolve(root, force?)` / `reset()`, verified direct-child owner paths, ancestry validation, bounded miss retries and periodic discovery refresh. See [panel cache](core/panel_cache.md). |
 | Cache non-panel state | `QOL.panelCache.getData(key)` / `QOL.panelCache.setData(key, value)` | No panel validation. Do not mix data and handle categories. |
 | Check an enabled config key | `QOL_UTILS.IsCfgEnabled(cfg, key)` | Uses numeric `1`, not general JavaScript truthiness. |
 | Clamp a config number | `QOL_UTILS.ClampConfigNumber(value, fallback, min, max, shouldRound)` | Optional rounding before clamp, not schema-step snapping. |
@@ -38,6 +44,12 @@ which numeric label, or which live HUD instance is authoritative.
 | Log runtime errors | `QOL.core.Logger.logError(featureId, message)` | Throttled and bounded; format expensive debug data only when enabled. |
 
 ## Load order and names
+
+Settings text belongs to `ui/theme.js`: `LocalizeSettingsText(text, force)`
+resolves an English source key; `QOL.ui.theme.FormatSettingsText(text, values)`
+localizes a whole sentence and replaces named `{name}` placeholders once.
+Both preserve Unicode display text. They are settings-context APIs, not HUD
+globals. See [Localization](LOCALIZATION.md) for exchange and formatting rules.
 
 `ql_utils.js` publishes `QOL_UTILS`; the shared preset bridge exposes the same
 object as `QOL.utils`. Panel helpers require that leaf module and the QOL
@@ -53,10 +65,28 @@ For HUD mode/class detection use [core HUD state](core/hud.md); for hero evidenc
 use [heroProbe](core/hero_probe.md). Both report observations, not authoritative
 local-player identity.
 
+The HUD-only `core/ql_minimap_probe.js` supplies the two minimap owners' transient
+diagnostic lease controller, local panel evidence and creation-time composition
+property maps. It is loaded explicitly before those owners. It neither discovers
+native sources nor runs schedules; controls, rendering and restoration remain
+with the owning manifests. See the [minimap diagnostic contract](features/ql_minimap_runtime.md).
+`ql_minimap_plan.js` declares vectors/coverage and verifies evidence;
+`ql_minimap_investigation.js` orchestrates settling and proof windows in the HUD.
+They do not derive FPS from Scheduler dispatch. The external native analyzer
+consumes the same verifier contract and independently checks coverage/work execution.
+
+Feature settings hooks project shared root classes with
+`QOL.core.hud.refreshRootClasses(root)`, which reads the complete current config
+and live time/hideout evidence. A local bucket cannot safely project unrelated
+root flags. Native style ownership remains with its feature manifest.
+
 ## Cache and lifecycle contract
 
 - Cache keys are shared within a script context. Use a feature-specific key or
   explicitly share ownership; never silently replace another feature's entry.
+- Typed and retained compatibility accessors share one storage owner. There is
+  no mutable `State.cachedPanels` mirror; use a typed category rather than writing
+  an internal dictionary. Core HUD discovery misses are private, root/ID scoped.
 - Validity says the handle is live, not that it belongs to the current match,
   player, root, or selection. Clear/rebind your entries on relevant transitions.
 - `getPanel` validates handles without checking ancestry. `resolve` additionally
@@ -102,7 +132,8 @@ without legacy fallback writes. Neither helper forces a new default value.
   gates and current ancestry. `InHideout` suppresses the first hideout room;
   `connectedToHideout` alone permits the combat room. A root fallback is false,
   and missing native panels are retried. See [HUD state](core/hud.md) for scope.
-- `QOL.core.hud.isScoreboardOpen(root, anchor)` reads `gScoreboardOpen` from
+- Shared `QOL.hudState.isScoreboardOpen(root, anchor)` is loaded in HUD and
+  settings contexts; HUD `QOL.core.hud.isScoreboardOpen` delegates to it. It reads `gScoreboardOpen` from
   HUD/ancestor state, the stationary native `DamageReportGlobalClassListener`,
   or, when that listener is absent, an optional feature anchor or native
   `minimap_persp` GlobalClassListener. The stationary listener takes precedence
@@ -113,11 +144,26 @@ without legacy fallback writes. Neither helper forces a new default value.
   Spectating, replay, hideout and ambiguous classes return `unknown`.
 - `QOL.core.Scheduler.scheduleOnce(callback, delaySec, featureId)` owns a
   one-shot callback, cancelled on feature disable. `schedule` remains recurring.
-  Event handlers must still be explicitly unsubscribed.
-
-See [the audit scope and remaining native checks](HELPER_AUDIT.md).
+  Registry-owned `ctx.events` subscriptions retire with their instance; direct
+  EventBus/native subscriptions still require explicit cleanup.
 
 Native clears normalize camelCase style aliases to CSS names before calling
 `ClearPropertyFromCode`: `uiScale` becomes `ui-scale`, for example. The simulator
 models this boundary separately from JS style writes; accepting camelCase in
 both places would conceal a failed return to CSS defaults.
+The core helper also clears border color/width/style through their native
+composite `border` key and leases that composite; see the
+[native evidence and ownership boundary](core/panel_helpers.md).
+Font and margin components use their native `font`/`margin` composite keys too.
+Their native-style ownership retains unclaimed original code components while
+releasing owned overrides; see the same ownership reference.
+
+Presentation state visibility uses the current settings metadata in
+`ql_customize_data.js`. `captureVisibility(ctx, config)` retains the settings
+snapshot already read by the owner; `visibilityConfig(ctx)` reads it without
+recomputing the model on each tick. `shouldHide(surface, config, root)` observes
+the applicable normal/TAB flag; `visibilityStyles` adds only a collapse override.
+`bindVisibility(ctx, hooks, update)` owns the scoreboard subscription and cleanup
+while preserving the owner's lifecycle and updater. Apply it once per feature;
+owners with an existing scoreboard subscription reuse that callback. Keep native
+source selection, overlay gates and any opacity-based hiding with the owner.

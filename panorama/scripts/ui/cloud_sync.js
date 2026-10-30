@@ -157,19 +157,19 @@
         }
     };
 
-    const watchBuildSaveStatus = (saveBtn, saveLbl, expectedToken, defaultLabel) => {
+    const watchBuildSaveStatus = (saveBtn, saveLbl, expectedToken, defaultLabel, isCurrent = () => isAlive(saveBtn)) => {
         const startMs = Date.now ? Date.now() : (new Date()).getTime();
         const timeoutMs = 30000;
 
         const restoreDefault = () => {
-            if (!isAlive(saveBtn)) return;
+            if (!isCurrent()) return;
             saveBtn.RemoveClass("SuccessState");
             saveBtn.RemoveClass("FailureState");
             if (saveLbl) saveLbl.text = defaultLabel;
         };
 
         const tick = () => {
-            if (!isAlive(saveBtn)) return;
+            if (!isCurrent()) return;
             const nowMs = Date.now ? Date.now() : (new Date()).getTime();
             const elapsedMs = nowMs - startMs;
             const status = readBuildSaveStatus();
@@ -219,7 +219,73 @@
         tick();
     };
 
+    // One debounced snapshot and one in-flight durable save. Publication remains
+    // synchronous; CEF acknowledgments must belong to the latest user intent.
+    const autoSave = (() => {
+        let pending = null, inFlight = null, timer = null, generation = 0;
+        let enabled = false, savedRaw = "";
+        const current = record => isAlive(record.context) && isAlive(record.root) &&
+            record.context === $.GetContextPanel() && record.root === findRootPanel();
+        const cancelTimer = () => {
+            if (timer !== null) {
+                try { $.CancelScheduled(timer); } catch (_) {}
+                timer = null;
+            }
+        };
+        const cancel = () => {
+            generation++;
+            cancelTimer(); pending = null; savedRaw = "";
+        };
+        const run = record => {
+            if (pending !== record || record.generation !== generation) return;
+            timer = null;
+            if (!current(record)) { pending = null; return; }
+            if (inFlight) return;
+            pending = null;
+            inFlight = record;
+            setFeedbackMessage("Saving settings...", "info", 0);
+            const complete = error => {
+                if (inFlight !== record) return;
+                inFlight = null;
+                if (record.generation === generation && current(record)) {
+                    if (error) {
+                        savedRaw = "";
+                        setFeedbackMessage("Save failed.", "error", 2600);
+                        $.Msg("[QOLLOCK] Auto-Save failed: " + String(error.message || error));
+                    } else {
+                        savedRaw = record.raw;
+                        setFeedbackMessage("Settings saved successfully.", "success", 2000);
+                    }
+                }
+                // A newer edit already waited its debounce while CEF was busy.
+                if (pending && timer === null) run(pending);
+            };
+            const bridge = Q.core?.storageBridge;
+            if (!bridge?.saveSettings) { complete(new Error("Storage bridge unavailable")); return; }
+            bridge.saveSettings(record.raw, complete);
+        };
+        const observe = raw => {
+            const nextEnabled = Q.getSettingsConfig().AUTO_SAVE_CHANGES === 1;
+            const disabling = enabled && !nextEnabled;
+            enabled = nextEnabled;
+            if (!enabled && !disabling) return;
+            if (pending?.raw === raw && current(pending)) return;
+            if (!pending && inFlight?.raw === raw && inFlight.generation === generation && current(inFlight)) return;
+            if (!pending && !inFlight && savedRaw === raw) return;
+            cancelTimer();
+            const record = { raw, context: $.GetContextPanel(), root: findRootPanel(), generation: ++generation };
+            pending = record;
+            timer = $.Schedule(0.6, () => run(record));
+        };
+        const restored = (config, raw) => {
+            if (pending && pending.raw !== raw) cancel();
+            enabled = config.AUTO_SAVE_CHANGES === 1;
+        };
+        return { observe, cancel, restored };
+    })();
+
     let gSaveButtonLastActionMs = 0;
+    let saveUiGeneration = 0;
     const SAVE_BUTTON_DEBOUNCE_MS = 1000;
 
     /**
@@ -230,6 +296,14 @@
         const nowMs = Date.now ? Date.now() : (new Date()).getTime();
         if (gSaveButtonLastActionMs > nowMs - SAVE_BUTTON_DEBOUNCE_MS) return;
         gSaveButtonLastActionMs = nowMs;
+        const generation = ++saveUiGeneration;
+        const context = $.GetContextPanel?.(), root = findRootPanel();
+        const isCurrent = () => {
+            try {
+                return generation === saveUiGeneration && isAlive(saveBtn) && isAlive(saveLbl) &&
+                    context === $.GetContextPanel?.() && root === findRootPanel();
+            } catch (_) { return false; }
+        };
 
         const cfgSave = localize("SAVE", true);
         const cfgSaving = localize("SAVING", true);
@@ -239,6 +313,7 @@
         if (typeof onBeforeQueue === "function") {
             try { onBeforeQueue(); } catch (_) {}
         }
+        autoSave.cancel();
 
         saveBtn.RemoveClass("FailureState");
         saveBtn.AddClass("SuccessState");
@@ -252,7 +327,7 @@
                 : ((typeof globalThis !== "undefined" && globalThis.MOD_CONFIG) ? globalThis.MOD_CONFIG : {});
 
             bridge.saveSettings(config, (err) => {
-                if (!isAlive(saveBtn)) return;
+                if (!isCurrent()) return;
                 if (err) {
                     saveBtn.RemoveClass("SuccessState");
                     saveBtn.AddClass("FailureState");
@@ -260,7 +335,7 @@
                     setFeedbackMessage(`Save failed: ${err.message || err}`, "error", 2600);
                     if (typeof $.Schedule === "function") {
                         $.Schedule(1.2, () => {
-                            if (!isAlive(saveBtn)) return;
+                            if (!isCurrent()) return;
                             saveBtn.RemoveClass("FailureState");
                             saveLbl.text = cfgSave;
                         });
@@ -273,8 +348,7 @@
                 saveLbl.text = cfgSaved;
                 setFeedbackMessage("Settings saved successfully.", "success", 2000);
 
-                const panel = $.GetContextPanel?.();
-                const root = findRootPanel();
+                const panel = context;
                 if (panel && typeof panel.SetAttributeString === "function") {
                     panel.SetAttributeString(ATTRS.saveState(), "success");
                     panel.SetAttributeString(ATTRS.saveMsg(), "success");
@@ -286,7 +360,7 @@
 
                 if (typeof $.Schedule === "function") {
                     $.Schedule(1.2, () => {
-                        if (!isAlive(saveBtn)) return;
+                        if (!isCurrent()) return;
                         saveBtn.RemoveClass("SuccessState");
                         saveLbl.text = cfgSave;
                     });
@@ -308,7 +382,7 @@
             setFeedbackMessage("Failed to queue save request.", "error", 2200);
             if (typeof $.Schedule === "function") {
                 $.Schedule(0.6, () => {
-                    if (!isAlive(saveBtn)) return;
+                    if (!isCurrent()) return;
                     saveBtn.RemoveClass("FailureState");
                     saveLbl.text = cfgSave;
                 });
@@ -316,7 +390,7 @@
             return;
         }
 
-        watchBuildSaveStatus(saveBtn, saveLbl, token, cfgSave);
+        watchBuildSaveStatus(saveBtn, saveLbl, token, cfgSave, isCurrent);
     };
 
     let gClearButtonLastActionMs = 0;
@@ -481,6 +555,7 @@
 
     // Export API on Q.ui.cloudSync
     Q.ui.cloudSync = {
+        autoSave,
         queueBuildSaveRequest,
         readBuildSaveStatus,
         resolveBuildSavePendingLabel,

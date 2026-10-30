@@ -3,11 +3,13 @@ const path = require("path");
 const vm = require("vm");
 
 const projectRoot = path.resolve(__dirname, "..");
+const contractPath = path.join(projectRoot, "panorama", "scripts", "ql_settings_contract.js");
+const legacyPath = path.join(projectRoot, "panorama", "scripts", "ql_legacy_compact.js");
+const installLegacyEncoder = require("./legacy_compact_encoder");
 const sharedPath = path.join(projectRoot, "panorama", "scripts", "ql_shared_presets.js");
 const utilsPath = path.join(projectRoot, "panorama", "scripts", "ql_utils.js");
 const bridgePath = path.join(projectRoot, "panorama", "scripts", "ql_bridge.js");
 const configPath = path.join(projectRoot, "panorama", "scripts", "ql_config.js");
-const settingsPreviewsPath = path.join(projectRoot, "panorama", "scripts", "ql_settings_previews.js");
 const settingsTooltipsPath = path.join(projectRoot, "panorama", "scripts", "ql_settings_tooltips.js");
 const settingsPersistencePath = path.join(projectRoot, "panorama", "scripts", "ql_settings_persistence.js");
 const settingsModalPath = path.join(projectRoot, "panorama", "scripts", "ui", "modal.js");
@@ -270,7 +272,10 @@ function compareDecodedAgainstSchema(decoded, effectiveConfig, defaultConfig, sc
     const comparableSchema = schemaToComparable(schema);
     for (const field of comparableSchema) {
         const decodedKey = field.key === "DEFAULT_HERO_INDEX" ? "DEFAULT_HERO" : field.key;
-        const expected = getExpectedFieldValue(field.key, effectiveConfig, defaultConfig);
+        const currentValue = getExpectedFieldValue(field.key, effectiveConfig, defaultConfig);
+        // Retired fields still occupy frozen wire slots. The fixture encoder
+        // writes the schema minimum when no current config/default owns a key.
+        const expected = currentValue === undefined ? field.min : currentValue;
         const actual = decoded[decodedKey];
         if (expected !== actual) {
             mismatches.push(`${decodedKey}: expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`);
@@ -355,7 +360,7 @@ function randomInRange(min, max, step) {
     const range = max - min;
     const slots = Math.floor(range / step);
     const randomSlot = Math.floor(Math.random() * (slots + 1));
-    let value = min + (randomSlot * step);
+    const value = min + (randomSlot * step);
     const decimals = String(step).includes(".")
         ? String(step).split(".")[1].length
         : 0;
@@ -479,8 +484,17 @@ function fuzzCrossVersionMigration(exports, fromSemver, toSemver, registry, defa
         try {
             const encoded = exports.serialize(original, fromSemver);
             const decoded = exports.deserialize(encoded, toSemver);
+            const candidate = exports.buildCandidateConfig(decoded, toSemver, defaultConfig).candidateConfig;
             // Verify keys present in both schemas are preserved
             for (const key of fromKeys) {
+                // Legacy decoders may return frozen slots; the actual import
+                // candidate must discard the retired Preview Changes setting.
+                if (key === "PREVIEWS_ENABLED") {
+                    if (candidate.hasOwnProperty(key)) {
+                        failures.push({ iteration: i, type: "retired_key_revived", key });
+                    }
+                    continue;
+                }
                 if (toKeys.has(key) && original.hasOwnProperty(key)) {
                     if (!decoded.hasOwnProperty(key)) {
                         failures.push({
@@ -571,38 +585,40 @@ function runFuzzTests(settingsExports, coreExports, defaultConfig, settingsRegis
 
 function main() {
     const settingsContext = loadContext(
-        [namespacePath, utilsPath, panelHelpersPath, sharedPath, bridgePath, configPath, rendererPath, settingsPreviewsPath, settingsTooltipsPath, settingsPersistencePath, settingsModalPath, settingsConfigTabPath, settingsCloudSyncPath, settingsSupportPath, settingsAudioPath, settingsConsoleTabPath, settingsArcadeTabPath, settingsDevTabPath, settingsGameplayTabsPath, settingsThemePath, settingsMetadataPath, settingsTabsPath, settingsControlsPath, settingsPath],
+        [namespacePath, utilsPath, panelHelpersPath, sharedPath, contractPath, legacyPath, bridgePath, configPath, rendererPath, settingsTooltipsPath, settingsPersistencePath, settingsModalPath, settingsConfigTabPath, settingsCloudSyncPath, settingsSupportPath, settingsAudioPath, settingsConsoleTabPath, settingsArcadeTabPath, settingsDevTabPath, settingsGameplayTabsPath, settingsThemePath, settingsMetadataPath, settingsTabsPath, settingsControlsPath, settingsPath],
         `globalThis.__schemaGuardExports = {
             sharedSemver: QOL_SCHEMA_SEMVER,
             sharedWireVersion: QOL_SCHEMA_WIRE_VERSION,
             defaultConfig: QOL_DEFAULT_CONFIG,
             presets: QOL_PRESETS,
-            latestSemver: LATEST_COMPACT_SEMVER,
+            latestSemver: QOL_LATEST_COMPACT_SEMVER,
             registry: QOL_COMPACT_SCHEMA_REGISTRY,
-            serialize: QOL.persistence.serializeCompactV2,
-            deserialize: QOL.persistence.deserializeCompactV2,
+            serialize: (config, version) => QOL.testEncodeLegacySettings(config, version),
+            deserialize: QOL.persistence.deserializeSettings,
             buildCandidateConfig: BuildCandidateConfigFromParsed,
             tryImport: TryApplyImportStringWithDiagnostics
         };`,
         false
     );
     const coreContext = loadContext(
-        [namespacePath, utilsPath, panelHelpersPath, sharedPath, bridgePath, codecPath],
+        [namespacePath, utilsPath, panelHelpersPath, sharedPath, contractPath, legacyPath, bridgePath, codecPath],
         `globalThis.__schemaGuardExports = {
-            latestSemver: QOL.core.codec.getLatestCompactSemver(),
-            registry: QOL.core.codec.getCompactSchemaRegistry(),
-            serialize: QOL.core.codec.serializeBuildPayloadCompact,
-            deserialize: QOL.core.codec.deserializeBuildPayloadCompact
+            latestSemver: QOL_SCHEMA_SEMVER,
+            registry: QOL.legacyCompact.registry,
+            serialize: (config, version) => QOL.testEncodeLegacySettings(config, version),
+            deserialize: QOL.core.codec.deserializeSettings
         };`,
         false
     );
-    var mirrorSettingsContext = null; // mirror not available
-    var mirrorCoreContext = null; // mirror not available
+    installLegacyEncoder(settingsContext);
+    installLegacyEncoder(coreContext);
+    const mirrorSettingsContext = null; // mirror not available
+    const mirrorCoreContext = null; // mirror not available
 
     const settingsExports = getValue(settingsContext, "globalThis.__schemaGuardExports");
     const coreExports = getValue(coreContext, "globalThis.__schemaGuardExports");
-    var mirrorSettingsExports = null; // mirror not available
-    var mirrorCoreExports = null; // mirror not available
+    const mirrorSettingsExports = null; // mirror not available
+    const mirrorCoreExports = null; // mirror not available
     const defaultConfig = JSON.parse(JSON.stringify(settingsExports.defaultConfig));
     const presets = JSON.parse(JSON.stringify(settingsExports.presets));
     const sharedSemver = settingsExports.sharedSemver;
@@ -619,9 +635,9 @@ function main() {
     if (!community319Import || community319Import.ok !== true || !community319Import.parsedConfig) {
         fail("Current settings failed to import known 3.1.9 community string");
     }
-    var mirrorDefaultConfig = null; var hasMirror = false; // mirror not available
-    var mirrorSettingsRegistry = null; // mirror not available
-    var mirrorCoreRegistry = null; // mirror not available
+    const mirrorDefaultConfig = null; const hasMirror = false; // mirror not available
+    const mirrorSettingsRegistry = null; // mirror not available
+    const mirrorCoreRegistry = null; // mirror not available
 
     if (sharedSemver !== settingsLatestSemver) {
         fail(`Shared schema semver ${sharedSemver} does not match settings latest ${settingsLatestSemver}`);

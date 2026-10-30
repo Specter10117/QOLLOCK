@@ -1,371 +1,261 @@
-# Frame-cost profiling
+# HUD lookup and operation profiling
 
-Users report FPS drops and bad 1% lows in large teamfights. This is the tooling
-for finding out which part of the mod is responsible, and for proving a fix
-worked.
+Use [the tool map](TOOLS.md) to choose a command. These tools count supported
+operations requested by production JavaScript in an offline replay. They do not
+measure native traversal time, layout, rendering, GPU work or FPS.
 
-For stutters that appear after a match/purchase and persist in hideout, start
-with the [transition investigation plan](STUTTER_INVESTIGATION.md). It separates
-reproduced source defects from client hypotheses and defines before/after runs.
+## Inputs and capture identity
 
-## Why not just read the code
+The profiler, lookup tracer, static dependency audit and Git-ref comparator all
+default to `tests/fixtures/hud/2026-10-03-hero-testing.json`, the repaired October 3 native
+Debugger hero-testing export. [Capture provenance](../tests/fixtures/hud/README.md) records
+its identity and limitations. The XML-composed HUD and synthetic native panel
+seeding have been removed; an invalid/missing input fails without a fallback.
 
-Because the answers are counter-intuitive. Of the things that looked most
-suspicious going in, several turned out to be correctly guarded already, and the
-biggest single cost was a feature searching for panels that only exist while the
-shop is open. Static reading also cannot rank: two functions that each "walk the
-tree sometimes" can differ by a factor of forty.
+Choose another scenario explicitly:
 
-## The tools
-
-### `node scripts/audit_runtime_lifecycle.js`
-
-Runs repeated event/transition scenarios against production scripts, counting
-raw `$.Schedule` chains as well as modeled traversal/style/class/text operations.
-Unlike the managed client benchmark, it loads the separate quickbuy context.
-
-```
-node scripts/audit_runtime_lifecycle.js --cycles 3
-node scripts/audit_runtime_lifecycle.js --cycles 10 --json
-node scripts/audit_runtime_lifecycle.js --quickbuy-ref 607b1ef^ --cycles 3
+```text
+node scripts/profile_hud.js --tree captures/<scenario>.json --seconds 20
+node scripts/trace_feature_hud.js --capture captures/<scenario>.json --all --seconds 20
+node scripts/audit_lookups_vs_capture.js captures/<scenario>.json --json
 ```
 
-The last command is a negative control: it reads only the historical quickbuy
-script through `git show`, without changing the checkout. Other scripts/layouts
-remain from the working tree. It is not a historical full-build comparison.
-The command is expected to fail: the old script accumulates 21/41/61 pending
-callbacks after three batches of 20 queue-change events; the fixed script keeps
-one. Failure includes callback errors rather than interpreting crashed work as
-an optimization. `--cycles` accepts 1 through 10. JSON includes scheduling
-origins and top lookup misses. Origins are stack-derived initial allocation
-sites (or inherited chain origins), not a native allocation profiler.
+Use completed receiver JSON from the standalone HUD-Dumper, not packet journals
+or raw descriptions. See [capture testing](CAPTURE_TESTING.md) for collection,
+import, forest selection and fidelity checks. The replay retains only the selected
+HUD hierarchy, not unrelated native windows. It does not inject a synthetic shop
+or bind native commands to a separate game model. QOLLOCK may create its own
+panels during boot and sampling.
 
-Quickbuy scenarios use a reduced fixture with two queue entries, one populated
-preview, active/disabled modes, repeated verified queue events, a retained valid
-context in hideout, and finally a destroyed context. Preview `SetImage` calls
-and requested path changes are counted separately; no asset pipeline is modeled.
-The HUD scenario uses the existing profiler tree and default configuration,
-repeated match/hideout class changes and the actual scoreboard event bridge.
-It does not exercise all settings, perform actual purchases, prove native
-panel retention, or simulate native match teardown. HUD growth is reported for
-investigation; quickbuy's known single-poll invariant and collected errors fail
-the command. A green run says nothing about unexercised branches or frame times.
+The capture is static and may span many frames. Displayed classes, missing text,
+unavailable target flags and description freshness remain explicit limitations.
+A token absent from one capture can still exist in another game state or be
+created by C++. Presence does not prove reachability from a caller's search root.
 
-`installScheduleProbe(sandbox)` in `scripts/simulator/perf/schedules.js` can be
-installed before loading any other sandbox context for focused regressions.
-Its window reset preserves pending tasks. The profiler's optional `beforeLoad`
-hook permits instrumentation before boot; no wrappers are shipped to the game.
-Scheduling outside that sandbox's `$.Schedule` API is not counted by the probe.
-`tests/runtime_lifecycle_audit.test.js` includes a fault injection that recreates
-the quickbuy leak, so a broken observer cannot pass by always reporting zero.
+## Find broad or repeated lookups
 
-For actual client evidence use [HUD recording](ui/hud_state_recording.md), then
-compare frame-time captures separately. Stable task counts can coexist with
-expensive work in each callback; inspect operation changes as well as counts.
-
-### `node scripts/audit_panel_ids.js`
-
-Cross-references literal `FindChildTraverse("...")` ids against vanilla layouts,
-the mod's layouts and `$.CreatePanel` calls. Missing ids are investigation
-candidates, not proof that a panel cannot exist: C++ can create panels and ids
-can be generated dynamically.
-
-A repeated lookup miss can be expensive. Check the live debugger and the search
-scope before removing a lookup on the strength of this static inventory.
-
-The inventory needs extracted game files; set `QOLLOCK_VANILLA` if they are not
-at the default path. It reports missing inputs rather than treating them as an
-empty inventory.
-
-```
-node scripts/audit_panel_ids.js            # ids absent from scanned sources
-node scripts/audit_panel_ids.js --all      # also list the reachable ones
-node scripts/audit_panel_ids.js --json
-```
-
-### `node scripts/profile_hud.js`
-
-Runs mod JavaScript against an instrumented model and counts the operations it
-requests there. It does not measure engine or rendering cost.
-
-```
-node scripts/profile_hud.js                      # profile and print
-node scripts/profile_hud.js --save baseline      # save a run
-node scripts/profile_hud.js --compare baseline   # diff against it
-node scripts/profile_hud.js --seconds 30         # longer sample
-node scripts/profile_hud.js --players 12         # teamfight size
-node scripts/profile_hud.js --healthbar 5        # 5 = minecraft; see below
-node scripts/profile_hud.js --json
-node scripts/profile_hud.js --tree captures/deadlock_hud_dump.json --seconds 10
-node scripts/profile_hud.js --defaults --enable ENABLE_CROSSHAIR_STATS=1
-```
-
-For before/after comparisons, use the same tree, settings and sample window.
-The historical workflow used:
-
-```
-git stash push -- panorama/      # park your changes, keep the harness
-node scripts/profile_hud.js --seconds 20 --save baseline
-git stash pop
-node scripts/profile_hud.js --seconds 20 --compare baseline
-```
-
-## What it measures
-
-Instrumented operations made by the simulated mod are charged to the feature
-on the stack at the time — old-system features via their registry `update`, new
-manifests via `Scheduler.createPollLoop`, and the mod's own scheduled loops by
-callback name. Anything else lands in `<unattributed>`.
-
-Custom JavaScript walks through `Children()`/`GetChild()` and uninstrumented
-APIs do not contribute native-search visit counts. This is not total JS work.
-
-The headline metric is **tree nodes visited**, not lookups. A call count hides
-the thing that actually hurts, because a miss costs the whole subtree while a hit
-can stop early.
-
-Style and class writes are split into **changed** and **identical** in the model.
-Repeated identical assignments are optimization candidates; these counters do
-not establish whether a particular native setter dirties layout or its cost.
-
-Attribute reads and writes are tracked with **bytes**, which is how the 9.2 KB
-config being re-marshalled twice per tick became visible at all.
-
-## What it does not measure
-
-It has no engine timings and cannot produce milliseconds. Do not quote it as such.
-
-- Counts are **exact** for the simulated tree.
-- The **tree** is assembled from real layout XML (the mod's patched copies plus the
-  vanilla files it does not override, 12 top-bar players, ~3100 panels) but it is
-  calibrated, not captured from a live match. C++ decides composition and creates
-  much of the content dynamically. `--tree` accepts only a complete per-panel
-  hierarchy; it does not reproduce the engine or remove lifecycle and rendering
-  caveats.
-- Captured imports retain supplied IDs, types, classes, ordering, text,
-  attributes and basic boolean state. Missing text stays empty and is reported;
-  computed geometry, CSS, native bindings and gameplay are not replayed.
-- The single `cost` column combines ops using **estimated weights**, documented in
-  `scripts/simulator/perf/counters.js`. Raw counters are always reported alongside.
-  Any conclusion that flips when you nudge a weight is one to draw from the raw
-  counters instead.
-
-So: "feature A does 40x the tree walks of feature B" describes this run under
-this model and configuration. Neither that ratio nor a weighted cost reduction
-establishes an FPS improvement. Verify performance changes in the client.
-
-## How wrong the modelled tree can be
-
-This is not hypothetical, so it is worth stating plainly before you trust a ranking.
-
-On 2026-08-21 the modelled profile put `ql_showrank` third of 28 features at 13.5% of
-all mod cost, and `ql_nicknames` at 1%. The in-game perf overlay, on the same build,
-measured `ql_showrank` at **1-3ms total over a minute** and `ql_nicknames` at
-**152-169ms, 2.4ms average, 9ms peak** — the most expensive feature in the mod by a
-wide margin, and a peak worth over half a frame at 60fps.
-
-The ranking was inverted because the cost lived somewhere the model could not see: a
-class write re-applied to a real top-bar player subtree (hero badge, ability icons,
-item bars, purchased mods) costs far more than the same write in a model with a
-fraction of the panels.
-
-A model built from our assumptions cannot falsify those assumptions. Captures
-help constrain its inputs; they do not make it an independent game oracle.
-
-## Capturing the real tree
-
-Prefer the standalone HUD-Dumper v4 native Debugger exporter and its verified
-receiver JSON. [Capture testing](CAPTURE_TESTING.md) describes the workflow.
-The selected `domTree` can now include Debugger-rendered classes and literal
-text; other native windows in `domForest` are not attached to the simulated HUD.
-Reports carry capture identity, collection duration and fidelity limitations.
-Full live coverage and description freshness remain unverified, even when all
-transport packets and descriptions are valid. Inspector row visibility is not
-target-panel visibility; description attributes are not runtime attribute reads.
-
-`import_tree_dump.js <capture.json> -o <new.json>` validates and preserves the
-receiver payload without overwriting earlier captures. Whole-HUD replay rejects
-invalid trees, mismatched counts, ambiguous HUD contexts and focused subtrees.
-It starts from the supplied hierarchy without injecting the synthetic build/shop
-model. QOLLOCK can still create its own panels during boot and the measured run.
-
-The separate historical HUD-Dumper v2 collector also produces `domTree` JSON,
-accepted by both offline tools. Its snapshot can contain incomplete class data:
-when class enumeration is unavailable it probes a predefined whitelist. It
-does not serialize `panel.text`. The repository's v2 capture has no text for
-its Labels and has hero-testing classes; do not treat it as a text-complete
-match fixture or interpret an absent class as native absence. Improve the
-collector and label each captured scenario before relying on value-dependent
-paths. Structure alone remains useful for narrowing search candidates.
-
-```
-1. In game:   Settings → Dev Panel → "Panel Tree Dump"   (in a real match)
-2. Save the console log.
-3. node scripts/import_tree_dump.js <log> --stats
-```
-
-The Dev Panel button produces an **aggregate summary**. It records the real
-panel count and depth distribution, but not parent-child links. The repository's
-`captured_tree.json` is such a summary; `profile_hud.js --tree` rejects it rather
-than silently profiling a one-panel HUD. Whole-HUD profiling with `--tree`
-requires a complete per-panel Hud hierarchy; use the standalone receiver rather
-than a rolling whole-HUD console log. Small `QOL.dumpTree` subtree captures remain useful for
-targeted hierarchy inspection, not a whole-HUD performance baseline.
-
-**Ground truth, 2026-08-21: a live match HUD is 37,524 panels.** The modelled tree is
-3,099 — so it understates that historical panel count by about 12×. This ratio
-does not establish a native lookup-time or frame-time multiplier.
-
-That measurement also killed the first version of this tool. A per-panel dump of
-37,524 panels is ~3MB of `$.Msg`, and the game's console log is a rolling buffer: the
-capture arrived with 2,152 of 37,524 lines and the START line had already scrolled
-out. The importer refused it rather than reconstruct a wrong tree — which is the
-behaviour you want, but it means **the button captures an aggregate**, not every
-panel:
-
-- total panels, max depth, and how many panels carry no id
-- panels per depth
-- panel count per type
-- panel count per id (capped, most frequent first)
-
-These counts constrain the size and contents of a model. They do not preserve
-ancestry, traversal order or native bindings, so a tree cannot be reconstructed
-from them for lookup profiling.
-
-`QOL.dumpTree` still exists for a full per-panel dump of a single subtree, which is
-small enough to survive. It is not wired to a button.
-
-`--stats` prints duplicated ids, which is directly useful: duplicate ids are why
-`FindChildTraverse` by id is unreliable in this codebase (it returns the first match
-in traversal order, not necessarily the live panel — that cost a full debug cycle on
-the build-save pipeline).
-
-The importer reports rolled logs, missing END lines, capped id lists and lost
-depth lines. Warnings on a full hierarchy are carried into the profile header;
-a partial capture is a **floor**, not a baseline.
-
-Captured and modelled runs are **not comparable** — the header and saved JSON record
-which one you got, so don't diff across them.
-The CLI refuses comparisons with different capture fingerprints, input config,
-warm-up or enabled coverage, and runs containing callback/registry errors. Older
-saved runs without input fingerprints need a fresh baseline.
-
-### Known coverage gap
-
-`HEALTHBAR_TYPE` is a numeric enum, not an `ENABLE_*` toggle, so the default
-"everything on" config leaves it at 0 and **none of the five healthbar variants
-run**. Use `--healthbar 5` for the Minecraft variant, which is the heaviest. Even
-then the simulated tree lacks the heart panels, so healthbar work is only
-partially covered — changes there need an in-game check. A run saved at one
-healthbar setting is not a valid baseline for a run at another.
-
-## Regression guards
-
-The historical `perf_guards` and `large_tree_profile` ceiling suites were
-removed. `tests/profiler_trace.test.js` uses portable fixtures to check warm-up
-exclusion, observer/counter agreement, direct-search early exit, precise virtual
-timestamps, duplicate-ID ordering, capture context/counts and clean CLI JSON.
-`tests/capture_tree.test.js` also checks native capture integrity, forest scope,
-literal text/attribute separation, replacement of modeled panels, static class
-dependencies, repeated console dumps, non-overwriting import and comparison gates.
-Production callbacks run in these accounting regressions, but no operation
-budget or green result establishes an FPS target. Simulated ID searches stop
-on the first matching descendant; these visits are not measured native steps.
-
-The profiler reports scheduled-callback errors. Inspect them alongside operation
-counts: an exception or registry auto-disable can reduce later measured work
-without improving the feature. Scheduler error thresholds and cancellation are
-described in [scheduler.md](core/scheduler.md); repeated work is not guaranteed
-to continue forever after an error.
-
-The modifier/buff entry layout (`hud_modifiers_entry_center.xml`) is loaded from
-the vanilla resource directory. QOLLOCK does not ship an override identical to
-the game layout. Keep composition entries pointing to vanilla when removing
-redundant layout copies, so the modeled subtree is still included.
-
-What is no longer automated is the ceiling itself. Use `--save` / `--compare`
-before and after a perf change instead:
-
-```
-node scripts/profile_hud.js --seconds 20 --save before
-# ...make the change...
-node scripts/profile_hud.js --seconds 20 --compare before
-```
-
-Compare against a run at the **same** `--players` and healthbar setting; a
-baseline from another configuration is not a baseline.
-
-The other lost check was "a config change is still picked up", which guarded
-against satisfying a *no re-read* ceiling with a cache that never invalidates. If
-you touch the config revision gate, verify that by hand — change a setting in game
-and confirm it applies.
-
-## Reading the report
-
-### Offline lookup tracer
-
-```
+```text
+node scripts/audit_lookups_vs_capture.js --json
+node scripts/trace_feature_hud.js --all --seconds 20 --json
 node scripts/trace_feature_hud.js ql_crosshair_stats --seconds 10
-node scripts/trace_feature_hud.js --all --seconds 10 --json
 node scripts/trace_feature_hud.js ql_crosshair_stats --seconds 0.2 --json --events
 node scripts/trace_feature_hud.js --defaults --enable ENABLE_CROSSHAIR_STATS=1
 ```
 
-The tracer uses the same instrumented HUD as the operation profiler. It starts
-observing after warm-up and uses the callback's virtual execution timestamp.
-`--warmup` changes that warm-up duration in seconds. A feature argument filters
-attribution labels; other enabled features keep running and no feature is forced
-on by its name. `--all` reports all observed labels, not all possible features.
-`--defaults` avoids the expanded configuration; `--enable KEY[=VALUE],...` adds
-explicit numeric overrides. Expanded settings still omit some toggles/variants.
+The static audit scans actual active HUD includes for ID/class dependencies,
+including supported aliases and constant strings. `--vanilla <panorama-dir>` adds
+extracted native XML evidence; otherwise only QOLLOCK layouts are consulted.
+Dynamic arguments are reported separately. This is an inventory, not executed
+lookup frequency, exhaustive context coverage or proof of native absence.
 
-ID traversal, class traversal and direct-child search events are included.
-Rates divide only measured events by the actual sample duration. JSON remains
-machine-readable even with `--verbose`; `--events` includes individual events.
-Enabled IDs, current registry error streaks and Clock callback errors accompany
-the report; registry streaks are not cumulative errors. Fatal input errors exit
-with status 2; the tracer exits with status 1 for collected callback errors or
-nonzero final registry streaks. Caught transient failures can still evade these
-end-state checks. No-event labels receive no performance verdict.
+The tracer runs production callbacks and groups search method, target and actual
+root by attribution owner. Child-index paths distinguish duplicate IDs. Its feature
+argument filters the report; other enabled features keep running. `--all` means
+all observed owners, not all possible features. `--events` retains individual
+ID/class/direct-child events and ordered class result paths. Rates use the measured
+window only; `--warmup` selects warm-up duration in seconds. JSON remains parseable
+with `--verbose`.
 
-Misses describe this supplied scenario. They do not prove invalid IDs, memory
-leaks or native cost. Captured trees are static; successful callbacks do not
-prove feature output without text/bindings. Compare client frame times separately.
+The lookup tracer shares the profiler's `validity` checks, including panel-event
+failures, registry error streaks at either boundary and changed enabled coverage.
+These checks cover all owners even when lookup details are filtered. Invalid
+runs retain their diagnostic counts and exit unsuccessfully.
 
-### Operation profiler
+## Profile operations
 
+```text
+node scripts/profile_hud.js --seconds 20
+node scripts/profile_hud.js --seconds 20 --healthbar 5
+node scripts/profile_hud.js --defaults --enable ENABLE_CROSSHAIR_STATS=1
+node scripts/profile_hud.js --seconds 20 --save before
+# make the change
+node scripts/profile_hud.js --seconds 20 --compare before
 ```
-feature                    cost/s  share   nodes/s  miss/s  style±  style=
-feat:statBonuses            30.3k  18.4%     30.3k     4.1       0       0
+
+The tracer and profiler default to expanded config. Only prefix-selected toggles
+are expanded; this does not exercise every setting, numeric variant, gameplay
+event or feature. `--defaults` keeps normal defaults and `--enable KEY[=VALUE],...`
+applies explicit overrides. Healthbar selection is a numeric enum, so use
+`--healthbar` to exercise a variant; capture contents still limit its coverage.
+
+Scheduler poll callbacks are attributed to `mf:<featureId>`. Named scheduled
+callbacks receive `loop:<name>` attribution; other work remains unattributed.
+Custom JavaScript walks through `Children()`/`GetChild()` and uninstrumented APIs
+do not contribute native-search visit counts. Explicit `Children`, `GetChild` and
+`GetChildCount` requests are counted separately in owner rows and totals, with
+returned-reference counts for `Children` and requested slots (including missing
+slots) for `GetChild`. Native-search model internals are excluded from those
+counters. `meta.enumerationCoverage` records these boundaries; no native-cost
+weights are assigned. These are not total JavaScript work, native traversal steps
+or allocation measurements.
+
+Read raw counters alongside the weighted ranking:
+
+- `nodes/s`: visits counted in supported searches on this replay hierarchy.
+- `miss/s`: ID lookups with no match in the supplied scenario.
+- `style±` / `style=`: changed and identical style assignments in the simulator.
+- `styleR`, `classR`, `propR`: string-key style gets, `BHasClass` requests and the
+  panel properties listed in `meta.readCoverage`. Getting `panel.style` alone,
+  setter equality checks and internal class checks in setters are excluded.
+  Other properties/APIs and pure JavaScript work, including color computation,
+  are not covered. These count requests, not native getter cost.
+- `cb/s`: managed poll/named scheduled wrapper entries. `scheduledCallbacks` is
+  the separate count of all virtual-clock callbacks fired in the measured window.
+  Neither is a count of useful/idle callbacks. Absence of counted writes does not
+  establish absence of visual changes or useful work.
+- Class/text/attribute writes, string-attribute reads/bytes and created/deleted
+  panels are modeled operations, with native cost unmeasured.
+- `cost/s`: historical arbitrary weights from `scripts/simulator/perf/counters.js`,
+  not measured milliseconds. New read/callback counters have no assigned weight;
+  a read-heavy owner can therefore rank low. Inspect raw counts and read details.
+
+`REPEATED READ CANDIDATES` and JSON `investigations` expose source/client
+investigation leads. Read details pool all panels by owner/kind/property (class
+name for `BHasClass`); repeated keys do not establish repeated reads of the same
+panel, equal values, unnecessary work or a cache opportunity. Required native
+feedback/ownership validation can read repeatedly without writing. Identical
+assignments likewise do not prove an unnecessary native setter. The read-detail
+cap and omitted-event count are reported in `snapshot.readDetailCoverage`;
+aggregate counts remain complete for the covered operations. Setup, warm-up and
+outside-window observation are excluded from operation counts.
+
+`meta.sourceCoverage` records the actual loaded HUD script paths and their source
+fingerprint. Capture/config/model fingerprints, read coverage and unavailable
+measurements remain separate; a static capture supplies neither computed CSS nor
+changing native gameplay state. These are partial observations, not an exhaustive
+account of native/property reads.
+
+`MODEL LOOKUP MISSES` lists investigation candidates. Narrow each search using
+verified ownership evidence and preserve late/replaced-source discovery. A lower
+count after a callback crashed or an owner was disabled is not an optimization.
+Read enabled coverage, unsupported calls, callback errors and registry streaks.
+`meta.wrapperErrors` retains bounded details and the full count of exceptions
+escaping attributed callbacks, including warm-up and subsequently recovered
+Scheduler errors; registry streaks alone reset after successful ticks. Failures
+caught inside feature code remain outside this history. The profiler reports
+`validity.issues` and exits unsuccessfully for observed failures or changed enabled
+coverage at sample boundaries. It does not observe every intervening lifecycle
+transition. Zero covered operations do not prove the mod did nothing.
+
+Saved-run `--compare` prints raw differences with output equivalence explicitly
+unverified, and refuses different sampling windows, model/config/tree identities
+or missing/failed validity checks. Old baselines require fresh runs. It makes no
+percentage optimization claim; use the source-revision comparator with selected
+output observations below for the stronger comparison checks.
+
+## Trace inline style mutations
+
+```text
+node scripts/trace_styles_hud.js --seconds 20 --events --json
+node scripts/trace_styles_hud.js ql_compass --defaults --enable ENABLE_COMPASS=1 --seconds 5
+node --test tests/style_trace.test.js
 ```
 
-- `nodes/s` — tree nodes visited. The number to attack first.
-- `miss/s` — lookups that found nothing. Each burned a whole subtree.
-- `style±` changed writes, `style=` identical rewrites (waste).
-- `new` — panels created. The most expensive op per unit; should be ~0 in steady
-  state.
+This reuses the profiler's production HUD loading, capture/config identities,
+warm-up exclusion and validity checks. `--capture`, `--warmup`, `--defaults` and
+`--enable` select inputs; a positional owner filters style totals/details. Other
+features keep running; `snapshot`, validity checks and the bounded mutation
+failure history still cover all owners. `panelUid` identifies
+one modeled panel object within this replay, distinguishing duplicate IDs and
+replacements. Breadcrumbs describe its first retained write. UIDs are not stable
+native identifiers or cross-run matching keys.
 
-The **MODEL LOOKUP MISSES** section lists misses by panel id in the supplied model.
-Cross-reference with `audit_panel_ids.js` to prioritize debugger inspection;
-absence from both inputs still does not exclude native C++ panel creation.
+`styles` separates owner/panel/property mutation attempts, completed changed or
+identical requests, failed requests and deletes. `--events --json` includes an
+ordered prefix with prior model values, requested values and outcomes. Deletes
+compare property presence; undefined prior values are explicit. Completed means
+the modeled mutation returned without throwing, not native acceptance, normalized
+readback equality or visible change. Multiple writers and A/B/A requests are
+investigation evidence, not proof of a conflict or unnecessary work.
+Style observation excludes script loading and warm-up. `--warmup 0` includes
+scheduled startup application, but a boot-time enabled-coverage change still
+invalidates optimization inference; inspect the raw diagnostic events separately.
 
-## Results on this branch
+`coverage` names exclusions and retention limits. Key details and optional events
+are bounded independently with omitted-event counts; totals retain all matching
+mutation requests even after either cap. Details update retained keys after the
+key cap. Observer failures invalidate the report and retain bounded messages;
+failed mutations remain visible even when production catches their exception.
+Pre-hook failures, wholesale style-object replacement and unrelated caught errors
+remain outside this observation. Fault-injection tests exercise rejected writes
+through the production native-style owner and a broken diagnostic observer.
 
-Against the pre-fix baseline, 12-player teamfight, identical tree:
+The model has no CSS cascade, computed styles, animations or native feedback.
+Class/CSS-driven changes and other JavaScript contexts are outside this trace;
+modeled `ClearPropertyFromCode` contributes only its delegated property deletes.
+Use client evidence to investigate actual style application or performance.
 
-| metric | before | after |
-|---|---|---|
-| composite cost | 436k units/s | 164k units/s (-62%) |
-| tree nodes walked | 209k/s | 114k/s (-45%) |
-| redundant style writes | 298/s | 98/s (-67%) |
-| config bytes marshalled | 64.6k/s | 23.1k/s (-64%) |
+## Compare source revisions
 
-None of it is verified in a running game. Panorama cannot be rendered from a Node
-harness and every change needs a VPK repack before it is visible in game.
+```text
+node scripts/compare_hud_refs.js --before HEAD --after working-tree --expanded --seconds 20 --json
+```
 
-## Leaf manual hit counter
+`--tree` selects another capture for both runs. Local Git refs are read without
+checkout changes, stashing, fetching or builds. Each revision supplies its own
+active HUD script set; both receive the baseline's complete config input.
+Working-tree identity includes HEAD and a source fingerprint.
 
-`QOL_UTILS.SetProfilerEnabled`, `ProfileHit`, and `DumpProfile` expose a separate,
-opt-in counter. Dumps report the actual time since enabling/previous dump (at
-least 10 seconds), then reset counts. This is not a rolling 60-second window or
-an automatic runtime sampler. It measures instrumented call frequency only.
+Compare the same hierarchy/state, config, warm-up, sample duration and enabled
+coverage. `--warmup-ms` sets comparator warm-up; consider a longer interval when
+native bindings or identity cannot be replayed. Do not silently mix windows.
+Reports retain both raw snapshots, identities, fidelity and failure information.
+Different/unknown simulator, tree or config fingerprints and runtime failures
+invalidate comparison inputs. Old reports require fresh baselines.
+
+Add `--observe` with a read-only JSON expression selecting the changed feature's
+output. Without matching selected observations and unchanged enabled coverage,
+percentages are withheld. Matching observations support only the selected output;
+they do not prove all behavior equivalent or establish a native performance win.
+
+## Lifecycle accounting and regressions
+
+```text
+node scripts/audit_runtime_lifecycle.js --cycles 3
+node scripts/audit_runtime_lifecycle.js --cycles 10 --json
+node --test tests/profiler_trace.test.js tests/capture_tree.test.js tests/runtime_lifecycle_audit.test.js
+```
+
+The lifecycle audit instruments raw `$.Schedule` before loading production code.
+Quickbuy uses a reduced fixture with queue entries and a preview, active/disabled
+modes, repeated queue events, a retained context in hideout and a destroyed context.
+HUD defaults run over the tracked capture with injected hideout/scoreboard changes.
+Neither path establishes native panel retention or teardown.
+
+Pending task counts, stack-derived schedule origins, callback errors and modeled
+operations are reported. Quickbuy's single-poll invariant fails on growth; HUD
+growth is reported for investigation because delayed work can be legitimate.
+`tests/runtime_lifecycle_audit.test.js` includes fault injection that recreates the
+quickbuy scheduling leak and must fail the audit. `--quickbuy-ref <ref>` reads only
+that revision's quickbuy script as a negative control; it is not a whole-build
+comparison. Image requests and changed paths are counted separately, without a
+native asset pipeline.
+
+Accounting regressions verify warm-up exclusion, precise virtual timestamps,
+observer/counter agreement, native duplicate-ID selection, capture integrity,
+forest scope, text/attribute separation, non-overwriting import and comparison
+rejection. Explicit small fixtures test logical states; default CLI regressions
+verify the tracked capture is selected. No operation ceiling establishes an FPS
+target. Run `npm test` for the complete offline gate.
+
+The October 17 native search probe is retained in `tests/fixtures/native-search`.
+It verified per-parent direct-child priority, recursion order and ordered class
+results for the tested topology. Simulator and profiler share those search rules.
+Unsupported APIs and other native behaviors remain outside that evidence.
+
+## Client evidence
+
+After maintainer compile/repack, check feature output, source replacement,
+disable/re-enable, menu return/re-entry and relevant gameplay states in the client.
+Use Dev -> Benchmark (Current Config) for managed callback diagnostics; its timing
+and temporary lookup-hook coverage/overhead are documented in [testing](TESTING.md).
+Use [HUD state recording](ui/hud_state_recording.md) for transition evidence.
+
+For a performance claim, repeat comparable client scenes with/without the change
+and compare frame times separately from diagnostic collection/reporting overhead.
+Offline counters, a static capture and green tests cannot establish FPS.
+
+`QOL_UTILS.SetProfilerEnabled`, `ProfileHit` and `DumpProfile` provide a separate
+opt-in manual hit counter. Dumps use actual elapsed time since enable/previous
+dump (at least 10 seconds) and reset counts. This is call frequency, not an
+automatic sampler or native timing measurement.

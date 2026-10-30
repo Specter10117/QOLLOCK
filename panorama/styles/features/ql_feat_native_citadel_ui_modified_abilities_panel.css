@@ -1,0 +1,11 @@
+/* QOLLOCK overrides for citadel_ui_modified_abilities_panel.css; loaded after the native baseline. */
+
+.modifiedContainer
+{
+	flow-children: right-wrap;
+}
+
+.gShopOpen #InnateModified
+{
+	visibility: collapse;
+}

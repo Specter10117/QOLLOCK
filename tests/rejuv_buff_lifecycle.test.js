@@ -30,7 +30,7 @@ function createCaptureHarness() {
     friendly.GetClasses = () => "";
     assert.equal(Q.getHighestRejuvChargeTokenOnPanel(friendly), 3);
 
-    const feature = Q.core.FeatureRegistry.getManifest("ql_rejuv_hud").create({
+    const feature = Q.core.FeatureRegistry.getManifest("ql_rejuv_hud").create({ events: Q.core.EventBus,
         config: { view: () => ({ ENABLE_BUFF_HUD: 1 }) }
     });
     feature.onEnable();

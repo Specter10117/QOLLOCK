@@ -1,10 +1,17 @@
 "use strict";
+const { readStyleSource } = require("./helpers/style_source");
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const fs = require("node:fs");
-const path = require("node:path");
 const { createHud } = require("../scripts/simulator");
+const loadSettings = require("./load_settings_environment");
+
+function addGunData($, root) {
+    const core = $.CreatePanel("Panel", root, ""); core.AddClass("HudCore");
+    let owner = core;
+    for (const id of ["gameplay_hud", "gameplay_hud_alive", "crosshair", "gun", "gun_data"]) owner = $.CreatePanel("Panel", owner, id);
+    return owner;
+}
 
 function addClipHalf($, root, id) {
     const half = $.CreatePanel("Panel", root, id);
@@ -13,19 +20,36 @@ function addClipHalf($, root, id) {
     return half;
 }
 
+test("Default preset disables native magazine updates through the settings-to-HUD bridge", () => {
+    const env = loadSettings(), commands = [];
+    const { $ } = env.hud.sandbox.global;
+    env.hud.sandbox.onEvent("CitadelConCommand", command => commands.push(command));
+    const clip = addClipHalf($, addGunData($, env.hud.root), "clip_status");
+    Object.assign(env.global.MOD_CONFIG, { ENABLE_AMMO_STATUS: 1, AMMO_CLIP_ANGLE: 45 });
+    env.global.SaveAndSync(); env.clock.advance(1000);
+    assert.deepEqual(commands, ["citadel_crosshair_enable_clip_status 1"]);
+    assert.equal(clip.style.transform, "rotateZ(-45deg)");
+    assert.equal(env.global.ApplyPresetByName("Default"), true); env.clock.advance(1000);
+    assert.deepEqual(commands, ["citadel_crosshair_enable_clip_status 1", "citadel_crosshair_enable_clip_status 0"]);
+    assert.equal(clip.style.transform, undefined);
+    assert.deepEqual(env.clock.errors, []);
+});
+
 test("magazine rotation keeps both native half-rings together across hero layouts", () => {
     const hud = createHud({ inHideout: true });
     hud.assertLoaded();
     const { $, QOL: Q } = hud.sandbox.global;
-    const first = addClipHalf($, hud.root, "clip_status");
+    const gun = addGunData($, hud.root);
+    const first = addClipHalf($, gun, "clip_status");
     Q.core.ConfigStore.set("ql_ammo", "AMMO_CLIP_ANGLE", 45);
     hud.clock.advance(600);
-    assert.equal(first.Children()[0].style.transform, "rotateZ(-45deg)");
+    assert.equal(first.style.transform, "rotateZ(-45deg)");
+    assert.equal(first.Children()[0].style.transform, undefined, "native ring transforms stay engine-owned");
 
     first.DeleteAsync(0);
     hud.clock.advance(1);
-    const left = addClipHalf($, hud.root, "clip_status");
-    const right = addClipHalf($, hud.root, "clip_status_mirrored");
+    const left = addClipHalf($, gun, "clip_status");
+    const right = addClipHalf($, gun, "clip_status_mirrored");
     hud.clock.advance(600);
     assert.equal(left.style.transform, "rotateZ(45deg)");
     assert.equal(right.style.transform, "rotateZ(135deg)");
@@ -40,75 +64,59 @@ test("magazine rotation keeps both native half-rings together across hero layout
     Q.core.ConfigStore.set("ql_ammo", "AMMO_CLIP_ANGLE", 45);
     right.DeleteAsync(0);
     hud.clock.advance(1);
-    const newRight = addClipHalf($, hud.root, "clip_status_mirrored");
+    const newRight = addClipHalf($, gun, "clip_status_mirrored");
     hud.clock.advance(600);
     assert.equal(newRight.style.transform, "rotateZ(135deg)", "late mirrored half");
 
     left.DeleteAsync(0);
     newRight.DeleteAsync(0);
     hud.clock.advance(1);
-    const standardAgain = addClipHalf($, hud.root, "clip_status");
+    const standardAgain = addClipHalf($, gun, "clip_status");
     hud.clock.advance(600);
-    assert.equal(standardAgain.style.transform || "", "");
-    assert.equal(standardAgain.Children()[0].style.transform, "rotateZ(-45deg)");
+    assert.equal(standardAgain.style.transform, "rotateZ(-45deg)");
+    assert.equal(standardAgain.Children()[0].style.transform, undefined);
     assert.deepEqual(hud.clock.errors, []);
 });
 
-test("visual ammo state follows dynamically replaced native clip panels", () => {
-    const css = fs.readFileSync(path.join(__dirname, "..", "panorama/styles/ability_hud_elements/element_gun.css"), "utf8");
-    assert.match(css, /#clip_status\.qol-ammo-visual-enabled[^}]*visibility:\s*visible\s*!important;/s);
-    assert.match(css, /#clip_status\.qol-ammo-visual-enabled #clip_progress_bar[^}]*visibility:\s*visible\s*!important;/s);
-    assert.match(css, /\.has_bonus_clip #clip_status\.qol-ammo-visual-enabled #clip_bonus_progress_bar[^}]*visibility:\s*visible\s*!important;/s);
-    assert.match(css, /#clip_status\.qol-ammo-visual-enabled\.qol-ammo-pips-populated #clip_progress_bar[^}]*visibility:\s*collapse\s*!important;/s);
-    assert.match(css, /\.qol-ammo-pip\.qol-ammo-pip-live[^}]*border-color:\s*clipLiveBulletColor;/s);
+test("native magazine enable follows settings while replaced clip panels retain native fill", () => {
+    const css = readStyleSource("panorama/styles/ability_hud_elements/element_gun.css");
+    assert.match(css, /#clip_status\.qol-ammo-visual-enabled[^}]*visibility:\s*visible;/s);
     assert.match(css, /#clip_status\.qol-ammo-visual-disabled[^}]*visibility:\s*collapse;/s);
 
     const hud = createHud({ inHideout: true });
     hud.assertLoaded();
     const { $, QOL: Q } = hud.sandbox.global;
+    const commands = [];
+    hud.sandbox.onEvent("CitadelConCommand", command => commands.push(command));
     const decoyOwner = $.CreatePanel("Panel", hud.root, "HiddenGunTemplate");
     const decoy = addClipHalf($, decoyOwner, "clip_status");
-    const gunData = $.CreatePanel("Panel", hud.root, "gun_data");
+    const gunData = addGunData($, hud.root);
     const first = addClipHalf($, gunData, "clip_status");
     const ammoPanel = $.CreatePanel("Panel", gunData, "ammo_panel");
     const currentAmmo = $.CreatePanel("Label", ammoPanel, "CurrentAmmo");
-    currentAmmo.AddClass("weapon_ammo");
-    currentAmmo.text = "6";
-    const maxAmmo = $.CreatePanel("Label", ammoPanel, "MaxAmmo");
-    maxAmmo.AddClass("weapon_ammo_max");
-    maxAmmo.text = " / 8";
+    currentAmmo.AddClass("weapon_ammo"); currentAmmo.text = "6";
     Q.core.ConfigStore.set("ql_ammo", "ENABLE_AMMO_STATUS", true);
+    assert.deepEqual(commands, ["citadel_crosshair_enable_clip_status 1"]);
     assert.equal(first.BHasClass("qol-ammo-visual-enabled"), true);
-    assert.equal(first.BHasClass("qol-ammo-visual-disabled"), false);
-    assert.equal(decoy.BHasClass("qol-ammo-visual-enabled"), false, "hidden duplicate must not win clip resolution");
-    assert.equal(first.BHasClass("qol-ammo-pips-populated"), true);
-    const pips = first.FindChildrenWithClassTraverse("qol-ammo-pip");
-    assert.equal(pips.length, 8);
-    assert.equal(first.FindChildrenWithClassTraverse("qol-ammo-pip-live").length, 6);
-    assert.equal(pips[0].style.clip, "radial( 50% 50%, 0.6deg, 10.05deg )");
-    assert.equal(pips[1].style.clip, "radial( 50% 50%, 11.85deg, 10.05deg )", "each pip uses a fixed short sweep");
-
+    assert.equal(decoy.BHasClass("qol-ammo-visual-enabled"), false, "a hidden duplicate is not the live clip owner");
+    const progress = first.FindChild("clip_progress_bar");
+    progress.style.clip = "radial( 50% 50%, 135deg, 56.25deg )";
     Q.core.ConfigStore.set("ql_ammo", "AMMO_TEXT_COLOR", 3);
-    assert.equal(pips[0].style.borderColor, Q.core.panel.resolvePaletteColor(3), "live pips follow ammo text color");
-    assert.equal(pips[7].style.borderColor || "", "", "empty pips retain their native empty color");
-
-    currentAmmo.text = "5";
-    hud.clock.advance(120);
-    assert.equal(first.FindChildrenWithClassTraverse("qol-ammo-pip-live").length, 5, "pips follow the live ammo label");
-
-    first.DeleteAsync(0);
-    hud.clock.advance(1);
+    hud.clock.advance(600);
+    assert.equal(progress.style.clip, "radial( 50% 50%, 135deg, 56.25deg )");
+    assert.equal(progress.style.borderColor, undefined);
+    assert.equal(progress.style.opacityMask, undefined);
+    first.DeleteAsync(0); hud.clock.advance(1);
     const replacement = addClipHalf($, gunData, "clip_status");
     hud.clock.advance(600);
     assert.equal(replacement.BHasClass("qol-ammo-visual-enabled"), true);
-    assert.equal(replacement.FindChildrenWithClassTraverse("qol-ammo-pip").length, 8, "replacement receives owned pips");
-
+    assert.equal(replacement.GetChildCount(), 3, "the game retains ownership of every rendered child");
+    assert.equal(commands.length, 1, "source replacement must not resend the game command");
     Q.core.ConfigStore.set("ql_ammo", "AMMO_TEXT_COLOR", 0);
     Q.core.ConfigStore.set("ql_ammo", "ENABLE_AMMO_STATUS", false);
-    hud.clock.advance(1);
+    assert.deepEqual(commands, ["citadel_crosshair_enable_clip_status 1", "citadel_crosshair_enable_clip_status 0"]);
     assert.equal(replacement.BHasClass("qol-ammo-visual-enabled"), false);
-    assert.equal(replacement.BHasClass("qol-ammo-visual-disabled"), false, "disabled feature releases its owned classes");
-    assert.equal(replacement.FindChildrenWithClassTraverse("qol-ammo-pip").length, 0, "disable removes owned pips");
+    assert.equal(replacement.BHasClass("qol-ammo-visual-disabled"), false, "disable releases owned classes");
     assert.deepEqual(hud.clock.errors, []);
 });
 

@@ -108,3 +108,65 @@ test("observation bounds owner cardinality and preserves overflow totals", () =>
     assert.equal(rows.length, 128);
     assert.equal(rows.reduce((total, row) => total + row.once, 0), 200);
 });
+
+test("observation retains the anonymous owner after reaching its row limit", () => {
+    const env = setup();
+    const observation = env.S.startWorkObservation();
+    env.S.scheduleOnce(() => {}, 0);
+    env.fire(0);
+    for (let i = 0; i < 126; i++) env.S.scheduleOnce(() => {}, 0, `owner_${i}`);
+    env.S.scheduleOnce(() => {}, 0);
+    env.S.scheduleOnce(() => {}, 0, "");
+    env.S.scheduleOnce(() => {}, 0, "overflow");
+    for (let i = 1; i <= 129; i++) env.fire(i);
+    const rows = observation.stop();
+    assert.equal(rows.length, 128);
+    assert.equal(rows.find(row => row.id === "<anonymous>").once, 3);
+    assert.equal(rows.find(row => row.id === "<other>").once, 1);
+    assert.equal(rows.reduce((total, row) => total + row.once, 0), 130);
+});
+
+test("diagnostic poll pause retains tasks, excludes one-shots and resumes on observation stop", () => {
+    const env = setup();
+    const observation = env.S.startWorkObservation();
+    let selected = 0, other = 0, once = 0;
+    env.S.createPollLoop(() => selected++, 0.5, "selected");
+    env.S.createPollLoop(() => other++, 0.5, "other");
+    env.S.scheduleOnce(() => once++, 0, "selected");
+    assert.equal(typeof observation.pausePolling, "function");
+    observation.pausePolling(["selected"]);
+    env.fire(0); env.fire(1); env.fire(2);
+    assert.equal(selected, 0);
+    assert.equal(other, 1);
+    assert.equal(once, 1);
+    assert.equal(observation.sample().activePolls, 2, "paused polls remain registered");
+    observation.pausePolling([]);
+    env.fire(3);
+    assert.equal(selected, 1);
+    observation.pausePolling(["selected"]);
+    observation.stop();
+    env.fire(5);
+    assert.equal(selected, 2, "stopping observation cannot strand a production loop");
+    env.S.cancelAllForFeature("selected"); env.S.cancelAllForFeature("other");
+    assert.equal(env.pending.size, 0);
+});
+
+test("a superseded observer cannot pause production or unpause its successor", () => {
+    const env = setup();
+    let calls = 0;
+    env.S.createPollLoop(() => calls++, 1, "selected");
+    const old = env.S.startWorkObservation();
+    assert.equal(typeof old.pausePolling, "function");
+    old.pausePolling(["selected"]);
+    const current = env.S.startWorkObservation();
+    assert.equal(old.isActive(), false);
+    current.pausePolling(["selected"]);
+    old.pausePolling([]); old.stop();
+    env.fire(0);
+    assert.equal(calls, 0);
+    current.stop();
+    assert.throws(() => old.pausePolling(["selected"]), /retired/);
+    env.fire(1);
+    assert.equal(calls, 1);
+    env.S.cancelAllForFeature("selected");
+});

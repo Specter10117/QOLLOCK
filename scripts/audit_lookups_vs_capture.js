@@ -8,7 +8,7 @@ const { inspectCapture } = require("./capture_tree");
 const { scanSource } = require("./audit_game_update");
 const { hudScripts, REPO_ROOT } = require("./simulator/layout");
 const { loadXmlEvidence, indexEvidence, sourceStatus } = require("./capture_sources");
-const DEFAULT_CAPTURE = path.join(REPO_ROOT, "captures", "deadlock_hud_dump.json");
+const DEFAULT_CAPTURE = path.join(REPO_ROOT, "tests", "fixtures", "hud", "2026-10-03-hero-testing.json");
 
 function auditCapture(capture, sources, xmlEvidence = []) {
     const inspected = inspectCapture(capture, { allowSummary: true });

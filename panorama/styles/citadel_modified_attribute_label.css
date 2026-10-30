@@ -1,13 +1,2 @@
 @import url("s2r://panorama/styles/base/citadel_modified_attribute_label.vcss_c");
-
-.simplify_shop_stats_active #TestPanel .LabelsContainer
-{
-	ui-scale: 150%;
-	margin-top: 2px;
-}
-
-/* 4:3 support overrides */
-.support_4_3_active #BaseLabel
-{
-	max-height: 25px;
-}
+@import url("s2r://panorama/styles/features/ql_feat_native_citadel_modified_attribute_label.vcss_c");

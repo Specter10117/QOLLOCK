@@ -22,9 +22,14 @@ function healthTree(env, healing) {
     $.CreatePanel("Label", health, "totalHealthOverHearts").text = "1000";
     $.CreatePanel("Panel", health, "HudShieldsContainer");
     $.CreatePanel("Panel", health, "MinecraftTotemContainer");
-    $.CreatePanel("Panel", health, "hud_health_bars");
-    const heal = healing ? $.CreatePanel("Panel", health, "pending_incoming_heal_Middle") : null;
-    if (heal) heal.style.height = "0px";
+    const content = $.CreatePanel("Panel", health, "HealthBarContent");
+    const bars = $.CreatePanel("Panel", content, "hud_health_bars");
+    const line = $.CreatePanel("Panel", bars, ""); line.AddClass("health_bar_line");
+    const border = $.CreatePanel("Panel", line, ""); border.AddClass("health_bar_border");
+    const healBar = healing ? $.CreatePanel("Panel", border, "pending_incoming_heal") : null;
+    if (healBar) healBar.actuallayoutheight = 400;
+    const heal = healing ? $.CreatePanel("Panel", healBar, "") : null;
+    if (heal) { heal.AddClass("ProgressBarMiddle"); heal.actuallayoutheight = 0; }
     return { health, hearts, heal };
 }
 
@@ -35,25 +40,24 @@ for (const hideoutClass of ["InHideout", "connectedToHideout"]) {
             const { Q, root, clock } = env;
             const initial = healthTree(env, healing);
             const cfg = { HEALTHBAR_TYPE: 5 };
-            const feature = Q.core.FeatureRegistry.getManifest("ql_healthbar").create({ config: { all: () => cfg } });
+            const feature = Q.core.FeatureRegistry.getManifest("ql_healthbar").create({ events: Q.core.EventBus, id: "ql_healthbar", config: { view: () => cfg } });
             feature.onEnable();
             clock.advance(150);
             if (initial.heal) {
-                initial.heal.style.height = "40px";
+                initial.heal.actuallayoutheight = 40;
                 clock.advance(150);
             }
-            const activeKey = healing ? "mcHealingWaveActive" : "mcLowHealthJiggleActive";
-            const timerKey = healing ? "mcHealingWaveTimer" : "mcLowHealthJiggleTimer";
-            assert.equal(Q.state[activeKey], true, "actual variant must start an animation");
-            assert.notEqual(Q.state[timerKey], null, "animation must have a pending native callback");
+            const activeKey = healing ? "healing" : "lowHealth";
+            assert.equal(Q.healthbar.mc.inspect()[activeKey], true, "actual variant must start an animation");
+            assert.ok(Q.healthbar.mc.inspect().pendingAnimations > 0, "animation must have a pending managed callback");
             assert.ok(initial.hearts.GetChildCount() > 0);
 
             root.AddClass(hideoutClass);
             clock.advance(100);
-            assert.equal(Q.state[activeKey], false, "hideout must stop raw animation schedules");
-            assert.equal(Q.state.mcHeartsBlinkTimer, null);
-            assert.equal(Q.state.mcLowHealthJiggleTimer, null);
-            assert.equal(Q.state.mcHealingWaveTimer, null);
+            assert.equal(Q.healthbar.mc.inspect()[activeKey], false, "hideout must stop raw animation schedules");
+            assert.equal(Q.healthbar.mc.inspect().pendingAnimations, 0);
+            const work = Q.core.Scheduler.getWorkSnapshot().find(row => row.id === "ql_healthbar");
+            assert.equal(work ? work.once : 0, 0, "hideout cancels every owned animation");
 
             initial.health.DeleteAsync(0);
             clock.advance(2000);
@@ -61,14 +65,14 @@ for (const hideoutClass of ["InHideout", "connectedToHideout"]) {
             root.RemoveClass(hideoutClass);
             clock.advance(1000);
             if (replacement.heal) {
-                replacement.heal.style.height = "40px";
+                replacement.heal.actuallayoutheight = 40;
                 clock.advance(150);
             }
             assert.ok(replacement.hearts.GetChildCount() > 0, "same-size replacement must rebuild heart panels");
-            assert.equal(Q.state[activeKey], true, "next match must restart animation");
-            assert.ok(Q.state.mcHeartSlots.every(panel => panel.IsValid()));
+            assert.equal(Q.healthbar.mc.inspect()[activeKey], true, "next match must restart animation");
+            assert.equal(Q.healthbar.mc.inspect().hearts, replacement.hearts.FindChildrenWithClassTraverse("HeartSlot").length);
             feature.onDisable();
-            assert.equal(Q.state[activeKey], false);
+            assert.equal(Q.healthbar.mc.inspect()[activeKey], false);
             assert.deepEqual(clock.errors, []);
             assert.equal(env.sandbox.messages.filter(line => /Error in|\[ERROR\]/.test(line)).length, 0);
         });
@@ -79,16 +83,19 @@ test("Minecraft raw animation stops when its source disappears before the next H
     const env = setup();
     const { health } = healthTree(env, false);
     env.Q.healthbar.mc.update(env.root, { HEALTHBAR_TYPE: 5 }, env.clock.now(), true);
-    assert.equal(env.Q.state.mcLowHealthJiggleActive, true);
+    assert.equal(env.Q.healthbar.mc.inspect().lowHealth, true);
     health.DeleteAsync(0);
     env.clock.advance(1000);
-    assert.equal(env.Q.state.mcLowHealthJiggleActive, false);
-    assert.equal(env.Q.state.mcLowHealthJiggleTimer, null);
+    assert.equal(env.Q.healthbar.mc.inspect().lowHealth, false);
+    assert.equal(env.Q.healthbar.mc.inspect().pendingAnimations, 0);
     assert.equal(env.sandbox.messages.filter(line => /Error in|\[ERROR\]/.test(line)).length, 0);
     assert.deepEqual(env.clock.errors, []);
 });
 
 function minimapTree(env) {
+    let core = env.root.FindChildrenWithClassTraverse("HudCore")[0];
+    if (!core) { core = env.$.CreatePanel("Panel", env.root, ""); core.AddClass("HudCore"); }
+    if (!core.FindChild("gameplay_hud")) env.$.CreatePanel("Panel", core, "gameplay_hud");
     const container = env.$.CreatePanel("Panel", env.root, "minimap_container");
     const map = env.$.CreatePanel("Panel", container, "hud_minimap");
     const player = env.$.CreatePanel("Panel", map, "");
@@ -109,7 +116,7 @@ for (const hideoutClass of ["InHideout", "connectedToHideout"]) {
                 ENABLE_COMPASS: true, ENABLE_COMPASS_SPEED: true,
                 MINIMAP_ROTATE_WITH_PLAYER: mode === "rotation", MINIMAP_FLIP: mode === "flip"
             };
-            const feature = Q.core.FeatureRegistry.getManifest("ql_compass").create({ config: { view: () => cfg } });
+            const feature = Q.core.FeatureRegistry.getManifest("ql_compass").create({ events: Q.core.EventBus, config: { view: () => cfg } });
             feature.onEnable();
             clock.advance(200);
             const overlay = root.FindChildTraverse("QOLCompassRoot");
@@ -160,7 +167,7 @@ test("compass starting in hideout does no discovery and wakes up for a match", (
     let traversals = 0;
     const find = env.root.FindChildTraverse;
     env.root.FindChildTraverse = function(id) { traversals++; return find.call(this, id); };
-    const feature = env.Q.core.FeatureRegistry.getManifest("ql_compass").create({
+    const feature = env.Q.core.FeatureRegistry.getManifest("ql_compass").create({ events: env.Q.core.EventBus,
         config: { view: () => ({ ENABLE_COMPASS: true }) }
     });
     feature.onEnable();

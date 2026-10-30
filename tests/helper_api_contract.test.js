@@ -9,12 +9,14 @@ const sim = require("../scripts/simulator");
 test("helper decision map recommends callable production exports", () => {
     const hud = sim.createHud();
     hud.assertLoaded();
+    const settings = require("./load_settings_environment")();
     const doc = fs.readFileSync(path.join(__dirname, "../docs/HELPERS.md"), "utf8");
     const references = new Set(Array.from(doc.matchAll(/`((?:QOL|QOL_UTILS)\.[\w.]+)\(/g), match => match[1]));
     assert.ok(references.size > 0, "decision map must contain callable API references");
     for (const reference of references) {
-        const exported = reference.split(".").reduce((owner, key) => owner && owner[key], hud.sandbox.global);
-        assert.equal(typeof exported, "function", `${reference} documented but not exported in HUD context`);
+        const context = reference.startsWith("QOL.ui.theme.") ? settings.global : hud.sandbox.global;
+        const exported = reference.split(".").reduce((owner, key) => owner && owner[key], context);
+        assert.equal(typeof exported, "function", `${reference} documented but not exported in its owning context`);
     }
 });
 
@@ -31,4 +33,45 @@ test("documented validity aliases reject stale and throwing native handles", () 
     assert.equal(valid({ IsValid() { throw new Error("native handle freed"); } }), false);
     assert.equal(valid({ IsValid: true }), false);
     assert.equal(valid({ IsValid: () => true }), true);
+});
+
+test("settings shared exports preserve actual panel helpers without fabricating HUD state or cache APIs", () => {
+    const { global: g } = require("./load_settings_environment")();
+    assert.equal(g.QOL.utils, g.QOL_UTILS);
+    assert.equal(g.QOL.isPanelVisibleMaybe, g.QOL.core.panel.isVisible);
+    assert.equal(g.QOL.state, undefined);
+    assert.equal(g.QOL.getCachedPanel, undefined);
+    assert.equal(g.QOL.resolveCachedPanel, undefined);
+    const panel = g.$.CreatePanel("Panel", g.$.GetContextPanel(), "ActualSettingsPanel");
+    assert.equal(g.QOL.isPanelVisibleMaybe(panel), true);
+    panel.visible = false;
+    assert.equal(g.QOL.isPanelVisibleMaybe(panel), false);
+});
+
+test("immediate class discovery never adopts a descendant and follows living child replacement", () => {
+    const hud = sim.createHud(); hud.assertLoaded();
+    const { QOL: Q, $ } = hud.sandbox.global;
+    const find = Q.core.panel.findChildByClass;
+    assert.equal(typeof find, "function");
+    const parent = $.CreatePanel("Panel", hud.root, "ImmediateOwner");
+    const nested = $.CreatePanel("Panel", parent, "NestedOwner");
+    const decoy = $.CreatePanel("Panel", nested, "NestedMatch"); decoy.AddClass("Needle");
+    let traversalCalls = 0, childrenCalls = 0, indexedReads = 0;
+    parent.FindChildrenWithClassTraverse = () => { traversalCalls++; return [decoy]; };
+    parent.Children = () => { childrenCalls++; throw Error("array enumeration must not be used"); };
+    const getChild = parent.GetChild;
+    parent.GetChild = function(index) { indexedReads++; return getChild.call(this, index); };
+    assert.equal(find(parent, "Needle"), null);
+    const current = $.CreatePanel("Panel", parent, "Current"); current.AddClass("Needle");
+    $.CreatePanel("Panel", parent, "LaterMatch").AddClass("Needle");
+    indexedReads = 0;
+    assert.equal(find(parent, "Needle"), current);
+    assert.equal(indexedReads, 2, "stop at the first immediate matching child");
+    current.SetParent($.CreatePanel("Panel", hud.root, "RetiredOwner"));
+    assert.equal(find(parent, "Needle").id, "LaterMatch");
+    assert.equal(current.IsValid(), true, "retirement is about ownership, not validity");
+    assert.equal(traversalCalls, 0); assert.equal(childrenCalls, 0);
+    assert.equal(find(null, "Needle"), null); assert.equal(find(parent, ""), null);
+    parent.GetChildCount = () => { throw Error("native owner disappeared"); };
+    assert.equal(find(parent, "Needle"), null);
 });

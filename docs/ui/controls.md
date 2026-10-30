@@ -1,23 +1,36 @@
-# Settings controls and export precision
+# Settings controls and numeric properties
 
-`panorama/scripts/ui/controls.js` builds the procedural settings rows. Slider
-changes and typed submissions commit values on the existing compact-schema
-field's step grid, restricted to the intersection of the UI and schema bounds.
-Values are snapped relative to the schema minimum; floating-point arithmetic
-is rounded before committing. A row without a compact field uses its declared
-UI bounds and step. The schema field map is built once when controls load.
+`panorama/scripts/ui/controls.js` builds procedural settings rows. Known settings
+use the shared `QOL.settings` type, role, units, conversions and precision.
+Slider travel and accepted exact values are separate: moving a thumb stays
+inside its travel, while valid exact positions can remain outside it. Native
+thumb readback and row refresh must not overwrite the accepted exact value.
 
-This keeps live settings representable in shared settings codes and cloud
-backups without changing the schema or defaults. For example, a scale input of
-1.23 commits 1.25 when its wire step is 0.05; an offset input of 123 commits 125
-when its step is 5. Invalid text preserves the previous value. The existing
-debounced save and preview flow remains in use.
+Enter and blur validate the same complete numeric input; malformed or out-of-
+range values stay marked and preserve the previous accepted value. Numeric
+wheel changes use the declared setting step. Displayed overall scale is a
+percentage of its native baseline. Existing dirty/save paths are reused.
 
 `createSliderRow` accepts an optional seventh argument, `inlineCheckbox`, with
 `key`, `label` and `description`. It reuses the title-checkbox control after the
 slider value input. Both keys participate in row reset/changed-state tracking;
 checkbox visuals resync on reset and external config updates. Search collection
-also registers the checkbox setting. Minimap Size uses this for Fixed Icon Size.
+also registers the checkbox setting. Fixed Icon Size is now a regular minimap
+toggle, alongside the scoped Customize action.
+
+`createSectionTitle` accepts an optional fourth argument, a Customize element ID.
+Animated toggle sections accept `sectionOptions.customizeElement` alongside their
+existing title-checkbox options. Both add an action to the section header, which
+remains usable when its section body is collapsed. Search collection creates no
+editor panels; it registers a scoped action with aliases for the element's field
+labels and keys. Results launch the same scoped editor. Section reset includes
+those fields even though their former sliders are absent. Gameplay tab renderers declare the bindings; the controls factory
+does not infer native panel owners or settings scope. See [Customize](customize.md).
+
+Animated toggle sections can also declare `sectionOptions.resetKeys`. These
+keys participate in the existing section reset/changed-state tracking alongside
+rendered rows and Customize actions. Abilities uses this metadata for AP and
+Active Items, keeping its reset scope without empty child subsections.
 
 ## Automated checks and their limits
 

@@ -14,7 +14,7 @@
         : (typeof QOL !== "undefined" ? QOL : (globalThis.QOL = {}));
     Q.ui = Q.ui || {};
 
-    const EXPORT_TOKEN_REGEX = /\[QOL-([0-9]+-[0-9]+-[0-9]+)\]:?([A-Za-z0-9_-]+)/i;
+    const EXPORT_TOKEN_REGEX = /\[QOL-([0-9]+-[0-9]+-[0-9]+)(-C)?\]:?([A-Za-z0-9_-]+)/i;
 
     const NORMALIZERS = [
         "NormalizeNeutralCampFlags",
@@ -59,6 +59,7 @@
 
     const closeModal = (overlay) => {
         if (!isAlive(overlay)) return;
+        if (Q.ui.presetPreview?.owns(overlay)) Q.ui.presetPreview.stop(false);
         const overlayId = String(overlay.id || "");
         const shouldReleaseSettingsFocus = (overlayId === "ConfigDiffPreviewModalOverlay");
 
@@ -125,8 +126,8 @@
         if (Object.prototype.hasOwnProperty.call(modConfig, "DRAG_ENABLED")) {
             targetConfig.DRAG_ENABLED = modConfig.DRAG_ENABLED;
         }
-        if (Object.prototype.hasOwnProperty.call(modConfig, "PREVIEWS_ENABLED")) {
-            targetConfig.PREVIEWS_ENABLED = modConfig.PREVIEWS_ENABLED;
+        if (Object.prototype.hasOwnProperty.call(modConfig, "AUTO_SAVE_CHANGES")) {
+            targetConfig.AUTO_SAVE_CHANGES = modConfig.AUTO_SAVE_CHANGES;
         }
         if (Object.prototype.hasOwnProperty.call(modConfig, "ENABLE_UPDATE_CHECKER")) {
             targetConfig.ENABLE_UPDATE_CHECKER = modConfig.ENABLE_UPDATE_CHECKER;
@@ -165,7 +166,7 @@
             diagnostics.appliedKeys++;
         }
 
-        const ver = schemaVersion || globalThis.LATEST_COMPACT_SEMVER;
+        const ver = schemaVersion || globalThis.QOL_SCHEMA_SEMVER;
         runNormalizers(candidateConfig, parsed, ver);
 
         return { candidateConfig, diagnostics };
@@ -281,7 +282,7 @@
         prepareSettingsModalOpen();
 
         const existing = rootPanel.FindChildTraverse("ConfigDiffPreviewModalOverlay");
-        if (isAlive(existing)) existing.DeleteAsync(0);
+        if (isAlive(existing)) closeModal(existing);
 
         const overlay = $.CreatePanel("Panel", rootPanel, "ConfigDiffPreviewModalOverlay");
         if (!overlay) return;
@@ -352,20 +353,30 @@
             }
         }
 
+        const apply = () => {
+            if (typeof opts.onApply === "function" && opts.onApply() === false) return false;
+            closeModal(overlay);
+            return true;
+        };
+        if (opts.previewConfig) {
+            const previewBtn = $.CreatePanel("Button", modalContainer, "ConfigDiffPreviewBtn");
+            previewBtn.AddClass("ConfigDiffPreviewBtn");
+            previewBtn.AddClass("QOLUnifiedModalPrimary");
+            const caption = $.CreatePanel("Label", previewBtn, "");
+            caption.text = localize("Preview preset", true);
+            const hint = $.CreatePanel("Label", modalContainer, "ConfigDiffPreviewHint");
+            hint.AddClass("ConfigDiffPreviewHint");
+            hint.text = localize("Preview on your HUD without saving changes.", true);
+            previewBtn.SetPanelEvent("onactivate", () => {
+                if (!Q.ui.presetPreview.start({ modal: overlay, config: opts.previewConfig, name: opts.previewName || "", onApply: apply })) {
+                    hint.text = localize("Live preview is available in a match or sandbox. Close other visual tools and try again.", true);
+                }
+            });
+        }
+
         const list = $.CreatePanel("Panel", modalContainer, "ConfigDiffList");
         if (list) {
             list.AddClass("ConfigDiffList");
-            const diffGridRows = Math.max(1, Math.ceil(rows.length / 2));
-            const diffRowHeightPx = 35;
-            const diffListPaddingPx = 8;
-            const diffListMinHeightPx = 120;
-            const diffListMaxHeightPx = 620;
-            const computedListHeightPx = Math.max(
-                diffListMinHeightPx,
-                Math.min(diffListMaxHeightPx, diffGridRows * diffRowHeightPx + diffListPaddingPx)
-            );
-            list.style.height = `${computedListHeightPx}px`;
-            list.style.maxHeight = `${computedListHeightPx}px`;
 
             if (rows.length <= 0) {
                 const empty = $.CreatePanel("Label", list, "");
@@ -465,17 +476,8 @@
                 const applyLbl = $.CreatePanel("Label", applyBtn, "");
                 if (applyLbl) applyLbl.text = applyText;
                 applyBtn.SetPanelEvent("onactivate", () => {
-                    let shouldClose = true;
-                    if (typeof opts.onApply === "function") {
-                        try {
-                            shouldClose = opts.onApply() !== false;
-                        } catch {
-                            shouldClose = false;
-                        }
-                    }
-                    if (shouldClose) {
-                        closeModal(overlay);
-                    }
+                    try { apply(); }
+                    catch (error) { $.Msg("[QOLLock] Preset Apply: " + (error.message || error)); }
                 });
             }
         }
@@ -484,7 +486,7 @@
     const tryApplyImportStringWithDiagnostics = (raw) => {
         const result = {
             ok: false,
-            source: "compact",
+            source: "settings",
             schemaVersion: "",
             parsedConfig: null,
             candidateConfig: null,
@@ -501,19 +503,25 @@
         if (!tokenMatch) return result;
 
         const schemaSemver = String(tokenMatch[1] || "").replace(/-/g, ".");
-        const registry = Q.compactSchemaRegistry || globalThis.QOL_COMPACT_SCHEMA_REGISTRY || {};
-        if (!schemaSemver || !Object.prototype.hasOwnProperty.call(registry, schemaSemver)) {
+        if (!schemaSemver) {
             return result;
         }
 
-        const compactCandidate = String(tokenMatch[2] || "");
-        if (!compactCandidate) return result;
+        const isSettingsCode = !!tokenMatch[2];
+        const encodedPayload = String(tokenMatch[3] || "");
+        if (!encodedPayload) return result;
 
         try {
-            const compactBinary = Q.persistence.fromBase64Url(compactCandidate);
-            result.parsedConfig = Q.persistence.deserializeCompactV2(compactBinary, schemaSemver);
-            result.schemaVersion = schemaSemver;
-        } catch {
+            const payload = Q.persistence.fromBase64Url(encodedPayload);
+            if (isSettingsCode && (!Q.settingsCode?.isPayload(payload) ||
+                !/^\[QOL-[0-9]+-[0-9]+-[0-9]+-C\]:[A-Za-z0-9_-]+$/i.test(normalized) ||
+                Q.persistence.toBase64Url(payload) !== encodedPayload)) return result;
+            if (!isSettingsCode && Q.settingsCode?.isPayload(payload)) return result;
+            result.parsedConfig = Q.persistence.deserializeSettings(payload, schemaSemver);
+            result.source = payload.charAt(0) === "{" ? "json" : Q.settingsCode?.isPayload(payload) ? "settingsCode" : "legacyCompact";
+            result.schemaVersion = isSettingsCode ? globalThis.QOL_SCHEMA_SEMVER : schemaSemver;
+        } catch (error) {
+            result.requiresUpdate = error.code === "unsupported-settings-code";
             return result;
         }
 
@@ -521,7 +529,7 @@
             const defConfig = globalThis.DEFAULT_CONFIG || globalThis.QOL_DEFAULT_CONFIG || {};
             const preview = buildCandidateConfigFromParsed(
                 result.parsedConfig,
-                result.schemaVersion || globalThis.LATEST_COMPACT_SEMVER,
+                result.schemaVersion || globalThis.QOL_SCHEMA_SEMVER,
                 defConfig
             );
             preserveUiOnlySettings(preview.candidateConfig);

@@ -5,17 +5,28 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 
-function read(relativePath) {
-    return fs.readFileSync(path.join(__dirname, "..", relativePath), "utf8").replace(/\r\n/g, "\n");
-}
+const { readStyleSource: read } = require("./helpers/style_source");
 
 test("hideout friends-playing count occupies the current party-settings button slot", () => {
-    const layout = read("panorama/layout/citadel_party.xml");
-    const css = read("panorama/styles/qollock_party.css");
+    const css = read("panorama/styles/citadel_party.css");
+    const base = read("panorama/styles/base/citadel_party.css");
     const globalCss = read("panorama/styles/qollock_global.css");
 
-    assert.match(layout, /<include src="s2r:\/\/panorama\/styles\/citadel_party\.vcss_c" \/>[\s\S]*<include src="s2r:\/\/panorama\/styles\/qollock_party\.vcss_c" \/>/);
-    assert.match(layout, /<Button id="JoinCreateParty"[^>]*oncontextmenu="CitadelCopyPartyCode\(\)" \/>/);
-    assert.match(css, /\.FriendsCountContainer\s*\{[^}]*ignore-parent-flow:\s*true;[^}]*width:\s*36px;[^}]*height:\s*36px;[^}]*margin-top:\s*30px;[^}]*margin-right:\s*2px;[^}]*x:\s*-2px;[^}]*y:\s*-2px;[^}]*horizontal-align:\s*left;[^}]*vertical-align:\s*top;/s);
+    assert.equal(fs.existsSync(path.join(__dirname, "../panorama/layout/citadel_party.xml")), false);
+    assert.match(css, /@import url\("s2r:\/\/panorama\/styles\/base\/citadel_party\.vcss_c"\);/);
+    const button = base.match(/#JoinCreateParty\s*\{([^}]*)\}/s)?.[1];
+    const friends = css.match(/\.FriendsCountContainer\s*\{([^}]*)\}/s)?.[1];
+    assert.ok(button && friends, "native party button and QOLLOCK count placement rules exist");
+    for (const property of ["width", "height", "margin-top", "margin-right", "horizontal-align", "vertical-align"]) {
+        const value = block => block.match(new RegExp(`(?:^|;)\\s*${property}:\\s*([^;]+);`))?.[1].trim();
+        assert.ok(value(button), `native button declares ${property}`);
+        assert.equal(value(friends), value(button), `friends count must match native party button ${property}`);
+    }
+    assert.match(base, /\.ShowEscapeMenu #JoinCreateParty:hover:enabled/);
+    assert.match(base, /\.connectedToHideout \.HasFriendsInGame \.FriendsCount/);
+    assert.match(base, /@keyframes 'InviteGlow'/);
+    assert.match(friends, /ignore-parent-flow:\s*true;/);
+    assert.match(friends, /(?:^|;)\s*x:\s*-2px;/);
+    assert.match(friends, /(?:^|;)\s*y:\s*-2px;/);
     assert.doesNotMatch(globalCss, /#CitadelPartyContainer \.FriendsCountContainer/);
 });
