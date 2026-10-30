@@ -42,6 +42,18 @@ test("stopping a replaced benchmark handle cannot cancel its successor", () => {
     assert.deepEqual(sandbox.clock.errors, []);
 });
 
+test("quiet diagnostic accounting still records callbacks without benchmark console output", () => {
+    const { sandbox, S } = setup();
+    const before = sandbox.messages.length;
+    let stats;
+    S.startBenchmark(4, (_report, value) => { stats = value; }, { quiet: true });
+    const loop = S.createPollLoop(() => {}, 0.2, "ql_test");
+    sandbox.clock.advance(4500); loop.stop();
+    assert.ok(stats.totalTicks >= 10);
+    assert.equal(sandbox.messages.slice(before).some(message => /Starting|Heartbeat|BENCHMARK/.test(message)), false);
+    assert.equal(S.isBenchmarkActive(), false);
+});
+
 for (const cancellation of ["ignored", "throw"]) for (const zeroHandle of [false, true]) {
     test(`retired benchmark callbacks stay inert with cancellation=${cancellation}, zero=${zeroHandle}`, () => {
         const { sandbox, S, cancellations } = setup({ cancellation, zeroHandle });

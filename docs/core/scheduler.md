@@ -56,6 +56,11 @@ remains false, and no visits/s or FPS estimate is derived from these counts.
 The legacy `prototypesHooked` field stays zero. This diagnostic runs only in the
 current-config Dev benchmark, not normal polling or the expanded-config run.
 
+Native configuration investigations use `startBenchmark` with `quiet: true` to
+retain the same callback accounting while suppressing startup, heartbeat and
+completion console output. The handle, timing and completion semantics are
+unchanged. This does not suppress feature-owned perf logging or overlays.
+
 ## Managed one-shot callbacks
 
 `scheduleOnce(callback, delaySec, featureId)` returns an idempotent `{stop()}`.

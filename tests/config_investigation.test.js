@@ -1,0 +1,55 @@
+"use strict";
+const test = require("node:test");
+const assert = require("node:assert/strict");
+const { createHud } = require("../scripts/simulator");
+
+test("expanded investigation declares every changed key including shared and CSS-only settings without cadence gating", () => {
+    const hud = createHud(); hud.assertLoaded();
+    const tool = hud.sandbox.global.QOL.core.ConfigInvestigation;
+    assert.ok(tool, "native configuration investigation must be loaded by HUD");
+    const plan = tool.plan({ baseline: { A: 1, B: 1, C: 4, SAME: 0 }, canonical: { A: 0, B: 0, C: 2, SAME: 0 },
+        manifests: [{ id: "ql_one", keys: ["A"] }, { id: "ql_two", keys: ["A", "B"] }] });
+    assert.deepEqual(Array.from(plan.changedKeys), ["A", "B", "C"]);
+    assert.ok(plan.conditions.some(row => row.keys.includes("C") && !row.owners.length), "CSS-only/unregistered settings cannot disappear");
+    assert.ok(plan.conditions.some(row => row.keys.includes("A") && row.owners.join(",") === "ql_one,ql_two"));
+    assert.ok(plan.conditions.some(row => row.id === "benchmark-instrumentation"));
+    for (const row of plan.conditions) assert.equal(plan.blocks.filter(block => block.conditionId === row.id).length, 3);
+    assert.ok(plan.available.some(row => row.id === "key-b"));
+    assert.throws(() => tool.plan({ baseline: { A: 1 }, canonical: { A: 0 }, manifests: [], selectedIds: ["missing"] }), /condition/i);
+});
+
+for (const selected of ["benchmark-instrumentation", "whole-config"]) test(`configuration investigation ${selected} uses real App leases and restores config with a frozen UI clock`, () => {
+    const hud = createHud({ inHideout: false }); hud.assertLoaded();
+    const { QOL: Q, $ } = hud.sandbox.global;
+    const baseline = Q.core.ConfigAdapter.exportToFlat();
+    $.FrameTime = () => 1;
+    hud.root.SetAttributeString("QOL_DiagRequest", "fps_config_100_" + selected);
+    Q.core.App.syncDiagnosticState(hud.root, hud.clock.now());
+    assert.equal(Q.core.ConfigInvestigation?.getStatus()?.running, true);
+    hud.clock.advanceBy(100000, 1000);
+    const diag = JSON.parse(hud.root.GetAttributeString("QOL_Diag", ""));
+    assert.equal(diag.benchmark.stats.reason, "complete");
+    const messages = hud.sandbox.messages.filter(line => line.startsWith("[QOLLOCK:NativeFPS] ")).map(line => JSON.parse(line.slice(20)));
+    assert.equal(messages[0].kind, "config-suite");
+    assert.equal(messages.filter(item => item.type === "window").length, 24);
+    assert.equal(messages.at(-1).type, "end");
+    assert.ok(messages.some(item => item.packet === "app-restoration"));
+    assert.deepEqual(Q.core.ConfigAdapter.exportToFlat(), baseline);
+    assert.equal(Q.state.benchmarkActive, false);
+    assert.deepEqual(hud.clock.errors, []);
+});
+
+test("stopping an expanded configuration trial restores settings and invalidates uncancellable work", () => {
+    const hud = createHud({ inHideout: false }); hud.assertLoaded();
+    const { QOL: Q, $ } = hud.sandbox.global;
+    const baseline = Q.core.ConfigAdapter.exportToFlat();
+    const request = token => { hud.root.SetAttributeString("QOL_DiagRequest", token); Q.core.App.syncDiagnosticState(hud.root, hud.clock.now()); };
+    request("fps_config_101_whole-config"); hud.clock.advance(11000);
+    assert.equal(Q.core.ConfigInvestigation?.getStatus()?.running, true);
+    $.CancelScheduled = () => { throw Error("cancel rejected"); };
+    request("fps_stop_102"); hud.clock.advanceBy(100000, 1000);
+    assert.equal(Q.core.ConfigInvestigation.getStatus().running, false);
+    assert.deepEqual(Q.core.ConfigAdapter.exportToFlat(), baseline);
+    assert.equal(Q.state.benchmarkActive, false);
+    assert.deepEqual(hud.clock.errors, []);
+});

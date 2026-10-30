@@ -461,7 +461,9 @@ re-entry separately: one clean startup does not cover lifecycle regressions.
 
 ### In-game feature exclusion investigation
 
-Dev offers FPS investigation for the current or expanded configuration. Start in
+Dev offers the cadence-based FPS investigation for the current configuration;
+the former Expanded row is replaced by the native configuration suite below.
+Older `fps_expanded` bridge requests remain supported. Start in
 a repeatable sandbox scene, close Esc within five seconds and keep the camera,
 gameplay and native telemetry settings constant. Opening Esc stops the scan and
 produces a partial report. The Stop action is also available in Dev. Completion,
@@ -504,6 +506,61 @@ condition retains core code and loaded static stylesheets, so it is not vanilla.
 `tests/fps_investigation.test.js` models cadence changes and cancellation; App and
 Dev tests cover the actual request/result bridge and configuration restoration.
 These simulator checks do not verify native frame cadence or FPS.
+
+### Native Expanded configuration investigation
+
+Use Dev's **Expanded configuration investigation** with the external native
+collector to investigate the ten-second Expanded Config stress mode. This is
+a longer comparison, not another ten-second callback benchmark. Start
+`scripts\capture_game_frames.cmd`, leave the condition field blank, click
+Investigate, close Esc within five seconds, and keep the camera, world scenario
+and game focus unchanged until completion. Wait for the external report before
+switching windows. Settings are leased in memory and restored without saving.
+
+The declared plan compares Expanded against the canonical settings, then
+benchmark accounting on/off, then every changed settings group. Groups have the
+same declaring manifest consumers; shared keys list all consumers and keys with
+no registered consumer remain separate. Applying through App also projects
+root CSS, unlike merely disabling a registry owner. Group IDs and exact keys
+are captured with the plan. UI dispatch cadence never selects coverage.
+Three separated ABBA/BAAB repetitions and an A/A sham measure conditional effects.
+The duration depends on the canonical configuration and can approach the runner
+deadline; inspect the runtime progress total. The collector accommodates the
+full bounded run. Optional `key-...` condition IDs refine individual settings
+using already compiled controls. IDs belong to the captured plan/configuration;
+reruns should retain the same canonical settings.
+
+The accounting contrast preserves callback benchmark statistics but suppresses
+the legacy benchmark's own startup, heartbeat and final console output.
+Feature-owned perf logging and overlays remain enabled when Expanded requests
+them and are tested as their own settings group. All windows retain the same
+additional Scheduler work observation. No lookup prototype/instance hook or
+per-frame UI sampler runs in this investigation.
+
+Before/after proofs check the leased config, stable registered readback, registry
+coverage, benchmark flag, managed errors and scene flags. ConfigAdapter's
+normalized registered differences are reported, not mistaken for enabled paths.
+Settings without a canonical value are explicitly listed as not intervened.
+These generic proofs do **not** establish native panel construction, cleanup,
+feature-specific render completeness, or that event-driven/gameplay work ran.
+Missing sources, quiet gameplay paths and features in other contexts can hide
+costs. A negative or inconclusive result never clears a feature. A speedup can
+reflect the intended visual workload and does not prove redundant code.
+
+The external analyzer checks the declared plan, proof chunks, native frame/focus
+coverage, within/between-block drift and three valid repetitions before labeling
+an effect. Exploratory bounds use block-level t95 dispersion plus worst sham
+noise, not independent-frame statistics or familywise confidence. Effects can
+overlap and must not be summed. Missing/invalid blocks remain in the report.
+The self-contained report includes tested/canonical settings, source/loaded
+function identity, source paths, normalized readbacks and restoration. Full
+assets/CSS and installed compiled resources are not proven by function hashes.
+The canonical condition retains QOLLOCK; it is not a vanilla comparison.
+
+`config_investigation`, `config_native_analysis`, App, Scheduler and Dev tests
+exercise production configuration delivery, frozen UI clocks, cancellation,
+native report parsing, missing/corrupt evidence, noise and clipboard ownership.
+They do not establish client rendering or FPS.
 
 ### Complete native minimap investigation
 
@@ -587,8 +644,8 @@ it does not install a service. `-PresentMonPath` accepts an already downloaded
 copy of that exact executable. `-GameProcessId`, `-GameLog` and `-OutputDirectory`
 override discovery. The CMD launcher locates PowerShell 7 and opens a persistent
 window, including a bundled desktop runtime when `pwsh` is absent from PATH.
-Start Dev's Complete minimap investigation (or the separate generic Current/Expanded
-feature scan) within one minute,
+Start Dev's Expanded configuration investigation, Complete minimap investigation
+or generic Current Config feature scan within one minute,
 close Esc and keep the game focused. Completion/stop ends only this collector's
 unique ETW session. Launcher and runner deadlines bound unattended runs; `-MaxSeconds`
 overrides collection duration. The collector waits for the full minimap plan's end.

@@ -56,6 +56,15 @@ buffered user configuration. A normal request made while stress is active keeps
 the existing lease until its fallback restores that configuration; the settings
 UI normally serializes benchmark requests.
 
+`fps_config_<token>[_<condition IDs>]` leases the same expanded settings as the
+ten-second stress benchmark, then delegates to `ConfigInvestigation`. Its
+configuration API exposes the lease readback and registered configuration;
+`apply(patch)` updates shared settings, hooks, enable policy and root classes,
+and returns the complete expected owner set, including owners enabled by a
+canonical value that differs from Expanded. Native packet/end transport follows
+App restoration, as for the minimap suite. See the
+[configuration investigation](../TESTING.md#native-expanded-configuration-investigation).
+
 ## HUD state observation bridge
 
 `QOL_DiagRequest` tokens beginning `state_` start the opt-in 60-second recorder

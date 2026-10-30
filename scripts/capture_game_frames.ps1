@@ -5,7 +5,7 @@ param(
     [string]$GameLog = '',
     [string]$PresentMonPath = '',
     [string]$OutputDirectory = '',
-    [ValidateRange(30, 3600)][int]$MaxSeconds = 2100,
+    [ValidateRange(30, 3600)][int]$MaxSeconds = 3600,
     [ValidateRange(0, 30)][int]$ProbeSeconds = 0,
     [string]$SwapChain = ''
 )
@@ -138,7 +138,7 @@ try {
     $startDeadline = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() + 60000
     $anchorDeadline = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() + 30000
     Write-Host ('Capturing real game frames for PID ' + $targetProcessId + '. Output: ' + $OutputDirectory)
-    if (-not $ProbeSeconds) { Write-Host 'Start Complete minimap investigation in Dev within 60 seconds, close Esc within 5 seconds, and keep the same scene/game focus. Full plan: about 23 minutes; inactive native targets are skipped. Capture ends after the entire investigation.' }
+    if (-not $ProbeSeconds) { Write-Host 'Start Expanded configuration investigation or Complete minimap investigation in Dev within 60 seconds. Close Esc within 5 seconds and keep the same scene/game focus. Full configuration plan: up to 55 minutes; minimap: about 23 minutes. Capture ends after the entire investigation.' }
     while (-not $nativeProcess.HasExited) {
         if ($gameProcess.HasExited) { $reason = 'game exited'; break }
         $focus.Add(@{ qpc = [Diagnostics.Stopwatch]::GetTimestamp(); pid = [QollockCaptureForeground]::ProcessId() })

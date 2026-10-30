@@ -82,6 +82,10 @@ function analyzeCapture(csv, meta) {
     const clock = clockMapping(meta.anchors);
     const { frames, swapChain, chainCounts } = readFrames(csv, meta.processId, clock, meta.swapChain);
     const focus = (meta.focus || []).map(point => ({ ...point, at: clock.at(point.qpc) })).sort((a, b) => a.at - b.at);
+    if (meta.kind === "config-suite" || /^config_/.test(meta.session || "")) {
+        return { ...require("./analyze_config_frames").analyzeConfig(meta, frames, focus, summarizeWindow),
+            processId: meta.processId, session: meta.session, swapChain, chainCounts, clockDriftMs: clock.driftMs, nativeFrames: frames.length };
+    }
     if (meta.kind === "minimap-suite" || (meta.windows || []).some(window => window.conditionId)) {
         return { ...require("./analyze_minimap_frames").analyzeMinimap(meta, frames, focus, summarizeWindow),
             processId: meta.processId, session: meta.session, swapChain, chainCounts, clockDriftMs: clock.driftMs, nativeFrames: frames.length };
@@ -122,6 +126,7 @@ function analyzeCapture(csv, meta) {
 }
 
 function formatReport(result) {
+    if (result.kind === "config-suite") return require("./analyze_config_frames").formatConfig(result);
     if (result.kind === "minimap-suite") return require("./analyze_minimap_frames").formatMinimap(result);
     const f = value => value === null || value === undefined ? "n/a" : value.toFixed(2);
     const lines = ["=== QOLLOCK native game frame comparison ===",

@@ -623,9 +623,9 @@
             }
         } catch (_) {}
 
-        $.Msg(`[QOLLock] Starting ${durSec}s in-game benchmark (${startActiveCount} active manifests)...`);
+        if (!options?.quiet) $.Msg(`[QOLLock] Starting ${durSec}s in-game benchmark (${startActiveCount} active manifests)...`);
 
-        if (durSec >= 4) {
+        if (durSec >= 4 && !options?.quiet) {
             const halfDur = Math.floor(durSec / 2);
             benchmarkProgressTimer = $.Schedule(halfDur, () => {
                 if (currentBenchmark !== session) return;
@@ -654,9 +654,9 @@
 
             const report = formatBenchmarkReport(bm, actualDurSec, activeCount);
 
-            const reportLines = report.split("\n");
-            for (let i = 0; i < reportLines.length; i++) {
-                $.Msg(reportLines[i]);
+            if (!options?.quiet) {
+                const reportLines = report.split("\n");
+                for (let i = 0; i < reportLines.length; i++) $.Msg(reportLines[i]);
             }
 
             if (typeof onComplete === "function") {

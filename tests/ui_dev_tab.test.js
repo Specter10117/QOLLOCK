@@ -226,6 +226,7 @@ test("ui/dev_tab: render builds all dev sections and action buttons", () => {
     assert.ok(list.FindChildTraverse("DiagCopyLogsBtn"), "Should render DiagCopyLogsBtn");
     assert.ok(list.FindChildTraverse("BenchmarkRunBtn"), "Should render BenchmarkRunBtn");
     assert.ok(list.FindChildTraverse("BenchmarkStressBtn"), "Should render BenchmarkStressBtn");
+    assert.equal(list.FindChildTraverse("FpsScanBtnexpanded"), null, "Expanded has one native investigation entry, without a competing cadence scan");
     const minimap = list.FindChildTraverse("FpsMinimapBtn");
     assert.ok(minimap, "the targeted diagnostic must be reachable from Dev");
     minimap._fire("onactivate");
@@ -233,17 +234,18 @@ test("ui/dev_tab: render builds all dev sections and action buttons", () => {
     assert.equal(list.FindChildTraverse("FpsMinimapVisibilityBtn"), null, "replace the narrow modes with one complete entry");
 });
 
-test("the complete minimap action accepts selected IDs without saving settings", () => {
+for (const [buttonId, inputId, mode, ids] of [["FpsMinimapBtn", "FpsMinimapConditions", "minimap", "static-crates,layer-routes"],
+    ["FpsConfigBtn", "FpsConfigConditions", "config", "whole-config,benchmark-instrumentation"]]) test(`the ${mode} native action accepts selected IDs without saving settings`, () => {
     const env = createTestEnvironment();
     const list = env.sandbox.$.CreatePanel("Panel", env.rootPanel, "SettingsList");
     env.sandbox.QOL.ui.devTab.render(list);
-    const button = list.FindChildTraverse("FpsMinimapBtn");
+    const button = list.FindChildTraverse(buttonId);
     assert.ok(button);
-    const input = list.FindChildTraverse("FpsMinimapConditions");
+    const input = list.FindChildTraverse(inputId);
     assert.ok(input);
-    input.text = "static-crates, layer-routes";
+    input.text = ids.replace(",", ", ");
     button._fire("onactivate");
-    assert.match(env.hudPanel.GetAttributeString("QOL_DiagRequest", ""), /^fps_minimap_\d+_static-crates,layer-routes$/);
+    assert.match(env.hudPanel.GetAttributeString("QOL_DiagRequest", ""), new RegExp("^fps_" + mode + "_\\d+_" + ids + "$"));
 });
 
 test("ui/dev_tab: runInGameBenchmark initiates benchmark request and copies report", () => {
@@ -261,7 +263,7 @@ test("ui/dev_tab: runInGameBenchmark initiates benchmark request and copies repo
     assert.ok(statusLabel.text.includes("10s left"), "Status should indicate 10s remaining");
 });
 
-for (const mode of ["current", "minimap"]) test(`FPS investigation ${mode} UI preserves the correct report owner`, () => {
+for (const mode of ["current", "minimap", "config"]) test(`FPS investigation ${mode} UI preserves the correct report owner`, () => {
     const env = createTestEnvironment();
     const label = env.sandbox.$.CreatePanel("Label", env.rootPanel, "ScanStatus");
     const button = env.sandbox.$.CreatePanel("Button", env.rootPanel, "ScanButton");
@@ -273,8 +275,8 @@ for (const mode of ["current", "minimap"]) test(`FPS investigation ${mode} UI pr
         token, report: "UI cadence investigation report", stats: { reason: "complete" }
     } }));
     env.clock.advance(600);
-    assert.equal(env.getClipboardText(), mode === "minimap" ? "Actual external native report" : "UI cadence investigation report");
-    if (mode === "minimap") assert.match(label.text, /capture window/);
+    assert.equal(env.getClipboardText(), mode !== "current" ? "Actual external native report" : "UI cadence investigation report");
+    if (mode !== "current") assert.match(label.text, /capture window/);
     assert.equal(button.BHasClass("CycleActive"), false);
     assert.doesNotMatch(label.text, /\?ms|callbacks/);
 });

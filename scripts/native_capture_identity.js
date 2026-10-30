@@ -10,7 +10,7 @@ const sha = value => crypto.createHash("sha256").update(value).digest("hex");
 
 function collectSourceIdentity() {
     const files = [];
-    const captureSources = ["capture_game_frames.ps1", "capture_game_frames.cmd", "analyze_game_frames.js", "analyze_minimap_frames.js", "native_capture_identity.js"];
+    const captureSources = ["capture_game_frames.ps1", "capture_game_frames.cmd", "analyze_game_frames.js", "analyze_minimap_frames.js", "analyze_config_frames.js", "native_capture_identity.js"];
     const visit = directory => {
         for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
             const full = path.join(directory, entry.name);
@@ -31,7 +31,9 @@ function collectSourceIdentity() {
     const Q = hud.sandbox.global.QOL, registry = Q.core.FeatureRegistry;
     const functions = [...Q.core.MinimapPlan.owners.map(id => [id, registry.getManifest(id).create]),
         ["geometry", Q.features.minimapGeometry.create], ["plan", Q.core.MinimapPlan.create], ["verify", Q.core.MinimapPlan.verify],
-        ["probe", Q.core.minimapProbe.createOwner], ["runner", Q.core.MinimapInvestigation.start], ["styleOwner", Q.core.panel.createNativeStyleOwner]];
+        ["probe", Q.core.minimapProbe.createOwner], ["runner", Q.core.MinimapInvestigation.start], ["styleOwner", Q.core.panel.createNativeStyleOwner],
+        ["configPlan", Q.core.ConfigInvestigation.plan], ["configRunner", Q.core.ConfigInvestigation.start], ["configBenchmark", Q.core.Scheduler.startBenchmark],
+        ...registry.getRegisteredIds().map(id => ["owner:" + id, registry.getManifest(id).create])];
     const graph = hudScripts();
     if (graph.missing.length) throw Error("HUD source graph has missing scripts");
     const status = git(["status", "--porcelain=v1", "--untracked-files=all", "--", ...sourcePaths]);

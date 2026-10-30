@@ -707,7 +707,7 @@
     let bmToken = 0;
 
     function runInGameBenchmark(container, statusLabel, actionBtn, isStressTest, conditionIds = []) {
-        const isScan = ["fps_current", "fps_expanded", "fps_minimap"].includes(isStressTest);
+        const isScan = ["fps_current", "fps_expanded", "fps_minimap", "fps_config"].includes(isStressTest);
         const setStatus = (text, color) => {
             if (isAlive(statusLabel)) {
                 const translated = localize(text);
@@ -722,7 +722,7 @@
             }
         };
 
-        if (isStressTest === "fps_minimap" && conditionIds.some(id => !/^[a-z][a-z0-9-]{0,63}$/.test(id))) {
+        if (["fps_minimap", "fps_config"].includes(isStressTest) && conditionIds.some(id => !/^[a-z][a-z0-9-]{0,63}$/.test(id))) {
             setStatus("Invalid condition IDs", "#cc4444"); return;
         }
         if (diagnosticBusy(statusLabel)) return;
@@ -730,7 +730,7 @@
         bmRunning = true;
         setBtnActive(true);
 
-        const durSec = isScan ? (isStressTest === "fps_minimap" ? 1800 : 420) : 10;
+        const durSec = isScan ? (isStressTest === "fps_config" ? 3300 : isStressTest === "fps_minimap" ? 1800 : 420) : 10;
         const modeStr = isStressTest ? "stress" : "normal";
         const forceToken = isScan ? `${isStressTest}_${Date.now()}${conditionIds.length ? "_" + conditionIds.join(",") : ""}` : `bm_${durSec}_${modeStr}_${Date.now()}`;
 
@@ -784,7 +784,7 @@
                     const diag = JSON.parse(rawDiag);
                     if (diag.benchmark && diag.benchmark.token === forceToken) {
                         const report = diag.benchmark.report || "";
-                        const nativeReport = isStressTest === "fps_minimap";
+                        const nativeReport = ["fps_minimap", "fps_config"].includes(isStressTest);
                         let copied = false;
                         if (!nativeReport) {
                             const hiddenEntry = $.CreatePanel("TextEntry", container, "BenchmarkCopyTextEntry");
@@ -1259,12 +1259,23 @@
         minimapConditions.maxchars = 1200;
         minimapConditions.style.width = "100%"; minimapConditions.style.height = "28px";
 
-        for (const [mode, title] of [["current", "FPS investigation (Current Config)"], ["expanded", "FPS investigation (Expanded Config)"]]) {
-            createDevActionRow(list, "FpsScanRow" + mode, "FpsScanBtn" + mode, "FpsScanStatus" + mode,
-                "s2r://panorama/images/icons/icon_play.vsvg", title,
-                "Start external PresentMon capture first for game FPS. Without it, this scan measures UI cadence only. Close Esc within 5s; stay still for up to 7 minutes. Settings are restored without saving.",
-                "Investigate", (status, button) => runInGameBenchmark(list, status, button, "fps_" + mode));
-        }
+        let configConditions = null;
+        const configAction = createDevActionRow(list, "FpsConfigRow", "FpsConfigBtn", "FpsConfigStatus",
+            "s2r://panorama/images/icons/icon_play.vsvg", "Expanded configuration investigation",
+            "Start external native capture first. Compares ordinary and expanded settings, benchmark overhead and every changed setting group in three repeated blocks. UI cadence never selects coverage. Close Esc within 5s; keep the scene and focus unchanged. The full plan can take up to 55 minutes. Settings are restored without saving.",
+            "Investigate", (status, button) => runInGameBenchmark(list, status, button, "fps_config",
+                String(configConditions?.text || "").trim().split(/[,\s]+/).filter(Boolean)));
+        const configHint = $.CreatePanel("Label", configAction.labelWrap, "");
+        configHint.AddClass("SettingDescription");
+        configHint.text = localize("Optional: condition IDs from the report to repeat. Leave blank for the complete plan. No repack is needed for repeats.");
+        configConditions = $.CreatePanel("TextEntry", configAction.labelWrap, "FpsConfigConditions");
+        configConditions.maxchars = 1200;
+        configConditions.style.width = "100%"; configConditions.style.height = "28px";
+
+        createDevActionRow(list, "FpsScanRowcurrent", "FpsScanBtncurrent", "FpsScanStatuscurrent",
+            "s2r://panorama/images/icons/icon_play.vsvg", "FPS investigation (Current Config)",
+            "Start external PresentMon capture first for game FPS. Without it, this scan measures UI cadence only. Close Esc within 5s; stay still for up to 7 minutes. Settings are restored without saving.",
+            "Investigate", (status, button) => runInGameBenchmark(list, status, button, "fps_current"));
         createDevActionRow(list, "FpsStopRow", "FpsStopBtn", "FpsStopStatus", "", "Stop FPS investigation",
             "Restores excluded features and temporary settings. A partial report is copied when the scan finishes.", "Stop",
             status => {

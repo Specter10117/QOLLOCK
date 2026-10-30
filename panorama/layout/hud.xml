@@ -37,6 +37,7 @@
 		<include src="s2r://panorama/scripts/core/ql_feature_registry.vjs_c" />
 		<include src="s2r://panorama/scripts/core/ql_manifest_tests.vjs_c" />
 		<include src="s2r://panorama/scripts/core/ql_fps_investigation.vjs_c" />
+		<include src="s2r://panorama/scripts/core/ql_config_investigation.vjs_c" />
 		<include src="s2r://panorama/scripts/core/ql_hero_probe.vjs_c" />
 		<include src="s2r://panorama/scripts/core/ql_persistence.vjs_c" />
 		<include src="s2r://panorama/scripts/core/ql_storage_bridge.vjs_c" />
