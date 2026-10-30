@@ -6,7 +6,7 @@ const path = require("node:path");
 const { parseCssImports } = require("../scripts/check_native_css_imports");
 const read = file => fs.readFileSync(path.join(__dirname, "../panorama/styles", file), "utf8");
 
-test("Fountain slider scales the event wrapper while preserving inner animation scale", () => {
+test("Fountain slider visually scales the event wrapper without changing native coordinate scale", () => {
     const css = read("qol_damage_fountain_full.css").replace(/\/\*[\s\S]*?\*\//g, "");
     const rules = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)];
     for (let percent = 50; percent <= 300; percent++) {
@@ -14,7 +14,8 @@ test("Fountain slider scales the event wrapper while preserving inner animation 
         const selector = ".damage_fountain_active.damage_fountain_scale_" + percent + " CitadelHudDamageEventIndicator.WindowRoot";
         const rule = rules.find(([, selectors]) => selectors.trim() === selector);
         assert.ok(rule, selector);
-        assert.equal(/ui-scale:\s*([^;]+);/.exec(rule[2])[1], percent + "%");
+        assert.doesNotMatch(rule[2], /\bui-scale\s*:/, "native world-to-HUD placement must keep its coordinate scale");
+        assert.equal(Number(/pre-transform-scale2d:\s*([^;]+);/.exec(rule[2])[1]), percent / 100);
     }
     const baseline = rules.find(([, selectors]) => selectors.split(",").some(selector =>
         selector.trim() === ".damage_fountain_active .distance_near.fountain1 .HudIndicatorContainer"));
