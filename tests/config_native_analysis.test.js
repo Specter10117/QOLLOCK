@@ -3,6 +3,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const { createHud } = require("../scripts/simulator");
 const { analyzeCapture, formatReport } = require("../scripts/analyze_game_frames");
+const { digest } = require("../scripts/analyze_minimap_frames");
 
 function capture(noise = 0) {
     const hud = createHud({ inHideout: false }); hud.assertLoaded();
@@ -59,4 +60,16 @@ test("sham noise and entirely missing conditions remain explicit rather than pro
     const result = analyzeCapture(csv, meta);
     assert.equal(result.rows.find(row => row.id === "key-enable-compass").status, "not_run");
     assert.match(formatReport(result), /key-enable-compass/);
+});
+
+test("a failed Expanded setup produces an immediate diagnostic report without fabricated trial coverage", () => {
+    const { csv, meta } = capture();
+    const data = JSON.stringify({ kind: "config-suite", reason: "setup-error", error: "Expanded baseline failed: ql_compass",
+        expectedConfig: { ENABLE_COMPASS: 0 }, actualConfig: { ENABLE_COMPASS: 0 } });
+    meta.reason = "setup-error"; meta.windows = [];
+    meta.packets = [{ session: meta.session, packet: "setup-failure", index: 0, total: 1, hash: digest(data), data }];
+    const result = analyzeCapture(csv, meta);
+    assert.equal(result.reason, "setup-error"); assert.equal(result.rows.length, 0);
+    assert.equal(result.restoration.configRestored, true);
+    assert.match(formatReport(result), /ql_compass/);
 });

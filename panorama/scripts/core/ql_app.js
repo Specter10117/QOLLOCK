@@ -435,6 +435,7 @@
         const selectedIds = isNativeSuite && /^\d+$/.test(parts[2] || "") ? parts.slice(3).join("_").split(",").filter(Boolean) : [];
         const isStress = isFpsScan ? parts[1] === "expanded" || isNativeSuite : parts[2] === "stress";
         const leasedConfig = isStress || isFpsScan;
+        const initialFailures = isConfigScan ? FeatureRegistry.getErrorTotals() : null;
         let fpsConfiguration = null;
 
         if (leasedConfig) {
@@ -480,6 +481,13 @@
                 if (_stressBenchmark !== stress) return;
                 _syncRootClasses(hudPanel, maxConfig);
                 if (_stressBenchmark !== stress) return;
+                if (isConfigScan) {
+                    const failures = Object.entries(FeatureRegistry.getErrorTotals()).filter(([id, count]) => count > (initialFailures[id] || 0)).map(([id]) => id);
+                    const unhealthy = Object.entries(FeatureRegistry.getErrorCounts()).filter(([, count]) => count > 0).map(([id]) => id);
+                    const missing = FeatureRegistry.getRegisteredIds().filter(id => FeatureRegistry.isFeatureSupposedToBeEnabled(id) && !FeatureRegistry.isEnabled(id));
+                    const invalid = [...new Set([...failures, ...unhealthy, ...missing])];
+                    if (invalid.length) throw Error("Expanded baseline failed: " + invalid.join(", "));
+                }
                 if (isFpsScan) {
                     const baseline = { ...maxConfig };
                     const checkLease = restoring => {
@@ -487,6 +495,7 @@
                         if ((_benchmarkRequest !== request && !cleanup) || _stressBenchmark !== stress) throw Error("temporary configuration lease retired");
                     };
                     fpsConfiguration = { baseline, canonical: savedFlatConfig ? { ...savedFlatConfig } : null,
+                        initialFailures,
                         restoreTarget: () => stress.savedConfig ? { ...stress.savedConfig } : null,
                         read: () => ({ flat: { ...stress.config }, registered: ConfigAdapter.exportToFlat() }),
                         apply: patch => {
@@ -525,7 +534,19 @@
                 $.Msg(`[QOLLock][Benchmark] Stress setup active: ${enabledIds.length} feature manifests running, root HUD classes active for ${durSec}s`);
             } catch (e) {
                 if (_stressBenchmark === stress) _restoreStressBenchmark(hudPanel, "setup-error");
-                if (_benchmarkRequest === request) _benchmarkRequest = null;
+                if (_benchmarkRequest === request) {
+                    _benchmarkRequest = null;
+                    if (isConfigScan) {
+                        const failure = { kind: "config-suite", reason: "setup-error", error: String(e), initialFailures,
+                            actualFailures: FeatureRegistry.getErrorTotals(), expectedConfig: stress?.savedConfig,
+                            actualConfig: ConfigAdapter.exportToFlat() };
+                        _lastBenchmarkReport = { token: forceToken, report: failure.error, stats: { kind: "config-suite", reason: "setup-error" }, timestamp: _nowMs() };
+                        _writeDiagSnapshot(hudPanel, forceToken);
+                        $.Msg("[QOLLOCK:NativeFPS] " + JSON.stringify({ type: "start", session: nativeSession, kind: "config-suite" }));
+                        _emitNativePacket(nativeSession, "setup-failure", failure);
+                        $.Msg("[QOLLOCK:NativeFPS] " + JSON.stringify({ type: "end", session: nativeSession, reason: "setup-error" }));
+                    }
+                }
                 if (Logger) Logger.logWarn("Benchmark", `Benchmark stress setup failed: ${e?.message || e}`);
                 return;
             }

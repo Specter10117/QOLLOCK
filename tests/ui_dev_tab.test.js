@@ -281,6 +281,14 @@ for (const mode of ["current", "minimap", "config"]) test(`FPS investigation ${m
     assert.doesNotMatch(label.text, /\?ms|callbacks/);
 });
 
+test("Expanded native action defaults to the short preflight instead of an unattended full scan", () => {
+    const env = createTestEnvironment();
+    const list = env.sandbox.$.CreatePanel("Panel", env.rootPanel, "SettingsList");
+    env.sandbox.QOL.ui.devTab.render(list);
+    list.FindChildTraverse("FpsConfigBtn")._fire("onactivate");
+    assert.match(env.hudPanel.GetAttributeString("QOL_DiagRequest", ""), /^fps_config_\d+_whole-config,benchmark-instrumentation$/);
+});
+
 test("audit displays a failed HUD observation as failure even when copying succeeds", () => {
     const env = createTestEnvironment();
     const label = env.sandbox.$.CreatePanel("Label", env.rootPanel, "AuditStatus");

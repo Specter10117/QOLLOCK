@@ -1262,13 +1262,14 @@
         let configConditions = null;
         const configAction = createDevActionRow(list, "FpsConfigRow", "FpsConfigBtn", "FpsConfigStatus",
             "s2r://panorama/images/icons/icon_play.vsvg", "Expanded configuration investigation",
-            "Start external native capture first. Compares ordinary and expanded settings, benchmark overhead and every changed setting group in three repeated blocks. UI cadence never selects coverage. Close Esc within 5s; keep the scene and focus unchanged. The full plan can take up to 55 minutes. Settings are restored without saving.",
+            "Start external native capture first. The prefilled IDs run a two-minute preflight: ordinary versus expanded settings, benchmark overhead and noise. Check the native report before a long scan. Clear the IDs for all setting groups, up to 55 minutes. Close Esc within 5s and keep scene and focus unchanged. Settings are restored without saving.",
             "Investigate", (status, button) => runInGameBenchmark(list, status, button, "fps_config",
                 String(configConditions?.text || "").trim().split(/[,\s]+/).filter(Boolean)));
         const configHint = $.CreatePanel("Label", configAction.labelWrap, "");
         configHint.AddClass("SettingDescription");
         configHint.text = localize("Optional: condition IDs from the report to repeat. Leave blank for the complete plan. No repack is needed for repeats.");
         configConditions = $.CreatePanel("TextEntry", configAction.labelWrap, "FpsConfigConditions");
+        configConditions.text = "whole-config,benchmark-instrumentation";
         configConditions.maxchars = 1200;
         configConditions.style.width = "100%"; configConditions.style.height = "28px";
 

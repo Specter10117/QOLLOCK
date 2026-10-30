@@ -11,6 +11,27 @@ function setup() {
     return { hud, registry, store, bus };
 }
 
+test("diagnostic error totals survive successful hooks, poll streak resets and owner re-enable", () => {
+    const { registry, store, bus } = setup();
+    const id = "diagnostic_errors";
+    let fail = true;
+    registry.register({ id, settings: [{ key: "COLOR", type: "number", default: 0 }],
+        create: () => ({ onEnable() {}, onSettingsChanged() { if (fail) throw Error("hook fails once"); } }) });
+    registry.enable(id); store.set(id, "COLOR", 1);
+    fail = false; store.set(id, "COLOR", 2);
+    assert.equal(registry.getErrorCounts()[id], 0);
+    assert.equal(registry.getErrorTotals?.()[id], 1, "a successful hook must not erase diagnostic evidence");
+    bus.emit("scheduler:error", { featureId: id }); bus.emit("scheduler:tick_ok", { featureId: id });
+    const context = registry.createContext(id);
+    context.events.on("diagnostic:throws", () => { throw Error("feature event failure"); });
+    bus.emit("diagnostic:throws");
+    registry.disable(id); registry.enable(id);
+    assert.equal(registry.getErrorCounts()[id], 0);
+    assert.equal(registry.getErrorTotals()[id], 3);
+    const snapshot = registry.getErrorTotals(); snapshot[id] = 0;
+    assert.equal(registry.getErrorTotals()[id], 3);
+});
+
 test("registry inspection follows completed instance transitions through reentrant hooks", () => {
     const { registry, bus } = setup();
     const id = "transition_inspection", snapshots = [];

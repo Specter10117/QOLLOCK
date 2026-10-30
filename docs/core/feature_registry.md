@@ -49,6 +49,12 @@ all owner buckets before any settings hook runs.
   It does not promise reverse dependency order.
 - `isEnabled`, `isRegistered`, `getRegisteredIds`, `getEnabledIds`, `getManifest`,
   `getInstance`, and `getErrorCounts` expose current registry state.
+- `getErrorTotals()` returns a copied, monotonic per-owner diagnostic counter.
+  Successful callbacks, disable/re-enable and shutdown do not erase it. It counts
+  caught enable/cleanup/disable/settings/predicate failures, managed Scheduler
+  errors and exceptions in `ctx.events` handlers. Circuit breaking still uses
+  the existing consecutive streaks. Raw native callbacks and direct unscoped
+  EventBus subscriptions are outside this counter.
 - `isPresentationAvailable(id)` reports transient presentation policy. A failed
   or explicitly disabled owner is unavailable before cleanup starts; re-enable
   restores availability before its hook, including enable-in-progress projection.

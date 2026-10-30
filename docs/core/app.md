@@ -64,6 +64,10 @@ and returns the complete expected owner set, including owners enabled by a
 canonical value that differs from Expanded. Native packet/end transport follows
 App restoration, as for the minimap suite. See the
 [configuration investigation](../TESTING.md#native-expanded-configuration-investigation).
+The native configuration baseline is rejected on new monotonic registry failures,
+nonzero current error streaks or missing intended owners. Its error checkpoint
+precedes Expanded application; setup failure restores the lease and publishes
+the UI diagnostic plus a compact native failure packet/end without trial windows.
 
 ## HUD state observation bridge
 

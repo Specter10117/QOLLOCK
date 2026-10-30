@@ -60,7 +60,7 @@
         const registeredConfig = config => Object.fromEntries(registeredKeys.map(key => [key, config[key]]));
         if (declared.estimatedMs > declared.deadlineMs - 30000) throw Error("configuration plan exceeds deadline; select condition IDs");
         const observation = scheduler.startWorkObservation(), panels = P.createOwnedTree();
-        const contextPanel = $.GetContextPanel(), started = Date.now(), initialErrors = registry.getErrorCounts();
+        const contextPanel = $.GetContextPanel(), started = Date.now(), initialErrors = configuration.initialFailures || registry.getErrorTotals();
         let stopped = false, timer = null, benchmark = null, progress = null, expectedIds = registry.getEnabledIds().slice().sort();
         let blockIndex = -1, phase = 0, condition = null, block = null, expectedConfig = null, ownerConfig = null, instrumented = false, scene = null;
         const result = { kind: "config-suite", reason: "", completedBlocks: 0, expectedBlocks: declared.blocks.length, restoreErrors: [] };
@@ -69,20 +69,29 @@
             if (!sameHud()) return "HUD replaced";
             if (!observation.isActive()) return "work observation replaced";
             if (root.BHasClass("ShowEscapeMenu")) return "escape menu opened";
-            const flags = ["gShopOpen", "gScoreboardOpen", "InHideout", "connectedToHideout"].map(name => root.BHasClass(name));
-            if (flags.some(Boolean)) return "shop/scoreboard/hideout is not a stationary gameplay scene";
+            const flags = readScene();
+            if (flags.some(Boolean)) return "shop/scoreboard/detail/hideout is not a stationary gameplay scene";
             const nextScene = flags.join(",");
             if (scene !== null && scene !== nextScene) return "scene flags changed";
             scene = nextScene;
             if (Date.now() - started > declared.deadlineMs) return "deadline";
             if (registry.getEnabledIds().slice().sort().join(",") !== expectedIds.join(",")) return "feature coverage changed";
-            if (Object.entries(registry.getErrorCounts()).some(([id, count]) => count > (initialErrors[id] || 0))) return "feature callback failure";
+            const failedOwners = Object.entries(registry.getErrorTotals()).filter(([id, count]) => count > (initialErrors[id] || 0)).map(([id]) => id);
+            if (failedOwners.length) return "feature lifecycle/settings/callback failure: " + failedOwners.join(", ");
             if (!!Q.state.benchmarkActive !== instrumented) return "benchmark accounting state changed";
             return "";
+        };
+        const readScene = () => {
+            const core = P.findChildByClass(root, "HudCore"), gameplay = P.findChild(core, "gameplay_hud");
+            const host = P.findChild(P.findChildByClass(gameplay, "clamp_width"), "minimap_persp");
+            return [Q.core.hud.isClassActive("gShopOpen"), Q.core.hud.isScoreboardOpen(root, host),
+                !!host?.BHasClass("gDetailView") || Q.core.hud.isClassActive("gDetailView"), Q.core.hud.isInHideout(root)];
         };
         const finish = reason => {
             if (stopped) return;
             stopped = true;
+            const failuresBeforeCleanup = registry.getErrorTotals();
+            const failedOwners = Object.entries(failuresBeforeCleanup).filter(([id, count]) => count > (initialErrors[id] || 0)).map(([id]) => id);
             if (timer !== null) { try { $.CancelScheduled(timer); } catch (_) {} timer = null; }
             benchmark?.stop(); benchmark = null;
             observation.stop(); panels.dispose();
@@ -93,7 +102,8 @@
             result.reason = reason;
             result.report = "QOLLOCK native Expanded Config investigation: " + reason + "\nCompleted blocks: " + result.completedBlocks + "/" + result.expectedBlocks +
                 "\nWait for the external native report. No FPS is inferred from UI scheduling.";
-            try { onPacket("runner-restoration", { reason, errors: result.restoreErrors, retiredHud: !sameHud(), benchmarkActive: !!Q.state.benchmarkActive }); }
+            try { onPacket("runner-restoration", { reason, errors: result.restoreErrors, retiredHud: !sameHud(), benchmarkActive: !!Q.state.benchmarkActive,
+                failuresBeforeCleanup, failedOwners, failuresAfterCleanup: registry.getErrorTotals() }); }
             catch (error) { result.restoreErrors.push("restoration transport: " + String(error)); }
             if (active === session) { active = null; status = { running: false, reason, completed: result.completedBlocks }; }
             onComplete(result);
@@ -113,6 +123,7 @@
                 digest(registeredConfig(actual.registered)) !== digest(ownerConfig) ? "registered configuration changed after application" : "",
                 work.errors ? "managed callback failure" : ""].filter(Boolean);
             return { verified: !failures.length, failures, configHash: digest(actual.flat), ownerConfigHash: digest(registeredConfig(actual.registered)),
+                scene: readScene(), errorTotals: registry.getErrorTotals(),
                 // ConfigAdapter deliberately normalizes some legacy controls.
                 // Retain the observed differences instead of calling them active.
                 registeredOverrides: Object.fromEntries(registeredKeys.filter(key => stable(expectedConfig[key]) !== stable(ownerConfig[key])).map(key => [key, ownerConfig[key]])),
@@ -163,7 +174,7 @@
         const session = { stop: (reason = "cancelled") => finish(reason) };
         active = session; status = { running: true, completed: 0, expected: declared.blocks.length, endAt: Date.now() + 5000 };
         try {
-            onPacket("context", { kind: "config-suite", plan: declared, selectedIds, baseline: configuration.baseline, canonical: configuration.canonical, manifests, registeredKeys,
+            onPacket("context", { kind: "config-suite", plan: declared, selectedIds, baseline: configuration.baseline, canonical: configuration.canonical, manifests, registeredKeys, initialErrors,
                 loadedFunctionFingerprints: { configPlan: Q.core.MinimapInvestigation.digest(plan.toString().replace(/\r\n/g, "\n")),
                     configRunner: Q.core.MinimapInvestigation.digest(start.toString().replace(/\r\n/g, "\n")),
                     configBenchmark: Q.core.MinimapInvestigation.digest(scheduler.startBenchmark.toString().replace(/\r\n/g, "\n")),

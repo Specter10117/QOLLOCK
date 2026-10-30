@@ -42,6 +42,8 @@
     let shuttingDown = false;
     const enablingInProgress = {};  // reentry guard: prevents recursion during onEnable/boot
     const errorStreaks = {};
+    const errorTotals = {};
+    const recordError = id => { errorTotals[id] = (errorTotals[id] || 0) + 1; };
     let configChangedHandler = null;
     let schedulerErrorHandler = null;  // listens for scheduler:error to track poll loop streaks
     let schedulerOkHandler = null;     // listens for scheduler:tick_ok to reset consecutive error counter
@@ -77,7 +79,11 @@
                     if (!subscriptions.has(event)) subscriptions.set(event, new Map());
                     const registered = subscriptions.get(event);
                     if (registered.has(fn)) return;
-                    const wrapper = payload => { if (active) fn(payload); };
+                    const wrapper = payload => {
+                        if (!active) return;
+                        try { fn(payload); }
+                        catch (error) { recordError(featureId); throw error; }
+                    };
                     registered.set(fn, wrapper);
                     EventBus.on(event, wrapper);
                 },
@@ -143,12 +149,13 @@
             return true;
         } catch (e) {
             // A failed onEnable may already own listeners, panels and schedules.
+            recordError(id);
             // Unwind its partial setup before allowing a later enable retry.
             runtimeSuppressed.add(id);
             setPresentationAvailable(id, false);
             releaseContext(id);
-            try { instance?.onDisable?.(); } catch (_) { /* preserve original failure */ }
-            try { Q.core.Scheduler?.cancelAllForFeature?.(id); } catch (_) { /* best-effort */ }
+            try { instance?.onDisable?.(); } catch (_) { recordError(id); }
+            try { Q.core.Scheduler?.cancelAllForFeature?.(id); } catch (_) { recordError(id); }
             if (Logger) Logger.logError("FeatureRegistry", `enable failed for '${id}': ${e?.message || e}`);
             errorStreaks[id] = (errorStreaks[id] || 0) + 1;
         }
@@ -171,6 +178,7 @@
                 instance.onDisable();
             }
         } catch (e) {
+            recordError(id);
             errorStreaks[id] = (errorStreaks[id] || 0) + 1;
             if (Logger) Logger.logError("FeatureRegistry", `disable failed for '${id}': ${e?.message || e}`);
         }
@@ -178,7 +186,7 @@
             if (Q.core.Scheduler?.cancelAllForFeature) {
                 Q.core.Scheduler.cancelAllForFeature(id);
             }
-        } catch (_) { /* best-effort */ }
+        } catch (_) { recordError(id); }
         delete instances[id];
         disabling.delete(id);
         publishPresentation(id, false);
@@ -193,7 +201,7 @@
         if (typeof manifest.isEnabled === "function") {
             try {
                 return !!manifest.isEnabled(cfg);
-            } catch (_) {}
+            } catch (_) { recordError(id); }
         }
 
         if (manifest.enableKey && Object.prototype.hasOwnProperty.call(cfg, manifest.enableKey)) {
@@ -254,6 +262,7 @@
                 instance.onSettingsChanged(payload);
                 errorStreaks[payload.featureId] = 0;
             } catch (e) {
+                recordError(payload.featureId);
                 errorStreaks[payload.featureId] = (errorStreaks[payload.featureId] || 0) + 1;
                 if (Logger) Logger.logError("FeatureRegistry", `${payload.featureId} onSettingsChanged: ${e?.message || e}`);
             }
@@ -321,6 +330,7 @@
                 if (!payload?.featureId) return;
                 const id = payload.featureId;
                 if (!Object.prototype.hasOwnProperty.call(manifests, id)) return;
+                recordError(id);
                 const streak = (errorStreaks[id] || 0) + 1;
                 errorStreaks[id] = streak;
                 if (streak >= ERROR_STREAK_MAX) {
@@ -384,6 +394,7 @@
     const getRegisteredIds = () => Object.keys(manifests);
     const getEnabledIds = () => Object.keys(instances);
     const getErrorCounts = () => Object.assign({}, errorStreaks);
+    const getErrorTotals = () => Object.assign({}, errorTotals);
     const getManifest = (featureId) => manifests[featureId] || null;
     const getInstance = (featureId) => {
         if (!featureId || typeof featureId !== "string") return null;
@@ -410,6 +421,7 @@
         getRegisteredIds,
         getEnabledIds,
         getErrorCounts,
+        getErrorTotals,
         getManifest,
         getInstance,
         enable: enableFeature,

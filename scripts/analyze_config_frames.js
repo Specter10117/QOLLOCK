@@ -10,6 +10,11 @@ vm.runInNewContext(fs.readFileSync(path.join(__dirname, "../panorama/scripts/cor
 
 function analyzeConfig(meta, frames, focus, summarizeWindow) {
     const { packets, errors: packetErrors } = decodePackets(meta.packets, meta.session), context = packets.get("context");
+    const setupFailure = packets.get("setup-failure");
+    if (setupFailure?.kind === "config-suite" && setupFailure.reason === "setup-error" && !context) return {
+        kind: "config-suite", reason: "setup-error", setupFailure, rows: [], sourceIdentity: meta.sourceIdentity,
+        packetErrors: Object.fromEntries(packetErrors), restoration: { configRestored: !!setupFailure.expectedConfig &&
+            stable(setupFailure.expectedConfig) === stable(setupFailure.actualConfig) } };
     if (!context || context.kind !== "config-suite") throw Error("Configuration context/coverage ledger unavailable: " + (packetErrors.get("context") || "missing context"));
     if (!Array.isArray(context.manifests) || context.manifests.length > 500 || !Array.isArray(context.selectedIds) || !Array.isArray(context.registeredKeys) ||
         !context.baseline || !context.canonical || !context.plan) throw Error("Invalid configuration context");
@@ -43,6 +48,8 @@ function analyzeConfig(meta, frames, focus, summarizeWindow) {
                 const ownerConfig = Object.fromEntries(context.registeredKeys.map(key => [key, Object.prototype.hasOwnProperty.call(overrides, key) ? overrides[key] : config[key]]));
                 if (!proof.verified || proof.failures?.length || proof.work?.errors || proof.configHash !== hash(config) ||
                     proof.ownerConfigHash !== hash(ownerConfig) || proof.benchmarkActive !== instrumented || !Array.isArray(proof.enabledIds) ||
+                    !Array.isArray(proof.scene) || proof.scene.length !== 4 || proof.scene.some(Boolean) || !proof.errorTotals || !context.initialErrors ||
+                    Object.entries(proof.errorTotals || {}).some(([id, count]) => count > (context.initialErrors?.[id] || 0)) ||
                     Object.keys(overrides).some(key => !context.registeredKeys.includes(key))) errors.push("configuration/registry/instrumentation proof failed: " + key);
                 if (!Number.isFinite(proof.at) || (index ? proof.at < window.endAt || proof.at - window.endAt > 1500 : proof.at > window.startAt || window.startAt - proof.at > 1500)) errors.push("state proof outside window boundary");
             }
@@ -86,6 +93,10 @@ function analyzeConfig(meta, frames, focus, summarizeWindow) {
 }
 
 function formatConfig(result) {
+    if (result.setupFailure) return ["=== QOLLOCK native Expanded Config preflight FAILED ===", result.setupFailure.error,
+        "No trial windows were accepted. Fix the baseline before starting a long capture.",
+        "Restoration: configRestored=" + result.restoration.configRestored,
+        "Failure evidence=" + JSON.stringify(result.setupFailure), "Source=" + JSON.stringify(result.sourceIdentity || null)].join("\n");
     const f = value => value === null || value === undefined ? "n/a" : value.toFixed(3);
     const { context } = result;
     const lines = ["=== QOLLOCK native Expanded Config investigation ===", "Result=" + result.reason,

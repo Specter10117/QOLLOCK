@@ -512,10 +512,19 @@ These simulator checks do not verify native frame cadence or FPS.
 Use Dev's **Expanded configuration investigation** with the external native
 collector to investigate the ten-second Expanded Config stress mode. This is
 a longer comparison, not another ten-second callback benchmark. Start
-`scripts\capture_game_frames.cmd`, leave the condition field blank, click
+`scripts\capture_game_frames.cmd`, retain the prefilled condition IDs, click
 Investigate, close Esc within five seconds, and keep the camera, world scenario
 and game focus unchanged until completion. Wait for the external report before
 switching windows. Settings are leased in memory and restored without saving.
+
+The default UI request runs only `whole-config`, `benchmark-instrumentation`
+and the automatic sham, taking about two minutes. Check this native report for
+source/trace/focus quality and reproduction of the reported regression before
+spending time on a broad scan. It also lists the captured group and key IDs;
+repeat a relevant group directly, or clear the IDs for the full plan. Neither
+selected-ID follow-up nor the full plan requires another repack when using the
+same compiled controls. The collector remains one-way: this is an explicit
+short first capture, not online native-quality feedback to the HUD.
 
 The declared plan compares Expanded against the canonical settings, then
 benchmark accounting on/off, then every changed settings group. Groups have the
@@ -538,7 +547,13 @@ additional Scheduler work observation. No lookup prototype/instance hook or
 per-frame UI sampler runs in this investigation.
 
 Before/after proofs check the leased config, stable registered readback, registry
-coverage, benchmark flag, managed errors and scene flags. ConfigAdapter's
+coverage, benchmark flag, monotonic registry error totals and native scene flags,
+including the stationary scoreboard listener and Alt/detail evidence. App captures
+the error checkpoint before applying Expanded; a failed initial hook or missing
+intended owner refuses the baseline and emits an immediate setup-failure report.
+Successful callbacks cannot erase earlier failures inside the scan. Scoped feature
+events and managed Scheduler callbacks are covered; raw native callbacks and
+unscoped EventBus handlers remain outside this error counter. ConfigAdapter's
 normalized registered differences are reported, not mistaken for enabled paths.
 Settings without a canonical value are explicitly listed as not intervened.
 These generic proofs do **not** establish native panel construction, cleanup,
