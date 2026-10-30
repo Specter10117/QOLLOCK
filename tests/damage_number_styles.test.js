@@ -6,18 +6,54 @@ const path = require("node:path");
 const { parseCssImports } = require("../scripts/check_native_css_imports");
 const read = file => fs.readFileSync(path.join(__dirname, "../panorama/styles", file), "utf8");
 
-test("Fountain slider scales its own canvas without changing the native event root", () => {
+test("Fountain slider scales only individual fountain streams across its range", () => {
     const css = read("qol_damage_fountain_full.css").replace(/\/\*[\s\S]*?\*\//g, "");
     const rules = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)];
+    // Match this source contract's positive type/class/ID selectors and direct
+    // child combinator only; this does not model native layout or rendering.
+    const sliderRules = rules.flatMap(([, selectors, body]) => selectors.split(",")
+        .filter(selector => selector.includes("damage_fountain_scale_"))
+        .map(selector => {
+            const parts = selector.trim().split(/\s+/);
+            assert.equal(parts.length, 4, selector);
+            assert.equal(parts[2], ">");
+            assert.equal(parts[3], "#QOLFountainScaleCanvas", "native root writes stay separate");
+            const scale = /transform:\s*scale3d\(([^)]+)\);/.exec(body);
+            assert.ok(scale, selector);
+            return { parts: parts.slice(0, 2), scale: scale[1].split(",").map(Number) };
+        }));
+    assert.ok(sliderRules.length, "slider must have applicable rules");
+    const matches = (selector, type, classes) => {
+        assert.match(selector, /^(?:[A-Za-z][\w]*)?(?:\.[\w-]+)+$/);
+        const requiredType = /^[A-Za-z][\w]*/.exec(selector)?.[0];
+        return (!requiredType || requiredType === type) &&
+            [...selector.matchAll(/\.([\w-]+)/g)].every(([, name]) => classes.includes(name));
+    };
+    // Native Debugger: individual fountain2/crit/buffed events are separate
+    // from cumulative bullet_damage_new events, even within the same pool.
+    const ordinary = [
+        ["WindowRoot", "cumulative", "distance_normal", "bullet_damage_new"],
+        ["WindowRoot", "cumulative_final", "bullet_damage_new"],
+        ["WindowRoot", "batched", "damage_type_gun"],
+        ["WindowRoot", "cumulative", "bullet_damage_new", "fountain2"],
+        ["WindowRoot", "cumulative_final", "bullet_damage_new", "fountain_emphasised5"],
+        ["WindowRoot", "individual", "bullet_damage_new"],
+        ["WindowRoot", "healing"], ["WindowRoot", "gold"], ["WindowRoot", "deny"]
+    ];
     for (let percent = 50; percent <= 300; percent++) {
-        if (percent === 100) continue;
-        const selector = ".damage_fountain_active.damage_fountain_scale_" + percent +
-            " CitadelHudDamageEventIndicator.WindowRoot > #QOLFountainScaleCanvas";
-        const rule = rules.find(([, selectors]) => selectors.trim() === selector);
-        assert.ok(rule, selector);
-        const scale = /transform:\s*scale3d\(([^)]+)\);/.exec(rule[2]);
-        assert.ok(scale, "the owned canvas must scale independently of native root writes and child animations");
-        assert.deepEqual(scale[1].split(",").map(Number), [percent / 100, percent / 100, 1]);
+        for (const active of [false, true]) for (const clean of [false, true]) {
+            const hudClasses = [active && "damage_fountain_active", clean && "clean_damage_indicators_active",
+                percent !== 100 && "damage_fountain_scale_" + percent].filter(Boolean);
+            const applicable = sliderRules.filter(rule => matches(rule.parts[0], "CitadelHud", hudClasses));
+            const scaleFor = (classes, type = "CitadelHudDamageEventIndicator") =>
+                applicable.filter(rule => matches(rule.parts[1], type, classes)).at(-1)?.scale || [1, 1, 1];
+            for (const classes of ordinary) assert.deepEqual(scaleFor(classes), [1, 1, 1], `${percent}%: ${classes}`);
+            for (let variant = 1; variant <= 5; variant++) for (const prefix of ["fountain", "fountain_emphasised"]) {
+                const classes = ["WindowRoot", "individual", "distance_normal", "crit", "buffed", prefix + variant];
+                assert.deepEqual(scaleFor(classes), active ? [percent / 100, percent / 100, 1] : [1, 1, 1]);
+                assert.deepEqual(scaleFor(classes, "CitadelHudSubtitles"), [1, 1, 1]);
+            }
+        }
     }
     assert.doesNotMatch(css, /\.damage_fountain_scale_\d+\s+CitadelHudDamageEventIndicator\.WindowRoot\s*\{/,
         "slider rules must not write transforms or coordinate scale on the native root");

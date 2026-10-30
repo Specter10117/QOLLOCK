@@ -16,7 +16,9 @@ in the event indicator context; importing them only from HUD CSS is insufficient
 
 Fountain size is a percentage slider in the Crosshair tab, separate from the
 damage font-size slider. The native event layout wraps its content in QOLLOCK's
-scale canvas. The slider transforms only this canvas. Native root placement and
+scale canvas. The slider transforms this canvas only for individual events with
+a native Fountain animation variant. Cumulative, final cumulative, batched and
+other non-Fountain events keep their existing size. Native root placement and
 scale writes stay separate from presentation; inner distance scales and keyframe
 animations remain intact. Its neutral value preserves the
 former Medium presentation. Scale classes exist only while Fountain is enabled.
@@ -31,5 +33,7 @@ clean mode and small/trooper filtering. A static hierarchy without those events
 does not establish native class coverage or animation behavior.
 Keep the same target in view while changing Fountain size: its indicators must
 remain anchored to the target rather than shift toward or away from screen origin.
+Compare individual and cumulative numbers together: changing Fountain size must
+leave Big Numbers unchanged, including final totals, with Clean both on and off.
 Also verify native values, descriptions and effectiveness bindings with Fountain
 disabled: the canvas remains in the native layout at its neutral scale.
