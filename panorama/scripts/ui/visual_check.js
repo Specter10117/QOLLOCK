@@ -11,7 +11,7 @@
     const groups = [
         ["Top Bar", { HUD_TOP_BAR_ENABLED: 1, TOP_BAR_OPACITY: 1, TOP_BAR_SCALE: 1, TOP_BAR_X_OFFSET: 0, TOP_BAR_Y_OFFSET: 0 },
             { TOP_BAR_X_OFFSET: 100, TOP_BAR_Y_OFFSET: -80, TOP_BAR_SCALE: 0.8, TOP_BAR_OPACITY: 0.5 }, "Right and down, smaller and more transparent"],
-        ["Bottom Bar", { HUD_BOTTOM_BAR_ENABLED: 1, BOTTOM_BAR_OPACITY: 1, BOTTOM_BAR_SCALE: 1, BOTTOM_BAR_X_OFFSET: 0, BOTTOM_BAR_Y_OFFSET: 0 },
+        ["Abilities", { HUD_BOTTOM_BAR_ENABLED: 1, BOTTOM_BAR_OPACITY: 1, BOTTOM_BAR_SCALE: 1, BOTTOM_BAR_X_OFFSET: 0, BOTTOM_BAR_Y_OFFSET: 0 },
             { BOTTOM_BAR_X_OFFSET: 100, BOTTOM_BAR_Y_OFFSET: 80, BOTTOM_BAR_SCALE: 0.8, BOTTOM_BAR_OPACITY: 0.5 }, "Right and up, smaller and more transparent"],
         ["Souls", { HUD_SOULS_ENABLED: 1, SOULS_OPACITY: 1, SOULS_X_OFFSET: 0, SOULS_Y_OFFSET: 0 },
             { SOULS_X_OFFSET: 100, SOULS_Y_OFFSET: 80, SOULS_OPACITY: 0.5 }, "Right and up, more transparent"],
@@ -135,7 +135,7 @@
     }
 
     function start(onStop) {
-        if (session) return false;
+        if (session || Q.ui.customize?.isRunning() || Q.ui.presetPreview?.isRunning()) return false;
         const context = $.GetContextPanel();
         const root = persistence.getUIRoot();
         const hud = persistence.resolveHudPanel(root);
@@ -191,7 +191,6 @@
                 session.hidden.push(child);
                 child.AddClass("QOLVisualCheckHidden");
             }
-            Q.preview?.hideAll?.();
             Q.tooltip?.hideRowTooltip?.();
             applyStep(0);
             overlay.SetFocus();

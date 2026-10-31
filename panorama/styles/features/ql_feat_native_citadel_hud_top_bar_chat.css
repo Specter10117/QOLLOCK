@@ -1,0 +1,6 @@
+/* QOLLOCK overrides for citadel_hud_top_bar_chat.css; loaded after the native baseline. */
+
+.ChatMessage .ChatBubble .TextContainer .bubble_bg
+{
+	animation-name: none;
+}

@@ -314,6 +314,12 @@
     vertical-align: bottom;
 }
 
+.minecraft_healthbar_active #health_and_abilities_container.localPlayerMidHealth,
+.minecraft_healthbar_active #health_and_abilities_container.localPlayerLowHealth
+{
+    animation-name: none;
+}
+
 .minecraft_healthbar_active #context_action_container
 {
     width: fit-children;

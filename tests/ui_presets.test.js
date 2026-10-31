@@ -43,7 +43,7 @@ function createTestEnvironment() {
         ENABLE_COLOR_WARNINGS: 1,
         MINIMAP_SCALE: 1.0,
         DRAG_ENABLED: 0,
-        PREVIEWS_ENABLED: 1,
+        AUTO_SAVE_CHANGES: 1,
         ACTIVE_PRESET_NAME: "",
     };
 
@@ -157,14 +157,17 @@ test("presets: backward compatibility globals are registered", () => {
     assert.strictEqual(typeof gt.CreatePresetGrid, "function");
 });
 
-test("presets: buildCommunityPresetEntries returns 90 entries", () => {
+test("presets: community roster is alphabetized without empty placeholders", () => {
     const env = createTestEnvironment();
     const entries = env.sandbox.QOL.ui.presets.buildCommunityPresetEntries();
 
     assert.ok(Array.isArray(entries), "Entries should be an array");
-    assert.strictEqual(entries.length, 90, "Should contain exactly 90 entries");
+    assert.strictEqual(entries.length, 84);
     assert.ok(entries.some(e => e.preset === "Bread"), "Should contain Bread preset");
-    assert.ok(entries.some(e => e.label === "Available" && e.available === false), "Should contain Available placeholders");
+    assert.ok(!entries.some(e => e.label === "Available" || e.preset === "Synthronix"));
+    assert.strictEqual(entries.find(e => e.label === "Predi").available, false);
+    const labels = Array.from(entries, e => e.label.toLowerCase());
+    assert.deepStrictEqual(labels, labels.slice().sort());
 });
 
 test("presets: resolvePresetConfigByName merges default with preset", () => {
@@ -190,7 +193,7 @@ test("presets: applyPresetByName applies preset and preserves UI settings", () =
     const modConfig = env.sandbox.globalThis.MOD_CONFIG;
 
     modConfig.DRAG_ENABLED = 1;
-    modConfig.PREVIEWS_ENABLED = 0;
+    modConfig.AUTO_SAVE_CHANGES = 0;
     modConfig.ENABLE_UPDATE_CHECKER = 0;
 
     const ok = p.applyPresetByName("Clean");
@@ -199,7 +202,7 @@ test("presets: applyPresetByName applies preset and preserves UI settings", () =
     assert.strictEqual(modConfig.MINIMAP_SCALE, 0.9);
     // UI layout preferences preserved
     assert.strictEqual(modConfig.DRAG_ENABLED, 1);
-    assert.strictEqual(modConfig.PREVIEWS_ENABLED, 0);
+    assert.strictEqual(modConfig.AUTO_SAVE_CHANGES, 0);
     assert.strictEqual(modConfig.ENABLE_UPDATE_CHECKER, 0);
 });
 
@@ -219,7 +222,7 @@ test("presets: doesCurrentConfigMatchPreset accurately matches config", () => {
     // Changing UI layout settings does NOT break match
     modConfig.ENABLE_UNSPENT_SOULS = 0;
     modConfig.DRAG_ENABLED = 1;
-    modConfig.PREVIEWS_ENABLED = 0;
+    modConfig.AUTO_SAVE_CHANGES = 0;
     assert.strictEqual(p.doesCurrentConfigMatchPreset("Clean"), true);
 });
 
@@ -236,5 +239,6 @@ test("presets: renderPresetsTab builds preset grid and controls", () => {
 
     assert.ok(titles.length > 0, "Section title should be rendered");
     assert.ok(grids.length > 0, "Preset grid should be rendered");
-    assert.ok(hintRow, "Community hint row should be rendered");
+    assert.ok(!hintRow, "Community request link is removed");
+    assert.ok(container.FindChildTraverse("PersonalPresetsSection"));
 });

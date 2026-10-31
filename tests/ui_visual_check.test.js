@@ -175,7 +175,10 @@ test("walkthrough preserves escape controls and restores focus without native in
 test("A/B and back navigation release native style overrides repeatedly", () => {
     const { global: g, em, doc, clock } = setup();
     const panel = doc.create("Panel", { id: "gold_and_ap_container" });
-    g.QOL.core.persistence.resolveHudPanel(g.QOL.core.persistence.getUIRoot()).addChild(panel);
+    const root = g.QOL.core.persistence.resolveHudPanel(g.QOL.core.persistence.getUIRoot());
+    const core = root.addChild(doc.create("Panel", { classes: ["HudCore"] }));
+    const stats = core.addChild(doc.create("Panel", { id: "StatsAndModsContainer" }));
+    stats.addChild(doc.create("Panel", { id: "LowerLeft" })).addChild(panel);
     // Model native style storage: JS delete/null/empty do not release C++ overrides.
     const values = {};
     panel.style = new Proxy(values, {

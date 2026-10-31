@@ -31,7 +31,11 @@ function createMatchHudTree({ inHideout = false, isGameplayHudAlive = true } = {
     const topBar = hud.sandbox.global.$.CreatePanel("CitadelHudTopBar", root, "TopBar");
     const minimap = hud.sandbox.global.$.CreatePanel("Panel", root, "minimap_container");
     const health = hud.sandbox.global.$.CreatePanel("Panel", root, "hud_health");
-    const souls = hud.sandbox.global.$.CreatePanel("Panel", root, "gold_and_ap_container");
+    const core = hud.sandbox.global.$.CreatePanel("Panel", root, "");
+    core.AddClass("HudCore");
+    const stats = hud.sandbox.global.$.CreatePanel("Panel", core, "StatsAndModsContainer");
+    const left = hud.sandbox.global.$.CreatePanel("Panel", stats, "LowerLeft");
+    const souls = hud.sandbox.global.$.CreatePanel("Panel", left, "gold_and_ap_container");
     const gameplayHud = hud.sandbox.global.$.CreatePanel("Panel", root, "gameplay_hud");
     const gameplayHudAlive = hud.sandbox.global.$.CreatePanel("Panel", gameplayHud, "gameplay_hud_alive");
     const abilityContainer = hud.sandbox.global.$.CreatePanel("Panel", root, "ability_container");
@@ -162,6 +166,7 @@ test("INVARIANT 2: Explicit feature disable restores vanilla layout cleanly, ena
     configStore.set("ql_souls", "SOULS_Y_OFFSET", 40);
     env.hud.clock.advance(500);
     assert.strictEqual(env.panels.souls.BHasClass("qol-hidden"), false);
+    assert.strictEqual(env.panels.souls.style.y, "-40px");
 
     // Disable Souls explicitly -> hides panel with qol-hidden
     configStore.set("ql_souls", "HUD_SOULS_ENABLED", 0);
@@ -179,7 +184,8 @@ test("INVARIANT 2: Explicit feature disable restores vanilla layout cleanly, ena
 // SUITE 3: Settings Tab Rendering, Key Bindings & Selected Interactions
 // =============================================================================
 test("INVARIANT 3: production settings tabs render, bind known keys, and selected controls change config", () => {
-    const { global: g, list, doc, clock, hud } = require("./load_settings_environment")();
+    const { global: g, list, doc, clock, hud, em } = require("./load_settings_environment")();
+    g.QOL.ui.window.setOpen(true); clock.advance(500);
     const tabs = ["Support", "Config", "Presets", "Crosshair", "Healthbar", "HUD", "Overlay", "Minimap", "Audio", "Arcade", "Console", "Dev"];
     let rendered = 0;
     let boundRows = 0;
@@ -209,21 +215,24 @@ test("INVARIANT 3: production settings tabs render, bind known keys, and selecte
             interactions++;
         }
         if (tab === "Crosshair" || tab === "HUD") {
-            const key = tab === "HUD" ? "TOP_BAR_SCALE" : "AMMO_CURRENT_SCALE";
-            const row = list.FindChildrenWithClassTraverse(`SettingRow_${key}`)[0];
-            assert.ok(row, `${tab} renders ${key}`);
-            const slider = row.FindChildrenWithClassTraverse("HorizontalSlider")[0];
-            assert.ok(slider, `${key} has a real slider`);
-            slider.value = tab === "HUD" ? 123 : 150;
-            assert.equal(slider._fire("onvaluechanged"), true);
-            assert.equal(g.MOD_CONFIG[key], tab === "HUD" ? 1.25 : 150);
-            interactions++;
+            const key = tab === "HUD" ? "TOP_BAR_SCALE" : "AMMO_HUD_SCALE";
+            const element = tab === "HUD" ? "topBar" : "ammo";
+            const entry = list.FindChildTraverse("QOLCustomizeEntry_" + element);
+            assert.ok(entry, `${tab} exposes scoped customization for ${key}`);
+            assert.equal(list.FindChildrenWithClassTraverse(`SettingRow_${key}`).length, 0);
             if (tab === "HUD") {
-                assert.ok(list.FindChildrenWithClassTraverse("SettingRow_ACTIVE_ITEMS_SCALE")[0],
-                    "active item scale renders as a normal setting row");
-                assert.equal(list.FindChildTraverse("ActiveItemSlotsSubSectionHeader"), null,
-                    "active item controls must not use a nested collapsible section");
+                assert.equal(list.FindChildTraverse("QOLCustomizeEntry_activeItems"), null);
+                assert.equal(list.FindChildTraverse("QOLCustomizeEntry_abilityPoints"), null);
+                assert.ok(list.FindChildTraverse("QOLCustomizeEntry_bottomBar"));
             }
+            entry._fire("onactivate");
+            const input = em.FindChildTraverse("QOLCustomize_" + key);
+            assert.ok(input, `${key} has a precise editor input`);
+            input.text = tab === "HUD" ? "123" : "150";
+            g.QOL.core.storageBridge.saveSettings = (_cfg, callback) => callback(null);
+            em.FindChildTraverse("QOLCustomizeApply")._fire("onactivate");
+            assert.equal(g.MOD_CONFIG[key], tab === "HUD" ? 1.23 : 150);
+            interactions++;
         }
         clock.advance(400);
         assert.deepStrictEqual(doc.eventErrors, [], `${tab} event handlers must not silently fail`);
@@ -233,7 +242,7 @@ test("INVARIANT 3: production settings tabs render, bind known keys, and selecte
     assert.ok(boundRows >= 100, `expected substantial control coverage; got ${boundRows} bound rows`);
     assert.equal(interactions, 3, "all three bounded interactions must actually execute");
     clock.advance(1000);
-    assert.equal(hud.sandbox.global.QOL.core.ConfigStore.get("ql_topbar", "TOP_BAR_SCALE"), 1.25);
+    assert.equal(hud.sandbox.global.QOL.core.ConfigStore.get("ql_topbar", "TOP_BAR_SCALE"), 1.23);
     assert.deepStrictEqual(doc.eventErrors, []);
     assert.deepStrictEqual(clock.errors, []);
 });
@@ -289,7 +298,10 @@ test("INVARIANT 4: All 90+ community presets resolve, diff, and serialize into #
         "panorama/scripts/core/ql_namespace.js",
         "panorama/scripts/ql_utils.js",
         "panorama/scripts/core/ql_panel_helpers.js",
+        "panorama/scripts/core/ql_persistence.js",
         "panorama/scripts/ql_shared_presets.js",
+        "panorama/scripts/ql_settings_contract.js",
+        "panorama/scripts/ql_legacy_compact.js",
         "panorama/scripts/ql_bridge.js",
         "panorama/scripts/ql_config.js",
         "panorama/scripts/ui/ql_settings_metadata.js",
@@ -300,6 +312,7 @@ test("INVARIANT 4: All 90+ community presets resolve, diff, and serialize into #
         "panorama/scripts/ui/modal.js",
         "panorama/scripts/ui/theme.js",
         "panorama/scripts/ui/controls.js",
+        "panorama/scripts/ui/cloud_sync.js",
         "panorama/scripts/ql_settings.js"
     ];
 

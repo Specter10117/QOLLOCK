@@ -28,7 +28,7 @@
     const RUNTIME_ROW_KEY_ATTR = "QOL_RUNTIME_ROW_KEY";
     const HERO_HINT_ATTR = "QOL_HERO_HINT";
     const PERF_IMPACT_TIER_NONE = "none";
-    const SLIDER_WIRE_FIELDS = Q.persistence?.buildSchemaFieldMap?.() || {};
+    const SLIDER_FIELDS = Q.persistence?.buildSchemaFieldMap?.() || {};
 
     const RUNTIME_BUTTON_GROUP_DEFAULT_INDEX = {
         HITMARKERS_RUNTIME: 1,
@@ -42,6 +42,7 @@
         opacity:            { min: 0,   max: 1,    step: 0.05 },
         opacity_perf:       { min: 0.3, max: 1,    step: 0.05 },
         scale_0_5_1_5:      { min: 0.5, max: 1.5,  step: 0.05 },
+        scale_0_5_3_0:      { min: 0.5, max: 3.0,  step: 0.01 },
         scale_0_5_2_0:      { min: 0.5, max: 2.0,  step: 0.05 },
         size_10_60:         { min: 10,  max: 60,   step: 1 },
         size_16_60:         { min: 16,  max: 60,   step: 1 },
@@ -260,11 +261,6 @@
         bindSectionPerfTooltip: () => {}
     };
 
-    const getPreview = () => (Q && Q.preview) ? Q.preview : {
-        showForConfigId: () => {},
-        hideAll: () => {}
-    };
-
     const getArcade = () => (Q && Q.arcade) ? Q.arcade : {
         openMinesweeper: () => {},
         openFlappy: () => {},
@@ -397,8 +393,9 @@
     function collectResetKeysFromPanel(panel, outKeys, seen) {
         if (!panel || !outKeys || !seen) return;
         try {
-            if (panel.BHasClass && panel.BHasClass("SettingRow")) {
-                const rowKeys = getRowResetKeys(panel);
+            if (panel.BHasClass && (panel.BHasClass("SettingRow") || panel.BHasClass("QOLCustomizeEntry"))) {
+                const rowKeys = panel.BHasClass("QOLCustomizeEntry")
+                    ? Q.ui.customize.entryKeys(panel.GetAttributeString("QOL_CUSTOMIZE_ELEMENT", "")) : getRowResetKeys(panel);
                 for (let i = 0; i < rowKeys.length; i++) {
                     const key = rowKeys[i];
                     if (!key || seen[key]) continue;
@@ -434,6 +431,7 @@
             }
         }
         if (startIndex < 0) return keys;
+        collectResetKeysFromPanel(titleRow, keys, seen);
 
         for (let s = startIndex + 1; s < siblings.length; s++) {
             const sibling = siblings[s];
@@ -1016,7 +1014,7 @@
         return sep;
     }
 
-    function createSectionTitle(parent, title, configIdForPerf) {
+    function createSectionTitle(parent, title, configIdForPerf, customizeElement) {
         const localizedTitle = localize(title || "");
         if (typeof gCurrentSettingsSectionTitle !== "undefined") {
             gCurrentSettingsSectionTitle = String(title || "");
@@ -1030,6 +1028,7 @@
             };
             getSearchCollectState().sections.push(section);
             getSearchCollectState().currentSection = section;
+            if (customizeElement) Q.ui.customize?.collectEntry(customizeElement);
             return null;
         }
         const titleRow = $.CreatePanel("Panel", parent, "");
@@ -1043,6 +1042,7 @@
         titleLabel.text = localizedTitle;
         getTooltip().bindSectionPerfTooltip(titleRow, title, "", getCurrentTab(), configIdForPerf || "", "toggle", null);
         createSectionResetButton(titleRow, () => collectResetKeysFromSectionTitleRow(titleRow), null, titleHead);
+        if (customizeElement) Q.ui.customize?.createEntryAction(titleRow, customizeElement);
         return titleLabel;
     }
 
@@ -1123,7 +1123,6 @@
             saveAndSync();
             if (refreshListOnChange) requestSettingsListRefresh(0, true);
             if (toggleOptions && typeof toggleOptions.onChanged === "function") toggleOptions.onChanged();
-            getPreview().showForConfigId(configId);
         });
 
         registerSettingsListRowSync(() => {
@@ -1146,7 +1145,7 @@
         const getSectionEnabled = () => (invertEnableToggle ? (getConfig()[enableConfigId] !== 1) : (getConfig()[enableConfigId] === 1));
 
         if (getSearchCollectMode() && getSearchCollectState()) {
-            createSectionTitle(parent, title);
+            createSectionTitle(parent, title, null, sectionOptions?.customizeElement);
             const searchToggleOptions = invertEnableToggle ? [{ invert: true }] : null;
             createRow(parent, "Enable", enableConfigId, "toggle", null, null, null, searchToggleOptions, enableDescription || "");
             if (buildRowsFn) {
@@ -1172,9 +1171,10 @@
         body.AddClass("SettingsSectionBody");
 
         createSectionResetButton(titleRow, () => {
-            const keys = [];
-            const seen = {};
+            const keys = [...new Set(sectionOptions?.resetKeys || [])];
+            const seen = Object.fromEntries(keys.map(key => [key, true]));
             collectResetKeysFromPanel(body, keys, seen);
+            collectResetKeysFromPanel(titleRow, keys, seen);
             if (sectionOptions && sectionOptions.titleCheckbox && sectionOptions.titleCheckbox.configId && !seen[sectionOptions.titleCheckbox.configId]) {
                 keys.push(sectionOptions.titleCheckbox.configId);
                 seen[sectionOptions.titleCheckbox.configId] = true;
@@ -1188,6 +1188,8 @@
         toggleSwitchButton.AddClass("SwitchButton");
         const toggleHandle = $.CreatePanel("Panel", toggleSwitchButton, "handle");
         toggleHandle.AddClass("SectionInlineToggleHandle");
+
+        if (sectionOptions?.customizeElement) Q.ui.customize?.createEntryAction(titleRow, sectionOptions.customizeElement);
 
         let titleCheckboxBtn = null;
         if (sectionOptions && sectionOptions.titleCheckbox) {
@@ -1264,7 +1266,6 @@
             getConfig()[enableConfigId] = invertEnableToggle ? (nextEnabled ? 0 : 1) : (nextEnabled ? 1 : 0);
             applyBodyState(nextEnabled, true);
             saveAndSync();
-            getPreview().showForConfigId(enableConfigId);
         });
 
         if (buildRowsFn) {
@@ -1580,59 +1581,63 @@
             const slider = $.CreatePanel("Slider", sliderContainer, "", { direction: "horizontal" });
             slider.AddClass("HorizontalSlider");
             const isAngleSlider = (type === "angle_slider");
-            const isFloat = (max <= 5.0 && (configId.indexOf("OPACITY") !== -1 || configId.indexOf("SCALE") !== -1));
-            const isOpacitySlider = (isFloat && configId.indexOf("OPACITY") !== -1);
+            const contract = Q.settings?.get(configId);
+            const isFloat = (contract?.displayFactor || 1) === 100;
+            const isPercentSlider = contract?.unit === "%";
             const isSecondsSlider = (configId === "BRIDGE_BUFF_START" || configId === "MINIMAP_REMINDER_INTERVAL" || configId === "RECENT_PURCHASES_QUICK_DISPLAY_SEC");
-            // Commit only values representable by the existing export schema.
-            // The UI shape can have a different range/step from the wire field.
-            const wireField = SLIDER_WIRE_FIELDS[configId];
-            const valueField = wireField || { min, max, step };
-            const commitValue = (rawValue) => {
-                const lower = Math.max(min, valueField.min);
-                const upper = Math.min(max, valueField.max);
-                const firstIndex = Math.ceil((lower - valueField.min) / valueField.step - 1e-9);
-                const lastIndex = Math.floor((upper - valueField.min) / valueField.step + 1e-9);
-                const index = Math.max(firstIndex, Math.min(lastIndex,
-                    Math.round((rawValue - valueField.min) / valueField.step)));
-                return Number((valueField.min + index * valueField.step).toFixed(8));
+            // Slider travel is a UI range. Exact values use the independent setting contract.
+            const catalogField = SLIDER_FIELDS[configId];
+            const valueField = catalogField || { min, max, step };
+            const displayValue = value => Q.presentation?.toDisplayValue ? Q.presentation.toDisplayValue(configId, value) : Number(value);
+            const storedValue = value => Q.presentation?.fromDisplayValue ? Q.presentation.fromDisplayValue(configId, value) : Number(value);
+            const lower = Math.max(min, valueField.min);
+            const upper = Math.min(max, valueField.max);
+            const displayBounds = Q.presentation?.displayBounds
+                ? Q.presentation.displayBounds(configId, lower, upper) : { min: lower, max: upper };
+            const commitValue = rawValue => {
+                if (contract) return Q.settings.normalize(configId, storedValue(rawValue));
+                const bounded = Math.max(lower, Math.min(upper, storedValue(rawValue)));
+                return Number((valueField.min + Math.round((bounded - valueField.min) / valueField.step) * valueField.step).toFixed(6));
+            };
+            let syncingSlider = false;
+            const syncSlider = value => {
+                const shown = displayValue(value) * (contract?.displayFactor || 1);
+                syncingSlider = true;
+                try { slider.value = Math.max(slider.min, Math.min(slider.max, shown)); }
+                finally { syncingSlider = false; }
             };
 
-            const formatSliderInputValue = (value) => {
-                if (value === undefined || value === null || !isFinite(Number(value))) value = 0;
-                const numeric = Number(value);
-                if (isOpacitySlider) {
-                    const pct = Math.round(Math.max(0, Math.min(1, numeric)) * 100);
-                    return String(pct) + "%";
-                }
-                if (isFloat) return numeric.toFixed(2);
-                if (isSecondsSlider) return String(Math.round(numeric)) + "s";
-                if (isAngleSlider) return String(Math.round(numeric)) + "°";
-                return String(Math.round(numeric));
+            const formatSliderInputValue = value => {
+                const numeric = displayValue(value);
+                const shown = Number((numeric * (contract?.displayFactor || 1)).toFixed(6));
+                if (isPercentSlider) return String(shown) + "%";
+                if (isSecondsSlider) return String(shown) + "s";
+                if (isAngleSlider) return String(shown) + "°";
+                return String(shown);
+            };
+            const parseSliderInputValue = text => {
+                let raw = String(text ?? "").trim().replace(",", ".");
+                if (isPercentSlider) raw = raw.replace(/%$/, "").trim();
+                else if (isSecondsSlider) raw = raw.replace(/s$/, "").trim();
+                else if (isAngleSlider) raw = raw.replace(/°$/, "").trim();
+                if (!/^[+-]?(?:\d+(?:\.\d+)?|\.\d+)$/.test(raw)) return null;
+                const displayed = Number(raw) / (contract?.displayFactor || 1);
+                const stored = storedValue(displayed);
+                if (contract && Q.settings.normalize(configId, stored, false) === null) return null;
+                return displayed;
             };
 
-            const parseSliderInputValue = (text) => {
-                let rawText = String(text === undefined || text === null ? "" : text).trim();
-                if (!rawText) return null;
-                rawText = rawText.replace(",", ".");
-                let parsed = parseFloat(rawText);
-                if (!isFinite(parsed)) return null;
-                if (isOpacitySlider) {
-                    const hasPercent = rawText.indexOf("%") !== -1;
-                    if (hasPercent || parsed > 1) parsed = parsed / 100;
-                }
-                return parsed;
-            };
-
-            slider.min = isFloat ? min * 100 : min;
-            slider.max = isFloat ? max * 100 : max;
-            slider.value = isFloat ? modCfg[configId] * 100 : modCfg[configId];
+            slider.min = isFloat ? displayBounds.min * 100 : displayBounds.min;
+            slider.max = isFloat ? displayBounds.max * 100 : displayBounds.max;
+            slider.value = displayValue(modCfg[configId]) * (isFloat ? 100 : 1);
             const input = $.CreatePanel("TextEntry", sliderValueGroup, "");
             input.AddClass("ValueInput");
             input.text = formatSliderInputValue(modCfg[configId]);
             forceCenterSliderValueInput(input);
 
             slider.SetPanelEvent("onvaluechanged", () => {
-                const rawValue = Number(slider.value) / (isFloat ? 100 : 1);
+                if (syncingSlider) return;
+                const rawValue = Math.max(slider.min, Math.min(slider.max, Number(slider.value))) / (isFloat ? 100 : 1);
                 if (!isFinite(rawValue)) return;
                 const val = commitValue(rawValue);
                 if (val !== modCfg[configId]) {
@@ -1641,23 +1646,33 @@
                     markConfigDirty();
                     refreshRowChangedState();
                 }
-                getPreview().showForConfigId(configId);
             });
 
-            input.SetPanelEvent("oninputsubmit", () => {
+            const submitSliderInput = () => {
                 const rawVal = parseSliderInputValue(input.text);
                 if (rawVal === null || !isFinite(Number(rawVal))) {
-                    input.text = formatSliderInputValue(modCfg[configId]);
+                    input.AddClass("Invalid");
                     return;
                 }
+                input.RemoveClass("Invalid");
                 modCfg[configId] = commitValue(rawVal);
-                slider.value = modCfg[configId] * (isFloat ? 100 : 1);
+                syncSlider(modCfg[configId]);
                 input.text = formatSliderInputValue(modCfg[configId]);
                 input.RemoveClass("ValueSavedFlash");
                 input.AddClass("ValueSavedFlash");
                 markConfigDirty();
                 refreshRowChangedState();
-                getPreview().showForConfigId(configId);
+            };
+            input.SetPanelEvent("oninputsubmit", submitSliderInput);
+            input.SetPanelEvent("onblur", submitSliderInput);
+            input.SetPanelEvent("onmousewheel", delta => {
+                if (!delta) return false;
+                const current = parseSliderInputValue(input.text);
+                const raw = current === null ? Number(modCfg[configId]) : storedValue(current);
+                const shown = displayValue(raw) + (delta > 0 ? 1 : -1) * valueField.step;
+                input.text = formatSliderInputValue(commitValue(shown));
+                submitSliderInput();
+                return true;
             });
 
             const checkbox = checkboxOptions ? createSectionTitleCheckboxToggle(sliderValueGroup,
@@ -1672,16 +1687,8 @@
             }
             syncRowVisualState = () => {
                 if (!row || !row.IsValid || !row.IsValid()) return false;
-                let nextVal = Number(modCfg[configId]);
-                if (!isFinite(nextVal)) nextVal = Number(min);
-                nextVal = Math.max(Number(min), Math.min(Number(max), nextVal));
-                if (isFloat) {
-                    nextVal = parseFloat(nextVal.toFixed(2));
-                    slider.value = nextVal * 100;
-                } else {
-                    nextVal = Math.round(nextVal);
-                    slider.value = nextVal;
-                }
+                const nextVal = contract ? Q.settings.readNumber(configId, modCfg[configId]) : Number(modCfg[configId]);
+                syncSlider(nextVal);
                 input.text = formatSliderInputValue(nextVal);
                 if (checkbox) checkbox.qolRefreshTitleCheckbox();
                 refreshRowChangedState();
@@ -2180,6 +2187,7 @@
             const paletteButtons = [];
             const paletteRefreshFns = [];
             const sanitizePaletteValue = (value) => {
+                if (QOL_UTILS.SupportsCustomColor(configId) && QOL_UTILS.IsCustomColor(value)) return value;
                 let numeric = Math.round(Number(value));
                 if (!isFinite(numeric)) numeric = 0;
                 if (numeric < 0) numeric = 0;
@@ -2248,7 +2256,6 @@
                     }
                     saveAndSync();
                     refreshRowChangedState();
-                    getPreview().showForConfigId(configId);
                 });
             });
             syncRowVisualState = () => {
@@ -2789,10 +2796,9 @@
             const activateToggle = () => {
                 const nextActive = !getToggleIsActive();
                 modCfg[configId] = invertToggle ? (nextActive ? 0 : 1) : (nextActive ? 1 : 0);
+                const enableKey = toggleConfig?.enableOnChange;
+                if (enableKey && Object.prototype.hasOwnProperty.call(getDefaultConfig(), enableKey)) modCfg[enableKey] = 1;
                 update();
-                if (configId === "PREVIEWS_ENABLED" && modCfg[configId] !== 1) {
-                    getPreview().hideAll();
-                }
                 if (configId === "DRAG_ENABLED") {
                     const settingsWindow = $.GetContextPanel().FindChildTraverse("SettingsWindow");
                     if (settingsWindow && settingsWindow.IsValid && settingsWindow.IsValid()) {
@@ -2807,7 +2813,6 @@
                 if (configId === "ENABLE_OLD_ITEM_COOLDOWNS") {
                     requestSettingsListRefresh(0, true);
                 }
-                getPreview().showForConfigId(configId);
             };
             switchButton.SetPanelEvent("onactivate", activateToggle);
             syncRowVisualState = () => {
@@ -3000,7 +3005,6 @@
             update();
             saveAndSync();
             refreshRowChangedState();
-            getPreview().showForConfigId(configId);
         });
         secondaryBtn.SetPanelEvent("onactivate", () => {
             const mainEnabled = invertMain ? (modCfg[configId] !== 1) : (modCfg[configId] === 1);
@@ -3009,7 +3013,6 @@
             update();
             saveAndSync();
             refreshRowChangedState();
-            getPreview().showForConfigId(secondaryConfigId);
         });
 
         const syncRowVisualState = () => {

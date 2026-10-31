@@ -2,12 +2,8 @@
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const fs = require("node:fs");
-const path = require("node:path");
 
-function read(relativePath) {
-    return fs.readFileSync(path.join(__dirname, "..", relativePath), "utf8").replace(/\r\n/g, "\n");
-}
+const { readStyleSource: read } = require("./helpers/style_source");
 
 function cssRules(css) {
     const normalized = css
@@ -32,7 +28,14 @@ function ruleBody(css, selector) {
 test("quick-buy override preserves the current native listener and summary binding tree", () => {
     const layout = read("panorama/layout/hud_quickbuy.xml");
 
-    assert.match(layout, /<GlobalClassListener classes="gStreetBrawl gQuickbuyShopShowQueue" \/>/);
+    const listener = layout.match(/<GlobalClassListener\b[^>]*\bclasses="([^"]*)"/);
+    assert.ok(listener, "quick-buy receives native global state");
+    const classes = new Set(listener[1].split(/\s+/));
+    for (const required of ["gStreetBrawl", "gQuickbuyShopShowQueue", "gHighUnspentSouls"]) {
+        assert.ok(classes.has(required), `missing quick-buy state: ${required}`);
+    }
+    assert.match(layout, /<Panel id="HudMiniFill" hittest="false" \/>/);
+    assert.match(layout, /<Panel class="ItemsBlockedReason" hittest="false">[\s\S]*?<Label class="SlotsFullLabel"[^>]*\/>[\s\S]*?<Label class="SlotsLockedLabel"[^>]*\/>/);
     assert.match(layout, /<Panel id="HudMini"[^>]*>[\s\S]*?<Panel id="HudMiniContents">[\s\S]*?<CitadelHudQuickbuyEntry id="QuickbuyNext" \/>/);
     assert.match(layout, /<Panel class="QuickbuyShopSummaryContainer">[\s\S]*?<Panel id="QuickbuyShopSummary" class="QuickbuyShopSummary" onmouseactivate="CitadelQuickbuyToggleShopQueue\(\)">/);
     assert.match(layout, /<CitadelModIcon id="QuickbuyShopSummaryModIcon" class="QuickbuyShopSummaryModIcon" hittest="false" \/>/);
@@ -65,12 +68,22 @@ test("quick-buy styles extend refreshed native resources without stale toggle se
     const baseOpenQueue = ruleBody(base, ".gShopOpen #CitadelHudQuickbuy.gQuickbuyShopShowQueue .QuickbuyQueueOuter");
     assert.match(baseOpenQueue, /opacity:\s*1;/);
 
-    const miniShell = ruleBody(base, "#HudMini");
-    assert.match(miniShell, /width:\s*74px;/);
-    assert.match(miniShell, /height:\s*94px;/);
-    const miniContents = ruleBody(base, "#HudMini #HudMiniContents");
-    assert.match(miniContents, /width:\s*70px;/);
-    assert.match(miniContents, /height:\s*70px;/);
+    // Valve owns mini-card dimensions. Keep checking the selectors we extend,
+    // without rejecting a native resource refresh merely for resizing the card.
+    ruleBody(base, "#HudMini");
+    ruleBody(base, "#HudMini #HudMiniContents");
+    for (const rule of cssRules(css)) {
+        if (rule.selectors.some((selector) => /#HudMini(?:\s|$)/.test(selector))) {
+            assert.doesNotMatch(rule.body, /(?:^|;)\s*(?:width|height)\s*:/,
+                "mini-card geometry must continue to come from the native baseline");
+        }
+    }
+
+    const enhancedMini = ruleBody(css, "#CitadelHudQuickbuy.enhanced_quickbuy_active #HudMini");
+    const previews = ruleBody(css, "#QuickbuyUpcomingPreviewContainer");
+    assert.match(enhancedMini, /horizontal-align:\s*left;/,
+        "enhanced first card shares left-aligned HUD coordinates with its companion previews");
+    assert.match(previews, /horizontal-align:\s*left;/);
 
     const narrowBuyQueue = ruleBody(css, ".support_4_3_active .gShopOpen #QuickbuyQueue");
     const narrowSellQueue = ruleBody(css, ".support_4_3_active .gShopOpen #QuickbuySellQueue");

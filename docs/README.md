@@ -21,21 +21,14 @@ For development setup, start with [Contributing](../CONTRIBUTING.md).
 | Reference | Purpose |
 | --- | --- |
 | [Testing](TESTING.md) | Offline checks and their limits |
+| [Build guide](../build_mod/README.md) | CSDK 12 setup and the maintainer build menu |
+| [Diagnostic tools](TOOLS.md) | Choose capture, trace, audit or client measurements |
+| [API validation](VALIDATION.md) | Checked names, evidence and CI coverage |
+| [Capture testing](CAPTURE_TESTING.md) | Import native trees and interpret replay limits |
 | [Client checklist](TEST_CHECKLIST.md) | Maintainer-run game verification |
 | [Releases and native updates](RELEASING.md) | Prepared ZIP publication, upstream reviews and notifications |
 | [Profiling](PROFILING.md) | Measurements and capture tooling |
 | [Performance guardrails](PERF_GUARDRAILS.md) | Polling, caching and rendering constraints |
 | [Game update audit](GAME_UPDATE_AUDIT.md) | Native resource review procedure |
 
-## Reports and Outstanding Work
-
-These documents retain evidence or unfinished checks, not additional runtime
-specifications. Their measurements and completion claims apply to the recorded
-source snapshots, not automatically to the current mod.
-
-- [Helper audit](HELPER_AUDIT.md)
-- [Profiler audit](PROFILER_AUDIT.md)
-- [Stutter investigation](STUTTER_INVESTIGATION.md)
-
-Removed migration plans and superseded release audits remain in Git history.
 Use current source exports and active XML includes as the technical authority.

@@ -134,7 +134,7 @@ function auditHud(cycles = 3) {
     const failures = errors(env);
     // HUD counts have legitimate delayed work. Report growth for investigation,
     // without asserting a universal one-loop-per-feature rule.
-    return { context: "hud-defaults-modelled-tree", enabled, phases, failures };
+    return { context: "hud-defaults-captured-tree", enabled, phases, failures };
 }
 
 function main(args) {

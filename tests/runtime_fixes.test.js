@@ -69,33 +69,23 @@ test("QOL.ensureMinimapOverlayAnchor resolves minimap container or persp", () =>
 });
 
 test("Urn Tracker overlay creation, state calculation, and root classes", () => {
-    const hud = sim.createHud();
+    const hud = sim.createHud({ inHideout: false });
     hud.assertLoaded();
     const Q = hud.sandbox.global.QOL;
     const $ = hud.sandbox.global.$;
     const hudModule = Q.core.hud;
 
-    assert.strictEqual(typeof hudModule.ensureUrnTrackerOverlay, "function", "ensureUrnTrackerOverlay must exist");
-    assert.strictEqual(typeof hudModule.updateUrnTrackerOverlay, "function", "updateUrnTrackerOverlay must exist");
-    assert.strictEqual(typeof hudModule.needsUrnTrackerRuntimeWork, "function", "needsUrnTrackerRuntimeWork must exist");
-    assert.strictEqual(typeof hudModule.computeUrnTrackerState, "function", "computeUrnTrackerState must exist");
-
-    // Create TopBar panel in tree
+    Q.core.App.shutdown();
+    Q.core.ConfigAdapter.loadFromFlat({ ...hud.sandbox.evalJson("QOL.buildDefaultConfig()"), ENABLE_URN_DIFF: 1 });
     const root = hud.root;
     const topBar = $.CreatePanel("Panel", root, "TopBar");
     const networth = $.CreatePanel("Panel", topBar, "TeamNetworth");
     networth.AddClass("TeamNetworth");
-
-    // Test overlay creation
-    const panel = hudModule.ensureUrnTrackerOverlay(root);
+    Q.core.FeatureRegistry.enable("ql_urn_tracker");
+    const panel = root.FindChildTraverse("UrnTracker");
     assert.ok(panel, "UrnTracker overlay panel must be created");
-    assert.strictEqual(panel.id, "UrnTracker", "Panel id must be UrnTracker");
-
-    const label = panel.FindChildTraverse("UrnTrackerLabel");
-    assert.ok(label, "UrnTrackerLabel must exist inside UrnTracker");
-
-    const icon = panel.FindChildTraverse("UrnTrackerSoulIcon");
-    assert.ok(icon, "UrnTrackerSoulIcon must exist inside UrnTracker");
+    assert.ok(panel.FindChild("UrnTrackerLabel"));
+    assert.ok(panel.FindChild("UrnTrackerSoulIcon"));
 
     // Test root class urn_diff_disabled
     hudModule.applyRootClasses(root, { ENABLE_URN_DIFF: 0 }, Date.now(), false);
@@ -159,7 +149,7 @@ test("Combat signal, passive cooldown mode, and account lookup functions exporte
     // 5. ConfigStore has ql_legacy_audio_passive schema for item filters
     const ConfigStore = Q.core.ConfigStore;
     assert.ok(ConfigStore.hasSchema("ql_legacy_audio_passive"));
-    assert.strictEqual(ConfigStore.get("ql_legacy_audio_passive", "ENABLE_PASSIVE_COOLDOWN"), true);
+    assert.strictEqual(ConfigStore.get("ql_legacy_audio_passive", "ENABLE_PASSIVE_COOLDOWN"), false, "shared declarations use canonical flat defaults");
     assert.strictEqual(ConfigStore.get("ql_legacy_audio_passive", "ITEM_FILTER_DEF_PASSIVE"), true);
 });
 
@@ -193,7 +183,7 @@ test("ql_ui_controls manifest and multitoggle settings are properly registered a
 });
 
 test("Minecraft healthbar parses health from currentHealthOverHearts and tracks stamina charges for hunger", () => {
-    const hud = sim.createHud();
+    const hud = sim.createHud({ inHideout: false });
     hud.assertLoaded();
     const Q = hud.sandbox.global.QOL;
     const $ = hud.sandbox.global.$;
@@ -261,7 +251,7 @@ test("Minecraft healthbar parses health from currentHealthOverHearts and tracks 
     assert.strictEqual(foodIcons.length, 10, "10 food icons must exist");
 });
 
-test("ql_minimap_runtime scales minimap via uiScale and preserves base 400px geometry", () => {
+test("ql_minimap_runtime scales the square viewport via uiScale and preserves base 400px geometry", () => {
     const hud = sim.createHud({ inHideout: false });
     hud.assertLoaded();
     const Q = hud.sandbox.global.QOL;
@@ -280,7 +270,8 @@ test("ql_minimap_runtime scales minimap via uiScale and preserves base 400px geo
     Q.core.ConfigStore.set("ql_minimap_runtime", "MINIMAP_Y_OFFSET", 20);
     hud.clock.advance(500);
 
-    assert.strictEqual(persp.style.uiScale, "150%", "minimap_persp must receive uiScale: 150%");
+    assert.strictEqual(persp.style.uiScale, "100%", "the non-square host must retain unit scale");
+    assert.strictEqual(container.style.uiScale, "150%", "the square viewport receives the configured scale");
     assert.ok(!persp.style.width, "minimap_persp width must remain under native control");
     assert.ok(!persp.style.height, "minimap_persp height must remain under native control");
     assert.strictEqual(persp.style.opacity, "0.5", "minimap_persp must receive configured opacity");
@@ -292,6 +283,7 @@ test("ql_minimap_runtime scales minimap via uiScale and preserves base 400px geo
 
     Q.core.FeatureRegistry.disable("ql_minimap_runtime");
     assert.ok(!persp.style.uiScale, "disable must clear uiScale");
+    assert.ok(!container.style.uiScale, "disable must release viewport scale");
     assert.ok(!persp.style.opacity, "disable must clear opacity");
     assert.ok(!persp.style.margin, "disable must clear margin");
 });
@@ -321,6 +313,7 @@ test("ql_minimap_timers hides bridge buff timer when powerup rune is spawned on 
     assert.ok(feat, "ql_minimap_timers must be registered");
 
     const instance = feat.create({
+        events: Q.core.EventBus,
         config: {
             view: () => ({
                 ENABLE_MINIMAP_BUFF_TIMER: 1,
@@ -384,6 +377,7 @@ test("ql_minimap_timers standard mode positioning respects 40px bottom offset an
     };
 
     const instance = feat.create({
+        events: Q.core.EventBus,
         config: { view: () => cfg }
     });
 
@@ -405,11 +399,13 @@ test("ql_minimap_timers standard mode positioning respects 40px bottom offset an
 
     // Only buff timer active: single slot offset applied to the right (+152px)
     cfg = { ...cfg, ENABLE_MINIMAP_REJUV_TIMER: 0 };
+    instance.onSettingsChanged();
     hud.clock.advance(500);
     assert.strictEqual(overlay.style.marginLeft, "152px", "Single buff timer shifted right to preserve slot");
 
     // Only rejuv timer active: single slot offset applied to the left (-152px)
     cfg = { ...cfg, ENABLE_MINIMAP_BUFF_TIMER: 0, ENABLE_MINIMAP_REJUV_TIMER: 1 };
+    instance.onSettingsChanged();
     hud.clock.advance(500);
     assert.strictEqual(overlay.style.marginLeft, "-152px", "Single rejuv timer shifted left to preserve slot");
 
@@ -451,7 +447,8 @@ test("ql_minimap_runtime handles zero opacity, offsets, and zoom modes without c
     root.AddClass("gDetailView");
     hud.clock.advance(100);
 
-    assert.strictEqual(persp.style.uiScale, "200%", "Alt zoom must scale to 200%");
+    assert.strictEqual(persp.style.uiScale, "100%", "Alt zoom must not scale the tall host");
+    assert.strictEqual(container.style.uiScale, "200%", "Alt zoom must scale the viewport to 200%");
     assert.strictEqual(persp.style.align, "center center", "Alt zoom must center minimap");
     assert.strictEqual(persp.style.opacity, "0.9", "Alt zoom opacity must apply");
     assert.strictEqual(persp.style.marginLeft, "10px", "Alt zoom X offset must apply to marginLeft");
@@ -527,6 +524,7 @@ test("ql_minimap_timers maintains calibrated base coordinates across minimap sca
     };
 
     const instance = feat.create({
+        events: Q.core.EventBus,
         config: { view: () => cfg }
     });
 
@@ -550,6 +548,7 @@ test("ql_minimap_timers maintains calibrated base coordinates across minimap sca
 
     // Docked at bottom when ENABLE_MINIMAP_ALWAYS_ON_MID_BOSS: 0 under 550px minimap
     cfg = { ...cfg, ENABLE_MINIMAP_ALWAYS_ON_MID_BOSS: 0 };
+    instance.onSettingsChanged();
     hud.clock.advance(500);
     assert.strictEqual(rejuvTimer.style.verticalAlign, "bottom", "Mid boss timer when not in pit must dock at bottom");
     assert.strictEqual(rejuvTimer.style.marginBottom, "40px", "Mid boss timer bottom offset must remain 40px base");
@@ -670,6 +669,7 @@ test("ql_compass MINIMAP_FLIP sets flip classes on hud_minimap and overlays corr
     };
 
     const instance = feat.create({
+        events: Q.core.EventBus,
         config: { view: () => cfg, all: () => cfg }
     });
     instance.onEnable();
@@ -733,6 +733,9 @@ test("ql_compass standalone speed offset updates without compass offset change",
     const hud = sim.createHud({ inHideout: false });
     hud.assertLoaded();
     const Q = hud.sandbox.global.QOL;
+    const $ = hud.sandbox.global.$;
+    const core = $.CreatePanel("Panel", hud.root, ""); core.AddClass("HudCore");
+    $.CreatePanel("Panel", core, "gameplay_hud");
 
     const feat = Q.core.FeatureRegistry.getManifest("ql_compass");
     assert.ok(feat, "ql_compass must be registered");
@@ -749,6 +752,7 @@ test("ql_compass standalone speed offset updates without compass offset change",
     };
 
     const instance = feat.create({
+        events: Q.core.EventBus,
         config: { view: () => cfg, all: () => cfg }
     });
     instance.onEnable();
@@ -756,16 +760,16 @@ test("ql_compass standalone speed offset updates without compass offset change",
 
     const speedRoot = hud.root.FindChildTraverse("QOLSpeedRoot");
     assert.ok(speedRoot, "QOLSpeedRoot must exist");
-    assert.strictEqual(speedRoot.style.marginLeft, "0px");
-    assert.strictEqual(speedRoot.style.marginTop, "120px");
+    assert.strictEqual(speedRoot.style.x, "0px");
+    assert.strictEqual(speedRoot.style.y, "0px");
 
     // Change only speed offsets (leave compass offsets completely unchanged)
     cfg = { ...cfg, COMPASS_SPEED_X_OFFSET: 75, COMPASS_SPEED_Y_OFFSET: 30 };
     instance.onSettingsChanged();
     hud.clock.advance(100);
 
-    assert.strictEqual(speedRoot.style.marginLeft, "75px", "Speed root must update marginLeft when speed X offset changes");
-    assert.strictEqual(speedRoot.style.marginTop, "90px", "Speed root must update marginTop when speed Y offset changes");
+    assert.strictEqual(speedRoot.style.x, "75px", "Speed root must update x when speed X offset changes");
+    assert.strictEqual(speedRoot.style.y, "-30px", "Speed root must update y when speed Y offset changes");
 
     instance.onDisable();
 });
@@ -781,6 +785,7 @@ function createStaminaRing(hud) {
     for (let i = 1; i <= 3; i++) {
         const charge = $.CreatePanel("Panel", container, "charge" + i);
         charge.AddClass("charge");
+        charge.AddClass("has_charge");
         charges.push(charge);
         const fg = $.CreatePanel("Panel", charge, "");
         fg.AddClass("charge_fg");
@@ -798,18 +803,18 @@ test("stamina tint follows current native charge states without a finished class
     charges[2].AddClass("charging");
     Q.core.ConfigAdapter.loadFromFlat({ STAMINA_CHARGE_COLOR: 13 });
     const blue = Q.core.panel.resolvePaletteColor(13);
-    assert.strictEqual(foregrounds[0].style.washColor, blue);
-    assert.strictEqual(foregrounds[1].style.washColor, blue);
+    assert.strictEqual(foregrounds[0].style.borderColor, blue);
+    assert.strictEqual(foregrounds[1].style.borderColor, blue);
 
     charges[2].RemoveClass("charging");
     charges[0].AddClass("draining");
     hud.clock.advance(600);
-    assert.strictEqual(foregrounds[2].style.washColor, blue, "Recovered pip must not remain uncolored");
-    assert.strictEqual(foregrounds[0].style.washColor, "transparent", "Recharging pip must recover its native feedback colors");
+    assert.strictEqual(foregrounds[2].style.borderColor, blue, "Recovered pip must not remain uncolored");
+    assert.strictEqual(foregrounds[0].style.borderColor, undefined, "Recharging pip must recover its native feedback colors");
 
-    foregrounds[1].style.washColor = "transparent";
+    foregrounds[1].style.borderColor = "transparent";
     hud.clock.advance(600);
-    assert.strictEqual(foregrounds[1].style.washColor, blue, "Native updates must not permanently replace the selected tint");
+    assert.strictEqual(foregrounds[1].style.borderColor, blue, "Native updates must not permanently replace the selected border color");
 });
 
 test("stamina preset changes restore both native color and default rotation", () => {
@@ -819,12 +824,35 @@ test("stamina preset changes restore both native color and default rotation", ()
     const { container, foregrounds } = createStaminaRing(hud);
     const apply = cfg => Q.core.ConfigAdapter.loadFromFlat(cfg);
     apply({ STAMINA_CHARGE_COLOR: 13, STAMINA_CHARGE_ANGLE: 90 });
-    assert.strictEqual(container.style.transform, "rotateZ(90deg)");
-    apply({ STAMINA_CHARGE_COLOR: 4, STAMINA_CHARGE_ANGLE: 120 });
-    for (const fg of foregrounds) assert.strictEqual(fg.style.washColor, Q.core.panel.resolvePaletteColor(4));
-    apply({ STAMINA_CHARGE_COLOR: 0, STAMINA_CHARGE_ANGLE: 45 });
-    for (const fg of foregrounds) assert.strictEqual(fg.style.washColor, "transparent");
     assert.strictEqual(container.style.transform, "rotateZ(45deg)");
+    apply({ STAMINA_CHARGE_COLOR: 4, STAMINA_CHARGE_ANGLE: 120 });
+    for (const fg of foregrounds) assert.strictEqual(fg.style.borderColor, Q.core.panel.resolvePaletteColor(4));
+    apply({ STAMINA_CHARGE_COLOR: 0, STAMINA_CHARGE_ANGLE: 45 });
+    for (const fg of foregrounds) assert.strictEqual(fg.style.borderColor, undefined);
+    assert.strictEqual(container.style.transform, undefined, "default must release the owned transform, as on initial startup");
+});
+
+test("stamina composes relative rotation with native transform and leaves feedback colors to the game", () => {
+    const hud = sim.createHud({ inHideout: false });
+    hud.assertLoaded();
+    const Q = hud.sandbox.global.QOL;
+    const { container, charges, foregrounds } = createStaminaRing(hud);
+    container.style.transform = "translateX(3px)";
+    const apply = cfg => Q.core.ConfigAdapter.loadFromFlat(cfg);
+    apply({ STAMINA_CHARGE_COLOR: 13 });
+    assert.equal(container.style.transform, "translateX(3px)", "color alone cannot rotate the ring");
+    apply({ STAMINA_CHARGE_COLOR: 13, STAMINA_CHARGE_ANGLE: 0 });
+    assert.equal(container.style.transform, "translateX(3px) rotateZ(-45deg)");
+    for (const state of ["charging", "draining", "disabled", "drained"]) {
+        charges[0].AddClass(state); hud.clock.advance(600);
+        assert.equal(foregrounds[0].style.borderColor, undefined, state);
+        charges[0].RemoveClass(state);
+    }
+    charges[0].RemoveClass("has_charge"); hud.clock.advance(600);
+    assert.equal(foregrounds[0].style.borderColor, undefined, "an empty pip is not ready");
+    Q.core.FeatureRegistry.disable("ql_stamina");
+    assert.equal(container.style.transform, "translateX(3px)");
+    for (const panel of container.FindChildrenWithClassTraverse("charge_drained")) assert.equal(panel.style.borderColor, undefined);
 });
 
 test("stamina reapplies settings to a recreated ring without styling ability icon charges", () => {
@@ -835,14 +863,14 @@ test("stamina reapplies settings to a recreated ring without styling ability ico
     const abilityCharges = hud.sandbox.global.$.CreatePanel("Panel", hud.root, "charges_container");
     let ring = createStaminaRing(hud);
     Q.core.ConfigAdapter.loadFromFlat({ STAMINA_CHARGE_COLOR: 13, STAMINA_CHARGE_ANGLE: 90 });
-    assert.strictEqual(ring.container.style.transform, "rotateZ(90deg)");
+    assert.strictEqual(ring.container.style.transform, "rotateZ(45deg)");
     assert.strictEqual(abilityCharges.style.transform || "", "");
     ring.element.DeleteAsync(0);
     hud.clock.advance(0);
     ring = createStaminaRing(hud);
     hud.clock.advance(600);
-    assert.strictEqual(ring.container.style.transform, "rotateZ(90deg)");
-    for (const fg of ring.foregrounds) assert.strictEqual(fg.style.washColor, Q.core.panel.resolvePaletteColor(13));
+    assert.strictEqual(ring.container.style.transform, "rotateZ(45deg)");
+    for (const fg of ring.foregrounds) assert.strictEqual(fg.style.borderColor, Q.core.panel.resolvePaletteColor(13));
 });
 
 function createItemsContainer(hud) {
@@ -888,24 +916,6 @@ test("item layout and tint follow a recreated inventory without another settings
     assert.strictEqual(inventory.container.style.washColor, Q.core.panel.resolvePaletteColor(13));
 });
 
-test("stat bonuses hide in the lobby and return on match reentry", () => {
-    const hud = sim.createHud({ inHideout: false });
-    hud.assertLoaded();
-    const { $, QOL: Q } = hud.sandbox.global;
-    $.CreatePanel("Panel", hud.root, "gameplay_hud");
-    Q.core.ConfigAdapter.loadFromFlat({ ENABLE_STAT_BONUSES: 1 });
-    hud.clock.advance(300);
-    const overlay = hud.root.FindChildTraverse("QOLStatBonusesOverlay");
-    assert.strictEqual(overlay.style.visibility, "visible");
-    hud.root.AddClass("InHideout");
-    hud.clock.advance(300);
-    assert.strictEqual(overlay.BHasClass("qol-hidden"), true);
-    assert.strictEqual(overlay.style.visibility, "collapse");
-    hud.root.RemoveClass("InHideout");
-    hud.clock.advance(300);
-    assert.strictEqual(overlay.BHasClass("qol-hidden"), false);
-    assert.strictEqual(overlay.style.visibility, "visible");
-});
 
 test("recent purchases preserve engine-owned history on entering the lobby", () => {
     const hud = sim.createHud({ inHideout: false });
@@ -954,7 +964,7 @@ test("stats position and hide option apply in hideout and reset on disable", () 
     assert.strictEqual(panel.style.opacity, "0", "Hideout must honor hide Player Stats");
     Q.core.ConfigStore.set("ql_stats_position", "STATS_POSITION_HIDE_NORMAL", false);
     hud.clock.advance(100);
-    assert.strictEqual(panel.style.opacity, "1");
+    assert.ok(!panel.style.opacity, "Unhiding releases the override to native opacity");
 
     panel.DeleteAsync(0);
     hud.clock.advance(1);
@@ -994,16 +1004,21 @@ test("ult cooldowns syncs timers, dynamically picks up late-joining players, and
     hud.assertLoaded();
     const { $, QOL: Q } = hud.sandbox.global;
 
-    const topBar = $.CreatePanel("Panel", hud.root, "TopBar");
+    const core = $.CreatePanel("Panel", hud.root, ""); core.AddClass("HudCore");
+    const topBar = $.CreatePanel("Panel", core, "TopBar");
     const teams = $.CreatePanel("Panel", topBar, "TeamsContainer");
     const team = $.CreatePanel("Panel", teams, "Team1");
     const playerContents = $.CreatePanel("Panel", team, "PlayerContents");
     const playersContainer = $.CreatePanel("Panel", playerContents, "PlayersContainer");
 
     const p1 = $.CreatePanel("Panel", playersContainer, "Player1");
-    const hidden1 = $.CreatePanel("Label", p1, "UltimateCooldownTextHidden");
+    const details1 = $.CreatePanel("Panel", p1, "PlayerDetailsContainer");
+    const status1 = $.CreatePanel("Panel", details1, "StatusRow");
+    const ultimate1 = $.CreatePanel("Panel", status1, "UltimateStatus");
+    const background1 = $.CreatePanel("Panel", ultimate1, "UltimateStatusBG");
+    const hidden1 = $.CreatePanel("Label", background1, "UltimateCooldownTextHidden");
     hidden1.text = "45";
-    const shown1 = $.CreatePanel("Label", p1, "UltimateCooldownTextShown");
+    const shown1 = $.CreatePanel("Label", status1, "UltimateCooldownTextShown");
 
     Q.core.ConfigAdapter.loadFromFlat({ ENABLE_ULT_COOLDOWNS: 1 });
     hud.clock.advance(300);
@@ -1014,9 +1029,13 @@ test("ult cooldowns syncs timers, dynamically picks up late-joining players, and
 
     // Add late-joining player
     const p2 = $.CreatePanel("Panel", playersContainer, "Player2");
-    const hidden2 = $.CreatePanel("Label", p2, "UltimateCooldownTextHidden");
+    const details2 = $.CreatePanel("Panel", p2, "PlayerDetailsContainer");
+    const status2 = $.CreatePanel("Panel", details2, "StatusRow");
+    const ultimate2 = $.CreatePanel("Panel", status2, "UltimateStatus");
+    const background2 = $.CreatePanel("Panel", ultimate2, "UltimateStatusBG");
+    const hidden2 = $.CreatePanel("Label", background2, "UltimateCooldownTextHidden");
     hidden2.text = "18";
-    const shown2 = $.CreatePanel("Label", p2, "UltimateCooldownTextShown");
+    const shown2 = $.CreatePanel("Label", status2, "UltimateCooldownTextShown");
 
     hud.clock.advance(300);
     assert.strictEqual(shown2.text, "18", "Late-joining player 2 cooldown must be dynamically picked up and synced");

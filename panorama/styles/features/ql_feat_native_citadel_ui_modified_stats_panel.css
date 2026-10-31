@@ -1,0 +1,10 @@
+/* QOLLOCK overrides for citadel_ui_modified_stats_panel.css; loaded after the native baseline. */
+
+.gScoreboardOpen .AffectedAbility,.gScoreboardOpen .AffectedItem,.gScoreboardOpen .AffectedStat
+{
+	width: 100%;
+	height: fit-children;
+	flow-children: right;
+	margin: 5px 0px;
+	ui-scale: 100%;
+}

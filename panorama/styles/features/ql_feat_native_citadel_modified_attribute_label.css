@@ -1,0 +1,13 @@
+/* QOLLOCK overrides for citadel_modified_attribute_label.css; loaded after the native baseline. */
+
+.simplify_shop_stats_active #TestPanel .LabelsContainer
+{
+	ui-scale: 150%;
+	margin-top: 2px;
+}
+
+/* 4:3 support overrides */
+.support_4_3_active #BaseLabel
+{
+	max-height: 25px;
+}

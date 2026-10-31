@@ -80,21 +80,21 @@
 		color: blueAPTextColor;
 		text-shadow: 0px 0px 0px 4.4 offBlack;
 	}
-
+	
 	25%
 	{
 		transform: scaleX(1.05) scaleY(1.05);
 		color: blueAPTextColor;
 		text-shadow: 0px 0px 0px 5.0 offBlack;
 	}
-
+	
 	100%
 	{
 		transform: scaleX(1) scaleY(1);
 		color: blueAPTextColor;
 		text-shadow: 0px 0px 0px 4.0 offBlack;
 	}
-
+	
 }
 
 @keyframes 'animGoldIncreaseEvent_med'
@@ -105,21 +105,21 @@
 		color: offWhite;
 		text-shadow: 0px 0px 0px 5.0 blueAPTextColor;
 	}
-
+	
 	25%
 	{
 		transform: scaleX(1.1) scaleY(1.1);
 		color: offWhite;
 		text-shadow: 0px 0px 0px 6.0 blueAPTextColor;
 	}
-
+	
 	100%
 	{
 		transform: scaleX(1) scaleY(1);
 		color: blueAPTextColor;
 		text-shadow: 0px 0px 0px 4.0 offBlack;
 	}
-
+	
 }
 
 @keyframes 'animGoldIncreaseEvent_max'
@@ -130,21 +130,21 @@
 		color: offWhite;
 		text-shadow: 0px 0px 0px 6.0 blueAPTextColor;
 	}
-
+	
 	25%
 	{
 		transform: scaleX(1.2) scaleY(1.2);
 		color: colorGold;
 		text-shadow: 0px 0px 0px 7.0 blueAPTextColor;
 	}
-
+	
 	100%
 	{
 		transform: scaleX(1) scaleY(1);
 		color: blueAPTextColor;
 		text-shadow: 0px 0px 0px 4.0 offBlack;
 	}
-
+	
 }
 
 .goldDecreaseEvent_Min .CurrencyLabel
@@ -173,21 +173,21 @@
 		color: offBlack;
 		text-shadow: 0px 0px 0px 4.0 colorEnemy;
 	}
-
+	
 	50%
 	{
 		transform: scaleX(0.9) scaleY(0.9);
 		color: offBlack;
 		text-shadow: 0px 0px 0px 10.0 colorEnemy;
 	}
-
+	
 	100%
 	{
 		transform: scaleX(1) scaleY(1);
 		color: blueAPTextColor;
 		text-shadow: 0px 0px 0px 4.0 offBlack;
 	}
-
+	
 }
 
 @keyframes 'animGoldDecreaseEvent_med'
@@ -198,21 +198,21 @@
 		color: offBlack;
 		text-shadow: 0px 0px 0px 4.0 colorEnemy;
 	}
-
+	
 	50%
 	{
 		transform: scaleX(0.9) scaleY(0.9);
 		color: offBlack;
 		text-shadow: 0px 0px 0px 10.0 colorEnemy;
 	}
-
+	
 	100%
 	{
 		transform: scaleX(1) scaleY(1);
 		color: blueAPTextColor;
 		text-shadow: 0px 0px 0px 4.0 offBlack;
 	}
-
+	
 }
 
 @keyframes 'animGoldDecreaseEvent_max'
@@ -223,21 +223,21 @@
 		color: offBlack;
 		text-shadow: 0px 0px 0px 7.0 colorEnemy;
 	}
-
+	
 	50%
 	{
 		transform: scaleX(0.9) scaleY(0.9);
 		color: offBlack;
 		text-shadow: 0px 0px 0px 10.0 colorEnemy;
 	}
-
+	
 	100%
 	{
 		transform: scaleX(1) scaleY(1);
 		color: blueAPTextColor;
 		text-shadow: 0px 0px 0px 4.0 offBlack;
 	}
-
+	
 }
 
 #HudCurrentAPContainer .CurrencyLabel
@@ -292,6 +292,36 @@
 #CurrentGoldAmount:hover
 {
 	sound: soundMainMenuHover;
+}
+
+@keyframes 'high_unspent_souls_pulse'
+{
+	0%
+	{
+		brightness: 1;
+		pre-transform-scale2d: 1;
+	}
+	
+	50%
+	{
+		brightness: 1.6;
+		pre-transform-scale2d: 1.08;
+	}
+	
+	100%
+	{
+		brightness: 1;
+		pre-transform-scale2d: 1;
+	}
+	
+}
+
+.gHighUnspentSouls #CurrentGoldAmount
+{
+	animation-name: high_unspent_souls_pulse;
+	animation-duration: 1.5s;
+	animation-timing-function: ease-in-out;
+	animation-iteration-count: infinite;
 }
 
 #hudCurGoldIcon
@@ -408,17 +438,17 @@
 	{
 		color: colorEnemy;
 	}
-
+	
 	50%
 	{
 		color: shardColor;
 	}
-
+	
 	100%
 	{
 		color: colorEnemy;
 	}
-
+	
 }
 
 @keyframes 'death_penalty_danger_pulse'
@@ -427,17 +457,17 @@
 	{
 		opacity: 0.2;
 	}
-
+	
 	50%
 	{
 		opacity: 1;
 	}
-
+	
 	100%
 	{
 		opacity: 0.2;
 	}
-
+	
 }
 
 .death_penalty_gold_danger_level_2 .hudDeathGoldContainer
@@ -506,17 +536,17 @@
 	{
 		opacity: 1;
 	}
-
+	
 	50%
 	{
 		opacity: 1;
 	}
-
+	
 	100%
 	{
 		opacity: 0;
 	}
-
+	
 }
 
 #death_penalty_gold_flash

@@ -1,0 +1,25 @@
+/* QOLLOCK overrides for citadel_db_page_shared.css; loaded after the native baseline. */
+
+#MatchTitle
+{
+	margin-left: 0px;
+}
+
+.GameMode
+{
+	font-size: 26px;
+	font-family: serif;
+	opacity: 0.6;
+}
+
+.GameModeRank
+{
+	font-family: serif;
+}
+
+#FooterBar
+{
+	height: 100px;
+	flow-children: right;
+	padding: 0px 50px 30px 50px;
+}

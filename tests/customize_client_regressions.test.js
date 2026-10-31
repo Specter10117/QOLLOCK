@@ -1,0 +1,292 @@
+"use strict";
+const test = require("node:test");
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
+const load = require("./load_settings_environment");
+const startDrag = require("./customize_drag_fixture");
+const setup = () => { const env = load(); env.global.QOL.ui.window.setOpen(true); env.clock.advance(500); return env; };
+const activate = (env, id) => { const p = env.em.FindChildTraverse(id); assert.ok(p, id); p._fire("onactivate"); };
+const add = (env, parent, id, classes = []) => parent.addChild(env.doc.create("Panel", { id, classes }));
+const rect = (panel, width, height, x = 0, y = 0) => Object.assign(panel, {
+    actuallayoutwidth: width, actuallayoutheight: height, actualxoffset: x, actualyoffset: y
+});
+const clean = env => { assert.deepEqual(env.doc.eventErrors, []); assert.deepEqual(env.clock.errors, []); };
+
+test("captured coexisting stats owners select and move the visible modern compact block", () => {
+    const env = setup();
+    // The native October capture has both owners. Its legacy HudStatBlock is
+    // collapsed by CSS; its active owner has the visible compact HudStatBlock.
+    const capture = JSON.parse(fs.readFileSync(path.join(__dirname, "../tests/fixtures/hud/2026-10-03-hero-testing.json"), "utf8"));
+    const find = (node, id) => node.id === id ? node : (node.children || []).map(child => find(child, id)).find(Boolean);
+    for (const id of ["hudPlayerStats", "hudActivePlayerStats"]) {
+        assert.ok(find(find(capture.domTree, id), "HudStatBlock"), "captured owner: " + id);
+    }
+    const core = add(env, env.hud.root, "", ["HudCore"]);
+    const left = add(env, add(env, core, "StatsAndModsContainer"), "LowerLeft");
+    const legacy = add(env, left, "hudPlayerStats");
+    const collapsed = add(env, legacy, "HudStatBlock"); collapsed.style.visibility = "collapse";
+    const active = rect(add(env, core, "hudActivePlayerStats"), 1920, 1080);
+    const block = rect(add(env, active, "HudStatBlock"), 270, 80, 20, 720);
+    const list = rect(add(env, active, "StatList"), 1920, 1080);
+    rect(add(env, list, "", ["miniModifier"]), 1920, 1080);
+    env.global.QOL.ui.customize.start();
+    const frame = env.em.FindChildTraverse("QOLCustomizeFrame_playerStats");
+    assert.equal(frame.visible, true);
+    assert.equal(frame.style.width, "270px"); assert.equal(frame.style.height, "80px");
+    const gesture = startDrag(env, frame);
+    assert.ok(gesture);
+    startDrag.end(env, frame, gesture);
+    assert.ok(env.em.FindChildTraverse("QOLCustomize_STATS_POSITION_X_OFFSET"));
+    const proxy = startDrag(env, frame);
+    proxy.actualxoffset += 700; proxy.actualyoffset -= 650;
+    startDrag.end(env, frame, frame); env.clock.advance(1200);
+    assert.equal(active.style.x, "700px"); assert.equal(active.style.y, "-650px");
+    assert.equal(legacy.style.x, "700px", "coexisting compact and effects owners share placement");
+    assert.equal(block.GetParent(), active);
+    activate(env, "QOLCustomizeCancel"); env.clock.advance(1200);
+    assert.equal(active.style.x, undefined); assert.equal(legacy.style.x, undefined); clean(env);
+});
+
+test("stamina is hoverable before catalog selection and never measures other ability charges", () => {
+    const env = setup();
+    const core = add(env, env.hud.root, "", ["HudCore"]);
+    const gameplay = add(env, core, "gameplay_hud");
+    const crosshair = add(env, add(env, gameplay, "gameplay_hud_alive"), "crosshair");
+    const charges = add(env, add(env, crosshair, "dash", ["ability_element_charges", "active"]), "charges_container");
+    rect(add(env, add(env, charges, "", ["charge", "has_charge"]), "progress", ["charge_fg"]), 125, 125, 850, 480);
+    rect(add(env, add(env, core, "ActiveAbilitiesMenu"), "charges_container"), 600, 600);
+    env.global.QOL.ui.customize.start();
+    const frame = env.em.FindChildTraverse("QOLCustomizeFrame_stamina");
+    assert.equal(frame.visible, true);
+    assert.equal(frame.style.width, "125px");
+    const gesture = startDrag(env, frame);
+    assert.ok(gesture);
+    startDrag.end(env, frame, gesture);
+    assert.ok(env.em.FindChildTraverse("QOLCustomize_STAMINA_CHARGE_ANGLE"));
+    activate(env, "QOLCustomizeCancel"); clean(env);
+});
+
+test("settings-only owners cannot cover healthbar, top bar or left-side HUD with drag frames", () => {
+    const env = setup();
+    const core = add(env, env.hud.root, "", ["HudCore"]);
+    const gameplay = add(env, core, "gameplay_hud");
+    rect(add(env, gameplay, "health_and_abilities_container"), 300, 450, 315, 605);
+    const left = add(env, add(env, core, "StatsAndModsContainer"), "LowerLeft");
+    rect(add(env, left, "CitadelHudQuickbuy"), 365, 1080);
+    rect(add(env, core, "TopBar"), 1920, 1080);
+    env.global.QOL.ui.customize.start();
+    for (const id of ["healthWarnings", "quickbuy", "objectives", "nicknames", "ranks", "ultimates", "topBarWarnings", "urn", "buffTimers", "abilities"]) {
+        const frame = env.em.FindChildTraverse("QOLCustomizeFrame_" + id);
+        assert.equal(frame, null, id + " must not intercept input");
+        assert.equal(env.em.FindChildTraverse("QOLCustomizeSelect_" + id), null, id + " belongs in its own settings section");
+    }
+    assert.equal(env.em.FindChildTraverse("QOLCustomizeFrame_healthbar").visible, true);
+    activate(env, "QOLCustomizeCancel"); env.clock.advance(500);
+    env.global.QOL.ui.customize.start(null, { elementId: "healthWarnings" });
+    assert.ok(env.em.FindChildTraverse("QOLCustomize_ENABLE_COLOR_WARNING_25"), "controls remain available from scoped settings");
+    activate(env, "QOLCustomizeCancel"); clean(env);
+});
+
+test("minimap and shop corners edit existing size/scale fields without moving their native owners", () => {
+    for (const mode of ["base", "alt", "tab", "shop"]) {
+        const env = setup();
+        const core = add(env, env.hud.root, "", ["HudCore"]);
+        const gameplay = add(env, core, "gameplay_hud");
+        let target, id, key, feature;
+        if (mode === "shop") {
+            target = rect(add(env, add(env, add(env, core, "CitadelHudHeroShop"), "Shop"), "MainPanel"), 400, 400);
+            id = "shop"; key = "SHOP_SCALE"; feature = "ql_heroshop";
+        } else {
+            const host = add(env, add(env, gameplay, "", ["clamp_width"]), "minimap_persp");
+            rect(add(env, host, "minimap_container"), 400, 400);
+            if (mode !== "base") {
+                env.global.MOD_CONFIG["ENABLE_" + mode.toUpperCase() + "_ZOOM"] = 1;
+                host.AddClass(mode === "alt" ? "gDetailView" : "gScoreboardOpen");
+            }
+            target = host; id = mode === "base" ? "minimap" : "minimap" + (mode === "alt" ? "Alt" : "Tab");
+            key = mode === "base" ? "MINIMAP_SMALL_SIZE" : "MINIMAP_LARGE_SIZE_" + mode.toUpperCase();
+            feature = "ql_minimap_runtime";
+        }
+        const parent = target.GetParent(), initial = env.global.MOD_CONFIG[key];
+        env.global.QOL.ui.customize.start(); activate(env, "QOLCustomizeSelect_" + id);
+        const handle = env.em.FindChildTraverse("QOLCustomizeResize_" + id);
+        assert.equal(handle.visible, true, mode);
+        const frame = handle.GetParent();
+        const proxy = startDrag(env, handle);
+        proxy.actualxoffset += 80; proxy.actualyoffset += 80;
+        startDrag.end(env, handle, proxy); env.clock.advance(3000);
+        const catalog = env.global.QOL.presentation;
+        assert.equal(env.hud.sandbox.global.QOL.core.ConfigStore.get(feature, key), catalog.normalize(key, initial * 1.2), mode);
+        assert.equal(target.GetParent(), parent);
+        assert.equal(handle.GetParent(), frame);
+        assert.equal(proxy.IsValid(), false);
+        activate(env, "QOLCustomizeCancel"); clean(env);
+    }
+});
+
+for (const mode of ["base", "alt", "tab"]) test(`${mode} minimap drag keeps native margins and the frame at pointer intent`, () => {
+    const env = setup(), Q = env.global.QOL, G = Q.ui.customizeGeometry;
+    const core = add(env, env.hud.root, "", ["HudCore"]);
+    const gameplay = add(env, core, "gameplay_hud");
+    const parent = rect(add(env, gameplay, "", ["clamp_width"]), 1920, 1080);
+    const host = add(env, parent, "minimap_persp");
+    const container = rect(add(env, host, "minimap_container"), 400, 400, 400, 300);
+    const zoomed = mode !== "base", suffix = mode.toUpperCase();
+    if (zoomed) {
+        env.global.MOD_CONFIG["ENABLE_" + suffix + "_ZOOM"] = 1;
+        host.AddClass(mode === "alt" ? "gDetailView" : "gScoreboardOpen");
+    }
+    const id = zoomed ? "minimap" + (mode === "alt" ? "Alt" : "Tab") : "minimap";
+    const xKey = zoomed ? "ZOOM_X_OFFSET_" + suffix : "MINIMAP_X_OFFSET";
+    const yKey = zoomed ? "ZOOM_Y_OFFSET_" + suffix : "MINIMAP_Y_OFFSET";
+    env.global.SaveAndSync(); env.clock.advance(1500);
+    Q.ui.customize.start(null, { elementId: id });
+    rect(env.em.FindChildTraverse("QOLCustomizeEditor"), 1920, 1080);
+    activate(env, "QOLCustomizeToggleSnap");
+    const frame = env.em.FindChildTraverse("QOLCustomizeFrame_" + id);
+    const outline = frame.Children().find(child => child.BHasClass("QOLCustomizeOutline"));
+    const beforeX = parseFloat(frame.style.x) + parseFloat(outline.style.x);
+    const beforeY = parseFloat(frame.style.y) + parseFloat(outline.style.y);
+    const proxy = startDrag(env, frame);
+    proxy.actualxoffset += 100; proxy.actualyoffset += 60;
+    env.clock.advance(500);
+    const store = env.hud.sandbox.global.QOL.core.ConfigStore;
+    assert.equal(store.get("ql_minimap_runtime", xKey), zoomed ? 200 : 100);
+    assert.equal(store.get("ql_minimap_runtime", yKey), zoomed ? -120 : -60);
+    assert.equal(parseFloat(frame.style.x) + parseFloat(outline.style.x), beforeX + 100);
+    assert.equal(parseFloat(frame.style.y) + parseFloat(outline.style.y), beforeY + 60);
+    // Model only Panorama's centered-margin equation, not its layout engine.
+    if (zoomed) {
+        assert.equal((parseFloat(host.style.marginLeft) - parseFloat(host.style.marginRight)) / 2, 100);
+        assert.equal((parseFloat(host.style.marginTop) - parseFloat(host.style.marginBottom)) / 2, 60);
+    } else {
+        assert.equal(parseFloat(host.style.marginRight), -70);
+        assert.equal(parseFloat(host.style.marginBottom), -30);
+    }
+    const element = Q.presentation.elements.find(item => item.id === id);
+    const field = element.fields.find(item => item.axis === "x");
+    const sliderBounds = G.positionSliderBounds(field, { target: host, host: frame.GetParent(),
+        values: { [xKey]: 0 }, bounds: { x: 400, y: 300, width: 400, height: 400 },
+        view: { x: 0, y: 0, width: 1920, height: 1080 } });
+    assert.equal(sliderBounds.min, zoomed ? -800 : -400);
+    assert.equal(sliderBounds.max, zoomed ? 2240 : 1120);
+    startDrag.end(env, frame, proxy);
+    container.actualxoffset = 500; container.actualyoffset = 360;
+    env.clock.advance(500);
+    assert.equal(!!env.em.FindChildTraverse("QOLCustomizeRecover"), false);
+    assert.equal(store.get("ql_minimap_runtime", yKey), zoomed ? -120 : -60, "native layout preserves the accepted offset");
+    assert.equal(store.get("ql_minimap_runtime", xKey), zoomed ? 200 : 100);
+    parent.actualuiscale_x = 2; parent.actualuiscale_y = 2;
+    const scaled = G.dragValues(element, host, { [xKey]: 0, [yKey]: 0 }, { x: 100, y: 60 });
+    assert.equal(scaled[xKey], zoomed ? 100 : 50);
+    assert.equal(scaled[yKey], zoomed ? -60 : -30);
+    activate(env, "QOLCustomizeCancel"); env.clock.advance(1200);
+    assert.equal(store.get("ql_minimap_runtime", xKey), 0);
+    assert.equal(store.get("ql_minimap_runtime", yKey), 0);
+    clean(env);
+});
+
+test("layout ratio supplies coordinate density when native actualuiscale properties are absent", () => {
+    const env = setup();
+    const g = env.global.QOL.ui.customizeGeometry;
+    const host = rect(add(env, env.em, "DensityHost"), 400, 300);
+    host.desiredlayoutwidth = 200; host.desiredlayoutheight = 100;
+    host.actualuiscale_x = undefined; host.actualuiscale_y = undefined;
+    const child = rect(add(env, host, "DensityChild"), 160, 90, 40, 60);
+    const box = g.box(child, host);
+    assert.equal(box.x, 20); assert.equal(box.y, 20);
+    assert.equal(box.width, 80); assert.equal(box.height, 30);
+    const element = env.global.QOL.presentation.elements.find(item => item.id === "souls");
+    assert.deepEqual(Object.fromEntries(Object.entries(g.dragValues(element, child, env.global.MOD_CONFIG, { x: 40, y: 60 }))), {
+        SOULS_X_OFFSET: 20, SOULS_Y_OFFSET: -20
+    });
+});
+
+test("Ability Points has independent geometry and keeps native color when Abilities is tinted", () => {
+    const env = setup();
+    const core = add(env, env.hud.root, "", ["HudCore"]);
+    const abilities = add(env, core, "AbilitiesContainer");
+    const ap = rect(add(env, abilities, "APContainer"), 54, 24, 940, 1050);
+    const icon = add(env, add(env, ap, "", ["APValues"]), "hudAPInfinite");
+    env.global.QOL.ui.customize.start();
+    const frame = env.em.FindChildTraverse("QOLCustomizeFrame_abilityPoints");
+    assert.equal(frame.visible, true);
+    assert.equal(frame.style.width, "64px", "tiny AP gets a usable hit target");
+    assert.equal(frame.Children().find(child => child.BHasClass("QOLCustomizeOutline")).style.width, "54px", "outline keeps measured geometry");
+    const gesture = startDrag(env, frame);
+    assert.ok(gesture);
+    startDrag.end(env, frame, gesture);
+    assert.equal(env.em.FindChildTraverse("QOLCustomize_BOTTOM_BAR_WASH_COLOR"), null, "AP cannot edit Abilities color");
+    const bar = rect(add(env, abilities, "hud_signature"), 240, 80, 400, 900);
+    icon.style.washColor = "#123456";
+    activate(env, "QOLCustomizeSelect_bottomBar");
+    assert.equal(env.em.FindChildTraverse("QOLCustomizeSelect_bottomBar").GetChild(0).text, "Abilities");
+    activate(env, "QOLCustomizeColor_BOTTOM_BAR_WASH_COLOR_13"); env.clock.advance(1200);
+    assert.equal(bar.style.washColor, env.global.QOL_UTILS.ResolveWashColorFromPalette(13));
+    assert.equal(icon.style.washColor, "#123456", "AP retains its native wash");
+    assert.equal(ap.style.x, undefined, "selecting AP must not apply the signature bar's offsets");
+    activate(env, "QOLCustomizeCancel"); env.clock.advance(1200);
+    assert.equal(icon.style.washColor, "#123456", "Cancel also leaves independent AP color alone");
+    clean(env);
+});
+
+test("clicking the canvas or native background during customization preserves the editor and its draft", () => {
+    const env = load();
+    const background = add(env, env.em, "EscapeBackground");
+    env.clock.advance(500); env.global.QOL.ui.window.setOpen(true); env.clock.advance(500);
+    env.global.QOL.ui.customize.start();
+    const overlay = env.em.FindChildTraverse("QOLCustomizeEditor");
+    assert.equal(overlay.hittest, true);
+    const input = env.em.FindChildTraverse("QOLCustomize_SOULS_X_OFFSET"); input.text = "150"; input._fire("oninputsubmit");
+    overlay._fire("onactivate"); background._fire("onactivate");
+    assert.equal(env.global.QOL.ui.customize.isRunning(), true);
+    assert.equal(input.text, "150");
+    activate(env, "QOLCustomizeCancel");
+    background._fire("onactivate");
+    assert.equal(env.global.QOL.ui.window.isOpen(), false, "ordinary settings keep their background-close behavior"); clean(env);
+});
+
+test("palette choices, typed HEX on blur, undo and default all edit the same draft", () => {
+    const env = setup(); env.global.QOL.ui.customize.start(); activate(env, "QOLCustomizeSelect_ammo");
+    const palette = env.em.FindChildTraverse("QOLCustomizePalette_AMMO_TEXT_COLOR");
+    assert.equal(palette.FindChildrenWithClassTraverse("QOLCustomizeColorChoice").length, 29);
+    activate(env, "QOLCustomizeColor_AMMO_TEXT_COLOR_13"); env.clock.advance(500);
+    const store = env.hud.sandbox.global.QOL.core.ConfigStore;
+    assert.equal(store.get("ql_ammo", "AMMO_TEXT_COLOR"), 13);
+    const input = env.em.FindChildTraverse("QOLCustomize_AMMO_TEXT_COLOR");
+    input.text = "#123ABC"; input._fire("onblur"); env.clock.advance(500);
+    assert.equal(env.global.QOL_UTILS.DecodeHexColor(store.get("ql_ammo", "AMMO_TEXT_COLOR")), "#123ABC");
+    activate(env, "QOLCustomizeUndo"); env.clock.advance(500);
+    assert.equal(store.get("ql_ammo", "AMMO_TEXT_COLOR"), 13);
+    activate(env, "QOLCustomizeDefault_AMMO_TEXT_COLOR"); env.clock.advance(500);
+    assert.equal(store.get("ql_ammo", "AMMO_TEXT_COLOR"), 0);
+    assert.equal(env.global.MOD_CONFIG.AMMO_TEXT_COLOR, 0);
+    activate(env, "QOLCustomizeCancel"); clean(env);
+});
+
+test("ammo moves beyond its old box, resets its native baseline and round-trips screen-wide offsets", () => {
+    const env = setup(); const { global: g } = env;
+    const core = add(env, env.hud.root, "", ["HudCore"]);
+    const gameplay = add(env, core, "gameplay_hud");
+    const crosshair = add(env, add(env, gameplay, "gameplay_hud_alive"), "crosshair");
+    const ammo = rect(add(env, add(env, add(env, crosshair, "gun"), "gun_data"), "ammo_panel"), 85, 20);
+    ammo.style.x = "50%"; ammo.style.y = "85px";
+    g.QOL.ui.customize.start(); activate(env, "QOLCustomizeSelect_ammo");
+    const frame = env.em.FindChildTraverse("QOLCustomizeFrame_ammo");
+    const proxy = startDrag(env, frame); proxy.actualxoffset -= 900; proxy.actualyoffset += 350;
+    startDrag.end(env, frame, frame); env.clock.advance(1200);
+    assert.equal(ammo.style.marginLeft, "-900px"); assert.equal(ammo.style.marginTop, "350px");
+    assert.equal(ammo.style.x, "50%"); assert.equal(ammo.style.y, "85px");
+    g.QOL.core.storageBridge.saveSettings = (_config, callback) => callback(null);
+    activate(env, "QOLCustomizeApply"); env.clock.advance(500);
+    const parsed = g.QOL.ui.modal.tryApplyImportStringWithDiagnostics(g.QOL.ui.configTab.getCurrentExportSettingsString());
+    assert.equal(parsed.ok, true); assert.equal(parsed.candidateConfig.AMMO_PANEL_X_OFFSET, -900);
+    assert.equal(parsed.candidateConfig.AMMO_PANEL_Y_OFFSET, -350);
+    const historic = g.QOL_COMPACT_SCHEMA_REGISTRY["4.0.5"].schema.find(field => field.key === "AMMO_PANEL_X_OFFSET");
+    assert.equal(historic.min, -200); assert.equal(historic.max, 200);
+    g.QOL.ui.customize.start(); activate(env, "QOLCustomizeSelect_ammo"); activate(env, "QOLCustomizeReset"); env.clock.advance(1200);
+    assert.equal(ammo.style.marginLeft, undefined); assert.equal(ammo.style.marginTop, undefined);
+    assert.equal(ammo.style.x, "50%"); assert.equal(ammo.style.y, "85px");
+    activate(env, "QOLCustomizeCancel"); clean(env);
+});

@@ -7,6 +7,7 @@
 "use strict";
 
 const test = require("node:test");
+const { setImmediate: flush } = require("node:timers/promises");
 const assert = require("node:assert");
 const fs = require("node:fs");
 const path = require("node:path");
@@ -103,19 +104,10 @@ function createTestEnvironment() {
 
     const sandbox = {
         $: mockDollar,
-        QOL: {
-            core: {
-                panel: {
-                    isAlive: (p) => !!(p && p.IsValid && p.IsValid()),
-                    create: (type, parent, id) => mockDollar.CreatePanel(type, parent, id),
-                    findRoot: () => rootPanel,
-                },
-
-            },
-        },
+        QOL: {},
         globalThis: {},
         MOD_CONFIG: {
-            LANGUAGE: "english",
+            LANGUAGE: 0,
             PREVIEWS_ENABLED: 1,
             TOP_BAR_SCALE: 1.0,
         },
@@ -127,7 +119,7 @@ function createTestEnvironment() {
     };
 
     sandbox.globalThis = sandbox;
-    for (const name of ["ql_utils.js", "ql_shared_presets.js", "ql_config.js", "core/ql_persistence.js"]) {
+    for (const name of ["core/ql_namespace.js", "ql_utils.js", "core/ql_panel_helpers.js", "ql_shared_presets.js", "ql_settings_contract.js", "ql_legacy_compact.js", "ql_config.js", "core/ql_persistence.js"]) {
         const filename = path.resolve(__dirname, "../panorama/scripts", name);
         vm.runInNewContext(fs.readFileSync(filename, "utf8"), sandbox, { filename });
     }
@@ -236,6 +228,43 @@ function connectEmbeddedPage(env, storage = new Map(), options = {}) {
     return currentPage;
 }
 
+test("Auto-Save: production settings edits reach the embedded page and restore in a fresh realm", async () => {
+    const e = require("./load_settings_environment")(), g = e.global;
+    e.hud.sandbox.global.QOL.core.App.shutdown();
+    const panel = g.QOL.core.storageBridge.getPanel();
+    assert.ok(panel);
+    panel.SetURL = () => {};
+    const env = {
+        sandbox: g, clock: e.clock,
+        getLastSetUrl: () => BRIDGE_URL,
+        fireTitleEvent: (target, title) => e.settings.dispatch("HTMLTitle", [target, title]),
+    };
+    const storage = new Map();
+    connectEmbeddedPage(env, storage);
+    assert.equal(g.QOL.core.storageBridge.isReady(), true);
+    g.MOD_CONFIG.AUTO_SAVE_CHANGES = 1;
+    g.SaveAndSync();
+    g.MOD_CONFIG.SOULS_X_OFFSET = 87;
+    g.MarkConfigDirty();
+    e.clock.advance(1200);
+    // The production personal-preset save performs additional asynchronous
+    // storage requests. Pump transport and JS jobs without replacing any owner.
+    for (let i = 0; i < 20; i++) { await flush(); e.clock.advance(0); }
+    const stored = storage.get("qollock_settings");
+    assert.ok(stored, "live attributes alone are not a durable save");
+    assert.equal(JSON.parse(stored).data.SOULS_X_OFFSET, 87);
+    assert.equal(JSON.parse(stored).data.AUTO_SAVE_CHANGES, 1);
+    assert.equal(Object.hasOwn(JSON.parse(stored).data, "PREVIEWS_ENABLED"), false);
+    const fresh = createTestEnvironment();
+    fresh.sandbox.QOL.core.storageBridge.enableAutoload(true);
+    connectEmbeddedPage(fresh, storage);
+    for (let i = 0; i < 10; i++) { await flush(); fresh.clock.advance(0); }
+    assert.equal(fresh.sandbox.MOD_CONFIG.SOULS_X_OFFSET, 87);
+    assert.equal(fresh.sandbox.MOD_CONFIG.AUTO_SAVE_CHANGES, 1);
+    assert.deepEqual(e.clock.errors, []); assert.deepEqual(e.doc.eventErrors, []);
+    assert.deepEqual(fresh.clock.errors, []);
+});
+
 test("storage_bridge: actual embedded page preserves Unicode across chunk boundaries", async () => {
     const env = createTestEnvironment();
     const storage = new Map();
@@ -270,6 +299,57 @@ test("storage_bridge: disk-backed saved buff lead 15 survives simulated restart 
     const raw = next.hudPanel.GetAttributeString("Deadlock_Mod_Settings_v1", "");
     assert.equal(next.sandbox.QOL.safeParseConfig(raw).BRIDGE_BUFF_START, 15);
     assert.deepEqual(next.clock.errors, []);
+});
+
+test("storage_bridge: selected startup snapshot leaves this session unchanged and restores after simulated restart", async t => {
+    const reopenStorage = diskStorage(t), env = createTestEnvironment();
+    connectEmbeddedPage(env, reopenStorage());
+    const before = JSON.stringify(env.sandbox.MOD_CONFIG);
+    const published = env.rootPanel.GetAttributeString("Deadlock_Mod_Settings_v1", "");
+    const saving = env.sandbox.QOL.core.storageBridge.saveStartupSettings({ BRIDGE_BUFF_START: 15 });
+    assert.equal(reopenStorage().has("qollock_settings"), false, "not saved before CEF acknowledgment");
+    env.clock.advance(0);
+    assert.equal((await saving).ok, true);
+    assert.equal(JSON.stringify(env.sandbox.MOD_CONFIG), before);
+    assert.equal(env.rootPanel.GetAttributeString("Deadlock_Mod_Settings_v1", ""), published);
+    const next = createTestEnvironment();
+    next.sandbox.QOL.core.storageBridge.enableAutoload(true);
+    connectEmbeddedPage(next, reopenStorage());
+    await Promise.resolve();
+    await Promise.resolve();
+    assert.equal(next.sandbox.MOD_CONFIG.BRIDGE_BUFF_START, 15);
+    assert.deepEqual(next.clock.errors, []);
+});
+
+test("storage_bridge: startup selection rejects invalid data and quota failures without altering this session", async () => {
+    const env = createTestEnvironment(), bridge = env.sandbox.QOL.core.storageBridge;
+    const storage = new Map([["qollock_settings", "previous"]]);
+    const browser = connectEmbeddedPage(env, storage);
+    const before = JSON.stringify(env.sandbox.MOD_CONFIG);
+    const published = env.rootPanel.GetAttributeString("Deadlock_Mod_Settings_v1", "");
+    await assert.rejects(bridge.saveStartupSettings("broken"));
+    assert.equal(storage.get("qollock_settings"), "previous");
+    browser.localStorage.setItem = () => { throw Error("QuotaExceededError"); };
+    const saving = bridge.saveStartupSettings({ BRIDGE_BUFF_START: 15 });
+    env.clock.advance(0);
+    await assert.rejects(saving, /QuotaExceededError/);
+    assert.equal(storage.get("qollock_settings"), "previous");
+    assert.equal(JSON.stringify(env.sandbox.MOD_CONFIG), before);
+    assert.equal(env.rootPanel.GetAttributeString("Deadlock_Mod_Settings_v1", ""), published);
+});
+
+test("storage_bridge: choosing a startup snapshot invalidates a preceding pending restore", async () => {
+    const env = createTestEnvironment(), bridge = env.sandbox.QOL.core.storageBridge;
+    const storage = new Map([["qollock_settings", env.sandbox.WrapConfigForStorage({ BRIDGE_BUFF_START: 30 })]]);
+    connectEmbeddedPage(env, storage);
+    const before = JSON.stringify(env.sandbox.MOD_CONFIG);
+    const loading = bridge.loadSettings();
+    const saving = bridge.saveStartupSettings({ BRIDGE_BUFF_START: 15 });
+    env.clock.advance(0);
+    assert.equal((await loading).skipped, "newer-edits");
+    assert.equal((await saving).ok, true);
+    assert.equal(JSON.stringify(env.sandbox.MOD_CONFIG), before);
+    assert.equal(JSON.parse(storage.get("qollock_settings")).data.BRIDGE_BUFF_START, 15);
 });
 
 test("storage_bridge: quota failure reaches callback and Promise without replacing stored data", async () => {
@@ -355,10 +435,10 @@ test("storage_bridge: settings save publishes attributes and clear removes disk 
     const storage = new Map();
     connectEmbeddedPage(env, storage);
     const bridge = env.sandbox.QOL.core.storageBridge;
-    const saving = bridge.saveSettings({ LANGUAGE: "russian", PREVIEWS_ENABLED: 0 });
+    const saving = bridge.saveSettings({ LANGUAGE: 1, PREVIEWS_ENABLED: 0 });
     const raw = env.rootPanel.GetAttributeString("Deadlock_Mod_Settings_v1", "");
     assert.equal(JSON.parse(raw).schema, env.sandbox.QOL_SCHEMA_SEMVER);
-    assert.equal(JSON.parse(raw).data.LANGUAGE, "russian");
+    assert.equal(JSON.parse(raw).data.LANGUAGE, 1);
     env.clock.advance(0);
     assert.equal((await saving).ok, true);
     assert.equal(storage.get("qollock_settings"), raw);
@@ -374,7 +454,7 @@ test("storage_bridge: >30 KB settings save/load is chunked with unique fragments
     const storage = new Map();
     connectEmbeddedPage(env, storage, { duplicateTitles: true });
     const bridge = env.sandbox.QOL.core.storageBridge;
-    const largeCfg = { LANGUAGE: "korean", TOP_BAR_SCALE: 1.25 };
+    const largeCfg = { LANGUAGE: 12, TOP_BAR_SCALE: 1.25 };
     for (let i = 0; i < 1800; i++) largeCfg[`FEATURE_KEY_${i}`] = i * 2;
     const raw = JSON.stringify({ schema: "4.0.0", data: largeCfg });
     assert.ok(raw.length > 30000);
@@ -386,9 +466,9 @@ test("storage_bridge: >30 KB settings save/load is chunked with unique fragments
     env.clock.advance(0);
     const result = await loading;
     assert.equal(result.ok, true);
-    assert.equal(env.sandbox.MOD_CONFIG.LANGUAGE, "korean");
+    assert.equal(env.sandbox.MOD_CONFIG.LANGUAGE, 12);
     assert.equal(env.sandbox.MOD_CONFIG.TOP_BAR_SCALE, 1.25);
-    assert.equal(env.sandbox.State.lastConfig.LANGUAGE, "korean");
+    assert.equal(env.sandbox.State.lastConfig.LANGUAGE, 12);
     assert.equal(env.sandbox.MOD_CONFIG.FEATURE_KEY_1799, undefined);
     const commands = env.urls.filter(url => url.includes("#")).map(fragmentMessage);
     const saves = commands.filter(msg => msg.f === "saveChunk");
@@ -434,6 +514,58 @@ test("storage_bridge: permanently cached page retries at most five attempts and 
     assert.equal(env.cef.loads, 5, "Initial navigation plus four retries");
     assert.equal(env.logs.filter(message => /cached|outdated/i.test(message)).length, 1);
     assert.ok(env.logs.some(message => /failed to initialize after 5 attempts/.test(message)));
+    assert.deepEqual(env.clock.errors, []);
+});
+
+for (const cancellation of ["ignored", "throw"]) for (const zeroHandle of [false, true]) {
+    test(`storage_bridge: retired watchdog cannot navigate a replacement with cancellation=${cancellation}, zero=${zeroHandle}`, () => {
+        const env = createTestEnvironment(), bridge = env.sandbox.QOL.core.storageBridge;
+        const initial = bridge.getPanel();
+        env.fireTitleEvent(initial, "QOL_BRIDGE_READY:frag1");
+        const schedule = env.sandbox.$.Schedule;
+        let zeroNativeHandle = null;
+        const cancellations = [];
+        env.sandbox.$.Schedule = (delay, callback) => {
+            const handle = schedule(delay, callback);
+            if (zeroHandle && zeroNativeHandle === null) { zeroNativeHandle = handle; return 0; }
+            return handle;
+        };
+        env.sandbox.$.CancelScheduled = handle => {
+            cancellations.push(handle);
+            if (cancellation === "throw") throw Error("modeled cancellation failure");
+        };
+        initial.IsValid = () => false;
+        const first = bridge.init(env.hudPanel, { autoload: false });
+        env.clock.advance(10000);
+        first.IsValid = () => false;
+        const replacement = bridge.init(env.hudPanel, { autoload: false });
+        const before = env.urls.length;
+        env.clock.advance(10000);
+        assert.equal(env.urls.length, before, "the retired watchdog cannot consume the new panel's retry budget");
+        assert.equal(bridge.getPanel(), replacement);
+        assert.equal(bridge.isReady(), false);
+        env.clock.advance(10000);
+        assert.equal(env.urls.length, before + 1, "the replacement owns its full twenty-second startup interval");
+        if (zeroHandle) assert.ok(cancellations.includes(0));
+        assert.deepEqual(env.clock.errors, []);
+    });
+}
+
+test("storage_bridge: retired cached-page watchdogs cannot repeat exhausted initialization", async () => {
+    const env = createTestEnvironment(), bridge = env.sandbox.QOL.core.storageBridge;
+    env.sandbox.$.CancelScheduled = () => {};
+    connectEmbeddedPage(env, new Map(), { oldPageLoads: 100, duplicateTitles: true });
+    env.clock.advance(4000);
+    const rejected = assert.rejects(bridge.save("pending", "payload"), /Bridge initialization failed/);
+    env.clock.advance(1000);
+    await rejected;
+    const loads = env.cef.loads;
+    assert.equal(loads, 5);
+    assert.equal(env.logs.filter(message => /failed to initialize after 5 attempts/.test(message)).length, 1);
+    env.clock.advance(25000);
+    assert.equal(env.cef.loads, loads);
+    assert.equal(env.logs.filter(message => /failed to initialize after 5 attempts/.test(message)).length, 1,
+        "cancelled startup/cached-page callbacks remain retired after exhaustion");
     assert.deepEqual(env.clock.errors, []);
 });
 
@@ -515,6 +647,164 @@ test("storage_bridge: FIFO serializes concurrent calls, ignores stale titles and
     const messages = env.urls.filter(url => url.includes("#")).map(fragmentMessage);
     assert.equal(new Set(messages.map(msg => msg.q)).size, messages.length);
 });
+
+test("storage_bridge: low-level callbacks retain their request receiver and run before Promise reactions", async () => {
+    const env = createTestEnvironment(), bridge = env.sandbox.QOL.core.storageBridge;
+    connectEmbeddedPage(env, new Map(), { duplicateTitles: true });
+    const callbacks = [];
+    let reacted = false;
+    const first = bridge.save("first", "one", function(error, data) {
+        callbacks.push({ receiver: this, error, data });
+    });
+    const sentId = requestId(env.getLastSetUrl());
+    first.then(() => { reacted = true; });
+    env.clock.advance(0);
+    assert.equal(callbacks.length, 1);
+    assert.equal(callbacks[0].receiver.id, sentId);
+    assert.equal(callbacks[0].error, null);
+    assert.equal(callbacks[0].data, true);
+    assert.equal(reacted, false, "the transport callback stays synchronous, independently of Promise delivery");
+    assert.equal(await first, true);
+    assert.equal(reacted, true);
+    assert.deepEqual(env.clock.errors, []);
+});
+
+for (const failure of [false, true]) {
+    test(`storage_bridge: throwing low-level callbacks stay observable and release FIFO after error=${failure}`, async () => {
+        const env = createTestEnvironment(), bridge = env.sandbox.QOL.core.storageBridge;
+        const storage = new Map(), store = storage.set.bind(storage);
+        storage.set = (key, value) => {
+            if (failure && key === "first") throw Error("modeled storage rejection");
+            return store(key, value);
+        };
+        connectEmbeddedPage(env, storage, { duplicateTitles: true });
+        const callbacks = [];
+        let reacted = false;
+        const first = bridge.save("first", "one", function(error, data) {
+            callbacks.push({ receiver: this, error, data });
+            throw Error("modeled callback failure");
+        });
+        const sentId = requestId(env.getLastSetUrl());
+        const outcome = first.then(data => { reacted = true; return { data }; }, error => { reacted = true; return { error }; });
+        const queued = bridge.save("successor", "two", () => callbacks.push({ successor: true }));
+        env.clock.advance(0);
+        assert.ok(env.logs.some(message => message.includes("modeled callback failure")));
+        assert.equal(callbacks.length, 2);
+        assert.equal(callbacks[0].receiver.id, sentId);
+        assert.equal(callbacks[1].successor, true);
+        assert.equal(reacted, false);
+        const result = await outcome;
+        if (failure) {
+            assert.match(callbacks[0].error.message, /modeled storage rejection/);
+            assert.equal(callbacks[0].data, null);
+            assert.match(result.error.message, /modeled storage rejection/);
+        } else {
+            assert.equal(callbacks[0].error, null);
+            assert.equal(callbacks[0].data, true);
+            assert.equal(result.data, true);
+        }
+        assert.equal(await queued, true);
+        assert.equal(storage.get("successor"), "two");
+        assert.deepEqual(env.clock.errors, []);
+    });
+}
+
+test("storage_bridge: a rejected initial timeout arm cannot leave a save queued for later dispatch", async () => {
+    const env = createTestEnvironment(), bridge = env.sandbox.QOL.core.storageBridge;
+    const schedule = env.sandbox.$.Schedule, callbacks = [];
+    env.sandbox.$.Schedule = () => { throw Error("modeled initial timer failure"); };
+    const failed = bridge.save("failed-key", "rejected payload", (error, data) => callbacks.push({ error, data }));
+    const notifiedBeforeReadiness = callbacks.length;
+    await assert.rejects(failed, /modeled initial timer failure/);
+    env.sandbox.$.Schedule = schedule;
+    const storage = new Map();
+    connectEmbeddedPage(env, storage);
+    assert.equal(storage.has("failed-key"), false, "a rejected operation cannot write after a later handshake");
+    assert.equal(notifiedBeforeReadiness, 1, "the low-level error callback settles synchronously");
+    assert.equal(callbacks.length, 1);
+    assert.match(callbacks[0].error.message, /modeled initial timer failure/);
+    assert.equal(callbacks[0].data, null);
+    const fresh = bridge.save("fresh-key", "accepted payload");
+    env.clock.advance(0);
+    assert.equal(await fresh, true);
+    assert.equal(storage.get("fresh-key"), "accepted payload");
+    assert.deepEqual(env.clock.errors, []);
+});
+
+test("storage_bridge: a rejected dispatch timeout arm releases FIFO before callback-enqueued work", async () => {
+    const env = createTestEnvironment(), bridge = env.sandbox.QOL.core.storageBridge;
+    const callbacks = [], outcomes = [];
+    let reentrant;
+    const failed = bridge.save("failed-key", "rejected payload", (error, data) => {
+        callbacks.push({ key: "failed", error, data });
+        reentrant = bridge.save("callback-key", "callback payload", (nextError, nextData) => {
+            callbacks.push({ key: "callback", error: nextError, data: nextData });
+        });
+    });
+    const queued = bridge.save("queued-key", "queued payload", (error, data) => callbacks.push({ key: "queued", error, data }));
+    failed.then(() => outcomes.push("failed:success"), () => outcomes.push("failed:error"));
+    queued.then(() => outcomes.push("queued:success"), () => outcomes.push("queued:error"));
+    const schedule = env.sandbox.$.Schedule;
+    let reject = true;
+    env.sandbox.$.Schedule = (delay, callback) => {
+        if (reject) { reject = false; throw Error("modeled dispatch timer failure"); }
+        return schedule(delay, callback);
+    };
+    const storage = new Map();
+    connectEmbeddedPage(env, storage);
+    await Promise.resolve();
+    assert.deepEqual(outcomes, ["failed:error", "queued:success"], "failure cannot leave the active FIFO slot occupied");
+    await assert.rejects(failed, /modeled dispatch timer failure/);
+    assert.equal(await queued, true);
+    assert.equal(await reentrant, true);
+    assert.deepEqual(callbacks.map(result => result.key), ["failed", "queued", "callback"]);
+    assert.match(callbacks[0].error.message, /modeled dispatch timer failure/);
+    assert.equal(callbacks[0].data, null);
+    for (const result of callbacks.slice(1)) { assert.equal(result.error, null); assert.equal(result.data, true); }
+    assert.equal(storage.has("failed-key"), false);
+    assert.equal(storage.get("queued-key"), "queued payload");
+    assert.equal(storage.get("callback-key"), "callback payload");
+    assert.deepEqual(env.clock.errors, []);
+});
+
+for (const operation of ["save", "load"]) {
+    test(`storage_bridge: failed ${operation} chunk timeout arm retires partial transport and releases FIFO`, async () => {
+        const env = createTestEnvironment(), bridge = env.sandbox.QOL.core.storageBridge;
+        const payload = JSON.stringify({ schema: "4.0.0", data: { LANGUAGE: 12, TOP_BAR_SCALE: 1.25, padding: "x".repeat(4000) } });
+        const previous = JSON.stringify({ schema: "4.0.0", data: { LANGUAGE: 0 } });
+        const stored = operation === "save" ? previous : payload;
+        const storage = new Map([["qollock_settings", stored]]);
+        connectEmbeddedPage(env, storage, { duplicateTitles: true });
+        const rawBefore = env.hudPanel.GetAttributeString("Deadlock_Mod_Settings_v1", "");
+        const configBefore = { ...env.sandbox.MOD_CONFIG }, stateBefore = env.sandbox.State.lastConfig;
+        const callbacks = [], outcomes = [];
+        const callback = (error, data) => callbacks.push({ error, data });
+        const failed = operation === "save" ? bridge.save("qollock_settings", payload, callback) : bridge.loadSettings(callback);
+        const queued = bridge.save("successor", "accepted payload");
+        failed.then(() => outcomes.push("failed:success"), () => outcomes.push("failed:error"));
+        queued.then(() => outcomes.push("queued:success"), () => outcomes.push("queued:error"));
+        const schedule = env.sandbox.$.Schedule;
+        let reject = true;
+        env.sandbox.$.Schedule = (delay, fn) => {
+            if (reject) { reject = false; throw Error("modeled chunk timer failure"); }
+            return schedule(delay, fn);
+        };
+        env.clock.advance(0);
+        await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
+        assert.deepEqual(outcomes.sort(), ["failed:error", "queued:success"], "partial chunk transport cannot retain the active request");
+        await assert.rejects(failed, /Failed to (send save|request) chunk 1: modeled chunk timer failure/);
+        assert.equal(await queued, true);
+        assert.equal(callbacks.length, 1);
+        assert.match(callbacks[0].error.message, /modeled chunk timer failure/);
+        assert.equal(callbacks[0].data, null);
+        assert.equal(storage.get("qollock_settings"), stored, "an incomplete save cannot replace previous disk data");
+        assert.equal(storage.get("successor"), "accepted payload");
+        assert.equal(env.hudPanel.GetAttributeString("Deadlock_Mod_Settings_v1", ""), rawBefore);
+        assert.deepEqual(env.sandbox.MOD_CONFIG, configBefore);
+        assert.equal(env.sandbox.State.lastConfig, stateBefore);
+        assert.deepEqual(env.clock.errors, []);
+    });
+}
 
 test("storage_bridge: expired queued saves never execute when the bridge connects later", async () => {
     const env = createTestEnvironment();
@@ -697,6 +987,28 @@ test("storage_bridge: invalid restores reject without changing live raw, revisio
     }
 });
 
+test("storage_bridge: rejected native publication cannot replace live config or report an applied restore", async () => {
+    for (const rejectedKey of ["Deadlock_Mod_Settings_v1", "QOL_USER_EDIT_REV"]) {
+        const env = createTestEnvironment(), bridge = env.sandbox.QOL.core.storageBridge;
+        env.fireTitleEvent(bridge.getPanel(), "QOL_BRIDGE_READY:frag1");
+        const fresh = publishEdit(env), before = JSON.stringify(env.sandbox.MOD_CONFIG);
+        const revision = env.rootPanel.GetAttributeString("QOL_USER_EDIT_REV", "");
+        const hud = env.sandbox.QOL.core.persistence.resolveHudPanel(env.rootPanel);
+        for (const host of new Set([env.rootPanel, hud])) {
+            const write = host.SetAttributeString.bind(host);
+            host.SetAttributeString = (key, value) => key === rejectedKey ? false : write(key, value);
+        }
+        const pending = bridge.loadSettings();
+        replyToCurrentRequest(env, env.sandbox.WrapConfigForStorage({ BRIDGE_BUFF_START: 30 }));
+        await assert.rejects(pending, /publication rejected/);
+        assert.equal(env.rootPanel.GetAttributeString("Deadlock_Mod_Settings_v1", ""), fresh);
+        assert.equal(env.rootPanel.GetAttributeString("QOL_USER_EDIT_REV", ""), revision);
+        assert.equal(JSON.stringify(env.sandbox.MOD_CONFIG), before);
+        assert.equal(env.sandbox.State.lastConfig, null);
+        assert.equal(env.clock.errors.length, 0);
+    }
+});
+
 test("storage_bridge: explicit load replaces preceding edits, but missing storage keeps them", async () => {
     const env = createTestEnvironment();
     const bridge = env.sandbox.QOL.core.storageBridge;
@@ -711,4 +1023,165 @@ test("storage_bridge: explicit load replaces preceding edits, but missing storag
     replyToCurrentRequest(env, null);
     assert.equal((await missing).notFound, true);
     assert.equal(env.rootPanel.GetAttributeString("Deadlock_Mod_Settings_v1", ""), fresh);
+});
+
+test("storage_bridge: a pending restore cannot cross a HUD replacement with matching revisions", async () => {
+    const env = createTestEnvironment(), bridge = env.sandbox.QOL.core.storageBridge;
+    const persistence = env.sandbox.QOL.core.persistence;
+    env.fireTitleEvent(bridge.getPanel(), "QOL_BRIDGE_READY:frag1");
+    env.sandbox.$.GetContextPanel = () => env.rootPanel;
+    const pending = bridge.loadSettings(), stamp = persistence.getConfigChangeStamp(env.rootPanel);
+    const beforeConfig = JSON.stringify(env.sandbox.MOD_CONFIG);
+    env.hudPanel.SetParent(env.doc.create("Panel", { id: "RetiredRoot" }));
+    const nextHud = env.doc.create("Panel", { id: "Hud" }); env.rootPanel.addChild(nextHud);
+    const fresh = env.sandbox.WrapConfigForStorage({ BRIDGE_BUFF_START: 15 });
+    nextHud.SetAttributeString("QOL_CONFIG_EDIT_REV", "1");
+    nextHud.SetAttributeString("Deadlock_Mod_Settings_v1", fresh);
+    assert.notEqual(persistence.resolveHudPanel(env.rootPanel), env.hudPanel);
+    assert.equal(persistence.getConfigChangeStamp(env.rootPanel), stamp, "numeric revisions alone cannot identify the HUD generation");
+    replyToCurrentRequest(env, env.sandbox.WrapConfigForStorage({ BRIDGE_BUFF_START: 30 }));
+    const result = await pending;
+    assert.equal(result.applied, false);
+    assert.equal(result.skipped, "newer-edits");
+    assert.equal(nextHud.GetAttributeString("Deadlock_Mod_Settings_v1", ""), fresh);
+    assert.equal(JSON.stringify(env.sandbox.MOD_CONFIG), beforeConfig);
+    assert.equal(env.sandbox.State.lastConfig, null);
+    assert.equal(env.clock.errors.length, 0);
+});
+
+test("storage_bridge: Clear prevents an older Load from restoring the deleted settings", async () => {
+    const env = createTestEnvironment(), bridge = env.sandbox.QOL.core.storageBridge;
+    const storage = new Map([["qollock_settings", env.sandbox.WrapConfigForStorage({ BRIDGE_BUFF_START: 30 })]]);
+    connectEmbeddedPage(env, storage);
+    const fresh = publishEdit(env, 15);
+    const beforeConfig = JSON.stringify(env.sandbox.MOD_CONFIG);
+    const loading = bridge.loadSettings();
+    const clearing = bridge.clearSettings();
+    env.clock.advance(0);
+    const result = await loading;
+    assert.equal(result.applied, false);
+    assert.equal(result.skipped, "newer-edits");
+    assert.equal((await clearing).ok, true);
+    assert.equal(storage.has("qollock_settings"), false);
+    assert.equal(env.rootPanel.GetAttributeString("Deadlock_Mod_Settings_v1", ""), fresh);
+    assert.equal(JSON.stringify(env.sandbox.MOD_CONFIG), beforeConfig);
+    assert.equal(env.sandbox.State.lastConfig, null);
+    assert.deepEqual(env.clock.errors, []);
+});
+
+test("storage_bridge: a later Save invalidates an older Load even when all native writes are rejected", async () => {
+    const env = createTestEnvironment(), bridge = env.sandbox.QOL.core.storageBridge;
+    env.fireTitleEvent(bridge.getPanel(), "QOL_BRIDGE_READY:frag1");
+    const fresh = publishEdit(env, 15);
+    env.sandbox.MOD_CONFIG.BRIDGE_BUFF_START = 15;
+    const pending = bridge.loadSettings();
+    const writes = [env.rootPanel.SetAttributeString, env.hudPanel.SetAttributeString];
+    env.rootPanel.SetAttributeString = env.hudPanel.SetAttributeString = () => false;
+    const saving = bridge.saveSettings({ BRIDGE_BUFF_START: 15 });
+    [env.rootPanel.SetAttributeString, env.hudPanel.SetAttributeString] = writes;
+    replyToCurrentRequest(env, env.sandbox.WrapConfigForStorage({ BRIDGE_BUFF_START: 30 }));
+    const result = await pending;
+    assert.equal(result.applied, false);
+    assert.equal(result.skipped, "newer-edits");
+    replyToCurrentRequest(env, true);
+    assert.equal((await saving).ok, true, "CEF save acknowledgment still settles the later operation");
+    assert.equal(env.sandbox.MOD_CONFIG.BRIDGE_BUFF_START, 15);
+    assert.equal(env.rootPanel.GetAttributeString("Deadlock_Mod_Settings_v1", ""), fresh);
+    assert.equal(env.sandbox.State.lastConfig, null);
+    assert.equal(env.clock.errors.length, 0);
+});
+
+for (const rejectCancellation of [false, true]) {
+    test(`storage_bridge: chunk progress retires a zero-handle timeout with cancellation rejected=${rejectCancellation}`, async () => {
+        const env = createTestEnvironment(), bridge = env.sandbox.QOL.core.storageBridge;
+        env.fireTitleEvent(bridge.getPanel(), "QOL_BRIDGE_READY:frag1");
+        const schedule = env.sandbox.$.Schedule, cancel = env.sandbox.$.CancelScheduled;
+        let zeroHandle, zeroCancels = 0;
+        env.sandbox.$.Schedule = (delay, callback) => {
+            const handle = schedule(delay, callback);
+            if (zeroHandle === undefined) { zeroHandle = handle; return 0; }
+            return handle;
+        };
+        env.sandbox.$.CancelScheduled = handle => {
+            if (handle === 0) zeroCancels++;
+            if (rejectCancellation) throw Error("modeled native cancellation failure");
+            cancel(handle === 0 ? zeroHandle : handle);
+        };
+        let settled = false;
+        const pending = bridge.load("slow-chunks");
+        pending.then(() => { settled = true; }, () => { settled = true; });
+        const id = requestId(env.getLastSetUrl());
+        env.clock.advance(4000);
+        env.fireTitleEvent(bridge.getPanel(), "QOL_RES:" + JSON.stringify({
+            id, ok: true, _seq: 1, data: "a", chunked: true, part: 0, total: 2
+        }));
+        env.clock.advance(1000); await Promise.resolve();
+        assert.equal(settled, false, "the pre-progress deadline must be inert even if native cancellation fails");
+        assert.ok(zeroCancels > 0, "zero is a valid native cancellation handle");
+        env.fireTitleEvent(bridge.getPanel(), "QOL_RES:" + JSON.stringify({
+            id, ok: true, _seq: 2, data: "b", chunked: true, part: 1, total: 2
+        }));
+        assert.equal(await pending, "ab");
+        env.clock.advance(5000);
+        assert.equal(env.clock.errors.length, 0);
+    });
+}
+
+test("storage_bridge: Default view updates only after acknowledged main saves", async () => {
+    const env = createTestEnvironment(), bridge = env.sandbox.QOL.core.storageBridge;
+    const storage = new Map(), browser = connectEmbeddedPage(env, storage), updates = [];
+    env.sandbox.QOL.ui = { presets: { onDefaultSaved: raw => updates.push(raw) } };
+    const saving = bridge.saveSettings({ BRIDGE_BUFF_START: 15 });
+    assert.equal(updates.length, 0);
+    env.clock.advance(0); await saving;
+    assert.equal(updates.length, 1);
+    assert.equal(JSON.parse(updates[0]).data.BRIDGE_BUFF_START, 15);
+    browser.localStorage.setItem = () => { throw Error("QuotaExceededError"); };
+    const failed = bridge.saveSettings({ BRIDGE_BUFF_START: 20 });
+    env.clock.advance(0); await assert.rejects(failed, /QuotaExceededError/);
+    assert.equal(updates.length, 1);
+    const clearing = bridge.clearSettings();
+    env.clock.advance(0); await clearing;
+    assert.equal(updates.length, 2);
+    assert.equal(updates[1], null);
+});
+
+
+test("storage_bridge: footer Save awaits personal capture and startup selection does not create an original", async () => {
+    const env = createTestEnvironment(), bridge = env.sandbox.QOL.core.storageBridge;
+    connectEmbeddedPage(env, new Map());
+    const calls = [];
+    let finishCapture;
+    env.sandbox.QOL.ui = { presets: { onDefaultSaved: (raw, mainSave) => {
+        calls.push(mainSave);
+        if (mainSave) return new Promise(resolve => { finishCapture = resolve; });
+    } } };
+    const saving = bridge.saveSettings({ BRIDGE_BUFF_START: 15 });
+    let completed = false;
+    const completion = (async () => { await saving; completed = true; })();
+    env.clock.advance(0);
+    await flush();
+    assert.equal(completed, false);
+    assert.equal(typeof finishCapture, "function");
+    finishCapture();
+    await completion;
+    assert.equal(completed, true);
+    const startup = bridge.saveStartupSettings({ BRIDGE_BUFF_START: 20 });
+    env.clock.advance(0); await startup;
+    assert.deepEqual(calls, [true, false]);
+});
+
+
+test("storage_bridge: footer save retains its personal target if selection changes before acknowledgment", async () => {
+    const env = createTestEnvironment(), bridge = env.sandbox.QOL.core.storageBridge;
+    connectEmbeddedPage(env, new Map());
+    let selected = "First", received;
+    env.sandbox.QOL.ui = { presets: {
+        getSaveTarget: () => ({ name: selected, revision: 7, explicit: true }),
+        onDefaultSaved: (_raw, _mainSave, targetName) => { received = targetName; }
+    } };
+    const saving = bridge.saveSettings({ BRIDGE_BUFF_START: 15 });
+    selected = "Second";
+    env.clock.advance(0); await saving;
+    assert.deepEqual(received, { name: "First", revision: 7, explicit: true });
 });

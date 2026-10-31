@@ -66,7 +66,7 @@ test("API validator CLI fails on unknown APIs, parse failures, missing registry 
     const run = (registryPath = data) => spawnSync(process.execPath, [checker, "--scripts-dir", scripts, "--registry", registryPath], { encoding: "utf8" });
     try {
         fs.writeFileSync(fixture, '$.DispatchEvent("CitadelConCommand", "totally_fake");');
-        let result = run();
+        const result = run();
         assert.equal(result.status, 1, result.stdout + result.stderr);
         assert.match(result.stdout, /UNKNOWN_CONCOMMAND.*totally_fake/);
         fs.writeFileSync(fixture, '$.DispatchEvent("CitadelFakeEvent");');

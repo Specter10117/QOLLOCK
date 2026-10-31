@@ -1,138 +1,92 @@
-// features/ql_souls/manifest.js
-// =============================================================================
-// QOLLOCK — Souls HUD (position, opacity, visibility)
-// =============================================================================
-// OWNS:        Souls/gold-and-AP container: position, opacity, visibility
-// DOES NOT OWN: Souls content, game economy
-// DEPENDS ON:  QOL.core.FeatureRegistry
-// CONFIG KEYS: HUD_SOULS_ENABLED, SOULS_OPACITY, SOULS_X_OFFSET, SOULS_Y_OFFSET
-// PANEL ID:    gold_and_ap_container
-// PATTERN:     Settings-driven with a slow poll for replaced native panels.
-// =============================================================================
-
-(function() {
+// OWNS: Souls container x/y/opacity overrides and qol-hidden.
+// DOES NOT OWN: Souls/AP values, native economy updates or neighboring inventory.
+// Source: hud.xml, Hud > .HudCore > StatsAndModsContainer > LowerLeft > gold_and_ap_container.
+(() => {
     "use strict";
-    var FR = QOL.core.FeatureRegistry;
-    if (!FR) { $.Msg("[QOLLock] souls: FeatureRegistry not found — aborting"); return; }
+    function findContainer(root) {
+        const P = QOL.core.panel;
+        if (!P.isAlive(root) || (root.id !== "Hud" && root.paneltype !== "CitadelHud")) return null;
+        const core = P.findChildByClass(root, "HudCore");
+        const stats = P.findChild(core, "StatsAndModsContainer");
+        const left = P.findChild(stats, "LowerLeft");
+        return P.findChild(left, "gold_and_ap_container");
+    }
 
-    FR.register({
+    QOL.core.FeatureRegistry.register({
         id: "ql_souls",
+        // Visibility is a presentation setting; keep discovery alive while hidden.
         enabledByDefault: true,
         settings: [
-            { key: "HUD_SOULS_ENABLED", type: "toggle", default: true },
-            { key: "SOULS_OPACITY", type: "slider", min: 0, max: 1, step: 0.05, default: 1.0 },
-            { key: "SOULS_X_OFFSET", type: "slider", min: -1500, max: 1500, step: 5, default: 0 },
-            { key: "SOULS_Y_OFFSET", type: "slider", min: -500, max: 500, step: 5, default: 0 }
+            ...QOL.presentation.stateSettings("ql_souls"),
+            { key: "HUD_SOULS_ENABLED", type: "toggle" },
+            { key: "SOULS_OPACITY", type: "slider" },
+            { key: "SOULS_X_OFFSET", type: "slider" },
+            { key: "SOULS_Y_OFFSET", type: "slider" }
         ],
-        create: function(ctx) {
-            var _lastSig = "";
-            var _loop = null;
-            var _cachedPanel = null;
-            var PANEL_ID = "gold_and_ap_container";
+        create(ctx) {
+            const panelAPI = QOL.core.panel;
+            const styles = panelAPI.createNativeStyleOwner({ resetValues: { x: "0px", y: "0px" }, releasePosition: true });
+            let model = null;
+            let loop = null;
+            let active = false;
 
-            var _clearStyle = QOL.utils.ClearStyleSafe;
-            var _isAlive = (QOL.core && QOL.core.panel && QOL.core.panel.isAlive) ? QOL.core.panel.isAlive : QOL.utils.IsPanelValid;
-
-            function _getPanel() {
-                var root = (QOL.core && QOL.core.hud && QOL.core.hud.findHud) ? QOL.core.hud.findHud() : $.GetContextPanel();
-                var current = (root && root.FindChildTraverse) ? root.FindChildTraverse(PANEL_ID) : null;
-                if (current !== _cachedPanel) {
-                    if (_isAlive(_cachedPanel)) {
-                        _clearStyle(_cachedPanel, "x");
-                        _clearStyle(_cachedPanel, "y");
-                        _clearStyle(_cachedPanel, "opacity");
-                        if (_cachedPanel.SetHasClass) _cachedPanel.SetHasClass("qol-hidden", false);
-                    }
-                    _cachedPanel = current;
-                    _lastSig = "";
-                }
-                return _cachedPanel;
-            }
-
-            function _hasNonDefault(cfg) {
-                if (!cfg) return false;
-                var enabled = (cfg.HUD_SOULS_ENABLED === undefined || cfg.HUD_SOULS_ENABLED === true || Number(cfg.HUD_SOULS_ENABLED) === 1);
-                return !enabled ||
-                    Number(cfg.SOULS_OPACITY !== undefined ? cfg.SOULS_OPACITY : 1.0) !== 1.0 ||
-                    Number(cfg.SOULS_X_OFFSET || 0) !== 0 ||
-                    Number(cfg.SOULS_Y_OFFSET || 0) !== 0;
-            }
-
-            function _apply(cfg) {
-                var panel = _getPanel();
-                if (!panel) return false;
-
-                var active = _hasNonDefault(cfg);
-                var enabled = (cfg.HUD_SOULS_ENABLED === undefined || cfg.HUD_SOULS_ENABLED === true || Number(cfg.HUD_SOULS_ENABLED) === 1);
-                var offsetX = Math.round(Number(active ? cfg.SOULS_X_OFFSET : 0)) || 0;
-                var offsetY = Math.round(Number(active ? cfg.SOULS_Y_OFFSET : 0)) || 0;
-                var opNum = active ? Number(cfg.SOULS_OPACITY !== undefined ? cfg.SOULS_OPACITY : 1.0) : 1.0;
-                if (!isFinite(opNum)) opNum = 1.0;
-                var opacityText = opNum.toFixed(2);
-                var sig = offsetX + "|" + offsetY + "|" + opacityText + "|" + (enabled ? "1" : "0") + "|" + (active ? "1" : "0");
-                if (_lastSig === sig) return true;
-                _lastSig = sig;
-
-                if (panel.SetHasClass) panel.SetHasClass("qol-hidden", !enabled);
-
-                if (active && enabled) {
-                    if (offsetX !== 0) panel.style.x = offsetX + "px"; else _clearStyle(panel, "x");
-                    if (offsetY !== 0) panel.style.y = (-offsetY) + "px"; else _clearStyle(panel, "y");
-                    if (Math.abs(opNum - 1.0) > 0.0001) panel.style.opacity = opacityText; else _clearStyle(panel, "opacity");
+            function readModel() {
+                const cfg = QOL.presentation.captureVisibility(ctx, ctx.config.view());
+                const enabled = cfg.HUD_SOULS_ENABLED === undefined || cfg.HUD_SOULS_ENABLED === true || Number(cfg.HUD_SOULS_ENABLED) === 1;
+                const x = Math.round(Number(cfg.SOULS_X_OFFSET)) || 0;
+                const y = Math.round(Number(cfg.SOULS_Y_OFFSET)) || 0;
+                const opacity = QOL.utils.NormalizeOpacityNumber(cfg.SOULS_OPACITY ?? 1, 1);
+                const styles = {};
+                if (enabled) {
+                    if (x !== 0) styles.x = x + "px";
+                    if (y !== 0) styles.y = -y + "px";
+                    if (Math.abs(opacity - 1) > 0.0001) styles.opacity = opacity.toFixed(2);
                 } else {
-                    _clearStyle(panel, "x");
-                    _clearStyle(panel, "y");
-                    _clearStyle(panel, "opacity");
+                    // Native ID visibility rules can outbid a generic class.
+                    styles.visibility = "collapse";
                 }
-                return true;
+                return { enabled, styles };
             }
 
-            function _tick() {
-                try {
-                    var panel = _getPanel();
-                    if (panel && !_lastSig) _apply(ctx.config.all());
-                } catch(e) {
-                    if (typeof QOL !== "undefined" && QOL.core && QOL.core.Logger) {
-                        QOL.core.Logger.logError("ql_souls", "_tick: " + (e.message || e));
-                    }
-                }
+            function update() {
+                if (!active) return;
+                const root = panelAPI.findHud($.GetContextPanel());
+                const panel = findContainer(root);
+                styles.retain([panel]);
+                if (panel) styles.apply(panel, QOL.presentation.visibilityStyles("souls", QOL.presentation.visibilityConfig(ctx), root, model.styles), { "qol-hidden": !model.enabled });
             }
 
-            return {
-                onEnable: function() {
-                    _apply(ctx.config.all());
-                    var S = QOL.core.Scheduler;
-                    _loop = S && S.createPollLoop ? S.createPollLoop(_tick, 1.0, ctx.id) : null;
+            function refreshSettings() {
+                if (!active) return;
+                model = readModel();
+                update();
+            }
+
+            return QOL.presentation.bindVisibility(ctx, {
+                onEnable() {
+                    active = true;
+                    refreshSettings();
+                    loop = QOL.core.Scheduler.createPollLoop(update, 1.0, ctx.id);
                 },
-                onDisable: function() {
-                    if (_loop) { _loop.stop(); _loop = null; }
-                    var S = QOL.core.Scheduler;
-                    if (S) S.cancelAllForFeature("ql_souls");
-                    _lastSig = "";
-                    try {
-                        var p = _getPanel();
-                        if (p) {
-                            var isSupposed = FR && FR.isFeatureSupposedToBeEnabled ? FR.isFeatureSupposedToBeEnabled("ql_souls") : false;
-                            if (p.SetHasClass) p.SetHasClass("qol-hidden", !isSupposed);
-                            _clearStyle(p, "x");
-                            _clearStyle(p, "y");
-                            _clearStyle(p, "opacity");
-                        }
-                    } catch(e) {}
-                    _cachedPanel = null;
-                },
-                onSettingsChanged: function() {
-                    _apply(ctx.config.all());
+                onSettingsChanged: refreshSettings,
+                onDisable() {
+                    active = false;
+                    if (loop) { loop.stop(); loop = null; }
+                    QOL.core.Scheduler.cancelAllForFeature(ctx.id);
+                    styles.clear();
+                    model = null;
                 }
-            };
+            }, update);
         },
-        test: function(ctx) {
+        test() {
             try {
-                var root = $.GetContextPanel();
-                var panel = root ? root.FindChildTraverse("gold_and_ap_container") : null;
-                if (!panel) return null;  // Skip — not in a match context
+                const root = QOL.core.panel.findHud($.GetContextPanel());
+                const panel = findContainer(root);
+                if (!panel) return null;
                 return { passed: true, name: "Souls panel exists", message: "", assertions: [{ passed: true, name: "gold_and_ap_container panel exists" }] };
-            } catch(e) { return { passed: false, name: "Souls panel check", message: (e && e.message ? e.message : String(e)) }; }
+            } catch (e) {
+                return { passed: false, name: "Souls panel check", message: (e && e.message ? e.message : String(e)) };
+            }
         }
     });
 })();

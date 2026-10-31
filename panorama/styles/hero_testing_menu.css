@@ -1,16 +1,4 @@
 /* QOLLOCK hero-testing overrides. Native rules live in the refreshed base copy. */
 
 @import url("s2r://panorama/styles/base/hero_testing_menu.vcss_c");
-
-.hud_hero_testing_root
-{
-    y: 75px;
-}
-
-/* The native menu deliberately collapses in the hideout even when the engine's
-   hero-testing class is active. QOLLOCK exposes the testing controls there when
-   the user enables the corresponding convar. */
-.connectedToHeroTesting.connectedToHideout:not(.InHideout) .hud_hero_testing_root
-{
-    visibility: visible;
-}
+@import url("s2r://panorama/styles/features/ql_feat_native_hero_testing_menu.vcss_c");

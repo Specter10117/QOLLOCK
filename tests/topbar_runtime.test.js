@@ -109,6 +109,29 @@ test("topbar: takeover still releases styles and restores them when visible", ()
     expectChanged(env.top);
 });
 
+test("topbar: scaling releases native squish policy and restores it on reset or hide", () => {
+    const env = setup();
+    publish(env, { TOP_BAR_SCALE: 2 });
+    assert.equal(env.top.style.uiScale, "200%");
+    assert.equal(env.top.style.overflow, "noclip", "native left/right teams must not be squished into the scaled viewport");
+    const replacement = env.doc.create("CitadelHudTopBar", { id: "TopBar" });
+    env.top.SetParent(env.doc.create("Panel", { id: "RetiredTopbar" }));
+    env.core.addChild(replacement);
+    env.clock.advance(1000);
+    assert.equal(env.top.style.overflow, undefined);
+    assert.equal(replacement.style.overflow, "noclip");
+    publish(env, { TOP_BAR_SCALE: 1 });
+    assert.equal(replacement.style.overflow, undefined);
+    publish(env, { TOP_BAR_SCALE: 2 });
+    publish(env, { HUD_TOP_BAR_ENABLED: 0 });
+    assert.equal(replacement.style.overflow, undefined);
+    publish(env, { HUD_TOP_BAR_ENABLED: 1 });
+    assert.equal(replacement.style.overflow, "noclip");
+    env.Q.core.App.shutdown();
+    assert.equal(replacement.style.overflow, undefined);
+    assert.deepEqual(env.clock.errors, []);
+});
+
 test("top and bottom offset row reset and Default preset overwrite a stale native offset", () => {
     const env = setup();
     env.root.AddClass("InHideout");

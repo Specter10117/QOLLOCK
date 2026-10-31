@@ -26,5 +26,7 @@ module.exports = function loadSettingsEnvironment() {
     assert.deepEqual(includes.missing, []);
     for (const script of includes.scripts) settings.load(script.absPath);
     assert.deepEqual(settings.loadErrors, []);
+    require("../scripts/legacy_compact_encoder")(settings.global);
+    require("../scripts/legacy_compact_encoder")(hud.sandbox.global);
     return { hud, settings, global: settings.global, doc, clock, em, list };
 };

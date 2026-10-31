@@ -2,12 +2,8 @@
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const fs = require("node:fs");
-const path = require("node:path");
 
-function read(relativePath) {
-    return fs.readFileSync(path.join(__dirname, "..", relativePath), "utf8").replace(/\r\n/g, "\n");
-}
+const { readStyleSource: read } = require("./helpers/style_source");
 
 function cssRules(css) {
     const normalized = css

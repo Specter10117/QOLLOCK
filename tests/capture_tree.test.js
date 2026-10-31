@@ -56,7 +56,6 @@ test("captured replay replaces preexisting modeled panels and keeps native text 
     assert.equal(label.checked, undefined, "missing checkbox state must not imply selected");
     assert.ok(label.BHasClass("native-health"));
     const hud = createProfiledHud({ capturedTree: nativeCapture(), warmupMs: 0 });
-    assert.equal(hud.game, null, "native commands must not run the synthetic build model");
     assert.equal(hud.doc.root.FindChildTraverse("ShopModsSelectedBuild"), null);
     assert.deepEqual(hud.doc.root.Children().slice(0, 3).map(p => p.id), ["same", "same", "Other"]);
     assert.equal(hud.tree.panels, 5, "capture count excludes panels legitimately created by QOLLOCK after load");
@@ -77,6 +76,49 @@ test("invalid native trees, malformed records, mismatched counts and focused sub
     assert.throws(() => inspectCapture(cyclic), /cyclic/);
     assert.throws(() => inspectCapture({ domTree: { id: "Shop" } }, { requireHud: true }), /whole-HUD/);
     assert.equal(inspectCapture({ domTree: { id: "Shop" } }).panels, 1);
+});
+
+test("captured measurements let production stats discovery choose the populated owner", () => {
+    const captured = { domTree: { id: "Hud", children: [
+        { id: "hudPlayerStats", children: [{ id: "HudStatBlock", visible: true,
+            computedMeasurements: { actualLayoutWidth: 0, actualLayoutHeight: 0 } }] },
+        { id: "hudActivePlayerStats", children: [{ id: "StatList", visible: true,
+            computedMeasurements: { actualLayoutWidth: 180, actualLayoutHeight: 60,
+                actualPanelOffsetX: -12.5, actualPanelOffsetY: 24 } }] },
+    ] } };
+    const hud = createProfiledHud({ capturedTree: captured, warmupMs: 0 });
+    const legacy = hud.doc.root.FindChild("hudPlayerStats");
+    const active = hud.doc.root.FindChild("hudActivePlayerStats");
+    assert.ok(hud.sandbox.global.QOL.presentation.chooseStatsPanel(legacy, active) === active);
+    assert.equal(active.FindChild("StatList").actualxoffset, -12.5);
+    assert.equal(active.FindChild("StatList").actualyoffset, 24);
+    assert.equal(hud.tree.fidelity.missingMeasurements, 4);
+});
+
+test("absent and failed measurements remain zero on reimport without becoming measured evidence", () => {
+    const doc = new Document(new Clock());
+    const measured = { domTree: { id: "Hud", computedMeasurements: {
+        actualLayoutWidth: 800, actualLayoutHeight: 600, actualPanelOffsetX: -8, actualPanelOffsetY: 9,
+    } } };
+    const first = buildCapturedHud(doc, measured);
+    assert.equal(doc.root.actuallayoutwidth, 800);
+    assert.equal(first.fidelity.missingMeasurements, 0);
+    assert.equal(first.notes.some(n => n.includes("lack some captured measurements")), false);
+    const second = buildCapturedHud(doc, { domTree: { id: "Hud", computedMeasurements: {
+        actualLayoutWidth: null, actualLayoutHeight: 0,
+    } } });
+    assert.deepEqual([doc.root.actuallayoutwidth, doc.root.actuallayoutheight,
+        doc.root.actualxoffset, doc.root.actualyoffset], [0, 0, 0, 0]);
+    assert.equal(second.fidelity.missingMeasurements, 1);
+    assert.ok(second.notes.some(n => n.includes("lack some captured measurements")));
+    assert.equal(inspectCapture(nativeCapture()).fidelity.missingMeasurements, 5);
+});
+
+test("malformed measurement containers and nonnumeric readings cannot enter replay", () => {
+    for (const computedMeasurements of [null, [], "180px", { actualLayoutWidth: "180" },
+        { actualLayoutHeight: false }, { actualPanelOffsetX: Infinity }, { actualPanelOffsetY: NaN }]) {
+        assert.throws(() => inspectCapture({ domTree: { id: "Hud", computedMeasurements } }), /measurement/);
+    }
 });
 
 test("AST dependency comparison includes classes, aliases, multiline and direct calls but ignores comments and distinguishes dynamic arguments", () => {
@@ -194,7 +236,7 @@ test("class trace retains its first matching panel and separates identical IDs u
 });
 
 test("before/after comparisons reject different captures, configuration, warmup, coverage and callback failures", () => {
-    const run = { meta: { treeSource: "captured", treeFingerprint: "tree-state", configMode: "defaults", configFingerprint: "cfg", warmupMs: 8000,
+    const run = { meta: { modelFingerprint: "model", treeSource: "captured", treeFingerprint: "tree-state", configMode: "defaults", configFingerprint: "cfg", warmupMs: 8000,
         captureFidelity: { fingerprint: "tree" } }, enabledEnd: ["ql_a"], callbackErrors: [], registryErrorsEnd: {} };
     assert.deepEqual(comparisonIssues(run, run), []);
     for (const key of ["configFingerprint", "warmupMs", "treeSource", "treeFingerprint"]) {
@@ -204,5 +246,5 @@ test("before/after comparisons reject different captures, configuration, warmup,
     assert.ok(comparisonIssues(run, { ...run, meta: { ...run.meta, captureFidelity: { fingerprint: "other" } } }).length);
     assert.ok(comparisonIssues(run, { ...run, callbackErrors: [{ message: "failed" }] }).length);
     assert.ok(comparisonIssues(run, { ...run, enabledEnd: [] }).length);
-    assert.ok(comparisonIssues(run, { meta: { treeSource: "captured" } }).length);
+    assert.ok(comparisonIssues(run, { meta: { modelFingerprint: "model", treeSource: "captured" } }).length);
 });

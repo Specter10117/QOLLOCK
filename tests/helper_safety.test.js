@@ -5,6 +5,25 @@ const { createHud } = require("../scripts/simulator");
 const { audit } = require("../scripts/audit_helper_calls");
 function setup() { const env = createHud({inHideout:false}); env.assertLoaded(); return {...env, Q:env.sandbox.global.QOL, U:env.sandbox.global.QOL_UTILS}; }
 
+test("first-class lookup keeps native direct-child priority without enumerating descendants", () => {
+ const {doc,U}=setup();
+ const root=doc.create("Panel",{id:"ClassOwner"});
+ const branch=doc.create("Panel",{id:"EarlierBranch"});root.addChild(branch);
+ const nested=doc.create("Panel",{id:"Nested",classes:["target"]});branch.addChild(nested);
+ const direct=doc.create("Panel",{id:"Direct",classes:["target"]});root.addChild(direct);
+ const traverse=root.FindChildrenWithClassTraverse.bind(root);let scans=0;
+ root.FindChildrenWithClassTraverse=name=>{scans++;return traverse(name);};
+ assert.equal(U.FindFirstPanelByClass(root,"target"),direct);
+ assert.equal(scans,0,"a direct class match must not enumerate the entire subtree");
+ direct.RemoveClass("target");
+ assert.equal(U.FindFirstPanelByClass(root,"target"),nested,"descendant compatibility and native order remain intact");
+ assert.equal(U.FindFirstPanelByClass(root,"absent"),null);
+ direct.AddClass("target");
+ root.GetChild=()=>{throw Error("native child enumeration unavailable");};
+ assert.equal(U.FindFirstPanelByClass(root,"target"),direct,"failed direct enumeration can retry through native traversal");
+ assert.equal(U.FindFirstPanelByClass(null,"target"),null);
+});
+
 test("runtime helper calls resolve to existing exports, including scoped aliases", () => {
  const result=audit(); assert.ok(result.calls>1000); assert.deepEqual(result.missing,[]);
 });
@@ -19,6 +38,26 @@ test("HUD resolution retries after a fallback root and changes with its context"
  const another=doc.create("CitadelHud",{id:"Hud"});
  sandbox.global.$.GetContextPanel=()=>another;
  assert.equal(Q.core.panel.findHud(),another);
+});
+
+test("HUD discovery exports preserve late sources, context replacement and explicit roots", () => {
+ const {doc,sandbox,Q}=setup();
+ const finders=[Q.core.hud.findHud,Q.core.Hud.findHud,Q.findHud,Q.ui.PanelHelpers.findHud];
+ const loading=doc.create("Panel",{id:"LoadingRoot"});
+ sandbox.global.$.GetContextPanel=()=>loading;
+ for(const find of finders)assert.equal(find(),loading);
+ const late=doc.create("CitadelHud",{id:"Hud"});loading.addChild(late);
+ for(const find of finders)assert.equal(find(),late,"a loading fallback cannot hide a later HUD");
+ const current=doc.create("CitadelHud",{id:"Hud"});
+ sandbox.global.$.GetContextPanel=()=>current;
+ const child=doc.create("Panel",{id:"OriginalHudChild"});late.addChild(child);
+ for(const find of finders){
+  assert.equal(find(),current,"a still-living old HUD cannot override the current context");
+  assert.equal(find(child),late,"an explicit anchor selects its own HUD");
+  assert.equal(find(),current,"explicit discovery does not overwrite current-context caching");
+ }
+ child.IsValid=()=>false;
+ for(const find of finders)assert.equal(find(child),null);
 });
 
 test("panel root helpers honor explicit context and safely reject deleted native traversal", () => {
@@ -82,6 +121,21 @@ test("safe style and position helpers contain native getter races",()=>{
  assert.doesNotThrow(()=>U.ClearStyleSafe(panel,'opacity'));
  assert.doesNotThrow(()=>U.SetPanelOpacitySafe(panel,0.5,1));
  assert.equal(U.GetPanelPositionRelativeToAncestor(panel,{}),null);
+});
+
+test("rejected opacity writes preserve visibility and report failure until a successful retry", () => {
+ const {doc,U}=setup(), panel=doc.create("Panel",{id:"RejectedOpacity"});
+ panel.style.opacity="0.00"; let reject=true; const attempts=[];
+ panel.style=new Proxy(panel.style,{set(target,key,value){
+  if(key==="opacity"){attempts.push(value); if(reject&&value!=="1.00")throw Error("opacity unavailable");}
+  target[key]=value;return true;
+ }});
+ assert.equal(U.SetPanelOpacitySafe(panel,0.4,1),"");
+ assert.equal(panel.style.opacity,"0.00","a failed custom alpha cannot force hidden content visible");
+ assert.deepEqual(attempts,["0.40"]);
+ reject=false;assert.equal(U.SetPanelOpacitySafe(panel,0.4,1),"0.40");
+ assert.equal(panel.style.opacity,"0.40");
+ U.SetPanelOpacitySafe(panel,0.4,1);assert.deepEqual(attempts,["0.40","0.40"]);
 });
 
 test("visibility helper skips redundant native class writes and tolerates stale handles",()=>{

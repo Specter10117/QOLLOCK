@@ -44,6 +44,7 @@
                 }
             ]
         },
+        { id: "Customize", name: "Customize", icon: "s2r://panorama/images/icons/icon_gear.vsvg", custom: true },
         {
             id: "Presets",
             name: "Presets",
@@ -140,7 +141,7 @@
                     features: ["ql_topbar", "ql_urn_timer", "ql_rejuv_hud", "ql_nicknames", "ql_showrank", "ql_ult_cooldowns"]
                 },
                 {
-                    title: "Bottom Bar",
+                    title: "Abilities",
                     animatedToggle: true,
                     enableKey: "HUD_BOTTOM_BAR_ENABLED",
                     features: ["ql_bottom_bar", "ql_cast_failed_hint", "ql_ability_icons"]
@@ -159,7 +160,7 @@
                 },
                 {
                     title: "Chat & Panels",
-                    features: ["ql_chat_images", "ql_damage_report", "ql_stats_position"]
+                    features: ["ql_chat_geometry", "ql_chat_images", "ql_damage_report", "ql_stats_position"]
                 }
             ]
         },

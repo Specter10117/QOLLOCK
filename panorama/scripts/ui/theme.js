@@ -214,13 +214,8 @@
 
         const title = header.FindChildTraverse("SettingsTitle");
         const titleAccent = header.FindChildTraverse("SettingsTitleAccent");
-        const moglockLink = header.FindChildTraverse("ModVersionLabelTop");
         if (title) title.text = LocalizeSettingsText("LOCK", true);
         if (titleAccent) titleAccent.text = theme === SETTINGS_THEME_MUNFINS ? "Munfins" : LocalizeSettingsText("QOL", true);
-        if (moglockLink) {
-            moglockLink.visible = theme !== SETTINGS_THEME_MUNFINS;
-            moglockLink.style.visibility = theme === SETTINGS_THEME_MUNFINS ? "collapse" : "visible";
-        }
     }
 
     function ApplySettingsThemeClasses(settingsWindow) {
@@ -305,12 +300,15 @@
         const map = maps[key] || null;
         if (map && Object.prototype.hasOwnProperty.call(map, raw)) {
             const translated = map[raw];
-            if (key === "fr" || key === "it" || key === "tr" || key === "pt" || key === "pt-br" || key === "es") {
-                return NormalizeLatinSettingsText(translated);
-            }
-            return translated;
+            return typeof translated === "string" && translated.trim() ? translated : raw;
         }
         return raw;
+    }
+
+    function FormatSettingsText(text, values) {
+        const translated = (Q.ui.theme?.LocalizeSettingsText || LocalizeSettingsText)(text, true);
+        return translated.replace(/\{([\w.-]+)\}/g, (token, key) =>
+            values && Object.prototype.hasOwnProperty.call(values, key) ? String(values[key]) : token);
     }
 
     function SetLocalizedConfigFeedbackMessage(text, tone, durationMs) {
@@ -381,6 +379,7 @@
         NormalizeLatinSettingsText,
         ShouldLocalizeTabContent,
         LocalizeSettingsText,
+        FormatSettingsText,
         SetLocalizedConfigFeedbackMessage
     };
 

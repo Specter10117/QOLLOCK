@@ -246,15 +246,20 @@ test("window: escape background click closes settings window first if open", () 
 });
 
 test("Escape menu root keeps the native cancel path while QOLLOCK settings handle their own cancel", () => {
-    const { windowApi, win, mockDollar } = createTestEnvironment();
+    const { windowApi, win, mockDollar, sandbox } = createTestEnvironment();
+    let nowMs = 1000;
+    sandbox.Date = { now: () => nowMs };
     const xml = fs.readFileSync(path.resolve(__dirname, "../panorama/layout/hud_escape_menu.xml"), "utf8");
     const handler = xml.match(/<CitadelHudEscapeMenu oncancel="([^"]+)"/);
     assert.ok(handler, "escape menu must declare a cancel handler");
-    assert.equal(handler[1], "CitadelResumePlaying()", "the focused escape-menu root must keep Deadlock's native cancel handler");
     let resumes = 0;
-    const cancel = () => vm.runInNewContext(handler[1], {
-        $: mockDollar,
-        CitadelResumePlaying: () => { resumes++; }
+    mockDollar.DispatchEvent = (name, context) => {
+        assert.equal(name, "CitadelResumePlaying");
+        assert.equal(context, mockDollar.GetContextPanel());
+        resumes++;
+    };
+    const cancel = () => vm.runInNewContext(handler[1].replace(/&amp;/g, "&").replace(/&apos;/g, "'"), {
+        $: mockDollar
     });
 
     windowApi.boot();
@@ -266,15 +271,21 @@ test("Escape menu root keeps the native cancel path while QOLLOCK settings handl
     assert.equal(windowApi.isOpen(), false);
     assert.equal(resumes, 1, "cancel on the focused settings window leaves the native menu open");
     cancel();
+    assert.equal(resumes, 1, "the same MenuBack must not bubble through and resume");
+    nowMs += 150;
+    cancel();
     assert.equal(resumes, 2, "next Escape should resume the native menu");
 
     const backgroundHandler = xml.match(/<Panel id="EscapeBackground" onactivate="([^"]+)"/);
     assert.ok(backgroundHandler);
-    const clickBackground = () => vm.runInNewContext(backgroundHandler[1].replace(/&amp;/g, "&"), {
+    const clickBackground = (customizing = false) => vm.runInNewContext(backgroundHandler[1].replace(/&amp;/g, "&").replace(/&apos;/g, "'"), {
         $: mockDollar,
-        CitadelResumePlaying: () => { resumes++; }
+        ...(customizing ? { QOL: { ui: { customize: { isRunning: () => true } } } } : {})
     });
     windowApi.setOpen(true);
+    clickBackground(true);
+    assert.equal(windowApi.isOpen(), true, "missed editor clicks must preserve settings and the draft");
+    assert.equal(resumes, 2);
     clickBackground();
     assert.equal(windowApi.isOpen(), false);
     assert.equal(resumes, 2);
@@ -299,7 +310,17 @@ test("the native MenuBack binding remains the only EscapeButton", () => {
     const xml = fs.readFileSync(path.resolve(__dirname, "../panorama/layout/hud_escape_menu.xml"), "utf8");
     const buttons = xml.match(/\bid="EscapeButton"/g) || [];
     assert.equal(buttons.length, 1, "duplicate EscapeButton ids can intercept the native MenuBack action");
-    assert.match(xml, /<CitadelBindingButton\s+id="EscapeButton"\s+action="MenuBack"\s+onactivate="CitadelResumePlaying\(\)"/);
+    const binding = xml.match(/<CitadelBindingButton\s+id="EscapeButton"\s+action="MenuBack"\s+onactivate="([^"]+)"/);
+    assert.ok(binding);
+    const { mockDollar } = createTestEnvironment();
+    let resumes = 0;
+    mockDollar.DispatchEvent = (name, context) => {
+        assert.equal(name, "CitadelResumePlaying");
+        assert.equal(context, mockDollar.GetContextPanel());
+        resumes++;
+    };
+    vm.runInNewContext(binding[1].replace(/&amp;/g, "&").replace(/&apos;/g, "'"), { $: mockDollar });
+    assert.equal(resumes, 1);
 });
 
 test("window: ensureDiscordTextureLogo and ensureDiscordFooterTextureLogo attach logo image", () => {
@@ -410,14 +431,12 @@ test("window: buildUI initializes navigation structure and attaches events", () 
     const closeBtn = header.FindChildTraverse("CloseBtn");
     const moglockLink = header.FindChildTraverse("ModVersionLabelTop");
     assert.ok(closeBtn, "CloseBtn must exist");
-    assert.ok(moglockLink, "ModVersionLabelTop must exist");
+    assert.strictEqual(moglockLink, null, "Header attribution link must not be created");
 
     const headerChildren = header.Children();
-    const verIdx = headerChildren.indexOf(moglockLink);
     const centerIdx = headerChildren.indexOf(headerCenterHost);
     const closeIdx = headerChildren.indexOf(closeBtn);
-    assert.ok(verIdx >= 0 && centerIdx >= 0 && closeIdx >= 0, "All header elements must be in header");
-    assert.ok(verIdx < centerIdx, "ModVersionLabelTop must precede SettingsHeaderCenterHost in header child order");
+    assert.ok(centerIdx >= 0 && closeIdx >= 0, "All header elements must be in header");
     assert.ok(centerIdx < closeIdx, "SettingsHeaderCenterHost must precede CloseBtn in header child order");
 });
 
@@ -434,7 +453,7 @@ test("window: setActiveTabAndRefresh clears search query and cancels pending sea
     assert.strictEqual(sandbox.currentSearchQuery, "", "currentSearchQuery must be cleared on tab navigation");
     assert.strictEqual(searchInput.text, "", "searchInput text must be cleared on tab navigation");
 
-    await new Promise((resolve) => setTimeout(resolve, 250));
+    await new Promise((resolve) => { setTimeout(resolve, 250); });
     assert.strictEqual(windowApi.getActiveTab(), "Console", "Active tab must be Console after fade");
 });
 

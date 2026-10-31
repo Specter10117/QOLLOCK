@@ -68,15 +68,20 @@ export async function check(env) {
         }
         state.checked_sha = state.pending.sha;
         state.identity = state.pending.identity;
+        state.watched_paths = state.pending.watched_paths;
         delete state.pending;
         delete state.retry_after;
         await env.STATE_KV.put(stateKey, JSON.stringify(state));
     }
     const manifestResponse = await github(target, "contents/upstream.json", token);
     const manifest = JSON.parse(atob(manifestResponse.content.replace(/\s/g, "")));
+    if (manifest.repository !== upstream || !Object.keys(manifest.files || {}).length) {
+        throw new Error("Invalid watched-resource manifest");
+    }
+    const watchedPaths = JSON.stringify(Object.keys(manifest.files).sort());
     const latest = await github(upstream, "commits/master", token);
     if (!/^[0-9a-f]{40}$/.test(latest.sha)) throw new Error("Invalid upstream SHA");
-    if (latest.sha === state.checked_sha) return { status: "unchanged" };
+    if (latest.sha === state.checked_sha && state.watched_paths === watchedPaths) return { status: "unchanged" };
     const identity = await watchedIdentity(manifest, latest.sha, token);
     const previous = state.identity || JSON.stringify(Object.keys(manifest.files).sort()
         .map(path => [path, Object.hasOwn(manifest.files[path], "pending_blob")
@@ -84,6 +89,7 @@ export async function check(env) {
     if (identity === previous) {
         state.checked_sha = latest.sha;
         state.identity = identity;
+        state.watched_paths = watchedPaths;
         await env.STATE_KV.put(stateKey, JSON.stringify(state));
         return { status: "unrelated-update" };
     }
@@ -92,7 +98,7 @@ export async function check(env) {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ event_type: "game-update", client_payload: { sha: latest.sha } })
     });
-    state.pending = { sha: latest.sha, identity, created_at: started };
+    state.pending = { sha: latest.sha, identity, watched_paths: watchedPaths, created_at: started };
     await env.STATE_KV.put(stateKey, JSON.stringify(state));
     return { status: "dispatched", sha: latest.sha };
 }

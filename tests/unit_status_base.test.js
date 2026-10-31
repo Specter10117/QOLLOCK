@@ -14,6 +14,9 @@ test("native name-above-health-bars classes retain their current visibility cont
     assert.match(css, /\.player\.HideName #name\s*\{[^}]*visibility:\s*collapse;/s);
 });
 
-test("hiding a unit name moves the current stamina row into the freed space", () => {
-    assert.match(css, /\.HideName #StaminaContainer\s*\{[^}]*margin-top:\s*28px;/s);
+test("hiding a unit name retains distinct native stamina placement", () => {
+    const normal = Number(css.match(/(?:^|\n)#StaminaContainer\s*\{[^}]*margin-top:\s*(-?[\d.]+)px;/s)?.[1]);
+    const hidden = Number(css.match(/\.HideName #StaminaContainer\s*\{[^}]*margin-top:\s*(-?[\d.]+)px;/s)?.[1]);
+    assert.ok(Number.isFinite(normal) && Number.isFinite(hidden), "both native name states declare stamina placement");
+    assert.notEqual(normal, hidden, "hidden names retain their own placement without pinning Valve's pixel values");
 });

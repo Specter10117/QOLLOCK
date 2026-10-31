@@ -12,6 +12,287 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
     background-color: #0000;
 }
 
+.QOLCustomizeActive .QOLCustomizeHidden,
+.QOLCustomizeActive #SettingsWindow.Visible.QOLCustomizeHidden
+{
+    visibility: collapse;
+}
+CitadelHudEscapeMenu.QOLCustomizeActive { background-color: #0000; }
+.QOLCustomizeOverlay { width: 100%; height: 100%; z-index: 1000; }
+.QOLCustomizeTools
+{
+    width: 400px;
+    height: fit-children;
+    max-height: 88%;
+    overflow: squish squish;
+    horizontal-align: right;
+    vertical-align: top;
+    margin: 15px 20px 15px 0px;
+    flow-children: down;
+    z-index: 10;
+    transition-property: opacity;
+    transition-duration: 0.15s;
+}
+.QOLCustomizeOverlay.Dragging .QOLCustomizeTools,
+.QOLCustomizeOverlay.Dragging .QOLCustomizePaletteWindow,
+.QOLCustomizeOverlay.Dragging .QOLCustomizeCatalog
+{
+    opacity: 0.65;
+}
+.QOLCustomizeTitle { margin-bottom: 6px; }
+.QOLCustomizeSelectionHeader { flow-children: right; width: 100%; margin-bottom: 8px; padding-bottom: 12px; border-bottom: 1px solid rgba(255, 255, 255, 0.12); }
+.QOLCustomizeSelectionHeader > .QOLCustomizeTitle { width: fill-parent-flow(1); vertical-align: center; text-shadow: none; }
+.QOLCustomizeVisibility { vertical-align: center; horizontal-align: right; }
+.QOLCustomizeAvailability { width: 100%; height: fit-children; color: #bac6c0; }
+.QOLCustomizeSection { width: 100%; height: fit-children; flow-children: down; margin-top: 12px; padding-top: 8px; border-top: 1px solid #ffffff12; }
+.QOLCustomizeSection:first-child { margin-top: 0px; padding-top: 0px; border-top: 0px solid transparent; }
+.QOLCustomizeSectionBody { width: 100%; flow-children: down; }
+.QOLCustomizeSubsection { width: 100%; height: fit-children; flow-children: down; margin-top: 8px; }
+.QOLCustomizeSubheading { width: 100%; height: fit-children; margin: 4px 0px; font-size: 13px; font-weight: semi-bold; }
+.QOLCustomizeSectionBody > .ModalInstructions { width: 100%; white-space: normal; height: fit-children; }
+.QOLCustomizeTools .QOLCustomizeSectionHeading.ModalTitle,
+.QOLCustomizePaletteWindow .QOLCustomizeSectionHeading.ModalTitle,
+.QOLCustomizeLaunch .QOLCustomizeSectionHeading.ModalTitle { width: 100%; height: fit-children; margin: 0px 0px 4px 0px; padding: 4px 0px; font-size: 14px; font-weight: semi-bold; letter-spacing: 0px; text-transform: none; text-align: left; text-shadow: none; }
+.QOLCustomizeChoices, #QOLCustomizeFields { flow-children: down; width: 100%; }
+.QOLCustomizeCatalog {
+    width: 230px;
+    height: 58%;
+    flow-children: down;
+    margin: 15px 0px 15px 20px;
+    z-index: 10;
+    horizontal-align: left;
+    vertical-align: top;
+    transition-property: opacity;
+    transition-duration: 0.15s;
+}
+.QOLCustomizeOverlay.PanelsHidden .QOLCustomizeTools,
+.QOLCustomizeOverlay.PanelsHidden .QOLCustomizePaletteWindow,
+.QOLCustomizeOverlay.PanelsHidden .QOLCustomizeCatalog { visibility: collapse; }
+.QOLCustomizeView {
+    flow-children: down;
+    align: center top;
+    margin-top: 15px;
+    z-index: 10;
+}
+.QOLCustomizeView > .QOLCustomizeActions { width: fit-children; margin-top: 0px; }
+.QOLCustomizeChromeHandle { width: 100%; height: 28px; margin-bottom: 6px; }
+.QOLCustomizeChromeHandle > .ModalTitle { width: 100%; height: fit-children; text-align: left; margin: 0px; vertical-align: center; }
+.QOLCustomizeChromeHandle:hover { brightness: 1.3; }
+.QOLCustomizeChoices { height: fill-parent-flow(1); overflow: squish scroll; }
+#QOLCustomizeFields { height: fit-children; max-height: 600px; overflow: squish scroll; }
+.QOLCustomizeSearchWrap { width: 100%; height: 34px; margin-bottom: 8px; }
+.QOLCustomizeSearch
+{
+    width: 100%;
+    height: 100%;
+    background-color: gradient(linear, 0% 0%, 0% 100%, from(#171717), to(#111111));
+    border: 1px solid rgba(220, 225, 220, 0.16);
+    border-radius: 6px;
+    padding: 0px 8px 0px 28px;
+    font-family: oracle;
+    font-size: 13px;
+    color: #d8e0dc;
+    text-align: left;
+    transition-property: border, brightness;
+    transition-duration: 0.16s;
+}
+.QOLCustomizeSearch:hover { border: 1px solid rgba(220, 225, 220, 0.28); }
+.QOLCustomizeSearch:focus
+{
+    border: 1px solid rgba(106, 231, 154, 0.28);
+    box-shadow: fill rgba(106, 231, 154, 0.04) 0px 0px 5px 0px;
+}
+.QOLCustomizeSearch #Contents,
+.QOLCustomizeSearch #TextEntryContents { width: 100%; height: 100%; vertical-align: center; }
+.QOLCustomizeSearch > Label,
+.QOLCustomizeSearch #TextEntryContents,
+.QOLCustomizeSearch #PlaceholderText
+{
+    font-family: oracle;
+    font-size: 13px;
+    color: #d8e0dc;
+    text-align: left;
+    vertical-align: center;
+    margin: 0px;
+}
+.QOLCustomizeSearch #PlaceholderText { color: #a8adab; }
+.QOLCustomizeSearch #TextEntryCursor { vertical-align: center; }
+.QOLCustomizeSearchIcon
+{
+    width: 14px;
+    height: 14px;
+    vertical-align: center;
+    margin-left: 9px;
+    wash-color: #8e9491;
+    opacity: 0.75;
+}
+.QOLCustomizeField { flow-children: down; width: 100%; height: fit-children; margin: 0px; padding: 8px 0px; background-color: none; border: 0px solid transparent; }
+.QOLCustomizeTools .QOLCustomizeField > Label { width: 100%; height: fit-children; white-space: normal; margin-bottom: 4px; font-size: 14px; letter-spacing: 0px; text-shadow: none; }
+.QOLCustomizeField.QOLCustomizeToggleRow {
+    flow-children: right;
+    width: 100%;
+    min-height: 36px;
+    margin: 0px;
+    padding: 8px 0px;
+    background-color: none;
+    border: 0px solid transparent;
+}
+.QOLCustomizeField.QOLCustomizeToggleRow > Label {
+    width: fill-parent-flow(1);
+    vertical-align: center;
+    margin-bottom: 0px;
+    font-size: 14px;
+    text-shadow: none;
+}
+.QOLCustomizeValueGroup { width: 100%; height: 28px; flow-children: right; vertical-align: center; }
+.QOLCustomizeFieldColor > .QOLCustomizeValueGroup { height: fit-children; }
+.QOLCustomizeUnit { vertical-align: center; margin: 0px 4px; min-width: 14px; opacity: 0.65; font-size: 13px; }
+.QOLCustomizeTools .QOLCustomizeField > .QOLCustomizeFieldError { width: 100%; color: #ed9898; margin: 3px 0px 0px 0px; font-size: 12px; }
+.QOLCustomizeFieldColor { flow-children: down; }
+.QOLCustomizeFieldColor > Label { width: 100%; }
+.QOLCustomizeActions { flow-children: right; margin-top: 8px; width: 100%; }
+.QOLCustomizeDropDown { background-image: url("s2r://panorama/images/control_icons/arrow_dropdown_png.vtex"); background-repeat: no-repeat; background-position: right 8px 50%; background-size: 16px 16px; }
+.QOLCustomizeDropDownItem.QOLSettingsDropDownItem { font-family: oracle; font-size: 14px; text-transform: none; letter-spacing: 0px; text-overflow: shrink; }
+.QOLCustomizeTools .QOLCustomizeFieldEnum > .QOLCustomizeDropDown { min-width: 0px; max-width: 10000px; width: 100%; height: 32px; min-height: 32px; max-height: 32px; margin: 4px 0px 0px 0px; padding: 4px 32px 4px 8px; text-align: left; }
+.QOLCustomizeTools .QOLCustomizeDropDown > .QOLCustomizeDropDownItem { text-align: left; horizontal-align: left; }
+.QOLCustomizeButton { padding: 5px 9px; margin: 2px; }
+.QOLCustomizeButton:disabled { opacity: 0.35; }
+.QOLCustomizeChoices .QOLCustomizeButton.Unavailable { opacity: 0.50; }
+.QOLCustomizeTools .QOLCustomizeInput.ValueInput {
+    width: 70px;
+    height: 28px;
+    margin: 0px 2px;
+    padding: 3px 4px;
+    text-align: center;
+    vertical-align: center;
+}
+.QOLCustomizeTools .QOLCustomizeInput.ValueInput:focus { box-shadow: none; }
+.QOLCustomizeTools .QOLCustomizeFieldColor .QOLCustomizeInput.ValueInput { width: 95px; text-align: left; }
+.QOLCustomizeTools .QOLCustomizeInput.ValueInput.Invalid,
+.QOLCustomizeTools .QOLCustomizeInput.ValueInput.Invalid:focus { border: 1px solid #ed7070; box-shadow: none; }
+.QOLCustomizeSwatch { width: 18px; height: 18px; margin-left: 6px; vertical-align: center; border: 1px solid #fff4; border-radius: 2px; }
+.QOLCustomizeColorEditor { width: 100%; height: fit-children; flow-children: down; }
+.QOLCustomizePaletteWindow {
+    width: 400px;
+    height: fit-children;
+    flow-children: down;
+    overflow: squish squish;
+    align: right top;
+    margin: 15px 432px 15px 0px;
+    z-index: 10;
+}
+.QOLCustomizePaletteDock { width: 100%; height: fit-children; flow-children: down; overflow: squish squish; }
+.QOLCustomizeNativePicker { horizontal-align: center; margin: 6px 0px; }
+.QOLCustomizePalette { width: 100%; flow-children: right-wrap; margin-top: 4px; margin-bottom: 4px; }
+.QOLCustomizeTools .QOLCustomizePaletteToggle { width: fill-parent-flow(1); height: 28px; flow-children: right; padding: 3px 6px; margin: 0px 4px; border-radius: 3px; box-shadow: none; }
+.QOLCustomizeTools .QOLCustomizePaletteToggle > Label { width: fill-parent-flow(1); vertical-align: center; font-size: 12px; letter-spacing: 0px; text-transform: none; }
+.QOLCustomizeColorChoice { width: 22px; height: 22px; margin: 2px; border: 2px solid transparent; border-radius: 2px; }
+.QOLCustomizeColorChoice:hover,
+.QOLCustomizeColorChoice.Active { border: 2px solid white; }
+.QOLCustomizeChoices .QOLCustomizeButton { width: 100%; margin-left: 0px; margin-right: 0px; }
+.QOLCustomizeCatalog .QOLCustomizeChoices .QOLCustomizeButtonLabel { width: 100%; font-size: 14px; letter-spacing: 0px; text-transform: none; white-space: normal; }
+.QOLCustomizeFrame {
+    horizontal-align: left;
+    vertical-align: top;
+    border: 1px solid transparent;
+    background-color: transparent;
+    transition-property: border;
+    transition-duration: 0.1s;
+}
+.QOLCustomizeOutline { align: left top; background-color: transparent; border: 1px solid transparent; }
+.QOLCustomizeCorners { align: left top; z-index: 6; }
+.QOLCustomizeGestureOutline {
+    align: left top;
+    z-index: 7;
+    border: 2px solid #7fe5b8;
+    background-color: transparent;
+    box-shadow: none;
+}
+.QOLCustomizeOverlay .QOLCustomizeFrame:hover .QOLCustomizeOutline {
+    border: 1px solid rgba(102, 204, 153, 0.75);
+    background-color: transparent;
+    box-shadow: none;
+}
+.QOLCustomizeOverlay .QOLCustomizeFrame.Selected .QOLCustomizeOutline {
+    border: 2px solid #66cc99;
+    background-color: transparent;
+    box-shadow: none;
+}
+.QOLCustomizeTools .QOLCustomizeValueGroup {
+    width: 100%;
+    flow-children: right;
+    vertical-align: center;
+}
+.QOLCustomizeTools .SliderContainer {
+    width: fill-parent-flow(1);
+    vertical-align: center;
+    margin-right: 6px;
+    height: 24px;
+}
+.QOLCustomizeTools .HorizontalSlider {
+    width: 100%;
+    vertical-align: center;
+}
+.QOLCustomizeOverlay .HorizontalSlider .SliderThumb,
+.QOLCustomizeOverlay .HorizontalSlider:hover .SliderThumb,
+.QOLCustomizeOverlay .HorizontalSlider:active .SliderThumb { box-shadow: none; }
+.QOLCustomizeTools .QOLCustomizeUnit { vertical-align: center; margin-left: 2px; }
+.QOLCustomizeResize { align: right bottom; width: 24px; height: 24px; z-index: 4; background-color: transparent; border: 0px; overflow: noclip; }
+.QOLCustomizeFrame, .QOLCustomizeCorners { overflow: noclip; }
+.QOLCustomizeResizeMarker { align: left top; width: 24px; height: 24px; border-right: 2px solid #66cc99; border-bottom: 2px solid #66cc99; background-color: #121816; }
+.QOLCustomizeOverlay .QOLCustomizeFrame.SmallTarget.Selected.Capturing { border: 1px solid transparent; }
+.QOLCustomizeOverlay .QOLCustomizeFrame.SmallTarget.Selected { border: 1px dashed rgba(102, 204, 153, 0.45); }
+.QOLCustomizeTools .QOLCustomizeResetRow { width: 100%; flow-children: right; margin-top: 8px; }
+.QOLCustomizeHistory { width: 100%; height: 32px; flow-children: right; margin-top: 4px; }
+.QOLCustomizeTools .QOLCustomizeQuiet { height: 28px; margin: 0px 2px; padding: 4px 8px; background-color: transparent; border: 1px solid transparent; box-shadow: none; }
+.QOLCustomizeTools .QOLCustomizeQuiet > Label { font-size: 12px; letter-spacing: 0px; text-transform: none; color: #bac6c0; }
+.QOLCustomizeTools .QOLCustomizeQuiet:hover { background-color: rgba(210, 224, 216, 0.06); border-color: rgba(210, 224, 216, 0.15); brightness: 1.06; }
+.QOLCustomizeTools .QOLCustomizeQuiet:hover > Label { color: #eef6f0; }
+.QOLCustomizeTools .QOLCustomizeReset { width: fill-parent-flow(1); min-width: 0px; height: 36px; margin: 0px 2px; padding: 4px; border: 1px solid rgba(210, 224, 216, 0.3); box-shadow: none; }
+.QOLCustomizeTools .QOLCustomizeReset > Label { width: 100%; height: fit-children; align: center center; text-align: center; white-space: normal; font-size: 12px; letter-spacing: 0px; text-transform: none; }
+.QOLCustomizeTools .QOLCustomizeButton:focus { border-color: #66cc99; }
+.QOLCustomizeFooter { width: 100%; flow-children: right; margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255, 255, 255, 0.08); }
+.QOLCustomizeTools .QOLCustomizeFooter > .QOLCustomizeButton { width: fill-parent-flow(1); height: 32px; margin: 0px 2px 4px 2px; }
+.QOLCustomizeTools .QOLCustomizeFooter .QOLCustomizeButtonLabel { align: center center; }
+.QOLCustomizeTools .QOLCustomizeButton:hover,
+.QOLCustomizeTools .QOLCustomizeButton:active { transform: none; }
+.QOLCustomizeAvailability { margin-bottom: 0px; }
+.QOLCustomizeResize:hover .QOLCustomizeResizeMarker { background-color: #66cc99; }
+.QOLCustomizeResize.TopLeft { align: left top; }
+.QOLCustomizeResizeMarker.TopLeft { border-right: 0px; border-bottom: 0px; border-left: 2px solid #66cc99; border-top: 2px solid #66cc99; }
+.QOLCustomizeResize.TopRight { align: right top; }
+.QOLCustomizeResizeMarker.TopRight { border-bottom: 0px; border-top: 2px solid #66cc99; }
+.QOLCustomizeResize.BottomLeft { align: left bottom; }
+.QOLCustomizeResizeMarker.BottomLeft { border-right: 0px; border-left: 2px solid #66cc99; }
+.QOLCustomizeTools > .ModalInstructions,
+#QOLCustomizeFields > .ModalInstructions { width: 100%; white-space: normal; height: fit-children; }
+.QOLCustomizeLaunch { flow-children: down; width: 100%; }
+.QOLCustomizeLaunch > .ModalInstructions { width: 100%; height: fit-children; white-space: normal; margin-bottom: 8px; }
+.QOLCustomizeLaunchOpen { width: 100%; height: 40px; margin: 8px 0px; }
+.QOLCustomizeLaunchGrid { width: 100%; height: fit-children; flow-children: down; }
+.QOLCustomizeLaunchRow { width: 100%; height: fit-children; flow-children: right; margin-bottom: 8px; }
+.QOLCustomizeLaunchElement,
+.QOLCustomizeLaunchSpacer { width: fill-parent-flow(1); min-width: 0px; }
+.QOLCustomizeLaunchElement { min-height: 44px; margin: 0px; padding: 8px 12px; }
+.QOLCustomizeLaunchElement:first-child { margin-right: 8px; }
+.QOLCustomizeLaunch .QOLCustomizeButtonLabel { width: 100%; height: fit-children; vertical-align: center; white-space: normal; font-size: 14px; letter-spacing: 0px; text-transform: none; }
+.QOLCustomizeLaunchElement > .QOLCustomizeButtonLabel { text-align: center; }
+.QOLCustomizeLaunchOpen > .QOLCustomizeButtonLabel { text-align: center; }
+.QOLCustomizeLaunch .QOLCustomizeButton:focus { border-color: #66cc99; }
+
+.QOLCustomizeGuideLine {
+    background-color: rgba(102, 204, 153, 0.75);
+    z-index: 8;
+}
+.QOLCustomizeGuideLine.Vertical {
+    width: 1px;
+    height: 100%;
+}
+.QOLCustomizeGuideLine.Horizontal {
+    height: 1px;
+    width: 100%;
+}
+
 /* Active Stats showcase (Crosshair tab): reuse the REAL crosshair-overlay styling so the preview
    rows are a 1:1 copy of the in-game overlay — same pill, accent border, property icon + value.
    The HUD layout already includes the property icons; the separate settings context needs them
@@ -410,953 +691,7 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 	width: 752px;
 }
 
-#MinimapSizePreview
-{
-	ignore-parent-flow: true;
-	horizontal-align: right;
-	vertical-align: bottom;
-	margin-right: 30px;
-	margin-bottom: 30px;
-	flow-children: down;
-	opacity: 0;
-	visibility: collapse;
-	transform: translateX(10px);
-	transition-property: opacity, transform, visibility;
-	transition-duration: 0.14s;
-	transition-timing-function: ease-out;
-	z-index: 5200;
-	overflow: noclip;
-	hittest: false;
-	hittestchildren: false;
-}
 
-#MinimapSizePreview.Visible
-{
-	opacity: 1;
-	visibility: visible;
-	transform: translateX(0px);
-}
-
-#MinimapSizePreviewCircle
-{
-	horizontal-align: center;
-	vertical-align: center;
-	width: 160px;
-	height: 160px;
-	border-radius: 999px;
-	border: 2px solid rgba(173, 226, 205, 0.82);
-	background-color: gradient( radial, 50% 50%, 0% 0%, 50% 50%, from( rgba(102, 204, 153, 0.14) ), to( rgba(102, 204, 153, 0.02) ) );
-	box-shadow: fill rgba(102, 204, 153, 0.18) 0px 0px 20px 0px;
-	hittest: false;
-	hittestchildren: false;
-}
-
-#MinimapSizePreviewLabel
-{
-	ignore-parent-flow: true;
-	horizontal-align: center;
-	vertical-align: bottom;
-	text-align: center;
-	margin-bottom: -26px;
-	color: #cde5db;
-	font-size: 16px;
-	font-weight: bold;
-	letter-spacing: 1px;
-	text-transform: uppercase;
-	text-shadow: 0px 0px 8px rgba(102, 204, 153, 0.30);
-	hittest: false;
-	hittestchildren: false;
-}
-
-#ZoomMinimapPreview
-{
-	ignore-parent-flow: true;
-	horizontal-align: center;
-	vertical-align: center;
-	margin-left: 0px;
-	margin-top: 0px;
-	flow-children: down;
-	opacity: 0;
-	visibility: collapse;
-	transform: translateY(8px);
-	transition-property: opacity, transform, visibility;
-	transition-duration: 0.14s;
-	transition-timing-function: ease-out;
-	z-index: 5200;
-	overflow: noclip;
-	hittest: false;
-	hittestchildren: false;
-}
-
-#ZoomMinimapPreview.Visible
-{
-	opacity: 1;
-	visibility: visible;
-	transform: translateY(0px);
-}
-
-#ZoomMinimapPreviewCircle
-{
-	horizontal-align: center;
-	vertical-align: center;
-	width: 180px;
-	height: 180px;
-	border-radius: 999px;
-	border: 2px solid rgba(173, 226, 205, 0.82);
-	background-color: gradient( radial, 50% 50%, 0% 0%, 50% 50%, from( rgba(102, 204, 153, 0.14) ), to( rgba(102, 204, 153, 0.02) ) );
-	box-shadow: fill rgba(102, 204, 153, 0.18) 0px 0px 20px 0px;
-	hittest: false;
-	hittestchildren: false;
-}
-
-#ZoomMinimapPreviewLabel
-{
-	horizontal-align: center;
-	text-align: center;
-	margin-top: 8px;
-	color: #cde5db;
-	font-size: 16px;
-	font-weight: bold;
-	letter-spacing: 1px;
-	text-transform: uppercase;
-	text-shadow: 0px 0px 8px rgba(102, 204, 153, 0.30);
-	hittest: false;
-	hittestchildren: false;
-}
-
-#ZipBoostPreview
-{
-	ignore-parent-flow: true;
-	horizontal-align: center;
-	vertical-align: bottom;
-	margin-left: -520px;
-	margin-bottom: 20px;
-	opacity: 0;
-	visibility: collapse;
-	transform: translateY(8px);
-	transition-property: opacity, transform, visibility;
-	transition-duration: 0.14s;
-	transition-timing-function: ease-out;
-	z-index: 5200;
-	overflow: noclip;
-	hittest: false;
-	hittestchildren: false;
-}
-
-#ZipBoostPreview.Visible
-{
-	opacity: 1;
-	visibility: visible;
-	transform: translateY(0px);
-}
-
-#ZipBoostPreviewBox
-{
-	flow-children: down;
-	padding: 8px 12px;
-	min-width: 120px;
-	border: 2px solid rgba(173, 226, 205, 0.82);
-	border-radius: 6px;
-	background-color: gradient( radial, 50% 50%, 0% 0%, 80% 80%, from( rgba(102, 204, 153, 0.18) ), to( rgba(102, 204, 153, 0.04) ) );
-	box-shadow: fill rgba(102, 204, 153, 0.18) 0px 0px 20px 0px;
-	hittest: false;
-	hittestchildren: false;
-}
-
-#ZipBoostPreviewLabel
-{
-	horizontal-align: center;
-	text-align: center;
-	color: #cde5db;
-	font-size: 13px;
-	font-weight: bold;
-	letter-spacing: 1px;
-	text-transform: uppercase;
-	text-shadow: 0px 0px 8px rgba(102, 204, 153, 0.30);
-	hittest: false;
-	hittestchildren: false;
-}
-
-#CrosshairStatsPreview
-{
-	ignore-parent-flow: true;
-	horizontal-align: center;
-	vertical-align: center;
-	margin-left: 130px;
-	margin-top: 0px;
-	opacity: 0;
-	visibility: collapse;
-	transform: translateY(8px);
-	transition-property: opacity, transform, visibility;
-	transition-duration: 0.14s;
-	transition-timing-function: ease-out;
-	z-index: 5200;
-	overflow: noclip;
-	hittest: false;
-	hittestchildren: false;
-}
-
-#CrosshairStatsPreview.Visible
-{
-	opacity: 1;
-	visibility: visible;
-	transform: translateY(0px);
-}
-
-#CrosshairStatsPreviewBox
-{
-	flow-children: down;
-	width: fit-children;
-	height: fit-children;
-	padding: 2px 0px;
-	hittest: false;
-	hittestchildren: false;
-}
-
-#CrosshairStatsPreviewLabel
-{
-	horizontal-align: center;
-	text-align: center;
-	color: #9fb2ab;
-	font-size: 9px;
-	font-weight: bold;
-	letter-spacing: 1px;
-	text-transform: uppercase;
-	margin-bottom: 3px;
-	opacity: 0.55;
-	hittest: false;
-	hittestchildren: false;
-}
-
-/* Rows are a 1:1 mirror of the in-game overlay rows (ql_feat_crosshair_stats.css):
-   compact dark pill with a colored left accent, red for debuff / green for buff. */
-.CrosshairStatsPreviewRow
-{
-	horizontal-align: left;
-	margin-top: 2px;
-	padding: 3px 9px 3px 7px;
-	border-radius: 4px;
-	border-left: 3px solid #ffffff30;
-	font-size: 14px;
-	font-weight: bold;
-	font-family: sansMono;
-	letter-spacing: 0px;
-	background-color: #0f141cdc;
-	hittest: false;
-	hittestchildren: false;
-}
-
-.CrosshairStatsPreviewRow.debuff
-{
-	color: #ff8d8d;
-	background-color: #321010d8;
-	border-left-color: #ff5a5a;
-}
-
-.CrosshairStatsPreviewRow.buff
-{
-	color: #8ff19b;
-	background-color: #102614d8;
-	border-left-color: #58e070;
-}
-
-#UnsecuredSoulsPreview
-{
-	ignore-parent-flow: true;
-	horizontal-align: center;
-	vertical-align: bottom;
-	margin-left: -520px;
-	margin-bottom: 110px;
-	opacity: 0;
-	visibility: collapse;
-	transform: translateY(8px);
-	transition-property: opacity, transform, visibility;
-	transition-duration: 0.14s;
-	transition-timing-function: ease-out;
-	z-index: 5200;
-	overflow: noclip;
-	hittest: false;
-	hittestchildren: false;
-}
-
-#UnsecuredSoulsPreview.Visible
-{
-	opacity: 1;
-	visibility: visible;
-	transform: translateY(0px);
-}
-
-#UnsecuredSoulsPreviewLabel
-{
-	horizontal-align: center;
-	text-align: center;
-	color: #f2fff8;
-	font-size: 16px;
-	font-weight: bold;
-	letter-spacing: 0.7px;
-	text-transform: uppercase;
-	text-shadow: 0px 0px 7px rgba(118, 255, 186, 0.35);
-	hittest: false;
-	hittestchildren: false;
-}
-
-#CompassPreview
-{
-	ignore-parent-flow: true;
-	horizontal-align: center;
-	vertical-align: top;
-	margin-left: 0px;
-	margin-top: 120px;
-	opacity: 0;
-	visibility: collapse;
-	transform: translateY(8px);
-	transition-property: opacity, transform, visibility;
-	transition-duration: 0.14s;
-	transition-timing-function: ease-out;
-	z-index: 5200;
-	overflow: noclip;
-	hittest: false;
-	hittestchildren: false;
-}
-
-#CompassPreview.Visible
-{
-	opacity: 1;
-	visibility: visible;
-	transform: translateY(0px);
-}
-
-#CompassPreviewBox
-{
-	width: 200px;
-	height: 50px;
-	background-color: gradient( radial, 50% 50%, 0% 0%, 90% 90%, from( rgba(102, 204, 153, 0.18) ), to( rgba(102, 204, 153, 0.05) ) );
-	border: 2px solid rgba(173, 226, 205, 0.82);
-	border-radius: 4px;
-	box-shadow: fill rgba(102, 204, 153, 0.18) 0px 0px 20px 0px;
-	horizontal-align: center;
-}
-
-#CompassPreviewLabel
-{
-	horizontal-align: center;
-	text-align: center;
-	margin-top: 8px;
-	color: #cde5db;
-	font-size: 13px;
-	font-weight: bold;
-	letter-spacing: 1px;
-	text-transform: uppercase;
-	text-shadow: 0px 0px 8px rgba(102, 204, 153, 0.30);
-}
-
-/* Speed preview — independent panel, mirrors in-game #QOLSpeedRoot (a sibling
-   of the compass root, NOT a child). Centered, top-anchored at the 120px
-   baseline; ShowSpeedPreview() sets the full margins. */
-#SpeedPreview
-{
-	ignore-parent-flow: true;
-	horizontal-align: center;
-	vertical-align: top;
-	margin-left: 0px;
-	margin-top: 120px;
-	width: 50px;
-	height: 50px;
-	background-color: gradient( radial, 50% 50%, 0% 0%, 90% 90%, from( rgba(255, 217, 122, 0.18) ), to( rgba(255, 217, 122, 0.05) ) );
-	border: 2px solid rgba(255, 217, 122, 0.82);
-	border-radius: 6px;
-	box-shadow: fill rgba(255, 200, 90, 0.18) 0px 0px 16px 0px;
-	opacity: 0;
-	visibility: collapse;
-	transform: translateY(8px);
-	transition-property: opacity, transform, visibility;
-	transition-duration: 0.14s;
-	transition-timing-function: ease-out;
-	z-index: 5300;
-	overflow: noclip;
-	hittest: false;
-	hittestchildren: false;
-}
-
-#SpeedPreview.Visible
-{
-	opacity: 1;
-	visibility: visible;
-	transform: translateY(0px);
-}
-
-#SpeedPreviewLabel
-{
-	width: 100%;
-	height: 100%;
-	horizontal-align: center;
-	vertical-align: center;
-	text-align: center;
-	color: #ffd97a;
-	font-size: 15px;
-	font-weight: bold;
-	letter-spacing: 1px;
-	text-transform: uppercase;
-	text-shadow: 0px 0px 8px rgba(255, 200, 90, 0.55);
-}
-
-#KeyboardOverlayPreview
-{
-	ignore-parent-flow: true;
-	horizontal-align: left;
-	vertical-align: bottom;
-	margin-left: 150px;
-	margin-bottom: 300px;
-	opacity: 0;
-	visibility: collapse;
-	transform: translateY(8px);
-	transition-property: opacity, transform, visibility;
-	transition-duration: 0.14s;
-	transition-timing-function: ease-out;
-	z-index: 5200;
-	overflow: noclip;
-	hittest: false;
-	hittestchildren: false;
-}
-
-#KeyboardOverlayPreview.Visible
-{
-	opacity: 1;
-	visibility: visible;
-	transform: translateY(0px);
-}
-
-#KeyboardOverlayPreviewBox
-{
-	flow-children: none;
-	padding: 0px;
-	border: 2px solid rgba(173, 226, 205, 0.82);
-	border-radius: 6px;
-	background-color: gradient( radial, 50% 50%, 0% 0%, 90% 90%, from( rgba(102, 204, 153, 0.18) ), to( rgba(102, 204, 153, 0.05) ) );
-	box-shadow: fill rgba(102, 204, 153, 0.18) 0px 0px 20px 0px;
-	overflow: noclip;
-	hittest: false;
-	hittestchildren: false;
-}
-
-.KeyboardOverlayPreviewRow
-{
-	ignore-parent-flow: true;
-	flow-children: right;
-	horizontal-align: center;
-	vertical-align: center;
-	hittest: false;
-	hittestchildren: false;
-}
-
-.KeyboardOverlayPreviewKey
-{
-	width: 22px;
-	height: 22px;
-	margin: 0px 2px;
-	border: 1px solid rgba(173, 226, 205, 0.75);
-	border-radius: 4px;
-	background-color: rgba(102, 204, 153, 0.16);
-	hittest: false;
-	hittestchildren: false;
-}
-
-.KeyboardOverlayPreviewKey.Wide
-{
-	width: 36px;
-}
-
-.KeyboardOverlayPreviewKey.Spacer
-{
-	border: 0px solid transparent;
-	background-color: rgba(0, 0, 0, 0);
-}
-
-#KeyboardOverlayPreviewLabel
-{
-	ignore-parent-flow: true;
-	horizontal-align: center;
-	vertical-align: bottom;
-	margin-bottom: 4px;
-	text-align: center;
-	color: #cde5db;
-	font-size: 13px;
-	font-weight: bold;
-	letter-spacing: 1px;
-	text-transform: uppercase;
-	text-shadow: 0px 0px 8px rgba(102, 204, 153, 0.30);
-}
-
-#ItemCooldownPreview
-{
-	ignore-parent-flow: true;
-	horizontal-align: center;
-	vertical-align: center;
-	margin-left: 0%;
-	margin-top: 0%;
-	opacity: 0;
-	visibility: collapse;
-	transform: translate3d(0px, 150px, 0px) translateY(8px);
-	transition-property: opacity, transform, visibility;
-	transition-duration: 0.14s;
-	transition-timing-function: ease-out;
-	z-index: 5200;
-	overflow: noclip;
-	hittest: false;
-	hittestchildren: false;
-}
-
-#ItemCooldownPreview.Visible
-{
-	opacity: 1;
-	visibility: visible;
-	transform: translate3d(0px, 150px, 0px) translateY(0px);
-}
-
-#ItemCooldownPreviewRow
-{
-	flow-children: right;
-	horizontal-align: center;
-	vertical-align: center;
-	width: fit-children;
-	height: fit-children;
-	opacity: 0.5;
-	hittest: false;
-	hittestchildren: false;
-}
-
-#ItemCooldownPreviewIcon
-{
-	width: 45px;
-	height: 45px;
-	border: 2px solid rgba(173, 226, 205, 0.82);
-	background-color: gradient( radial, 50% 50%, 0% 0%, 90% 90%, from( rgba(102, 204, 153, 0.18) ), to( rgba(102, 204, 153, 0.05) ) );
-	border-radius: 50%;
-	overflow: clip clip;
-	clip: radial(50% 50%, 0deg, 360deg);
-	hittest: false;
-	hittestchildren: false;
-}
-
-#ItemCooldownPreviewModContainer
-{
-	width: 100%;
-	height: 100%;
-	background-color: none;
-	border-radius: 50%;
-	overflow: clip clip;
-	clip: radial(50% 50%, 0deg, 360deg);
-}
-
-#ItemCooldownPreviewBg
-{
-	width: 100%;
-	height: 100%;
-	background-color: gradient( radial, 50% 50%, 0% 0%, 85% 85%, from( rgba(112, 94, 168, 0.30) ), to( rgba(54, 42, 76, 0.10) ) );
-	border: 1px solid rgba(173, 226, 205, 0.42);
-	border-radius: 50%;
-	overflow: clip clip;
-	clip: radial(50% 50%, 0deg, 360deg);
-}
-
-#ItemCooldownPreviewImage
-{
-	width: 100%;
-	height: 100%;
-	background-image: url("s2r://");
-	background-size: 100% 100%;
-	background-position: 50% 50%;
-	background-repeat: no-repeat;
-	border-radius: 50%;
-	overflow: clip clip;
-	clip: radial(50% 50%, 0deg, 360deg);
-}
-
-#ItemCooldownPreviewMask
-{
-	width: 100%;
-	height: 100%;
-	background-color: offBlack&dd;
-	clip: radial(50.0% 50.0%, 0.0deg, 235deg);
-}
-
-#ItemCooldownPreviewLabel
-{
-	ignore-parent-flow: true;
-	horizontal-align: center;
-	vertical-align: center;
-	text-align: center;
-	color: #f6fbffff;
-	font-size: 20px;
-	font-weight: bold;
-	text-shadow: 0px 0px 6px #000000ff;
-}
-
-#AmmoPreview
-{
-	ignore-parent-flow: true;
-	horizontal-align: left;
-	vertical-align: top;
-	margin-left: 980px;
-	margin-top: 820px;
-	flow-children: right;
-	opacity: 0;
-	visibility: collapse;
-	transform: translateY(8px);
-	transition-property: opacity, transform, visibility;
-	transition-duration: 0.14s;
-	transition-timing-function: ease-out;
-	z-index: 5200;
-	hittest: false;
-	hittestchildren: false;
-}
-
-#AmmoPreview.Visible
-{
-	opacity: 1;
-	visibility: visible;
-	transform: translateY(0px);
-}
-
-#AmmoPreviewCurrent
-{
-	font-size: 16px;
-	font-weight: bold;
-	color: #f6fbff;
-	text-shadow: 0px 0px 6px #000000ee;
-	text-align: right;
-	width: 32px;
-	hittest: false;
-}
-
-#AmmoPreviewTotal
-{
-	font-size: 16px;
-	font-weight: bold;
-	color: #cde5db;
-	text-shadow: 0px 0px 6px #000000ee;
-	text-align: left;
-	width: 50px;
-	margin-left: 2px;
-	hittest: false;
-}
-
-#ReloadCooldownPreview
-{
-	ignore-parent-flow: true;
-	horizontal-align: left;
-	vertical-align: top;
-	margin-left: 950px;
-	margin-top: 510px;
-	opacity: 0;
-	visibility: collapse;
-	transform: translateY(8px);
-	transition-property: opacity, transform, visibility;
-	transition-duration: 0.14s;
-	transition-timing-function: ease-out;
-	z-index: 5200;
-	hittest: false;
-	hittestchildren: false;
-}
-
-#ReloadCooldownPreview.Visible
-{
-	opacity: 1;
-	visibility: visible;
-	transform: translateY(0px);
-}
-
-#ReloadCooldownPreviewRing
-{
-	width: 60px;
-	height: 60px;
-	border-radius: 999px;
-	border: 2px solid rgba(173, 226, 205, 0.82);
-	background-color: gradient( radial, 50% 50%, 0% 0%, 85% 85%, from( rgba(102, 204, 153, 0.18) ), to( rgba(102, 204, 153, 0.04) ) );
-	box-shadow: fill rgba(102, 204, 153, 0.14) 0px 0px 16px 0px;
-}
-
-#ReloadCooldownPreviewLabel
-{
-	horizontal-align: center;
-	vertical-align: center;
-	text-align: center;
-	font-size: 28px;
-	font-weight: bold;
-	color: #f2fff8;
-	text-shadow: 0px 0px 6px #000000ff;
-}
-
-#UnitTargetPreview
-{
-	ignore-parent-flow: true;
-	horizontal-align: left;
-	vertical-align: top;
-	margin-left: 930px;
-	margin-top: 470px;
-	opacity: 0;
-	visibility: collapse;
-	transform: translateY(8px);
-	transition-property: opacity, transform, visibility;
-	transition-duration: 0.14s;
-	transition-timing-function: ease-out;
-	z-index: 5200;
-	hittest: false;
-	hittestchildren: false;
-}
-
-#UnitTargetPreview.Visible
-{
-	opacity: 1;
-	visibility: visible;
-	transform: translateY(0px);
-}
-
-#UnitTargetPreviewImage
-{
-	width: 84px;
-	height: 84px;
-	border-radius: 999px;
-	border: 2px solid rgba(210, 234, 225, 0.85);
-	background-color: gradient( radial, 50% 50%, 0% 0%, 85% 85%, from( rgba(200, 245, 227, 0.32) ), to( rgba(200, 245, 227, 0.05) ) );
-	box-shadow: fill rgba(102, 204, 153, 0.14) 0px 0px 14px 0px;
-}
-
-#UnitTargetPreviewImage.RedDiamond
-{
-	border: 2px solid rgba(255, 114, 114, 0.90);
-	background-color: gradient( radial, 50% 50%, 0% 0%, 85% 85%, from( rgba(255, 128, 128, 0.30) ), to( rgba(255, 128, 128, 0.05) ) );
-}
-
-#UnitTargetPreviewImage.ImprovedHint
-{
-	border: 2px solid rgba(173, 226, 205, 0.92);
-	background-color: gradient( radial, 50% 50%, 0% 0%, 85% 85%, from( rgba(102, 204, 153, 0.20) ), to( rgba(102, 204, 153, 0.04) ) );
-}
-
-#UnitTargetPreviewBinding
-{
-	ignore-parent-flow: true;
-	horizontal-align: center;
-	vertical-align: bottom;
-	margin-bottom: -16px;
-	padding: 2px 6px;
-	background-color: rgba(13, 16, 18, 0.74);
-	border: 1px solid rgba(173, 226, 205, 0.55);
-	border-radius: 4px;
-	color: #d8f0e6;
-	font-size: 13px;
-	font-weight: bold;
-}
-
-#UnitTargetPreviewBinding.ImprovedHint
-{
-	background-color: rgba(0, 0, 0, 0);
-	border: 0px solid transparent;
-}
-
-#DamageReportPreview
-{
-	ignore-parent-flow: true;
-	horizontal-align: left;
-	vertical-align: top;
-	margin-left: 1120px;
-	margin-top: 390px;
-	opacity: 0;
-	visibility: collapse;
-	transform: translateY(8px);
-	transition-property: opacity, transform, visibility;
-	transition-duration: 0.14s;
-	transition-timing-function: ease-out;
-	z-index: 5200;
-	hittest: false;
-	hittestchildren: false;
-}
-
-#DamageReportPreview.Visible
-{
-	opacity: 1;
-	visibility: visible;
-	transform: translateY(0px);
-}
-
-#DamageReportPreviewBox
-{
-	padding: 8px 12px;
-	border-radius: 6px;
-	border: 2px solid rgba(173, 226, 205, 0.82);
-	background-color: gradient( linear, 0% 0%, 0% 100%, from( rgba(36, 42, 45, 0.92) ), to( rgba(23, 26, 28, 0.92) ) );
-	box-shadow: fill rgba(0, 0, 0, 0.32) 0px 0px 12px 0px;
-}
-
-#DamageReportPreviewBox.Disabled
-{
-	border: 2px solid rgba(255, 134, 134, 0.80);
-	background-color: gradient( linear, 0% 0%, 0% 100%, from( rgba(52, 22, 22, 0.92) ), to( rgba(36, 14, 14, 0.92) ) );
-}
-
-#DamageReportPreviewLabel
-{
-	color: #cde5db;
-	font-size: 14px;
-	font-weight: bold;
-	letter-spacing: 0.8px;
-	text-transform: uppercase;
-}
-
-#ShopPreview
-{
-	ignore-parent-flow: true;
-	horizontal-align: left;
-	vertical-align: top;
-	margin-left: 240px;
-	margin-top: 120px;
-	opacity: 0;
-	visibility: collapse;
-	transform: translateY(8px);
-	transition-property: opacity, transform, visibility;
-	transition-duration: 0.14s;
-	transition-timing-function: ease-out;
-	z-index: 5200;
-	hittest: false;
-	hittestchildren: false;
-}
-
-#ShopPreview.Visible
-{
-	opacity: 1;
-	visibility: visible;
-	transform: translateY(0px);
-}
-
-#ShopPreviewBox
-{
-	width: 340px;
-	height: 64px;
-	border-radius: 8px;
-	border: 2px solid rgba(173, 226, 205, 0.82);
-	background-color: gradient( linear, 0% 0%, 0% 100%, from( rgba(36, 42, 45, 0.92) ), to( rgba(23, 26, 28, 0.92) ) );
-	box-shadow: fill rgba(0, 0, 0, 0.32) 0px 0px 12px 0px;
-}
-
-#ShopPreviewLabel
-{
-	horizontal-align: center;
-	vertical-align: center;
-	color: #cde5db;
-	font-size: 16px;
-	font-weight: bold;
-	letter-spacing: 1px;
-	text-transform: uppercase;
-}
-
-#UltCooldownPreview
-{
-	ignore-parent-flow: true;
-	horizontal-align: left;
-	vertical-align: top;
-	margin-left: 760px;
-	margin-top: 56px;
-	opacity: 0;
-	visibility: collapse;
-	transform: translateY(8px);
-	transition-property: opacity, transform, visibility;
-	transition-duration: 0.14s;
-	transition-timing-function: ease-out;
-	z-index: 5200;
-	hittest: false;
-	hittestchildren: false;
-}
-
-#UltCooldownPreview.Visible
-{
-	opacity: 1;
-	visibility: visible;
-	transform: translateY(0px);
-}
-
-#UltCooldownPreviewRow
-{
-	flow-children: right;
-	opacity: 0.9;
-}
-
-.UltCooldownPreviewChip
-{
-	width: 36px;
-	height: 22px;
-	margin-right: 8px;
-	border-radius: 5px;
-	border: 2px solid rgba(173, 226, 205, 0.76);
-	background-color: rgba(15, 19, 21, 0.86);
-}
-
-.UltCooldownPreviewChipText
-{
-	horizontal-align: center;
-	vertical-align: center;
-	text-align: center;
-	font-size: 13px;
-	font-weight: bold;
-	color: #f6fbff;
-	text-shadow: 0px 0px 4px #000000ff;
-}
-
-#UnsecuredPlusPreview
-{
-	ignore-parent-flow: true;
-	horizontal-align: left;
-	vertical-align: top;
-	margin-left: 780px;
-	margin-top: 120px;
-	flow-children: right;
-	opacity: 0;
-	visibility: collapse;
-	transform: translateY(8px);
-	transition-property: opacity, transform, visibility;
-	transition-duration: 0.14s;
-	transition-timing-function: ease-out;
-	z-index: 5200;
-	hittest: false;
-	hittestchildren: false;
-}
-
-#UnsecuredPlusPreview.Visible
-{
-	opacity: 1;
-	visibility: visible;
-	transform: translateY(0px);
-}
-
-#UnsecuredPlusPreviewIcon
-{
-	width: 18px;
-	height: 18px;
-	margin-right: 5px;
-	vertical-align: center;
-	border-radius: 999px;
-	background-color: rgba(102, 204, 153, 0.80);
-	box-shadow: fill rgba(102, 204, 153, 0.24) 0px 0px 8px 0px;
-}
-
-#UnsecuredPlusPreviewText
-{
-	vertical-align: center;
-	margin-right: 8px;
-	color: #cde5db;
-	font-size: 14px;
-	font-weight: bold;
-	letter-spacing: 0.6px;
-}
-
-#UnsecuredPlusPreviewValue
-{
-	vertical-align: center;
-	color: #f2fff8;
-	font-size: 14px;
-	font-weight: bold;
-	letter-spacing: 0.6px;
-}
 
 #SettingsHeader
 {
@@ -2220,85 +1555,25 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 	brightness: 1.08;
 }
 
-.PreviewToggleTabAction
-{
-	border-left: 2px solid #2c2f31;
-	background-color: gradient( linear, 0% 0%, 100% 0%, from( rgba(36, 38, 40, 0.55) ), to( rgba(20, 22, 24, 0.30) ) );
-	brightness: 1.08;
-	flow-children: right;
-}
 
-.PreviewToggleTabAction Label
-{
-	color: #cfc9bc;
-	text-shadow: 0px 0px 6px rgba(255, 255, 255, 0.10);
-}
 
-.PreviewToggleSwitch
-{
-	width: 14px;
-	height: 24px;
-	margin-right: 5px;
-	vertical-align: center;
-	border-radius: 8px;
-	border: 1px solid rgba(122, 122, 116, 0.75);
-	background-color: rgba(60, 62, 64, 0.55);
-	transform: rotateZ(90deg);
-	transition-property: background-color, border, box-shadow;
-	transition-duration: 0.16s;
-}
 
-.PreviewToggleSwitchKnob
-{
-	width: 8px;
-	height: 8px;
-	margin-top: 14px;
-	horizontal-align: center;
-	border-radius: 50%;
-	background-color: #e2dfd6;
-	box-shadow: 0px 0px 4px rgba(0, 0, 0, 0.35);
-	transition-property: transform, background-color, box-shadow;
-	transition-duration: 0.16s;
-}
 
-.PreviewToggleTabAction #PreviewToggleLabel
-{
-	vertical-align: center;
-}
 
-.PreviewToggleTabAction:hover
-{
-	background-color: gradient( linear, 0% 0%, 100% 0%, from( rgba(48, 50, 52, 0.65) ), to( rgba(28, 30, 32, 0.35) ) );
-	transform: translateX(2px);
-	brightness: 1.08;
-}
 
-.PreviewToggleTabAction.Active
-{
-	border-left: 2px solid #66cc99;
-	background-color: gradient( linear, 0% 0%, 100% 0%, from( rgba(102, 204, 153, 0.2) ), to( rgba(102, 204, 153, 0.05) ) );
-	brightness: 1.18;
-}
 
-.PreviewToggleTabAction.Active Label
-{
-	color: white;
-	text-shadow: 0px 0px 8px rgba(102, 204, 153, 0.4);
-}
 
-.PreviewToggleTabAction.Active .PreviewToggleSwitch
-{
-	border: 1px solid rgba(102, 204, 153, 0.95);
-	background-color: rgba(67, 133, 103, 0.75);
-	box-shadow: 0px 0px 8px rgba(102, 204, 153, 0.22);
-}
 
-.PreviewToggleTabAction.Active .PreviewToggleSwitchKnob
-{
-	transform: translateY(-10px);
-	background-color: #ffffff;
-	box-shadow: 0px 0px 6px rgba(102, 204, 153, 0.45);
-}
+
+
+
+
+
+
+
+
+
+
 
 .DragToggleTabAction
 {
@@ -2595,6 +1870,12 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 .SectionTitleActionBtn.Hidden
 {
 	visibility: collapse;
+}
+
+.QOLCustomizeEntry
+{
+	margin-left: 8px;
+	vertical-align: center;
 }
 
 #SettingsWindow .ConfigSectionIconBtn
@@ -3016,7 +2297,7 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 	color: #aeb8bb;
 	font-size: 12px;
 	font-size: 13px;
-	line-height: 20px;
+	line-height: normal;
 	text-align: left;
 	text-transform: none;
 	white-space: normal;
@@ -3436,14 +2717,16 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 	background-color: #ffffffff;
 }
 
-#SettingsWindow .HorizontalSlider
+#SettingsWindow .HorizontalSlider,
+.QOLCustomizeOverlay .HorizontalSlider
 {
 	width: 100%;
 	vertical-align: center;
 	overflow: noclip;
 }
 
-#SettingsWindow .HorizontalSlider .SliderThumb
+#SettingsWindow .HorizontalSlider .SliderThumb,
+.QOLCustomizeOverlay .HorizontalSlider .SliderThumb
 {
 	width: 8px;
 	height: 8px;
@@ -3456,19 +2739,22 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 	transition-duration: 0.16s;
 }
 
-#SettingsWindow .HorizontalSlider:hover .SliderThumb
+#SettingsWindow .HorizontalSlider:hover .SliderThumb,
+.QOLCustomizeOverlay .HorizontalSlider:hover .SliderThumb
 {
 	box-shadow: fill rgba(102, 204, 153, 0.65) 0px 0px 8px 0px;
 }
 
-#SettingsWindow .HorizontalSlider:active .SliderThumb
+#SettingsWindow .HorizontalSlider:active .SliderThumb,
+.QOLCustomizeOverlay .HorizontalSlider:active .SliderThumb
 {
 	background-color: #66cc99;
 	box-shadow: fill rgba(102, 204, 153, 0.7) 0px 0px 8px 0px;
 	transform: scale3d(1.12, 1.12, 1.0);
 }
 
-#SettingsWindow .ValueInput
+#SettingsWindow .ValueInput,
+.QOLUnifiedModalSurface .ValueInput
 {
 	width: 46px;
 	height: 26px;
@@ -3486,13 +2772,15 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 	transition-duration: 0.16s;
 }
 
-#SettingsWindow .ValueInput:focus
+#SettingsWindow .ValueInput:focus,
+.QOLUnifiedModalSurface .ValueInput:focus
 {
 	border: 1px solid #66cc99;
 	brightness: 1.06;
 }
 
-#SettingsWindow .ValueInput > Label,#SettingsWindow .ValueInput #TextEntryContents,#SettingsWindow .ValueInput #PlaceholderText
+#SettingsWindow .ValueInput > Label,#SettingsWindow .ValueInput #TextEntryContents,#SettingsWindow .ValueInput #PlaceholderText,
+.QOLUnifiedModalSurface .ValueInput > Label,.QOLUnifiedModalSurface .ValueInput #TextEntryContents,.QOLUnifiedModalSurface .ValueInput #PlaceholderText
 {
 	color: #a39c8e;
 	line-height: 15px;
@@ -3505,20 +2793,23 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 	vertical-align: center;
 }
 
-#SettingsWindow .ValueInput:focus #TextEntryContents,#SettingsWindow .ValueInput:focus > Label,#SettingsWindow .ValueInput:focus #PlaceholderText
+#SettingsWindow .ValueInput:focus #TextEntryContents,#SettingsWindow .ValueInput:focus > Label,#SettingsWindow .ValueInput:focus #PlaceholderText,
+.QOLUnifiedModalSurface .ValueInput:focus #TextEntryContents,.QOLUnifiedModalSurface .ValueInput:focus > Label,.QOLUnifiedModalSurface .ValueInput:focus #PlaceholderText
 {
 	text-align: center;
 	horizontal-align: center;
 }
 
-#SettingsWindow .ValueInput #Contents
+#SettingsWindow .ValueInput #Contents,
+.QOLUnifiedModalSurface .ValueInput #Contents
 {
 	width: 100%;
 	height: 100%;
 	vertical-align: center;
 }
 
-#SettingsWindow .ValueInput #TextEntryCursor
+#SettingsWindow .ValueInput #TextEntryCursor,
+.QOLUnifiedModalSurface .ValueInput #TextEntryCursor
 {
 	vertical-align: center;
 }
@@ -3603,7 +2894,8 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 	animation-timing-function: ease-in-out;
 }
 
-#SettingsWindow .SettingToggleBtn
+#SettingsWindow .SettingToggleBtn,
+.QOLCustomizeOverlay .SettingToggleBtn
 {
 	width: 40px;
 	height: 20px;
@@ -3615,7 +2907,8 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 	border-radius: 0px;
 }
 
-#SettingsWindow .SettingToggleBtn .SwitchButton
+#SettingsWindow .SettingToggleBtn .SwitchButton,
+.QOLCustomizeOverlay .SettingToggleBtn .SwitchButton
 {
 	width: 40px;
 	height: 20px;
@@ -3634,21 +2927,24 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 	transition-timing-function: ease-in-out;
 }
 
-#SettingsWindow .SettingToggleBtn .SwitchButton:active
+#SettingsWindow .SettingToggleBtn .SwitchButton:active,
+.QOLCustomizeOverlay .SettingToggleBtn .SwitchButton:active
 {
 	border: 0px solid transparent;
 	brightness: 1.15;
 	transform: scale3d(0.98, 0.98, 1.0);
 }
 
-#SettingsWindow .SettingToggleBtn #handle
+#SettingsWindow .SettingToggleBtn #handle,
+.QOLCustomizeOverlay .SettingToggleBtn #handle
 {
 	transition-property: transform;
 	transition-duration: 0.1s;
 	transition-timing-function: ease-out;
 }
 
-#SettingsWindow .SettingToggleBtn.ToggleOff #handle
+#SettingsWindow .SettingToggleBtn.ToggleOff #handle,
+.QOLCustomizeOverlay .SettingToggleBtn.ToggleOff #handle
 {
 	width: 20px;
 	height: 20px;
@@ -3662,7 +2958,8 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 	transform: translateX(0px);
 }
 
-#SettingsWindow .SettingToggleBtn.ToggleOn #handle
+#SettingsWindow .SettingToggleBtn.ToggleOn #handle,
+.QOLCustomizeOverlay .SettingToggleBtn.ToggleOn #handle
 {
 	width: 20px;
 	height: 20px;
@@ -3675,7 +2972,8 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 	transform: translateX(20px);
 }
 
-#SettingsWindow .SettingToggleBtn:hover .SwitchButton
+#SettingsWindow .SettingToggleBtn:hover .SwitchButton,
+.QOLCustomizeOverlay .SettingToggleBtn:hover .SwitchButton
 {
 	brightness: 1.08;
 }
@@ -3864,6 +3162,26 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 	width: 150px;
 	min-width: 150px;
 	max-width: 150px;
+}
+
+#QOLCustomize_HEALTHBAR_TYPEDropDownMenu,
+#QOLCustomize_KEYBOARD_OVERLAY_THEMEDropDownMenu,
+#QOLCustomize_KEYBOARD_OVERLAY_LAYOUTDropDownMenu,
+#QOLCustomize_AMMO_CURRENT_FONT_STYLEDropDownMenu,
+#QOLCustomize_AMMO_TOTAL_FONT_STYLEDropDownMenu
+{
+	width: 320px;
+	min-width: 320px;
+	max-width: 320px;
+}
+
+#DEFAULT_HERO_dropdownDropDownMenu,#HEALTHBAR_TYPE_dropdownDropDownMenu,#VOICE_TYPE_dropdownDropDownMenu,#VOICE_VOLUME_dropdownDropDownMenu,#LANGUAGE_dropdownDropDownMenu,
+#QOLCustomize_HEALTHBAR_TYPEDropDownMenu,
+#QOLCustomize_KEYBOARD_OVERLAY_THEMEDropDownMenu,
+#QOLCustomize_KEYBOARD_OVERLAY_LAYOUTDropDownMenu,
+#QOLCustomize_AMMO_CURRENT_FONT_STYLEDropDownMenu,
+#QOLCustomize_AMMO_TOTAL_FONT_STYLEDropDownMenu
+{
 	background-image: none;
 	background-color: #181716;
 	opacity: 0.0;
@@ -3875,7 +3193,12 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 	border-radius: 6px;
 }
 
-#DEFAULT_HERO_dropdownDropDownMenu.DropDownMenuVisible,#HEALTHBAR_TYPE_dropdownDropDownMenu.DropDownMenuVisible,#VOICE_TYPE_dropdownDropDownMenu.DropDownMenuVisible,#VOICE_VOLUME_dropdownDropDownMenu.DropDownMenuVisible,#LANGUAGE_dropdownDropDownMenu.DropDownMenuVisible
+#DEFAULT_HERO_dropdownDropDownMenu.DropDownMenuVisible,#HEALTHBAR_TYPE_dropdownDropDownMenu.DropDownMenuVisible,#VOICE_TYPE_dropdownDropDownMenu.DropDownMenuVisible,#VOICE_VOLUME_dropdownDropDownMenu.DropDownMenuVisible,#LANGUAGE_dropdownDropDownMenu.DropDownMenuVisible,
+#QOLCustomize_HEALTHBAR_TYPEDropDownMenu.DropDownMenuVisible,
+#QOLCustomize_KEYBOARD_OVERLAY_THEMEDropDownMenu.DropDownMenuVisible,
+#QOLCustomize_KEYBOARD_OVERLAY_LAYOUTDropDownMenu.DropDownMenuVisible,
+#QOLCustomize_AMMO_CURRENT_FONT_STYLEDropDownMenu.DropDownMenuVisible,
+#QOLCustomize_AMMO_TOTAL_FONT_STYLEDropDownMenu.DropDownMenuVisible
 {
 	opacity: 1.0;
 	transform: translateY(0px);
@@ -3904,7 +3227,8 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 	max-width: 130px;
 }
 
-#DEFAULT_HERO_dropdownDropDownMenu Label,#DEFAULT_HERO_dropdownDropDownMenu .DropDownChild,#DEFAULT_HERO_dropdownDropDownMenu .QOLSettingsDropDownItem,#HEALTHBAR_TYPE_dropdownDropDownMenu Label,#HEALTHBAR_TYPE_dropdownDropDownMenu .DropDownChild,#HEALTHBAR_TYPE_dropdownDropDownMenu .QOLSettingsDropDownItem,#VOICE_TYPE_dropdownDropDownMenu Label,#VOICE_TYPE_dropdownDropDownMenu .DropDownChild,#VOICE_TYPE_dropdownDropDownMenu .QOLSettingsDropDownItem,#VOICE_VOLUME_dropdownDropDownMenu Label,#VOICE_VOLUME_dropdownDropDownMenu .DropDownChild,#VOICE_VOLUME_dropdownDropDownMenu .QOLSettingsDropDownItem,#LANGUAGE_dropdownDropDownMenu Label,#LANGUAGE_dropdownDropDownMenu .DropDownChild,#LANGUAGE_dropdownDropDownMenu .QOLSettingsDropDownItem
+#DEFAULT_HERO_dropdownDropDownMenu Label,#DEFAULT_HERO_dropdownDropDownMenu .DropDownChild,#DEFAULT_HERO_dropdownDropDownMenu .QOLSettingsDropDownItem,#HEALTHBAR_TYPE_dropdownDropDownMenu Label,#HEALTHBAR_TYPE_dropdownDropDownMenu .DropDownChild,#HEALTHBAR_TYPE_dropdownDropDownMenu .QOLSettingsDropDownItem,#VOICE_TYPE_dropdownDropDownMenu Label,#VOICE_TYPE_dropdownDropDownMenu .DropDownChild,#VOICE_TYPE_dropdownDropDownMenu .QOLSettingsDropDownItem,#VOICE_VOLUME_dropdownDropDownMenu Label,#VOICE_VOLUME_dropdownDropDownMenu .DropDownChild,#VOICE_VOLUME_dropdownDropDownMenu .QOLSettingsDropDownItem,#LANGUAGE_dropdownDropDownMenu Label,#LANGUAGE_dropdownDropDownMenu .DropDownChild,#LANGUAGE_dropdownDropDownMenu .QOLSettingsDropDownItem,
+DropDownMenu .QOLCustomizeDropDownItem
 {
 	width: 100%;
 	padding: 7px 12px;
@@ -3921,7 +3245,8 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 	brightness: 1.0;
 }
 
-#DEFAULT_HERO_dropdownDropDownMenu Label:hover,#DEFAULT_HERO_dropdownDropDownMenu .DropDownChild:hover,#DEFAULT_HERO_dropdownDropDownMenu .QOLSettingsDropDownItem:hover,#HEALTHBAR_TYPE_dropdownDropDownMenu Label:hover,#HEALTHBAR_TYPE_dropdownDropDownMenu .DropDownChild:hover,#HEALTHBAR_TYPE_dropdownDropDownMenu .QOLSettingsDropDownItem:hover,#VOICE_TYPE_dropdownDropDownMenu Label:hover,#VOICE_TYPE_dropdownDropDownMenu .DropDownChild:hover,#VOICE_TYPE_dropdownDropDownMenu .QOLSettingsDropDownItem:hover,#VOICE_VOLUME_dropdownDropDownMenu Label:hover,#VOICE_VOLUME_dropdownDropDownMenu .DropDownChild:hover,#VOICE_VOLUME_dropdownDropDownMenu .QOLSettingsDropDownItem:hover,#LANGUAGE_dropdownDropDownMenu Label:hover,#LANGUAGE_dropdownDropDownMenu .DropDownChild:hover,#LANGUAGE_dropdownDropDownMenu .QOLSettingsDropDownItem:hover
+#DEFAULT_HERO_dropdownDropDownMenu Label:hover,#DEFAULT_HERO_dropdownDropDownMenu .DropDownChild:hover,#DEFAULT_HERO_dropdownDropDownMenu .QOLSettingsDropDownItem:hover,#HEALTHBAR_TYPE_dropdownDropDownMenu Label:hover,#HEALTHBAR_TYPE_dropdownDropDownMenu .DropDownChild:hover,#HEALTHBAR_TYPE_dropdownDropDownMenu .QOLSettingsDropDownItem:hover,#VOICE_TYPE_dropdownDropDownMenu Label:hover,#VOICE_TYPE_dropdownDropDownMenu .DropDownChild:hover,#VOICE_TYPE_dropdownDropDownMenu .QOLSettingsDropDownItem:hover,#VOICE_VOLUME_dropdownDropDownMenu Label:hover,#VOICE_VOLUME_dropdownDropDownMenu .DropDownChild:hover,#VOICE_VOLUME_dropdownDropDownMenu .QOLSettingsDropDownItem:hover,#LANGUAGE_dropdownDropDownMenu Label:hover,#LANGUAGE_dropdownDropDownMenu .DropDownChild:hover,#LANGUAGE_dropdownDropDownMenu .QOLSettingsDropDownItem:hover,
+DropDownMenu .QOLCustomizeDropDownItem:hover
 {
 	background-image: none;
 	background-color: gradient( linear, 0% 0%, 0% 100%, from( #5FE6A2 ), to( #A3FFB7 ) );
@@ -3930,7 +3255,8 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 	brightness: 1.08;
 }
 
-#DEFAULT_HERO_dropdownDropDownMenu Label:active,#DEFAULT_HERO_dropdownDropDownMenu .DropDownChild:active,#DEFAULT_HERO_dropdownDropDownMenu .QOLSettingsDropDownItem:active,#HEALTHBAR_TYPE_dropdownDropDownMenu Label:active,#HEALTHBAR_TYPE_dropdownDropDownMenu .DropDownChild:active,#HEALTHBAR_TYPE_dropdownDropDownMenu .QOLSettingsDropDownItem:active,#VOICE_TYPE_dropdownDropDownMenu Label:active,#VOICE_TYPE_dropdownDropDownMenu .DropDownChild:active,#VOICE_TYPE_dropdownDropDownMenu .QOLSettingsDropDownItem:active,#VOICE_VOLUME_dropdownDropDownMenu Label:active,#VOICE_VOLUME_dropdownDropDownMenu .DropDownChild:active,#VOICE_VOLUME_dropdownDropDownMenu .QOLSettingsDropDownItem:active,#LANGUAGE_dropdownDropDownMenu Label:active,#LANGUAGE_dropdownDropDownMenu .DropDownChild:active,#LANGUAGE_dropdownDropDownMenu .QOLSettingsDropDownItem:active
+#DEFAULT_HERO_dropdownDropDownMenu Label:active,#DEFAULT_HERO_dropdownDropDownMenu .DropDownChild:active,#DEFAULT_HERO_dropdownDropDownMenu .QOLSettingsDropDownItem:active,#HEALTHBAR_TYPE_dropdownDropDownMenu Label:active,#HEALTHBAR_TYPE_dropdownDropDownMenu .DropDownChild:active,#HEALTHBAR_TYPE_dropdownDropDownMenu .QOLSettingsDropDownItem:active,#VOICE_TYPE_dropdownDropDownMenu Label:active,#VOICE_TYPE_dropdownDropDownMenu .DropDownChild:active,#VOICE_TYPE_dropdownDropDownMenu .QOLSettingsDropDownItem:active,#VOICE_VOLUME_dropdownDropDownMenu Label:active,#VOICE_VOLUME_dropdownDropDownMenu .DropDownChild:active,#VOICE_VOLUME_dropdownDropDownMenu .QOLSettingsDropDownItem:active,#LANGUAGE_dropdownDropDownMenu Label:active,#LANGUAGE_dropdownDropDownMenu .DropDownChild:active,#LANGUAGE_dropdownDropDownMenu .QOLSettingsDropDownItem:active,
+DropDownMenu .QOLCustomizeDropDownItem:active
 {
 	background-image: none;
 	background-color: gradient( linear, 0% 0%, 0% 100%, from( #79d7ab ), to( #56b486 ) );
@@ -4093,7 +3419,7 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 {
 	align: center center;
 	width: 760px;
-	height: fit-children;
+	height: 85%;
 	max-height: 980px;
 	background-color: gradient( linear, 0% 0%, 0% 100%, from( #171717 ), to( #111111 ) );
 	border: 0px solid transparent;
@@ -6250,8 +5576,7 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 #ConfigDiffList
 {
 	width: 100%;
-	height: 620px;
-	max-height: 620px;
+	height: fill-parent-flow(1.0);
 	flow-children: down;
 	padding: 4px 0px;
 	background-color: none;
@@ -6387,12 +5712,63 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 	margin-right: 6px;
 }
 
+#ConfigDiffPreviewBtn
+{
+	width: 100%;
+	height: 52px;
+	margin-top: 12px;
+	border: 1px solid #66cc99;
+	border-radius: 4px;
+	background-color: gradient(linear, 0% 0%, 0% 100%, from(#243b30), to(#17251e));
+	transition-property: brightness, border;
+	transition-duration: 0.15s;
+}
+#ConfigDiffPreviewBtn Label
+{
+	align: center center;
+	font-size: 22px;
+	font-weight: bold;
+	color: #a3ffb7;
+}
+#ConfigDiffPreviewBtn:hover, #ConfigDiffPreviewBtn:focus { brightness: 1.3; border: 1px solid #a3ffb7; }
+#ConfigDiffPreviewBtn:active { brightness: 0.85; }
+.ConfigDiffPreviewHint
+{
+	width: 100%;
+	height: fit-children;
+	margin: 6px 0px 12px;
+	font-size: 14px;
+	color: #c7c2ba;
+	white-space: normal;
+	text-align: center;
+}
+.QOLPresetPreviewOverlay { width: 100%; height: 100%; z-index: 1000; }
+.QOLPresetPreviewOverlay Label { font-family: oracle; }
+.QOLPresetPreviewBar
+{
+	width: 420px;
+	max-width: 90%;
+	height: fit-children;
+	align: center top;
+	margin-top: 16px;
+	padding: 16px;
+	flow-children: down;
+}
+.QOLPresetPreviewTitle { width: 100%; font-size: 14px; color: #c7c2ba; text-align: center; vertical-align: center; }
+.QOLPresetPreviewName { width: 100%; font-size: 24px; font-weight: bold; color: #a3ffb7; text-align: center; text-overflow: ellipsis; }
+.QOLPresetPreviewStatus { width: 100%; font-size: 14px; color: #c7c2ba; text-align: center; margin: 4px 0px 12px; }
+.QOLPresetPreviewActions { width: 100%; height: fit-children; flow-children: right; }
+.QOLPresetPreviewActions Button { width: fill-parent-flow(1); height: 44px; margin: 0px 4px; }
+.QOLPresetPreviewActions Button Label { align: center center; font-size: 18px; }
+.QOLPresetPreviewActions Button:focus { border: 1px solid #a3ffb7; }
+.QOLPresetPreviewActions Button:disabled { saturation: 0; opacity: 0.5; }
+
 #ConfigDiffModalBtnRow
 {
 	width: 100%;
+	height: fit-children;
 	margin-top: 12px;
 	flow-children: right;
-	vertical-align: bottom;
 }
 
 .ConfigDiffBtnSpacer
@@ -8262,6 +7638,195 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 	text-shadow: 0px 0px 5px rgba(255, 255, 255, 0.18);
 }
 
+.PersonalPresetsSection
+{
+	width: 100%;
+	flow-children: down;
+	margin-top: 28px;
+	margin-bottom: 20px;
+	padding: 20px 10px 0px;
+	border-top: 1px solid rgba(160, 160, 160, 0.18);
+}
+
+.PersonalPresetsHint,
+.PersonalPresetsStatus
+{
+	width: 100%;
+	font-size: 13px;
+	color: #a6a6a6;
+	margin-bottom: 12px;
+}
+
+.PersonalPresetsStatus
+{
+	margin-top: 8px;
+	font-size: 12px;
+}
+
+.PersonalPresetsStatus.FailureState
+{
+	color: #ff8a8a;
+}
+
+.PersonalPresetRow
+{
+	width: 100%;
+	flow-children: right;
+	margin-bottom: 6px;
+}
+
+.PersonalPresetName
+{
+	width: fill-parent-flow(1);
+	height: 34px;
+	margin-right: 8px;
+	padding: 5px 8px;
+	font-size: 15px;
+	color: #eeeeee;
+	background-color: rgba(0, 0, 0, 0.25);
+	border: 1px solid rgba(160, 160, 160, 0.35);
+	border-radius: 3px;
+}
+
+.PersonalPresetName:focus
+{
+	border-color: #a6a6a6;
+}
+
+.PersonalPresetTitle
+{
+	width: fill-parent-flow(1);
+	vertical-align: center;
+	font-size: 14px;
+	color: #d4d4d4;
+	text-overflow: ellipsis;
+	margin-right: 8px;
+}
+
+.PersonalPresetCard
+{
+    width: 100%;
+    flow-children: down;
+    margin-bottom: 6px;
+}
+
+.PersonalPresetCard .PersonalPresetRow
+{
+    padding: 5px 6px;
+    margin-bottom: 0px;
+}
+
+.PersonalPresetRow.PresetActive
+{
+    background-color: rgba(90, 210, 150, 0.08);
+    border-left: 2px solid #8adeb0;
+}
+
+.PersonalPresetActiveBadge,
+.PersonalPresetStartupBadge
+{
+    vertical-align: center;
+    color: #8adeb0;
+    font-size: 12px;
+    margin-right: 8px;
+}
+
+.PersonalPresetStartupBadge
+{
+    color: #a6a6a6;
+}
+
+.PersonalPresetMenuAnchor
+{
+    width: 34px;
+    height: 34px;
+    margin-left: 4px;
+    flow-children: none;
+}
+
+.PersonalPresetMenuLayer
+{
+    width: 100%;
+    height: 100%;
+    ignore-parent-flow: true;
+    flow-children: none;
+    z-index: 5000;
+}
+
+.PersonalPresetMenuBackdrop
+{
+    width: 100%;
+    height: 100%;
+    background-color: transparent;
+    border: 0px;
+}
+
+.PersonalPresetMenu
+{
+    ignore-parent-flow: true;
+    flow-children: down;
+    horizontal-align: left;
+    vertical-align: top;
+    width: 250px;
+    height: 112px;
+    padding: 4px;
+    margin: 0px;
+    background-color: #20242a;
+    border: 1px solid rgba(160, 160, 160, 0.25);
+    border-radius: 3px;
+}
+
+#SettingsWindow .PersonalPresetMenu .SettingActionBtn
+{
+    width: 240px;
+    height: 34px;
+    margin: 0px;
+}
+
+#SettingsWindow .PersonalPresetMenu .SettingActionBtnLabel
+{
+    font-size: 12px;
+}
+
+#SettingsWindow .PersonalPresetDelete .SettingActionBtnLabel
+{
+    color: #ff8a8a;
+}
+
+.PersonalPresetsList
+{
+	width: 100%;
+	flow-children: down;
+}
+
+#SettingsWindow .PersonalPresetRow > .SettingActionBtn
+{
+	width: fit-children;
+	min-width: 70px;
+	height: 34px;
+	margin-left: 4px;
+	padding: 4px 10px;
+}
+
+#SettingsWindow .PersonalPresetRow .PersonalPresetMore
+{
+    height: 34px;
+    margin-left: 0px;
+    width: 34px;
+    min-width: 34px;
+    padding: 4px;
+}
+
+#SettingsWindow .PersonalPresetRow .SettingActionBtnLabel
+{
+	font-size: 12px;
+}
+
+#SettingsWindow .PersonalPresetRow .SettingActionBtn:disabled
+{
+	opacity: 0.4;
+}
+
 .CommunityPresetHintRow
 {
 	width: 100%;
@@ -9916,46 +9481,6 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 	margin-right: 6px;
 }
 
-#ModVersionLabelTop.HeaderMoglockLinkButton
-{
-	flow-children: right;
-	width: fit-children;
-	height: fit-children;
-	margin-left: 4px;
-	margin-right: 10px;
-	vertical-align: center;
-	background-color: transparent;
-	border: 0px solid transparent;
-	padding: 0px;
-}
-
-#ModVersionLabelTopPrefix
-{
-	color: #879196;
-	font-family: oracle;
-	font-size: 17px;
-	font-weight: normal;
-	letter-spacing: 0.25px;
-	text-transform: none;
-	text-shadow: none;
-	vertical-align: center;
-	margin-top: 0px;
-	margin-right: 5px;
-}
-
-#ModVersionLabelTopDomain
-{
-	color: #6be8a2;
-	font-family: oracle;
-	font-size: 17px;
-	font-weight: normal;
-	letter-spacing: 0.3px;
-	text-transform: none;
-	text-shadow: 0px 0px 6px rgba(107, 232, 162, 0.16);
-	vertical-align: center;
-	margin-top: 0px;
-}
-
 #SettingsWindow #MogTabSiteLinkLabel
 {
 	color: #6be8a2;
@@ -9966,13 +9491,6 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 	text-transform: none;
 	text-shadow: 0px 0px 6px rgba(107, 232, 162, 0.16);
 }
-
-#ModVersionLabelTop.HeaderMoglockLinkButton:hover #ModVersionLabelTopPrefix
-{
-	color: #95a0a4;
-}
-
-#ModVersionLabelTop.HeaderMoglockLinkButton:hover #ModVersionLabelTopDomain,
 #SettingsWindow #MogTabSiteLink:hover #MogTabSiteLinkLabel
 {
 	color: #6be8a2;
@@ -10512,7 +10030,6 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 .FooterSaveBuildTab,
 .ExportTabAction,
 .ImportTabAction,
-.PreviewToggleTabAction.Active,
 .DragToggleTabAction.Active,
 #SettingsWindow .SegmentBtn.Active,
 #SettingsWindow .RuntimeOnOffBtn.Active,
@@ -10534,7 +10051,6 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 .FooterSaveBuildTab Label,
 .ExportTabAction Label,
 .ImportTabAction Label,
-.PreviewToggleTabAction.Active Label,
 .DragToggleTabAction.Active Label,
 #SettingsWindow .SegmentBtn.Active Label,
 #SettingsWindow .RuntimeOnOffBtn.Active Label,
@@ -11705,14 +11221,10 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 	box-shadow: none;
 	animation-name: none;
 }
-
 /* --- pass3: tab action buttons (export/import/preview/drag toggles)
    No box border, glass fill */
-
 .ExportTabAction,
 .ImportTabAction,
-.PreviewToggleTabAction,
-.PreviewToggleTabAction.Active,
 .DragToggleTabAction,
 .DragToggleTabAction.Active
 {
@@ -11721,7 +11233,6 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 }
 
 .ExportTabAction,
-.PreviewToggleTabAction.Active,
 .DragToggleTabAction.Active
 {
 	border-left: 2px solid rgba(106, 231, 154, 0.38);
@@ -12043,14 +11554,12 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 }
 
 .ImportTabAction,
-.PreviewToggleTabAction,
 .DragToggleTabAction
 {
 	background-color: gradient( linear, 0% 0%, 100% 0%, from( rgba(40, 40, 40, 0.58) ), to( rgba(22, 22, 22, 0.34) ) );
 }
 
 .ImportTabAction:hover,
-.PreviewToggleTabAction:hover,
 .DragToggleTabAction:hover
 {
 	background-color: gradient( linear, 0% 0%, 100% 0%, from( rgba(50, 50, 50, 0.70) ), to( rgba(28, 28, 28, 0.40) ) );
@@ -13523,12 +13032,10 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 #SettingsHeaderCenterHost #SettingsSearchWrap,
 #SettingsHeaderCenterHost .SettingsHeaderSearchWrap
 {
-	/* Widen the search bar leftward by 25px to equalize spacing:
-	   distance from moglock.gg to lupa icon (31px) equals
-	   distance from search bar right edge to close button X (31px). */
+	/* Center search within the space between the wordmark and close button. */
 	width: 480px;
 	max-width: 480px;
-	margin-right: 53px;
+	margin-right: 0px;
 }
 
 #SettingsTabRailFooter
@@ -13600,6 +13107,7 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 }
 
 #SettingsWindow .SettingToggleBtn,
+.QOLCustomizeOverlay .SettingToggleBtn,
 .SectionInlineToggleBtn
 {
 	width: 44px;
@@ -13608,6 +13116,7 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 }
 
 #SettingsWindow .SettingToggleBtn .SwitchButton,
+.QOLCustomizeOverlay .SettingToggleBtn .SwitchButton,
 .SectionInlineToggleBtn .SwitchButton
 {
 	width: 44px;
@@ -13782,18 +13291,21 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 }
 
 #SettingsWindow .SettingToggleBtn:hover .SwitchButton,
+.QOLCustomizeOverlay .SettingToggleBtn:hover .SwitchButton,
 .SectionInlineToggleBtn:hover .SwitchButton
 {
 	border: 1px solid rgba(136, 224, 170, 0.18);
 }
 
 #SettingsWindow .SettingToggleBtn.ToggleOn .SwitchButton,
+.QOLCustomizeOverlay .SettingToggleBtn.ToggleOn .SwitchButton,
 .SectionInlineToggleBtn.ToggleOn .SwitchButton
 {
 	border: 1px solid rgba(120, 219, 161, 0.34);
 }
 
 #SettingsWindow .SettingToggleBtn #handle,
+.QOLCustomizeOverlay .SettingToggleBtn #handle,
 .SectionInlineToggleBtn #handle
 {
 	width: 18px;
@@ -13804,12 +13316,14 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 }
 
 #SettingsWindow .SettingToggleBtn.ToggleOff #handle,
+.QOLCustomizeOverlay .SettingToggleBtn.ToggleOff #handle,
 .SectionInlineToggleBtn.ToggleOff #handle
 {
 	transform: translateX(0px);
 }
 
 #SettingsWindow .SettingToggleBtn.ToggleOn #handle,
+.QOLCustomizeOverlay .SettingToggleBtn.ToggleOn #handle,
 .SectionInlineToggleBtn.ToggleOn #handle
 {
 	transform: translateX(21px);
@@ -14002,6 +13516,7 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 }
 
 #SettingsWindow .SettingToggleBtn .SwitchButton,
+.QOLCustomizeOverlay .SettingToggleBtn .SwitchButton,
 .SectionInlineToggleBtn .SwitchButton
 {
 	width: 40px;
@@ -15848,7 +15363,7 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 {
 	color: #b7c1c6;
 	font-size: 13px;
-	line-height: 20px;
+	line-height: normal;
 	letter-spacing: 0.2px;
 }
 
@@ -17361,7 +16876,9 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 .QOLUnifiedModalSurface .OptimizeFilterModalLine,
 .QOLUnifiedModalSurface .ConfigDiffSummary,
 .QOLUnifiedModalSurface .ConfigDiffDetails,
-.QOLUnifiedModalSurface .ConfigDiffSummaryFooter
+.QOLUnifiedModalSurface .ConfigDiffSummaryFooter,
+.QOLUnifiedModalSurface .ValueInput,
+.QOLUnifiedModalSurface .ValueInput Label
 {
 	font-family: oracle;
 	text-shadow: none;
@@ -19218,8 +18735,6 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 }
 
 #SettingsWindow.SettingsThemeCream #SettingsTitleAccent,
-#SettingsWindow.SettingsThemeCream #ModVersionLabelTopDomain,
-#SettingsWindow.SettingsThemeCream #ModVersionLabelTop.HeaderMoglockLinkButton:hover #ModVersionLabelTopDomain,
 #SettingsWindow.SettingsThemeCream #MogTabSiteLinkLabel,
 #SettingsWindow.SettingsThemeCream #MogTabSiteLink:hover #MogTabSiteLinkLabel
 {
@@ -19228,8 +18743,6 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 }
 
 #SettingsWindow.SettingsThemeKitten #SettingsTitleAccent,
-#SettingsWindow.SettingsThemeKitten #ModVersionLabelTopDomain,
-#SettingsWindow.SettingsThemeKitten #ModVersionLabelTop.HeaderMoglockLinkButton:hover #ModVersionLabelTopDomain,
 #SettingsWindow.SettingsThemeKitten #MogTabSiteLinkLabel,
 #SettingsWindow.SettingsThemeKitten #MogTabSiteLink:hover #MogTabSiteLinkLabel
 {
@@ -19238,8 +18751,6 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 }
 
 #SettingsWindow.SettingsThemeEmo #SettingsTitleAccent,
-#SettingsWindow.SettingsThemeEmo #ModVersionLabelTopDomain,
-#SettingsWindow.SettingsThemeEmo #ModVersionLabelTop.HeaderMoglockLinkButton:hover #ModVersionLabelTopDomain,
 #SettingsWindow.SettingsThemeEmo #MogTabSiteLinkLabel,
 #SettingsWindow.SettingsThemeEmo #MogTabSiteLink:hover #MogTabSiteLinkLabel
 {
@@ -19248,8 +18759,6 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 }
 
 #SettingsWindow.SettingsThemeOcean #SettingsTitleAccent,
-#SettingsWindow.SettingsThemeOcean #ModVersionLabelTopDomain,
-#SettingsWindow.SettingsThemeOcean #ModVersionLabelTop.HeaderMoglockLinkButton:hover #ModVersionLabelTopDomain,
 #SettingsWindow.SettingsThemeOcean #MogTabSiteLinkLabel,
 #SettingsWindow.SettingsThemeOcean #MogTabSiteLink:hover #MogTabSiteLinkLabel
 {
@@ -19258,25 +18767,11 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 }
 
 #SettingsWindow.SettingsThemePsycho #SettingsTitleAccent,
-#SettingsWindow.SettingsThemePsycho #ModVersionLabelTopDomain,
-#SettingsWindow.SettingsThemePsycho #ModVersionLabelTop.HeaderMoglockLinkButton:hover #ModVersionLabelTopDomain,
 #SettingsWindow.SettingsThemePsycho #MogTabSiteLinkLabel,
 #SettingsWindow.SettingsThemePsycho #MogTabSiteLink:hover #MogTabSiteLinkLabel
 {
 	color: #008a5a;
 	text-shadow: 0px 0px 5px rgba(0, 138, 90, 0.16);
-}
-
-#SettingsWindow.SettingsThemeCream #ModVersionLabelTopPrefix,
-#SettingsWindow.SettingsThemeCream #ModVersionLabelTop.HeaderMoglockLinkButton:hover #ModVersionLabelTopPrefix
-{
-	color: #6a4a22;
-}
-
-#SettingsWindow.SettingsThemePsycho #ModVersionLabelTopPrefix,
-#SettingsWindow.SettingsThemePsycho #ModVersionLabelTop.HeaderMoglockLinkButton:hover #ModVersionLabelTopPrefix
-{
-	color: #2c3a32;
 }
 
 /* Theme readability pass: keep non-default themes decorative, but force the
@@ -19330,7 +18825,10 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 #SettingsWindow.SettingsThemeCream .ValueInput #PlaceholderText,
 #SettingsWindow.SettingsThemeCream .ConfigTextEntry Label,
 #SettingsWindow.SettingsThemeCream .ConfigTextEntry #PlaceholderText,
-#SettingsWindow.SettingsThemeCream .ConfigTextEntry #TextEntryContents
+#SettingsWindow.SettingsThemeCream .ConfigTextEntry #TextEntryContents,
+.QOLThemeCream .QOLUnifiedModalSurface .ValueInput > Label,
+.QOLThemeCream .QOLUnifiedModalSurface .ValueInput #TextEntryContents,
+.QOLThemeCream .QOLUnifiedModalSurface .ValueInput #PlaceholderText
 {
 	color: #3c2713;
 	text-shadow: none;
@@ -19349,7 +18847,10 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 #SettingsWindow.SettingsThemeKitten .ValueInput #PlaceholderText,
 #SettingsWindow.SettingsThemeKitten .ConfigTextEntry Label,
 #SettingsWindow.SettingsThemeKitten .ConfigTextEntry #PlaceholderText,
-#SettingsWindow.SettingsThemeKitten .ConfigTextEntry #TextEntryContents
+#SettingsWindow.SettingsThemeKitten .ConfigTextEntry #TextEntryContents,
+.QOLThemeKitten .QOLUnifiedModalSurface .ValueInput > Label,
+.QOLThemeKitten .QOLUnifiedModalSurface .ValueInput #TextEntryContents,
+.QOLThemeKitten .QOLUnifiedModalSurface .ValueInput #PlaceholderText
 {
 	color: #3f1636;
 	text-shadow: none;
@@ -19368,7 +18869,10 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 #SettingsWindow.SettingsThemePsycho .ValueInput #PlaceholderText,
 #SettingsWindow.SettingsThemePsycho .ConfigTextEntry Label,
 #SettingsWindow.SettingsThemePsycho .ConfigTextEntry #PlaceholderText,
-#SettingsWindow.SettingsThemePsycho .ConfigTextEntry #TextEntryContents
+#SettingsWindow.SettingsThemePsycho .ConfigTextEntry #TextEntryContents,
+.QOLThemePsycho .QOLUnifiedModalSurface .ValueInput > Label,
+.QOLThemePsycho .QOLUnifiedModalSurface .ValueInput #TextEntryContents,
+.QOLThemePsycho .QOLUnifiedModalSurface .ValueInput #PlaceholderText
 {
 	color: #18241e;
 	text-shadow: none;
@@ -19388,6 +18892,14 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 #SettingsWindow.SettingsThemeEmo .ConfigTextEntry Label,
 #SettingsWindow.SettingsThemeEmo .ConfigTextEntry #PlaceholderText,
 #SettingsWindow.SettingsThemeEmo .ConfigTextEntry #TextEntryContents,
+.QOLThemeEmo .QOLUnifiedModalSurface .ValueInput > Label,
+.QOLThemeEmo .QOLUnifiedModalSurface .ValueInput #TextEntryContents,
+.QOLThemeEmo .QOLUnifiedModalSurface .ValueInput #PlaceholderText
+{
+	color: #f3fbff;
+	text-shadow: none;
+}
+
 #SettingsWindow.SettingsThemeOcean .SettingLabel,
 #SettingsWindow.SettingsThemeOcean .SettingDescription,
 #SettingsWindow.SettingsThemeOcean .SubInfoLabel,
@@ -19401,7 +18913,10 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 #SettingsWindow.SettingsThemeOcean .ValueInput #PlaceholderText,
 #SettingsWindow.SettingsThemeOcean .ConfigTextEntry Label,
 #SettingsWindow.SettingsThemeOcean .ConfigTextEntry #PlaceholderText,
-#SettingsWindow.SettingsThemeOcean .ConfigTextEntry #TextEntryContents
+#SettingsWindow.SettingsThemeOcean .ConfigTextEntry #TextEntryContents,
+.QOLThemeOcean .QOLUnifiedModalSurface .ValueInput > Label,
+.QOLThemeOcean .QOLUnifiedModalSurface .ValueInput #TextEntryContents,
+.QOLThemeOcean .QOLUnifiedModalSurface .ValueInput #PlaceholderText
 {
 	color: #f3fbff;
 	text-shadow: none;
@@ -19411,7 +18926,8 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 #SettingsWindow.SettingsThemeCream .ValueInput,
 #SettingsWindow.SettingsThemeCream .ConfigTextEntry,
 #SettingsWindow.SettingsThemeCream .MultiCheckboxBtn,
-#SettingsWindow.SettingsThemeCream .MultiToggleBtn
+#SettingsWindow.SettingsThemeCream .MultiToggleBtn,
+.QOLThemeCream .QOLUnifiedModalSurface .ValueInput
 {
 	background-color: gradient( linear, 0% 0%, 100% 100%, from( rgba(255, 252, 239, 0.84) ), to( rgba(224, 190, 139, 0.58) ) );
 	border-color: rgba(88, 57, 27, 0.24);
@@ -19422,7 +18938,8 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 #SettingsWindow.SettingsThemeKitten .ValueInput,
 #SettingsWindow.SettingsThemeKitten .ConfigTextEntry,
 #SettingsWindow.SettingsThemeKitten .MultiCheckboxBtn,
-#SettingsWindow.SettingsThemeKitten .MultiToggleBtn
+#SettingsWindow.SettingsThemeKitten .MultiToggleBtn,
+.QOLThemeKitten .QOLUnifiedModalSurface .ValueInput
 {
 	background-color: gradient( linear, 0% 0%, 100% 100%, from( rgba(255, 250, 253, 0.84) ), to( rgba(232, 143, 199, 0.56) ) );
 	border-color: rgba(174, 42, 126, 0.24);
@@ -19433,7 +18950,8 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 #SettingsWindow.SettingsThemePsycho .ValueInput,
 #SettingsWindow.SettingsThemePsycho .ConfigTextEntry,
 #SettingsWindow.SettingsThemePsycho .MultiCheckboxBtn,
-#SettingsWindow.SettingsThemePsycho .MultiToggleBtn
+#SettingsWindow.SettingsThemePsycho .MultiToggleBtn,
+.QOLThemePsycho .QOLUnifiedModalSurface .ValueInput
 {
 	background-color: gradient( linear, 0% 0%, 100% 100%, from( rgba(255, 255, 255, 0.86) ), to( rgba(205, 220, 211, 0.58) ) );
 	border-color: rgba(31, 48, 40, 0.22);
@@ -19541,7 +19059,8 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 #SettingsWindow.SettingsThemeEmo .ValueInput,
 #SettingsWindow.SettingsThemeEmo .ConfigTextEntry,
 #SettingsWindow.SettingsThemeEmo .MultiCheckboxBtn,
-#SettingsWindow.SettingsThemeEmo .MultiToggleBtn
+#SettingsWindow.SettingsThemeEmo .MultiToggleBtn,
+.QOLThemeEmo .QOLUnifiedModalSurface .ValueInput
 {
 	background-color: gradient( linear, 0% 0%, 100% 100%, from( rgba(27, 25, 27, 0.92) ), to( rgba(8, 8, 10, 0.88) ) );
 	border-color: rgba(255, 47, 67, 0.20);
@@ -19552,7 +19071,8 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 #SettingsWindow.SettingsThemeOcean .ValueInput,
 #SettingsWindow.SettingsThemeOcean .ConfigTextEntry,
 #SettingsWindow.SettingsThemeOcean .MultiCheckboxBtn,
-#SettingsWindow.SettingsThemeOcean .MultiToggleBtn
+#SettingsWindow.SettingsThemeOcean .MultiToggleBtn,
+.QOLThemeOcean .QOLUnifiedModalSurface .ValueInput
 {
 	background-color: gradient( linear, 0% 0%, 100% 100%, from( rgba(19, 64, 89, 0.90) ), to( rgba(5, 22, 36, 0.86) ) );
 	border-color: rgba(126, 220, 255, 0.20);
@@ -24251,7 +23771,8 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 #SettingsWindow.SettingsThemeCream .SettingButtonGroup:hover,
 #SettingsWindow.SettingsThemeCream .SettingActionBtn:hover,
 #SettingsWindow.SettingsThemeCream .SectionTitleActionBtn:hover,
-#SettingsWindow.SettingsThemeCream .ConfigSectionIconBtn:hover
+#SettingsWindow.SettingsThemeCream .ConfigSectionIconBtn:hover,
+.QOLThemeCream .QOLUnifiedModalSurface .ValueInput:focus
 {
 	border-color: rgba(157, 100, 44, 0.36);
 	box-shadow: fill rgba(157, 100, 44, 0.10) 0px 0px 10px 0px, inset rgba(157, 100, 44, 0.06) 0px 0px 0px 1px;
@@ -24264,7 +23785,8 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 #SettingsWindow.SettingsThemeKitten .SettingButtonGroup:hover,
 #SettingsWindow.SettingsThemeKitten .SettingActionBtn:hover,
 #SettingsWindow.SettingsThemeKitten .SectionTitleActionBtn:hover,
-#SettingsWindow.SettingsThemeKitten .ConfigSectionIconBtn:hover
+#SettingsWindow.SettingsThemeKitten .ConfigSectionIconBtn:hover,
+.QOLThemeKitten .QOLUnifiedModalSurface .ValueInput:focus
 {
 	border-color: rgba(255, 154, 214, 0.38);
 	box-shadow: fill rgba(255, 116, 199, 0.11) 0px 0px 10px 0px, inset rgba(255, 154, 214, 0.07) 0px 0px 0px 1px;
@@ -24277,7 +23799,8 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 #SettingsWindow.SettingsThemeEmo .SettingButtonGroup:hover,
 #SettingsWindow.SettingsThemeEmo .SettingActionBtn:hover,
 #SettingsWindow.SettingsThemeEmo .SectionTitleActionBtn:hover,
-#SettingsWindow.SettingsThemeEmo .ConfigSectionIconBtn:hover
+#SettingsWindow.SettingsThemeEmo .ConfigSectionIconBtn:hover,
+.QOLThemeEmo .QOLUnifiedModalSurface .ValueInput:focus
 {
 	border-color: rgba(255, 47, 67, 0.40);
 	box-shadow: fill rgba(255, 47, 67, 0.12) 0px 0px 10px 0px, inset rgba(255, 47, 67, 0.07) 0px 0px 0px 1px;
@@ -24290,7 +23813,8 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 #SettingsWindow.SettingsThemeOcean .SettingButtonGroup:hover,
 #SettingsWindow.SettingsThemeOcean .SettingActionBtn:hover,
 #SettingsWindow.SettingsThemeOcean .SectionTitleActionBtn:hover,
-#SettingsWindow.SettingsThemeOcean .ConfigSectionIconBtn:hover
+#SettingsWindow.SettingsThemeOcean .ConfigSectionIconBtn:hover,
+.QOLThemeOcean .QOLUnifiedModalSurface .ValueInput:focus
 {
 	border-color: rgba(114, 215, 255, 0.38);
 	box-shadow: fill rgba(83, 202, 255, 0.11) 0px 0px 10px 0px, inset rgba(114, 215, 255, 0.07) 0px 0px 0px 1px;
@@ -24303,7 +23827,8 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 #SettingsWindow.SettingsThemePsycho .SettingButtonGroup:hover,
 #SettingsWindow.SettingsThemePsycho .SettingActionBtn:hover,
 #SettingsWindow.SettingsThemePsycho .SectionTitleActionBtn:hover,
-#SettingsWindow.SettingsThemePsycho .ConfigSectionIconBtn:hover
+#SettingsWindow.SettingsThemePsycho .ConfigSectionIconBtn:hover,
+.QOLThemePsycho .QOLUnifiedModalSurface .ValueInput:focus
 {
 	border-color: rgba(0, 138, 90, 0.28);
 	box-shadow: fill rgba(0, 138, 90, 0.08) 0px 0px 9px 0px, inset rgba(0, 138, 90, 0.05) 0px 0px 0px 1px;
@@ -25400,7 +24925,10 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 	border-color: rgba(97, 19, 253, 0.18);
 }
 
-#SettingsWindow.SettingsThemeMunfins .SettingLabel,#SettingsWindow.SettingsThemeMunfins .SettingDescription,#SettingsWindow.SettingsThemeMunfins .SubInfoLabel,#SettingsWindow.SettingsThemeMunfins .SectionTitleInlineLabel,#SettingsWindow.SettingsThemeMunfins .InlineSecondaryCheckboxLabel,#SettingsWindow.SettingsThemeMunfins .MultiCheckboxLabel,#SettingsWindow.SettingsThemeMunfins .MultiToggleLabel,#SettingsWindow.SettingsThemeMunfins .SettingsDropDown.QOLSettingsDropDown Label,#SettingsWindow.SettingsThemeMunfins .ValueInput > Label,#SettingsWindow.SettingsThemeMunfins .ValueInput #TextEntryContents,#SettingsWindow.SettingsThemeMunfins .ValueInput #PlaceholderText,#SettingsWindow.SettingsThemeMunfins .ConfigTextEntry,#SettingsWindow.SettingsThemeMunfins .ConfigTextEntry Label,#SettingsWindow.SettingsThemeMunfins .ConfigTextEntry #PlaceholderText,#SettingsWindow.SettingsThemeMunfins .ConfigTextEntry #TextEntryContents,#SettingsWindow.SettingsThemeMunfins .ModalInstructions,#SettingsWindow.SettingsThemeMunfins .ConfigDiffSummary,#SettingsWindow.SettingsThemeMunfins .ConfigDiffDetails,#SettingsWindow.SettingsThemeMunfins TextEntry,.QOLThemeMunfins .QOLUnifiedModalSurface .ModalInstructions,.QOLThemeMunfins .QOLUnifiedModalSurface .ConfigDiffSummary,.QOLThemeMunfins .QOLUnifiedModalSurface .ConfigDiffDetails
+#SettingsWindow.SettingsThemeMunfins .SettingLabel,#SettingsWindow.SettingsThemeMunfins .SettingDescription,#SettingsWindow.SettingsThemeMunfins .SubInfoLabel,#SettingsWindow.SettingsThemeMunfins .SectionTitleInlineLabel,#SettingsWindow.SettingsThemeMunfins .InlineSecondaryCheckboxLabel,#SettingsWindow.SettingsThemeMunfins .MultiCheckboxLabel,#SettingsWindow.SettingsThemeMunfins .MultiToggleLabel,#SettingsWindow.SettingsThemeMunfins .SettingsDropDown.QOLSettingsDropDown Label,#SettingsWindow.SettingsThemeMunfins .ValueInput > Label,#SettingsWindow.SettingsThemeMunfins .ValueInput #TextEntryContents,#SettingsWindow.SettingsThemeMunfins .ValueInput #PlaceholderText,#SettingsWindow.SettingsThemeMunfins .ConfigTextEntry,#SettingsWindow.SettingsThemeMunfins .ConfigTextEntry Label,#SettingsWindow.SettingsThemeMunfins .ConfigTextEntry #PlaceholderText,#SettingsWindow.SettingsThemeMunfins .ConfigTextEntry #TextEntryContents,#SettingsWindow.SettingsThemeMunfins .ModalInstructions,#SettingsWindow.SettingsThemeMunfins .ConfigDiffSummary,#SettingsWindow.SettingsThemeMunfins .ConfigDiffDetails,#SettingsWindow.SettingsThemeMunfins TextEntry,.QOLThemeMunfins .QOLUnifiedModalSurface .ModalInstructions,.QOLThemeMunfins .QOLUnifiedModalSurface .ConfigDiffSummary,.QOLThemeMunfins .QOLUnifiedModalSurface .ConfigDiffDetails,
+.QOLThemeMunfins .QOLUnifiedModalSurface .ValueInput > Label,
+.QOLThemeMunfins .QOLUnifiedModalSurface .ValueInput #TextEntryContents,
+.QOLThemeMunfins .QOLUnifiedModalSurface .ValueInput #PlaceholderText
 {
 	color: #eee9f8;
 }
@@ -25415,12 +24943,6 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 {
 	color: #ffffff;
 	text-shadow: 0px 0px 8px rgba(255, 255, 255, 0.18);
-}
-
-#SettingsWindow.SettingsThemeMunfins #ModVersionLabelTop
-{
-	visibility: collapse;
-	opacity: 0;
 }
 
 #SettingsWindow.SettingsThemeMunfins #SettingsHeaderMogLogo
@@ -25456,14 +24978,16 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 	img-shadow: 0px 0px 8px rgba(97, 19, 253, 0.36);
 }
 
-#SettingsWindow.SettingsThemeMunfins .SettingsDropDown.QOLSettingsDropDown,#SettingsWindow.SettingsThemeMunfins .ValueInput,#SettingsWindow.SettingsThemeMunfins .ConfigTextEntry,#SettingsWindow.SettingsThemeMunfins .SettingButtonGroup,#SettingsWindow.SettingsThemeMunfins .SegmentBtn,#SettingsWindow.SettingsThemeMunfins .MultiCheckboxBtn,#SettingsWindow.SettingsThemeMunfins .MultiToggleBtn
+#SettingsWindow.SettingsThemeMunfins .SettingsDropDown.QOLSettingsDropDown,#SettingsWindow.SettingsThemeMunfins .ValueInput,#SettingsWindow.SettingsThemeMunfins .ConfigTextEntry,#SettingsWindow.SettingsThemeMunfins .SettingButtonGroup,#SettingsWindow.SettingsThemeMunfins .SegmentBtn,#SettingsWindow.SettingsThemeMunfins .MultiCheckboxBtn,#SettingsWindow.SettingsThemeMunfins .MultiToggleBtn,
+.QOLThemeMunfins .QOLUnifiedModalSurface .ValueInput
 {
 	background-color: gradient( linear, 0% 0%, 100% 100%, from( rgba(20, 16, 30, 0.88) ), to( rgba(4, 4, 7, 0.84) ) );
 	border-color: rgba(97, 19, 253, 0.24);
 	box-shadow: inset rgba(190, 157, 255, 0.08) 0px 1px 0px 0px;
 }
 
-#SettingsWindow.SettingsThemeMunfins .SettingsDropDown.QOLSettingsDropDown:hover,#SettingsWindow.SettingsThemeMunfins .ValueInput:focus,#SettingsWindow.SettingsThemeMunfins .ConfigTextEntry:focus,#SettingsWindow.SettingsThemeMunfins .SettingButtonGroup:hover,#SettingsWindow.SettingsThemeMunfins .SettingActionBtn:hover,#SettingsWindow.SettingsThemeMunfins .SectionTitleActionBtn:hover,#SettingsWindow.SettingsThemeMunfins .ConfigSectionIconBtn:hover
+#SettingsWindow.SettingsThemeMunfins .SettingsDropDown.QOLSettingsDropDown:hover,#SettingsWindow.SettingsThemeMunfins .ValueInput:focus,#SettingsWindow.SettingsThemeMunfins .ConfigTextEntry:focus,#SettingsWindow.SettingsThemeMunfins .SettingButtonGroup:hover,#SettingsWindow.SettingsThemeMunfins .SettingActionBtn:hover,#SettingsWindow.SettingsThemeMunfins .SectionTitleActionBtn:hover,#SettingsWindow.SettingsThemeMunfins .ConfigSectionIconBtn:hover,
+.QOLThemeMunfins .QOLUnifiedModalSurface .ValueInput:focus
 {
 	border-color: rgba(142, 93, 255, 0.56);
 	box-shadow: inset rgba(190, 157, 255, 0.14) 0px 1px 0px 0px, fill rgba(97, 19, 253, 0.18) 0px 0px 12px 0px;
@@ -25617,3 +25141,18 @@ CitadelHudEscapeMenu.QOLVisualCheckActive
 	opacity: 0.01;
 	visibility: visible;
 }
+
+/* Customize's sibling overlay reuses the SettingsWindow controls and colors. */
+.QOLCustomizeOverlay .ModalTitle,
+.QOLCustomizeLaunch > .ModalTitle { text-shadow: none; }
+.QOLCustomizeOverlay .SettingToggleBtn { width: 40px; height: 20px; overflow: noclip; }
+.QOLCustomizeOverlay .SettingToggleBtn .SwitchButton { width: 40px; height: 20px; background-size: 40px 20px; }
+.QOLCustomizeOverlay .SettingToggleBtn #handle { width: 20px; height: 20px; background-size: 20px 20px; margin: 0px; }
+.QOLCustomizeOverlay .SettingToggleBtn.ToggleOff #handle { transform: translateX(0px); img-shadow: none; }
+.QOLCustomizeOverlay .SettingToggleBtn.ToggleOn #handle { transform: translateX(20px); img-shadow: none; }
+.QOLCustomizeOverlay .HorizontalSlider .SliderThumb { width: 8px; height: 8px; box-shadow: none; }
+.QOLCustomizeOverlay .HorizontalSlider:hover .SliderThumb,
+.QOLCustomizeOverlay .HorizontalSlider:active .SliderThumb { box-shadow: none; }
+
+/* Shared exact-input validation for ordinary and Customize controls. */
+.ValueInput.Invalid, .ValueInput.Invalid:focus { border: 1px solid #ed7070; box-shadow: none; }

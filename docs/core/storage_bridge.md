@@ -10,23 +10,41 @@ Each realm owns a direct child `CitadelHTMLPanel` named `QOLStorageBridge` and i
 
 ## Transport
 
+Settings restore validates the payload before native publication and checks
+accepted panel-pair/readback evidence before replacing live configuration or
+reporting an applied load. Rejected native publication leaves config/state
+untouched. See [panel persistence](persistence.md) for partial-host failure and
+best-effort rollback limits; a panel publication is not a CEF acknowledgment.
+
 Commands are serialized through a FIFO queue and sent by changing the HTTPS page's fragment: `SetURL(BRIDGE_URL + "#" + encodeURIComponent(JSON.stringify({ q, f, a })))`. Each message has a unique string `q`; `f` selects `save`, `saveChunk`, `load`, `next`, or `remove`, and `a` carries the existing operation arguments. Keys and outbound values remain UTF-8 Base64. Fragment changes fire `hashchange` without reloading the page or sending the payload to the server. The page ignores a fragment present at initial load, so navigation cannot replay an old request. Deadlock's HTTPS-only `SetURL` filter no longer permits script injection or local-file fallbacks.
 
 Readiness requires `QOL_BRIDGE_READY:frag1`, identifying fragment protocol version 1. A plain `QOL_BRIDGE_READY` comes from an old cached page and must not release queued commands. The bridge logs the unsupported page once and retries the bare HTTPS URL after one second, allowing the hosted service worker to activate. These retries share the startup watchdog's five-attempt limit; exhaustion fails remaining queued requests. Duplicate ready titles are harmless. Responses arrive through `HTMLTitle` as `QOL_RES:` JSON; request IDs reject stale replies and response sequence numbers suppress duplicate chunk titles.
 
 Large transfers use sequential chunks and acknowledgment handshakes. Outbound chunks are at most 1500 UTF-16 code units; boundaries move back one unit when necessary to preserve a surrogate pair. Incoming load chunks enforce the expected part order. CEF-side buffers expire after 30 seconds.
 
-Requests have a five-second timeout, reset on dispatch and chunk progress. A queued request that expires is removed and cannot execute after a later connection. Timing out a command already sent does not undo a write CEF may have performed. A 20-second startup watchdog retries ordinary navigation failures up to the same five-attempt limit.
+Requests have a five-second timeout, reset on dispatch and chunk progress. Retired timeout callbacks cannot expire a request after progress, even if native timer cancellation fails or its handle is zero. A queued request that expires is removed and cannot execute after a later connection. Timing out a command already sent does not undo a write CEF may have performed. A 20-second startup watchdog retries ordinary navigation failures up to the same five-attempt limit.
 
 ## Restore and save behavior
 
-Startup captures the root panel and its configuration change stamp when autoload is enabled, before CEF readiness. The stamp includes published revisions and dirty-edit generations from the root and HUD. Startup restore proceeds only while that original state still matches. Its single scheduled retry retains the original baseline; a retry cannot regain permission to overwrite subsequent edits.
+Startup captures both root and resolved HUD identities and the configuration change stamp when autoload is enabled, before CEF readiness. Replacing either panel invalidates that baseline even when its numeric revisions match. The stamp includes published revisions and dirty-edit generations from the root and HUD. Startup restore proceeds only while that original state still matches. Its single scheduled retry retains the original baseline; a retry cannot regain permission to overwrite subsequent edits.
 
 An explicit `loadSettings()` captures a new baseline after marking the request as user intent. It can replace edits that preceded the request, but skips application if another edit, save, clear, or explicit load occurs while waiting. A skipped restore returns `applied: false` and `skipped: "newer-edits"`; it does not claim that disk settings were applied. Missing storage preserves the current session and returns `notFound: true`.
 
 Settings are structurally validated and normalized through the side-effect-free parser before publication. Malformed input rejects without invoking the legacy parser's reset path. Accepted settings are serialized to a canonical envelope for publication, so the later HUD parser receives the same normalized configuration. The HUD revision poll owns ConfigAdapter and feature lifecycle updates.
 
-`saveSettings()` validates and normalizes a snapshot, publishes its canonical envelope to panel attributes, and sends it to CEF. Success requires a CEF acknowledgment; updating live attributes alone is not disk-save success. A failed disk save may leave the chosen settings active for the current session. Clearing disk settings also invalidates older pending restores, but does not itself reset live settings.
+`saveSettings()` validates and normalizes a snapshot, marks user intent, publishes its canonical envelope to panel attributes, and sends it to CEF. In the settings realm, the personal-presets owner saves the captured profile and updates the startup slot only if that profile owns it or no startup profile has been established. Other realms save the startup slot directly. A realm-local intent generation also invalidates older restores when every native attribute write is rejected; explicit load and clear use that same guard. Success requires a CEF acknowledgment; updating live attributes alone is not disk-save success. A failed disk save may leave the chosen settings active for the current session. Clearing disk settings also invalidates older pending restores, but does not itself reset live settings.
+
+Before writing, Main Save captures the loaded profile name and transient identity
+revision through `QOL.ui.presets.getSaveTarget()`. It delegates the canonical
+snapshot to `savePersonalSettings(raw, saveTarget)`, which serializes the profile
+write and any applicable startup-slot write with personal-preset mutations.
+Startup selection and clearing notify `onDefaultSaved(raw, false)` after their
+storage acknowledgment. The bridge awaits the owner before completing its
+high-level callback. A personal-profile write error rejects Main Save so the UI
+cannot claim that the complete save succeeded. If a startup-slot write was
+already acknowledged, that slot remains available for recovery; this is a partial
+save, not a rollback. Collection and selection persistence are described in
+[personal presets](../PRESET_BINDINGS.md#personal-presets).
 
 ## Interface
 
@@ -34,7 +52,14 @@ The API is available as `QOL.core.storageBridge`, `QOL.core.storage`, and `QOLSt
 
 - `init(parent, options)`, `isReady()`, `getPanel()`, `enableAutoload(flag)` manage connection and startup restore.
 - `save(key, value, callback)`, `load(key, callback)`, `remove(key, callback)` are low-level key/value transport operations returning Promises.
-- `saveSettings(configOrRaw, callback)` writes the validated configuration under `qollock_settings`.
+- `saveSettings(configOrRaw, callback)` saves the validated configuration to the
+  current personal profile in the settings realm, preserving another profile's
+  startup selection; without that owner it writes `qollock_settings` directly.
+- `saveStartupSettings(configOrRaw, callback)` writes the same validated startup slot
+  without publishing or changing live settings. Like Save, it invalidates older
+  pending restores and reports success only after CEF acknowledgment. The existing
+  startup restore reads this slot. Later saves of its owning profile update its
+  contents; saving another personal profile preserves it.
 - `loadSettings(callback)` restores settings subject to the captured change stamp.
 - `clearSettings(callback)` removes `qollock_settings` from CEF storage.
 

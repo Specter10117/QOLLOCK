@@ -170,8 +170,12 @@ test("enabling ENABLE_SHOW_BUILD_ID activates ql_show_build_id and updates HUD b
 
     // Setup required DOM elements
     const $ = hud.sandbox.global.$;
-    const lowerLeft = $.CreatePanel("Panel", hud.root, "LowerLeft");
-    const sourceTitle = $.CreatePanel("Label", hud.root, "SelectedBuildInfoTitle");
+    const core = $.CreatePanel("Panel", hud.root, ""); core.AddClass("HudCore");
+    const stats = $.CreatePanel("Panel", core, "StatsAndModsContainer");
+    const lowerLeft = $.CreatePanel("Panel", stats, "LowerLeft");
+    const builds = $.CreatePanel("Panel", core, "CitadelHudHeroBuilds");
+    const info = $.CreatePanel("Panel", builds, "SelectedBuildInfo");
+    const sourceTitle = $.CreatePanel("Label", info, "SelectedBuildInfoTitle");
     sourceTitle.text = "98765 - Competitive Ivy - 1";
 
     // Enable show build id with title
@@ -292,7 +296,7 @@ test("enabling ENABLE_PERF_DEBUG_DETAIL alone activates ql_perf manifest and ena
     assert.strictEqual(State.perfDetailed, true, "State.perfDetailed should be true");
 });
 
-test("legacy configs with DEFAULT_HERO strip DEFAULT_HERO on merge, adapter load, and token decode", () => {
+test("legacy DEFAULT_HERO is ignored by merge, adapter export, and token decode without mutating input", () => {
     const hud = sim.createHud();
     hud.assertLoaded();
     const QOL = hud.sandbox.global.QOL;
@@ -304,10 +308,11 @@ test("legacy configs with DEFAULT_HERO strip DEFAULT_HERO on merge, adapter load
     assert.strictEqual(Object.prototype.hasOwnProperty.call(merged, "DEFAULT_HERO"), false, "merged config must not have DEFAULT_HERO");
     assert.strictEqual(merged.DEFAULT_HERO, undefined);
 
-    // 2. ConfigAdapter strips DEFAULT_HERO from flat and legacy bucket
+    // 2. ConfigAdapter ignores DEFAULT_HERO without changing the supplied snapshot.
     const flatCfg = { DEFAULT_HERO: "hero_frank", ENABLE_AMMO_STATUS: 1 };
     QOL.core.ConfigAdapter.loadFromFlat(flatCfg);
-    assert.strictEqual(flatCfg.DEFAULT_HERO, undefined);
+    assert.strictEqual(flatCfg.DEFAULT_HERO, "hero_frank");
+    assert.strictEqual(QOL.core.ConfigAdapter.exportToFlat().DEFAULT_HERO, undefined);
 
     // 3. User compact export tokens decode and strip DEFAULT_HERO
     const tokens = [
@@ -322,7 +327,7 @@ test("legacy configs with DEFAULT_HERO strip DEFAULT_HERO on merge, adapter load
         const semver = m[1].replace(/-/g, ".");
         const codec = QOL.core.codec;
         const binary = codec.fromBase64Url(m[2]);
-        const parsed = codec.deserializeBuildPayloadCompact(binary, semver);
+        const parsed = codec.deserializeSettings(binary, semver);
         assert.ok(parsed, "Parsed config must exist");
         const tokenMerged = hud.sandbox.global.MergeConfig(parsed);
         assert.strictEqual(Object.prototype.hasOwnProperty.call(tokenMerged, "DEFAULT_HERO"), false);

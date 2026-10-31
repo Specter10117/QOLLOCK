@@ -1,0 +1,54 @@
+/* QOLLOCK overrides for hud_ability_resource.css; loaded after the native baseline. */
+
+.minimalist_healthbar_active .resource_container.rage
+{
+	margin-bottom: 45px;
+	width: 370px;
+	margin-left: -3px;
+}
+
+.minimalist_healthbar_active .rage #ability_resource_progress
+{
+	width: 370px;
+	border-radius: 2.5px;
+}
+
+.minimalist_healthbar_active .rage #type_label,.minimalist_healthbar_active .rage #type-label
+{
+	margin-top: -35px;
+}
+
+.budhud_healthbar_active .resource_container.rage
+{
+	margin-bottom: 45px;
+	width: 370px;
+	margin-left: 4px;
+}
+
+.budhud_healthbar_active .rage #ability_resource_progress
+{
+	width: 370px;
+	border-radius: 2.5px;
+}
+
+.budhud_healthbar_active .rage #type-label
+{
+	margin-top: -35px;
+}
+
+
+.minecraft_healthbar_active .rage #ability_resource_progress
+{
+	border-radius: 6px;
+}
+
+.minecraft_healthbar_active #ability_resource_progress .ProgressBarLeft
+{
+	border-radius: 4px;
+}
+
+.minecraft_healthbar_active .rage #type_label
+{
+	font-family: "Mojang Bold";
+	margin-top: 1px;
+}

@@ -1,4 +1,5 @@
 "use strict";
+const { readStyleSource } = require("./helpers/style_source");
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
@@ -13,17 +14,14 @@ function readLayout(name) {
 }
 
 function readStyle(name) {
-    return fs.readFileSync(
-        path.resolve(__dirname, `../panorama/styles/${name}`),
-        "utf8"
-    ).replace(/\r\n/g, "\n");
+    return readStyleSource(`panorama/styles/${name}`);
 }
 
-test("HUD override is the current native layout plus QOLLOCK includes", () => {
+test("HUD override retains QOLLOCK loading without obsolete mod resource includes", () => {
     const layout = readLayout("hud.xml");
 
-    assert.doesNotMatch(layout, /<CitadelChatWheel\b/);
-    assert.equal((layout.match(/<CitadelHudMovementSpeed\b/g) || []).length, 1);
+    // Native-only panels may be added/removed by Valve. Their historical type
+    // list is not a QOLLOCK dependency; XML preservation is checked by merging.
     assert.match(layout, /styles\/ability_property_icons\.vcss"/);
     assert.doesNotMatch(layout, /styles\/hud_timer\.vcss_c/);
     assert.doesNotMatch(layout, /styles\/ability_property_icons\.vcss_c/);
@@ -48,9 +46,25 @@ test("property icons load once in each Panorama context", () => {
     assert.ok(settingsIcons < settingsCrosshair);
 });
 
-test("unit-target override keeps QOLLOCK hooks on the refreshed native snippet", () => {
-    const layout = readLayout("ability_hud_element_unit_target.xml");
+test("unit-target styling preserves native CSS hooks without an XML override", () => {
+    assert.equal(fs.existsSync(path.resolve(__dirname, "../panorama/layout/ability_hud_element_unit_target.xml")), false);
+    const css = readStyle("ability_hud_element_unit_target.css");
+    assert.match(css, /\.improved_hint_active \.ability_element_unit_target #unscaled_panel > #hint_container/);
+    assert.doesNotMatch(css, /qol_hint_target/);
+});
 
-    assert.doesNotMatch(layout, /class="stack_count"/);
-    assert.equal((layout.match(/class="qol_hint_target"/g) || []).length, 2);
+test("native health bars load design tokens through CSS while variant canvases remain in their owning layout", () => {
+    assert.equal(fs.existsSync(path.resolve(__dirname, "../panorama/layout/hud_health.xml")), false);
+    const css = readStyle("hud_health.css");
+    const tokens = css.indexOf('@import url("s2r://panorama/styles/qollock_defines.vcss_c");');
+    const base = css.indexOf('@import url("s2r://panorama/styles/base/hud_health.vcss_c");');
+    assert.ok(tokens >= 0 && base > tokens);
+    assert.doesNotMatch(css, /cd_icons|fort_cd|fortitude_img/);
+    for (const gate of ["colored_healthbar_active", "minimalist_healthbar_active", "budhud_healthbar_active", "fg_healthbar_active"]) {
+        assert.ok(css.includes(gate), gate);
+    }
+    const container = readLayout("hud_health_container.xml");
+    assert.match(container, /id="QOLHealthbarGeometry"/); assert.match(container, /id="MinecraftHeartsRoot"/);
+    assert.match(container, /<CitadelHudHealth id="hud_health_bars"/);
+    assert.match(container, /text="\{i:r:current_health\}"/); assert.match(container, /text="\/ \{i:r:total_health\}"/);
 });

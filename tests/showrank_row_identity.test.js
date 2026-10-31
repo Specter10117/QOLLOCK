@@ -35,13 +35,15 @@ function createShowRankHarness(rows) {
     hud.sandbox.onEvent("Activated", () => {
         const docRoot = hud.doc.absRoot;
         const name = docRoot.GetAttributeString("qol_sr_probe_name", "");
+        const token = docRoot.GetAttributeString("qol_sr_probe_token", "");
         $.Schedule(0.02, () => {
             const accountId = accountIds[name] || "";
             docRoot.SetAttributeString("qol_sr_probe_account", accountId);
+            docRoot.SetAttributeString("qol_sr_probe_result_token", token);
         });
     });
 
-    const feature = Q.core.FeatureRegistry.getManifest("ql_showrank").create({
+    const feature = Q.core.FeatureRegistry.getManifest("ql_showrank").create({ events: Q.core.EventBus,
         config: { view: () => ({ SHOW_RANK: 1, SHOW_RANK_TOPBAR: 0 }) }
     });
     feature.onEnable();

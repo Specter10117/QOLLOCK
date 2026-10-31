@@ -2,12 +2,8 @@
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const fs = require("node:fs");
-const path = require("node:path");
 
-function read(relativePath) {
-    return fs.readFileSync(path.join(__dirname, "..", relativePath), "utf8").replace(/\r\n/g, "\n");
-}
+const { readStyleSource: read } = require("./helpers/style_source");
 
 test("the shop stacks below interactive abilities and the active build editor", () => {
     const shop = read("panorama/styles/citadel_hud_hero_shop.css");

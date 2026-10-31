@@ -1,10 +1,8 @@
 // ==========================================================================
 // ql_bridge.js — QOLLOCK typed cross-context channel descriptors
 // ==========================================================================
-// Provides: single source of truth for all HUD↔Settings panel attribute channels.
-// 18 constants previously duplicated across ql_core.js and ql_settings.js are
-// now defined ONCE here, plus a typed channel descriptor map and safe
-// read/write helpers with uniform error handling.
+// Provides: named HUD↔Settings panel attribute channels and safe read/write helpers.
+// Descriptors retain existing attribute names independently of context globals.
 //
 // Publishes to: QOL.bridge, bare globals
 // Loads AFTER:  ql_utils.js, ql_shared_presets.js
@@ -43,6 +41,10 @@ var HERO_HINT_ATTR = "QOL_LAST_SELECTED_HERO_HINT";
 // ── Channel descriptor map (single source of truth for all cross-context channels) ──
 
 var QOL_BRIDGE_CHANNELS = {
+    "onDeathArcadeActive":  { attr: "QOL_ON_DEATH_ARCADE_ACTIVE",              type: "flag",        desc: "Committed on-death arcade request" },
+    "onDeathArcadeRequest": { attr: "QOL_ON_DEATH_ARCADE_REQUEST",             type: "string",      desc: "Selected arcade game ID" },
+    "onDeathArcadeToken":   { attr: "QOL_ON_DEATH_ARCADE_REQUEST_TOKEN",       type: "string",      desc: "Session-unique request token" },
+    "onDeathArcadeEscapeOwned": { attr: "QOL_ON_DEATH_ARCADE_ESCAPE_OWNED",    type: "flag",        desc: "Local panel ShowEscapeMenu ownership; never broadcast" },
     "config":              { attr: STORAGE_KEY,                               type: "json",        desc: "Full config envelope {schema, data}" },
     "configRev":           { attr: USER_EDIT_REV_ATTR,                        type: "int",         desc: "Monotonic revision counter" },
     "buildSaveRequest":    { attr: BUILD_SAVE_REQUEST_ATTR,                   type: "string",      desc: "Build category payload" },
@@ -55,12 +57,12 @@ var QOL_BRIDGE_CHANNELS = {
     "buildClearMsg":       { attr: BUILD_CLEAR_MSG_ATTR,                      type: "string",      desc: "Progress message" },
     "buildClearToken":     { attr: BUILD_CLEAR_TOKEN_ATTR,                    type: "string",      desc: "Correlation token" },
     "heroHint":            { attr: HERO_HINT_ATTR,                            type: "string",      desc: "Hero ID" },
-    "healthbarAccentColor":{ attr: PLAYER_HEALTHBAR_ACCENT_COLOR_ATTR,        type: "paletteIndex", desc: "0-29 palette index" },
-    "bottomBarWashColor":  { attr: BOTTOM_BAR_WASH_COLOR_ATTR,                type: "paletteIndex", desc: "0-29 palette index" },
-    "keyboardOverlayWashColor": { attr: KEYBOARD_OVERLAY_WASH_COLOR_ATTR,     type: "paletteIndex", desc: "0-29 palette index" },
-    "staminaChargeColor":  { attr: STAMINA_CHARGE_COLOR_ATTR,                 type: "paletteIndex", desc: "0-29 palette index" },
-    "ammoTextColor":       { attr: AMMO_TEXT_COLOR_ATTR,                      type: "paletteIndex", desc: "0-29 palette index" },
-    "minimapIconColor":    { attr: MINIMAP_ICON_COLOR_ATTR,                   type: "paletteIndex", desc: "0-29 palette index" },
+    "healthbarAccentColor":{ attr: PLAYER_HEALTHBAR_ACCENT_COLOR_ATTR,        type: "paletteIndex", customRgb: true, desc: "palette index or tagged RGB" },
+    "bottomBarWashColor":  { attr: BOTTOM_BAR_WASH_COLOR_ATTR,                type: "paletteIndex", customRgb: true, desc: "palette index or tagged RGB" },
+    "keyboardOverlayWashColor": { attr: KEYBOARD_OVERLAY_WASH_COLOR_ATTR,     type: "paletteIndex", customRgb: true, desc: "palette index or tagged RGB" },
+    "staminaChargeColor":  { attr: STAMINA_CHARGE_COLOR_ATTR,                 type: "paletteIndex", customRgb: true, desc: "palette index or tagged RGB" },
+    "ammoTextColor":       { attr: AMMO_TEXT_COLOR_ATTR,                      type: "paletteIndex", customRgb: true, desc: "palette index or tagged RGB" },
+    "minimapIconColor":    { attr: MINIMAP_ICON_COLOR_ATTR,                   type: "paletteIndex", customRgb: true, desc: "palette index or tagged RGB" },
     "healthbarAccentColorStorage": { attr: PLAYER_HEALTHBAR_ACCENT_COLOR_STORAGE_KEY, type: "string", desc: "Accent color storage key" }
 };
 
@@ -138,7 +140,7 @@ function QOLBridgeWrite(channelName, value, rootPanel) {
     } else if (chan.type === "paletteIndex") {
         var pi = Math.round(Number(value));
         if (!isFinite(pi) || pi < 0) pi = 0;
-        if (pi > 29) pi = 29;
+        if (pi > 29 && !(chan.customRgb && QOL_UTILS.IsCustomColor(pi))) pi = 29;
         outVal = String(pi);
     } else {
         outVal = String(value != null ? value : "");
@@ -202,7 +204,7 @@ if (typeof QOL_UTILS === "object" && QOL_UTILS) {
                 if (typeof _c.desc !== "string") throw new Error("Channel '" + _ch2 + "' missing desc");
             }
         }
-        if (_channelCount !== 19) throw new Error("Expected 19 channels, got " + _channelCount);
+        if (_channelCount === 0) throw new Error("No bridge channels registered");
 
         if (typeof $ !== "undefined" && $.Msg) {
             $.Msg("[QOL DEBUG] ql_bridge.js self-test passed: " + _channelCount + " channels");

@@ -47,16 +47,19 @@ test("fixed icon size changes Base/Alt/Tab geometry and survives export/import",
     const geometry = (size, scale) => {
         assert.equal(map.style.width, undefined);
         assert.equal(map.style.height, undefined);
-        assert.equal(map.style.uiScale, scale);
+        assert.equal(map.style.uiScale, "100%");
+        assert.equal(inner[0].style.uiScale, scale);
         for (const panel of inner) {
             const expected = panel.id !== "hud_minimap" && g.MOD_CONFIG.MINIMAP_FIXED_ICON_SIZE === 1 ? size : undefined;
             assert.equal(panel.style.width, expected, panel.id + " width");
             assert.equal(panel.style.height, expected, panel.id + " height");
         }
+        assert.equal(inner[2].BHasClass("QOLFixedMinimapIcons"), g.MOD_CONFIG.MINIMAP_FIXED_ICON_SIZE === 1,
+            "renderer participates in fixed-icon geometry instead of only enlarging the frame");
     };
     update({ MINIMAP_SMALL_SIZE: 650, MINIMAP_LARGE_SIZE_ALT: 800, MINIMAP_LARGE_SIZE_TAB: 1000,
         ENABLE_ALT_ZOOM: 1, ENABLE_TAB_ZOOM: 1 });
-    geometry("400px", "163%");
+    geometry("400px", "162.5%");
     update({ MINIMAP_FIXED_ICON_SIZE: 1 });
     geometry("650px", "100%");
     hud.root.AddClass("gDetailView");
@@ -74,17 +77,16 @@ test("fixed icon size changes Base/Alt/Tab geometry and survives export/import",
     geometry("400px", "250%");
     hud.root.RemoveClass("gScoreboardOpen");
     clock.advance(600);
-    geometry("400px", "163%");
+    geometry("400px", "162.5%");
     for (const [language, caption] of [[0, "Fixed Icon Size"], [1, "Фиксированный размер иконок"], [13, "Fixed Icon Size"]]) {
         list.RemoveAndDeleteChildren();
         g.MOD_CONFIG.LANGUAGE = language;
         g.QOL.ui.gameplayTabs.renderMinimapTab(list);
-        const row = list.Children().find(p => p.GetAttributeString("QOL_ROW_RESET_KEYS", "") === "MINIMAP_SMALL_SIZE,MINIMAP_FIXED_ICON_SIZE");
+        const row = list.FindChildrenWithClassTraverse("SettingRow_MINIMAP_FIXED_ICON_SIZE")[0];
         assert.ok(row);
-        const checkbox = row.FindChildrenWithClassTraverse("SectionTitleCheckboxToggle")[0];
-        assert.ok(checkbox.GetParent().BHasClass("SliderValueGroup"));
-        assert.equal(checkbox.GetParent().Children().at(-1), checkbox, "checkbox sits after the size input");
-        assert.equal(checkbox.FindChildrenWithClassTraverse("SectionTitleCheckboxLabel")[0].text, caption);
+        const checkbox = row.FindChildrenWithClassTraverse("SwitchButton")[0];
+        assert.ok(checkbox);
+        assert.equal(row.FindChildrenWithClassTraverse("SettingLabel")[0].text, caption);
         checkbox._fire("onactivate");
         clock.advance(1200);
         assert.equal(g.MOD_CONFIG.MINIMAP_FIXED_ICON_SIZE, 1);
@@ -92,8 +94,7 @@ test("fixed icon size changes Base/Alt/Tab geometry and survives export/import",
         row.FindChildrenWithClassTraverse("SettingRowResetBtn")[0]._fire("onactivate");
         clock.advance(1200);
         assert.equal(g.MOD_CONFIG.MINIMAP_FIXED_ICON_SIZE, 0);
-        assert.equal(g.MOD_CONFIG.MINIMAP_SMALL_SIZE, 400);
-        assert.equal(checkbox.BHasClass("selected"), false);
+        assert.equal(g.MOD_CONFIG.MINIMAP_SMALL_SIZE, 650, "the separate toggle reset preserves customized size");
         update({ MINIMAP_SMALL_SIZE: 650 });
     }
     assert.deepEqual(clock.errors, []);

@@ -19,7 +19,7 @@
 		<!-- ============================================================= -->
 		<!-- QOLLOCK CUSTOM: Permanent top bar nickname display            -->
 		<!-- ============================================================= -->
-		<Label class="AlwaysPlayerName" text="{s:player_name}" />
+		<Label class="AlwaysPlayerName" text="{s:player_name}" hittest="false" />
 		<!-- ============================================================= -->
 		<!-- END QOLLOCK CUSTOM                                            -->
 		<!-- ============================================================= -->
@@ -77,8 +77,8 @@
 					<!-- ===================================================== -->
 					<!-- QOLLOCK CUSTOM: ShowRank prediction badges on top bar -->
 					<!-- ===================================================== -->
-					<Image id="RankPredictionBadgeTopBar" src="s2r://panorama/images/ranked/badges/rank0/badge_sm_psd.vtex" />
-					<Image id="RankPredictionBadgeTopBarOverlay" />
+					<Image id="RankPredictionBadgeTopBar" src="s2r://panorama/images/ranked/badges/rank0/badge_sm_psd.vtex" hittest="false" />
+					<Image id="RankPredictionBadgeTopBarOverlay" hittest="false" />
 					<!-- ===================================================== -->
 					<!-- END QOLLOCK CUSTOM                                    -->
 					<!-- ===================================================== -->
@@ -93,7 +93,7 @@
 						<!-- ================================================= -->
 						<!-- QOLLOCK CUSTOM: Native ult cooldown binding       -->
 						<!-- ================================================= -->
-						<Label id="UltimateCooldownTextHidden" text="{i:ult_cooldown}" />
+						<Label id="UltimateCooldownTextHidden" text="{i:ult_cooldown}" hittest="false" />
 						<!-- ================================================= -->
 						<!-- END QOLLOCK CUSTOM                                -->
 						<!-- ================================================= -->
@@ -111,7 +111,7 @@
 				<!-- ========================================================= -->
 				<!-- QOLLOCK CUSTOM: Ultimate cooldown seconds overlay         -->
 				<!-- ========================================================= -->
-				<Label id="UltimateCooldownTextShown" />
+				<Label id="UltimateCooldownTextShown" hittest="false" />
 				<!-- ========================================================= -->
 				<!-- END QOLLOCK CUSTOM                                        -->
 				<!-- ========================================================= -->
@@ -158,11 +158,11 @@
 			<!-- ============================================================= -->
 			<!-- QOLLOCK CUSTOM: Unspent souls and souls per minute (SPM)      -->
 			<!-- ============================================================= -->
-			<Panel class="LeftRightFlow AlignHorizontalCenter UnSoulsValueContainer">
+			<Panel class="LeftRightFlow AlignHorizontalCenter UnSoulsValueContainer" hittest="false" hittestchildren="false">
 				<Label class="SpentSoulDisplay SpentSoulsTitle" text="Unspent:" />
 				<Label id="SpentSoulDisplay" class="SpentSoulDisplay" text="-" />
 			</Panel>
-			<Panel class="LeftRightFlow AlignHorizontalCenter SPMContainer">
+			<Panel class="LeftRightFlow AlignHorizontalCenter SPMContainer" hittest="false" hittestchildren="false">
 				<Label id="HiddenGoldValue" class="hiddenGoldValue" html="true" text="{s:gold}" />
 				<Label id="PlayerSPMDisplay" class="playerSPMDisplay" text="0/m" />
 			</Panel>
@@ -176,7 +176,7 @@
 			<!-- ============================================================= -->
 			<!-- QOLLOCK CUSTOM: Hidden account ID for manifests               -->
 			<!-- ============================================================= -->
-			<Label class="PlayerAccountHiddenTopBar" text="" />
+			<Label class="PlayerAccountHiddenTopBar" text="" hittest="false" />
 			<!-- ============================================================= -->
 			<!-- END QOLLOCK CUSTOM                                            -->
 			<!-- ============================================================= -->
@@ -194,7 +194,7 @@
 		<!-- ================================================================= -->
 		<!-- QOLLOCK CUSTOM: Hidden localized hero name binding                -->
 		<!-- ================================================================= -->
-		<Label class="HeroNameHidden" text="{g:citadel_hero_name:hero_id}" />
+		<Label class="HeroNameHidden" text="{g:citadel_hero_name:hero_id}" hittest="false" />
 		<!-- ================================================================= -->
 		<!-- END QOLLOCK CUSTOM                                                -->
 		<!-- ================================================================= -->

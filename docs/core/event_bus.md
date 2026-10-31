@@ -14,7 +14,11 @@ This is synchronous, context-local pub/sub, not a cross-realm transport.
 
 `ctx.events.emit` prefixes the feature ID; `ctx.events.on/off` do not. For example,
 an emitted feature event must be subscribed under its full `ql_name:event` name.
-Feature-owned subscriptions require explicit cleanup in `onDisable`.
+`ctx.events` deduplicates each event/callback pair and scopes subscriptions to
+the instance generation. FeatureRegistry retires them before disable or failed-
+enable cleanup, suppressing callbacks already captured by an EventBus snapshot.
+Use `ctx.events.off` for earlier release. Direct EventBus/native subscriptions
+still require explicit feature cleanup. See [lifecycle](feature_registry.md).
 
 Core events include `config:changed`, `scheduler:error`, `scheduler:tick_ok`, and
 the engine bridges listed in [app.md](app.md). The bus itself does not subscribe

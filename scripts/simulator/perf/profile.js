@@ -1,6 +1,6 @@
 // scripts/simulator/perf/profile.js
 // =============================================================================
-// Runs the real mod against an instrumented, realistic in-match HUD and reports
+// Runs the real mod against an instrumented native capture and reports
 // which feature asks the engine to do how much work per second.
 // =============================================================================
 // The harness answers one question: if a player's frame time gets worse when
@@ -11,12 +11,9 @@
 // ATTRIBUTION MECHANISM
 //
 // Poll wrapping is installed immediately after ql_scheduler loads, before app
-// boot can allocate default-enabled loops. Legacy updates are wrapped after load.
+// boot can allocate default-enabled loops.
 //
-//   * Old system — every entry in QOL_FEATURE_REGISTRY has its `update` replaced
-//     by a wrapper that pushes "feat:<name>" onto the attribution stack. The
-//     core dispatch loop calls these, so per-feature cost falls out directly.
-//   * New system — QOL.core.Scheduler.createPollLoop is replaced by a version
+//   * QOL.core.Scheduler.createPollLoop is replaced by a version
 //     that wraps the callback with "mf:<featureId>". Every manifest's poll loop
 //     goes through it (raw $.Schedule is banned in feature code), so manifests
 //     are covered too.
@@ -38,9 +35,10 @@
 "use strict";
 
 const path = require("node:path");
+const fs = require("node:fs");
 const crypto = require("node:crypto");
-const { install, counters, silently } = require("./instrument.js");
-const { buildMatchHud, buildCapturedHud } = require("./hud_tree.js");
+const { install, counters, silently, READ_COVERAGE, ENUMERATION_COVERAGE } = require("./instrument.js");
+const { buildCapturedHud } = require("./hud_tree.js");
 
 // Install before requiring the simulator so index.js sees patched classes.
 install();
@@ -49,9 +47,25 @@ const { Clock } = require("../clock.js");
 const { Document } = require("../panel.js");
 const { Sandbox } = require("../sandbox.js");
 const layout = require("../layout.js");
-const { BuildsModel, TITLE_MODE } = require("../game/builds.js");
 
 // Matches QOL_STORAGE_KEY / QOL_USER_EDIT_REV_ATTR in ql_shared_presets.js.
+// Fingerprint the actual simulator sources, without an arbitrary version bump.
+// Saved runs with older or different model semantics are not comparable.
+const modelFingerprint = (() => {
+    const hash = crypto.createHash("sha256");
+    const root = path.resolve(__dirname, "..");
+    function include(folder) {
+        for (const entry of fs.readdirSync(folder, { withFileTypes: true }).sort((a,b) => a.name.localeCompare(b.name))) {
+            const file = path.join(folder, entry.name);
+            if (entry.isDirectory()) include(file);
+            else if (entry.name.endsWith(".js")) hash.update(JSON.stringify([path.relative(root,file).split(path.sep).join("/"),fs.readFileSync(file,"utf8")]));
+        }
+    }
+    include(root);
+    hash.update(fs.readFileSync(path.join(root,"../capture_tree.js"),"utf8"));
+    return hash.digest("hex");
+})();
+
 const STORAGE_KEY = "Deadlock_Mod_Settings_v1";
 const USER_EDIT_REV_ATTR = "QOL_USER_EDIT_REV";
 
@@ -81,36 +95,6 @@ function makeMaximalConfig(sandbox, overrides = {}, enableAll = true) {
     return cfg;
 }
 
-/**
- * Wrap every registered old-system feature's update() for attribution.
- * Returns the number wrapped, so a zero can be reported as a harness failure
- * rather than silently producing an empty profile.
- */
-function wrapOldFeatures(sandbox) {
-    return sandbox.eval(`
-        (function () {
-            if (typeof QOL_FEATURE_REGISTRY === "undefined" || !QOL_FEATURE_REGISTRY) return 0;
-            var n = 0;
-            for (var name in QOL_FEATURE_REGISTRY) {
-                if (!Object.prototype.hasOwnProperty.call(QOL_FEATURE_REGISTRY, name)) continue;
-                var entry = QOL_FEATURE_REGISTRY[name];
-                if (!entry || typeof entry.update !== "function" || entry.__profWrapped) continue;
-                (function (entry, name) {
-                    var inner = entry.update;
-                    entry.update = function () {
-                        __profEnter("feat:" + name);
-                        try { return inner.apply(this, arguments); }
-                        finally { __profExit(); }
-                    };
-                    entry.__profWrapped = true;
-                })(entry, name);
-                n++;
-            }
-            return n;
-        })()
-    `);
-}
-
 /** Wrap Scheduler.createPollLoop so each manifest poll tick is attributed. */
 function wrapPollLoops(sandbox) {
     return sandbox.eval(`
@@ -124,6 +108,7 @@ function wrapPollLoops(sandbox) {
                 var wrapped = function () {
                     __profEnter(label);
                     try { return callback.apply(this, arguments); }
+                    catch (error) { __profError(label, error); throw error; }
                     finally { __profExit(); }
                 };
                 __profNoteLoop(label, rateSec);
@@ -135,26 +120,7 @@ function wrapPollLoops(sandbox) {
     `);
 }
 
-/**
- * Attribute work done directly by the mod's own scheduled loops.
- *
- * Without this, everything the core loop does in its own body — reading the
- * config out of a panel attribute, resolving gates, the always-on coreRoot
- * work, and the whole of the 20Hz compassLoop — lands in one
- * "<unattributed>" bucket that is far too large to act on. Those functions are
- * module-private inside an IIFE, so they cannot be wrapped by name from outside.
- *
- * What CAN be recovered is the identity of the scheduled callback: the mod
- * schedules named function declarations (`$.Schedule(delay, loop)`,
- * `compassLoop`, `buildRequestLoop`), and a function's `.name` survives. So
- * patch $.Schedule to label each callback with its own name. Anonymous
- * callbacks (the many `$.Schedule(0.01, function() {...})` one-shots) keep the
- * generic label, which is honest — we genuinely cannot tell them apart.
- *
- * Nesting is handled by the label stack: when the core loop calls a wrapped
- * feature, the feature's label is on top and gets charged; only work the loop
- * does itself stays charged to the loop.
- */
+/** Attribute named scheduled callbacks outside managed polls; anonymous work stays unattributed. */
 function wrapScheduledLoops(sandbox) {
     return sandbox.eval(`
         (function () {
@@ -168,6 +134,7 @@ function wrapScheduledLoops(sandbox) {
                 var wrapped = function () {
                     __profEnter(label);
                     try { return cb.apply(this, arguments); }
+                    catch (error) { __profError(label, error); throw error; }
                     finally { __profExit(); }
                 };
                 return orig.call($, delaySec, wrapped);
@@ -182,54 +149,52 @@ function wrapScheduledLoops(sandbox) {
  * Boot a profiled HUD.
  *
  * @param {object}  opts
- * @param {number}  [opts.players=12]
  * @param {boolean} [opts.enableAll=true]
  * @param {object}  [opts.configOverrides]
  * @param {number}  [opts.warmupMs=8000]  virtual ms to run before counting
- * @param {object}  [opts.capturedTree]   full per-panel output of
- *                                        scripts/import_tree_dump.js (not an
- *                                        aggregate summary); replaces the
- *                                        modelled composition
+ * @param {object}  [opts.capturedTree]   validated per-panel hierarchy;
+ *                                        defaults to the tracked native capture
  */
 function createProfiledHud({
-    players = 12,
-    damageNumbers = 24,
     enableAll = true,
     configOverrides = {},
     warmupMs = 8000,
     capturedTree = null,
     beforeLoad = null,
+    runtimeSources = null,
+    configInput = null,
 } = {}) {
+    if (capturedTree === null) capturedTree = JSON.parse(fs.readFileSync(path.join(layout.REPO_ROOT, "tests/fixtures/hud/2026-10-03-hero-testing.json"), "utf8"));
     const clock = new Clock(1000);
     const doc = new Document(clock);
     const sandbox = new Sandbox({ clock, doc, name: "hud" });
     if (beforeLoad) beforeLoad(sandbox);
 
     // Attribution hooks the wrappers call from inside the VM.
-    sandbox.global.__profEnter = (label) => counters.enter(label);
+    sandbox.global.__profEnter = (label) => {
+        counters.enter(label);
+        counters.add("calls");
+    };
     sandbox.global.__profExit = () => counters.exit();
+    // Record before Scheduler catches/reset streaks can hide a recovered error.
+    // Retain bounded details while preserving the complete failure count.
+    const wrapperErrors = { count: 0, events: [] };
+    sandbox.global.__profError = (label, error) => {
+        wrapperErrors.count++;
+        if (wrapperErrors.events.length < 100) wrapperErrors.events.push({ label, atMs: clock.now(), message: String(error?.message || error) });
+    };
     const pollRates = new Map();
     sandbox.global.__profNoteLoop = (label, rate) => {
         pollRates.set(label, Number(rate) || 0.2);
     };
 
-    // Captured replay must not inject a synthetic shop or bind native commands
-    // to a model whose panels are unrelated to the supplied hierarchy.
-    const game = capturedTree ? null : new BuildsModel({ sandbox, titleMode: TITLE_MODE.RESOLVED, hero: "hero_werewolf", inHideout: false });
-
     // Build the tree BEFORE the mod loads: in-engine the HUD exists before the
     // mod's scripts run, and several features cache panel refs at boot.
     let tree;
     silently(() => {
-        // A live match: connected, not in the hideout.
-        doc.root.SetHasClass("connectedToHideout", false);
-        // A captured tree wins over the modelled one: it is the same HUD the engine
-        // actually built, so nothing about it depends on our composition guesses.
-        tree = capturedTree
-            ? buildCapturedHud(doc, capturedTree)
-            : buildMatchHud(doc, { players, damageNumbers });
+        tree = buildCapturedHud(doc, capturedTree);
     });
-    const capturedHudClasses = capturedTree ? [...doc.root._classes] : null;
+    const capturedHudClasses = [...doc.root._classes];
     const treeHash = crypto.createHash("sha256");
     const pendingPanels = [doc.absRoot];
     while (pendingPanels.length) {
@@ -243,14 +208,21 @@ function createProfiledHud({
 
     wrapScheduledLoops(sandbox);
 
-    const scripts = layout.hudScripts();
+    const scripts = runtimeSources || layout.hudScripts();
     if (scripts.missing.length > 0) {
         const list = scripts.missing.map((m) => `${m.src} (hud.xml:${m.line})`).join(", ");
         throw new Error(`[profiler] hud.xml references missing scripts: ${list}`);
     }
+    const sourceHash = crypto.createHash("sha256");
+    const loadedSources = scripts.scripts.map(s => ({ ...s, source: s.source === undefined ? fs.readFileSync(s.absPath, "utf8") : s.source }));
+    const loadedScripts = loadedSources.map(s => {
+        const relative = path.relative(layout.REPO_ROOT, s.absPath).split(path.sep).join("/");
+        sourceHash.update(JSON.stringify([relative, s.source]));
+        return relative;
+    });
     silently(() => {
-        for (const s of scripts.scripts) {
-            sandbox.load(s.absPath);
+        for (const s of loadedSources) {
+            sandbox.loadSource(s.source, s.absPath);
             if (s.absPath.includes("ql_scheduler")) {
                 wrapPollLoops(sandbox);
             }
@@ -277,9 +249,9 @@ function createProfiledHud({
     // profile on the same code path a real install takes.
     let configApplied = false;
     let configBytes = 0;
-    const inputConfig = makeMaximalConfig(sandbox, configOverrides, enableAll);
+    const inputConfig = configInput ? { ...configInput } : makeMaximalConfig(sandbox, configOverrides, enableAll);
     silently(() => {
-        if (!enableAll && Object.keys(configOverrides).length === 0) return;
+        if (!configInput && !enableAll && Object.keys(configOverrides).length === 0) return;
         const cfg = inputConfig;
         if (!cfg) return;
         const schema = sandbox.eval(
@@ -297,7 +269,6 @@ function createProfiledHud({
         configApplied = true;
     });
 
-    const wrappedFeatures = wrapOldFeatures(sandbox);
     const wrappedScheduler = wrapPollLoops(sandbox);
     const wrappedLoops = wrapScheduledLoops(sandbox);
 
@@ -309,40 +280,47 @@ function createProfiledHud({
         clock,
         doc,
         sandbox,
-        game,
         tree,
         counters,
         pollRates,
+        wrapperErrors,
+        inputConfig,
         meta: {
-            players, damageNumbers, configApplied, configBytes,
+            modelFingerprint, unsupportedCalls: sandbox.unsupportedCalls,
+            wrapperErrors,
+            sourceCoverage: { scripts: loadedScripts, fingerprint: sourceHash.digest("hex") },
+            readCoverage: READ_COVERAGE,
+            enumerationCoverage: ENUMERATION_COVERAGE,
+            callbackCoverage: "calls counts managed poll and named scheduled wrapper entries; anonymous/raw callbacks are not owner-attributed",
+            configApplied, configBytes,
             configMode: enableAll ? "expanded" : "defaults",
             configOverrides: { ...configOverrides },
             configFingerprint: crypto.createHash("sha256").update(JSON.stringify(inputConfig)).digest("hex"),
-            healthbarType: Number(configOverrides.HEALTHBAR_TYPE) || 0,
-            wrappedFeatures, wrappedScheduler, wrappedLoops, warmupMs,
-            // Which tree the numbers describe. A modelled run and a captured run are
-            // not comparable, so this has to travel with the results.
-            treeSource: capturedTree ? "captured" : "modelled",
+            healthbarType: Number(inputConfig && inputConfig.HEALTHBAR_TYPE) || 0,
+            wrappedScheduler, wrappedLoops, warmupMs,
+            treeSource: "captured",
             treeFingerprint,
-            capturedFrom: capturedTree ? (capturedTree.capturedFrom || capturedTree.timestampUtc || "unknown") : null,
+            capturedFrom: capturedTree.capturedFrom || capturedTree.timestampUtc || "supplied fixture",
             capturedHudClasses,
             captureFidelity: tree.fidelity || null,
         },
 
         /** Count for `ms` of virtual time and return a snapshot. */
         measure(ms) {
+            if (!Number.isFinite(ms) || ms <= 0) throw new Error("measurement duration must be positive and finite");
+            const firedBefore = clock.stats.fired;
             counters.reset();
             counters.enabled = true;
             try { clock.advance(ms); }
             finally { counters.enabled = false; }
-            return counters.snapshot(ms / 1000);
+            return { ...counters.snapshot(ms / 1000), scheduledCallbacks: clock.stats.fired - firedBefore };
         },
 
         diagnose() {
             const lines = [];
             lines.push(`tree: ${tree.panels} panels`);
             if (tree.notes.length > 0) lines.push(`tree notes:\n  ${tree.notes.join("\n  ")}`);
-            lines.push(`features wrapped: ${wrappedFeatures}, scheduler wrapped: ${wrappedScheduler}`);
+            lines.push(`scheduler wrapped: ${wrappedScheduler}`);
             lines.push(`clock: ${clock.now()}ms, ${clock.pendingCount()} pending`);
             if (clock.errors.length > 0) {
                 lines.push(`scheduled-callback errors (${clock.errors.length}):`);

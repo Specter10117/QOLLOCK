@@ -12,13 +12,19 @@ function addLocalPartyAccount(hud, accountId) {
     const party = $.CreatePanel("Panel", partyContainer, "CitadelParty");
     const localPlayer = $.CreatePanel("Panel", party, "LocalPlayer");
     const avatar = $.CreatePanel("Panel", localPlayer, "AvatarImage");
-    avatar.text = accountId;
+    avatar.accountid = accountId;
     return avatar;
 }
 
 function addRussianBottomChatMessage(hud) {
     const $ = hud.sandbox.global.$;
-    const container = $.CreatePanel("Panel", hud.root, "ChatMessages");
+    const core = $.CreatePanel("Panel", hud.root, "");
+    core.AddClass("HudCore");
+    const chat = $.CreatePanel("CitadelChat", core, "Chat");
+    const lines = $.CreatePanel("Panel", chat, "ChatLinesArea");
+    const wrapper = $.CreatePanel("Panel", lines, "");
+    wrapper.AddClass("ChatLinesWrapper");
+    const container = $.CreatePanel("Panel", wrapper, "ChatMessages");
     const message = $.CreatePanel("Panel", container, "RussianMessage");
     message.AddClass("ChatMessage");
     const contents = $.CreatePanel("Panel", message, "MessageContents");
@@ -48,9 +54,9 @@ test("chat translation keeps resolving until the owner binding becomes available
     addLocalPartyAccount(hud, OWNER_ACCOUNT_ID);
     hud.clock.advance(2100);
 
-    assert.equal(State.localTranslationOwnerMatch, true);
+    assert.equal(State.localTranslationOwnerMatch, undefined);
     assert.equal(hud.root.GetAttributeString("QOL_LocalTranslationOwner_v2", ""), "1");
-    assert.equal(chat.label.style.visibility, "collapse");
+    assert.equal(chat.label.style.visibility, undefined);
     assert.equal(chat.message.FindChildrenWithClassTraverse("QOLLocalChatTranslation").length, 1);
 });
 
@@ -61,10 +67,10 @@ test("chat translation fail-closes after a positively identified non-owner", () 
     const avatar = addLocalPartyAccount(hud, "12345678");
 
     hud.clock.advance(500);
-    assert.equal(State.localTranslationOwnerMatch, false);
+    assert.equal(State.localTranslationOwnerMatch, undefined);
     assert.equal(hud.root.GetAttributeString("QOL_LocalTranslationOwner_v2", ""), "0");
 
-    avatar.text = OWNER_ACCOUNT_ID;
+    avatar.accountid = OWNER_ACCOUNT_ID;
     hud.clock.advance(2500);
-    assert.equal(State.localTranslationOwnerMatch, false);
+    assert.equal(State.localTranslationOwnerMatch, undefined);
 });

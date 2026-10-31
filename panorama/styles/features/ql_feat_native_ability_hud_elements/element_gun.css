@@ -1,0 +1,86 @@
+/* QOLLOCK overrides for ability_hud_elements/element_gun.css; loaded after the native baseline. */
+
+#clip_status.qol-ammo-visual-enabled,
+#clip_status_mirrored.qol-ammo-visual-enabled
+{
+	visibility: visible;
+}
+
+/*
+ * Keep the magazine ring hidden for the whole reload so it doesn't blink.
+ * The base HUD only collapses #clip_status while BOTH `attack_delayed` and
+ * `reloading` are set (.attack_delayed.reloading #clip_status). During a
+ * per-bullet (shotgun) reload `reloading` stays on but `attack_delayed`
+ * cycles once per shell, so between shells the base collapse lifts and our
+ * enabled-container visibility rule pops the ring back — the
+ * rotated ring flickers in and out. Collapsing on `reloading` alone (which is
+ * continuous across the whole reload) keeps it steadily hidden, matching the
+ * vanilla "ring hidden while reloading" behaviour.
+ */
+.hide_ammo_custom #clip_status,
+.hide_ammo_custom #clip_status_mirrored,
+#clip_status.qol-ammo-visual-disabled,
+#clip_status_mirrored.qol-ammo-visual-disabled
+{
+	opacity: 0 !important;
+	visibility: collapse;
+}
+
+.reloading #clip_status,
+.reloading #clip_status_mirrored
+{
+	opacity: 0 !important;
+	visibility: collapse !important;
+}
+
+.hide_magazine_active #ammo_panel .weapon_ammo_max
+{
+	opacity: 0 !important;
+}
+
+.hide_current_ammo_active #ammo_panel .weapon_ammo
+{
+	opacity: 0 !important;
+	visibility: collapse;
+}
+
+#QOLReloadCooldownText
+{
+	visibility: collapse;
+	horizontal-align: center;
+	vertical-align: center;
+	text-align: center;
+	z-index: 20;
+	color: #e83e38;
+	font-size: 28px;
+	font-weight: bold;
+	margin: 0px;
+	padding: 0px;
+	text-shadow: 0px 0px 6px #000000dd;
+	opacity: 0.6;
+}
+
+.hide_reload_icon_active #attackDelayedReloading
+{
+	opacity: 0 !important;
+}
+
+.hide_reload_circle_active #reticle_status_progress_bar_bg
+{
+	opacity: 0 !important;
+}
+
+.hide_reload_circle_active #attack_delayed_progress_bar
+{
+	opacity: 0 !important;
+}
+
+.hide_reload_circle_active.hide_reload_circle_exception_active #reticle_status_progress_bar_bg
+{
+	opacity: 0.35 !important;
+}
+
+.hide_reload_circle_active.hide_reload_circle_exception_active #attack_delayed_progress_bar
+{
+	opacity: 1 !important;
+}

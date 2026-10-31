@@ -1,0 +1,11 @@
+/* QOLLOCK overrides for citadel_db_page_learn.css; loaded after the native baseline. */
+
+#GettingStarted,#HeroSandbox
+{
+	visibility: visible;
+}
+
+.playTime
+{
+	visibility: visible;
+}

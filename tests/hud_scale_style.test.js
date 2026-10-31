@@ -1,12 +1,10 @@
 // tests/hud_scale_style.test.js
 // =============================================================================
-// The mod's scale sliders ride on ui-scale, and ui-scale belongs to CSS first.
+// Overall scaling preserves CSS baselines and independent opacity.
 // =============================================================================
-// Every scale in the mod goes through ui-scale rather than pre-transform-scale2d,
-// because ui-scale re-lays out (vector) where pre-transform-scale2d resamples
-// (raster). The catch is that an inline ui-scale REPLACES the CSS one instead of
-// multiplying with it, and Panorama will not report a computed value back — so
-// the runtime has to know the base it is overriding:
+// Both healthbar and bottom bar use ui-scale. An inline value REPLACES its
+// CSS baseline, rather than multiplying it. Both paths must release defaults
+// and retain independent opacity behavior. Native CSS baselines:
 //
 //   #health_and_abilities_container  base/hud.css:422            120%
 //                                    .support_16_10_active       104%
@@ -19,7 +17,8 @@
 //      whichever CSS rule applies. This is what made "lower the opacity" resize
 //      the healthbar: the runtime only starts on the first non-default key, and
 //      it wrote a flat ui-scale: 100% the moment it did.
-//   2. A slider that has been moved writes base x slider, not slider.
+//   2. Overall scale multiplies the applicable CSS baseline before writing
+//      the inline ui-scale value.
 // =============================================================================
 
 "use strict";
@@ -48,6 +47,13 @@ function recordingPanel(extra) {
         },
     });
     return Object.assign({
+        IsValid: () => true,
+        FindChild: () => null,
+        ClearPropertyFromCode(property) {
+            const alias = property.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
+            delete style[alias];
+            return true;
+        },
         style,
         writes,
         last(prop) {
@@ -105,13 +111,18 @@ test("healthbar: opacity alone never touches ui-scale", () => {
     assert.strictEqual(panel.last("opacity"), "0.63", "opacity should still be applied");
 });
 
-test("healthbar: a moved size slider scales the CSS base, not 100", () => {
+test("healthbar: size multiplies the native CSS baseline", () => {
     const panel = applyHealthbar(boot(), { PLAYER_HEALTHBAR_SCALE: 150 });
+    assert.strictEqual(panel.last("uiScale"), "180%");
+    assert.ok(!panel.forced("preTransformScale2d"));
+});
 
-    assert.strictEqual(panel.last("uiScale"), (HEALTHBAR_BASE_PCT * 1.5) + "%",
-        "size 150 should be 1.5x the CSS base");
-    assert.ok(!panel.forced("preTransformScale2d"),
-        "scale belongs on ui-scale (vector), not pre-transform-scale2d (raster)");
+test("healthbar: aspect-ratio changes select the current CSS scale baseline", () => {
+    const h = boot();
+    h.sandbox.global.QOL.core.panel.findHud().AddClass("support_16_10_active");
+    const panel = applyHealthbar(h, { PLAYER_HEALTHBAR_SCALE: 150 });
+    assert.strictEqual(panel.last("uiScale"), "156%");
+    assert.ok(!panel.forced("preTransformScale2d"));
 });
 
 test("healthbar: all-default config forces nothing", () => {
@@ -136,7 +147,7 @@ test("healthbar: reset hands every property back to CSS", () => {
 // ── Bottom bar (#hud_signature) ─────────────────────────────────────────────
 //
 // Driven through the registered feature rather than a helper, because the bottom
-// bar has no shared style module — the write is inline in its update().
+// bar has no shared style module — the manifest owns its native style writes.
 
 const BB_DEFAULTS = {
     HUD_BOTTOM_BAR_ENABLED: 1,
@@ -149,24 +160,15 @@ const BB_DEFAULTS = {
 function runBottomBar(cfg) {
     const h = boot();
     const QOL = h.sandbox.global.QOL;
-    const entry = h.sandbox.global.QOL_FEATURE_REGISTRY && h.sandbox.global.QOL_FEATURE_REGISTRY.bottomBarRuntime;
 
     const panel = recordingPanel({
         id: "hud_signature",
         IsValid: () => true,
+        GetParent: () => h.doc.root,
         SetHasClass: () => {},
         FindChildTraverse: () => null,
         FindChildrenWithClassTraverse: () => [],
     });
-
-    if (entry) {
-        // The feature resolves the panel through the cache, so seed it there and skip
-        // needing #hud_signature to exist in the modelled tree.
-        QOL.setCachedPanel("bottomBarPanel", panel);
-        QOL.state.bottomBarRuntimeStyleSig = "";
-        entry.update(h.doc.root, Object.assign({}, BB_DEFAULTS, cfg), 1000);
-        return panel;
-    }
 
     const FR = QOL.core && QOL.core.FeatureRegistry;
     const manifest = FR && FR.getManifest && FR.getManifest("ql_bottom_bar");
@@ -181,6 +183,7 @@ function runBottomBar(cfg) {
             id: "ql_bottom_bar",
             config: {
                 all: () => fullCfg,
+                view: () => fullCfg,
                 get: (k) => fullCfg[k],
                 set: (k, v) => { fullCfg[k] = v; }
             },
@@ -191,7 +194,7 @@ function runBottomBar(cfg) {
         return panel;
     }
 
-    assert.fail("neither bottomBarRuntime nor ql_bottom_bar manifest is registered");
+    assert.fail("ql_bottom_bar manifest is not registered");
 }
 
 test("bottom bar: default config forces nothing on #hud_signature", () => {

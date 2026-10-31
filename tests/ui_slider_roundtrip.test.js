@@ -6,8 +6,8 @@ const loadSettingsEnvironment = require("./load_settings_environment");
 
 for (const method of ["drag", "type"]) {
     for (const [key, feature, shape, rawValues, expectedValues] of [
-        ["TOP_BAR_SCALE", "ql_topbar", "scale_0_5_1_5", [1.23, -9, 9], [1.25, 0.5, 1.5]],
-        ["SOULS_X_OFFSET", "ql_souls", "offset_n1500_1500", [123, -9000, 9000], [125, -1500, 1500]],
+        ["TOP_BAR_SCALE", "ql_topbar", "scale_0_5_1_5", [1.23, -9, 9], [1.23, 0.5, 1.5]],
+        ["SOULS_X_OFFSET", "ql_souls", "offset_n1500_1500", [123, -9000, 9000], [123, -1500, 1500]],
         ["ACTIVE_ITEMS_SCALE", "ql_bottom_bar", "size_50_250", [137, -9, 999], [137, 50, 250]],
         ["ACTIVE_ITEMS_X_OFFSET", "ql_bottom_bar", "offset_n1500_1500_s1", [123, -9000, 9000], [123, -1500, 1500]],
     ]) {
@@ -23,12 +23,13 @@ for (const method of ["drag", "type"]) {
                     slider.value = rawValues[i] * (key === "TOP_BAR_SCALE" ? 100 : 1);
                     assert.equal(slider._fire("onvaluechanged"), true);
                 } else {
-                    input.text = String(rawValues[i]);
+                    input.text = String(rawValues[i] * (key === "TOP_BAR_SCALE" ? 100 : 1));
                     assert.equal(input._fire("oninputsubmit"), true);
                 }
                 clock.advance(1200);
-                const expected = expectedValues[i];
-                assert.equal(g.MOD_CONFIG[key], expected, "UI commits a wire-representable value");
+                const expected = method === "type" && g.QOL.settings.get(key).role === "position" ? rawValues[i] :
+                    method === "type" && i > 0 ? expectedValues[0] : expectedValues[i];
+                assert.equal(g.MOD_CONFIG[key], expected, "UI commits the accepted settings value");
                 assert.equal(hud.sandbox.global.QOL.core.ConfigStore.get(feature, key), expected);
                 assert.equal(hud.sandbox.global.State.lastConfig[key], expected);
                 const code = g.QOL.ui.configTab.getCurrentExportSettingsString();
@@ -83,9 +84,9 @@ test("typed settings edit invalidates HUD startup restore before the save deboun
 
     const row = g.CreateSliderRow(list, "Scale", "TOP_BAR_SCALE", "scale_0_5_1_5");
     const input = row.FindChildrenWithClassTraverse("ValueInput")[0];
-    input.text = "1.23";
+    input.text = "123";
     assert.equal(input._fire("oninputsubmit"), true);
-    assert.equal(g.MOD_CONFIG.TOP_BAR_SCALE, 1.25);
+    assert.equal(g.MOD_CONFIG.TOP_BAR_SCALE, 1.23);
     assert.notEqual(hudGlobal.QOL.core.persistence.getConfigChangeStamp(hud.root), stampBefore,
         "real MarkConfigDirty publishes an edit stamp visible in the HUD isolate immediately");
     assert.equal(hud.root.GetAttributeString("Deadlock_Mod_Settings_v1", ""), rawBefore,
@@ -101,10 +102,10 @@ test("typed settings edit invalidates HUD startup restore before the save deboun
         "late startup response must not publish stale settings during debounce");
     clock.advance(299);
     assert.equal(hud.root.GetAttributeString("Deadlock_Mod_Settings_v1", ""), rawBefore);
-    assert.equal(g.MOD_CONFIG.TOP_BAR_SCALE, 1.25);
+    assert.equal(g.MOD_CONFIG.TOP_BAR_SCALE, 1.23);
     clock.advance(901);
-    assert.equal(hudGlobal.QOL.core.ConfigStore.get("ql_topbar", "TOP_BAR_SCALE"), 1.25);
-    assert.equal(JSON.parse(hud.root.GetAttributeString("Deadlock_Mod_Settings_v1", "")).data.TOP_BAR_SCALE, 1.25);
+    assert.equal(hudGlobal.QOL.core.ConfigStore.get("ql_topbar", "TOP_BAR_SCALE"), 1.23);
+    assert.equal(JSON.parse(hud.root.GetAttributeString("Deadlock_Mod_Settings_v1", "")).data.TOP_BAR_SCALE, 1.23);
     assert.deepEqual(doc.eventErrors, []);
     assert.deepEqual(clock.errors, []);
 });

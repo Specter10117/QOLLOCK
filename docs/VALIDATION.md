@@ -20,8 +20,23 @@ One existing compatibility probe remains explicitly unverified: `$.RegisterForUn
 
 `HTMLTitle` was added with exact-name evidence from `strings_dump/panoramauiclient.dll.strings.txt:1752` on 2026-09-26. The extractor now includes this name when present in that dump; previously it loaded but ignored this DLL's strings. The rest of the registry retains its original extraction metadata. Registry generation via `scripts/extract_game_api.js` is a maintainer task using local game data; CI never runs it.
 
+`CitadelColorPickerColorChanged` was added on 2026-10-13 with exact ASCII-name
+evidence at byte offset 45853624 in the installed `client.dll`. Its RGB callback
+and `HexValue`/`TextEntryChanged` seeding follow HP Bars v2 in
+`Hantu-Raya/Deadlock-mods-collection` at `e3a97015` (`origin/main`). The extracted
+native `citadel_ui_color_picker.xml` supplies the panel and child IDs. This
+source evidence and the offline callback tests do not verify native input or
+rendering in QOLLOCK; the maintainer must check them after compile/repack.
+
+`citadel_crosshair_enable_clip_status` was added on 2026-10-24 from
+GameTracking's `DumpSource2/convars.txt`: a client release convar with a false
+default. Native `hud_hero_testing.xml` and `hud_escape_menu.xml` dispatch
+`CitadelConCommand` with one command string. The maintainer also confirmed in
+client that enabling this convar starts the native magazine renderer; offline
+tests cover QOLLOCK's toggle/default command lifecycle, not native rendering.
+
 ## Regression tests and CI
 
 `node --test tests/game_api_validator.test.js` checks known/unknown calls, comments, multiline calls, dynamic warnings, the scoped compatibility exception, and real CLI exit statuses. CLI fixtures use an isolated temporary registry/directory and do not require `G:` or `D:` game data.
 
-`.github/workflows/test.yml` runs `npm ci` and `npm test` on pushes, pull requests, and manual dispatch with read-only repository permissions. Node 24 satisfies the checked-in ESLint 10 engine requirement (`^20.19.0 || ^22.13.0 || >=24`). Dependency installation needs the npm registry; the checks themselves need no running game, DLL extraction, VPK build, or publishing credentials. Local passage does not establish that the hosted workflow has run.
+`.github/workflows/test.yml` runs `npm ci` and `npm test` on pushes, pull requests, and manual dispatch with read-only repository permissions. It also runs the Python `*_automation_test.py` suites and `tests/updater_worker.test.mjs`; a separate Windows job runs isolated builder regressions on Windows PowerShell 5.1 and PowerShell 7. These extra checks are not included in `npm test`. Node 24 satisfies the checked-in ESLint 10 engine requirement (`^20.19.0 || ^22.13.0 || >=24`). Dependency installation needs the npm registry; the checks themselves need no running game, DLL extraction, VPK build, or publishing credentials. Local passage does not establish that the hosted workflow has run.

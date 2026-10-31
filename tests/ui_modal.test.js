@@ -43,7 +43,7 @@ function createTestEnvironment() {
         ENABLE_COLOR_WARNINGS: 1,
         MINIMAP_SCALE: 1.0,
         DRAG_ENABLED: 0,
-        PREVIEWS_ENABLED: 1,
+        AUTO_SAVE_CHANGES: 1,
         ACTIVE_PRESET_NAME: "",
     };
 
@@ -61,7 +61,7 @@ function createTestEnvironment() {
             ui: {},
             persistence: {
                 fromBase64Url: (str) => Buffer.from(str, "base64").toString("binary"),
-                deserializeCompactV2: () => ({
+                deserializeSettings: () => ({
                     ENABLE_UNSPENT_SOULS: 0,
                     ENABLE_COLOR_WARNINGS: 0,
                     MINIMAP_SCALE: 1.25,
@@ -75,7 +75,7 @@ function createTestEnvironment() {
             DEFAULT_CONFIG: Object.assign({}, defaultConfig),
             QOL_DEFAULT_CONFIG: Object.assign({}, defaultConfig),
             MOD_CONFIG: Object.assign({}, defaultConfig),
-            LATEST_COMPACT_SEMVER: "1.0.0",
+            QOL_SCHEMA_SEMVER: "1.0.0",
             QOL_COMPACT_SCHEMA_REGISTRY: {
                 "1.0.0": { fields: [] },
             },
@@ -161,20 +161,20 @@ test("ui/modal: preserveUiOnlySettings keeps runtime UI flags untouched", () => 
     const modal = sandbox.QOL.ui.modal;
 
     sandbox.globalThis.MOD_CONFIG.DRAG_ENABLED = 1;
-    sandbox.globalThis.MOD_CONFIG.PREVIEWS_ENABLED = 0;
+    sandbox.globalThis.MOD_CONFIG.AUTO_SAVE_CHANGES = 0;
     sandbox.globalThis.MOD_CONFIG.ENABLE_UPDATE_CHECKER = 0;
 
     const candidate = {
         ENABLE_UNSPENT_SOULS: 0,
         DRAG_ENABLED: 0,
-        PREVIEWS_ENABLED: 1,
+        AUTO_SAVE_CHANGES: 1,
         ENABLE_UPDATE_CHECKER: 1,
     };
 
     modal.preserveUiOnlySettings(candidate);
 
     assert.strictEqual(candidate.DRAG_ENABLED, 1);
-    assert.strictEqual(candidate.PREVIEWS_ENABLED, 0);
+    assert.strictEqual(candidate.AUTO_SAVE_CHANGES, 0);
     assert.strictEqual(candidate.ENABLE_UPDATE_CHECKER, 0);
 });
 
@@ -259,6 +259,37 @@ test("ui/modal: openConfigDiffPreviewModal creates overlay with action buttons",
     // Close modal test
     modal.closeConfigDiffPreviewModalIfOpen();
     assert.ok(overlay.deleted || !overlay.BHasClass("Show"), "Overlay is removed or marked for deletion");
+});
+
+test("ui/modal: diff scrolling leaves the footer in native flow instead of guessing row heights", () => {
+    const { sandbox, rootPanel } = createTestEnvironment();
+    const modal = sandbox.QOL.ui.modal;
+    for (const count of [0, 1, 52, 400]) {
+        modal.openConfigDiffPreviewModal({
+            rows: Array.from({ length: count }, (_, index) => ({ key: `SETTING_${index}` })),
+            previewConfig: {},
+        });
+        const container = rootPanel.FindChildTraverse("ConfigDiffModalContainer");
+        const list = container.FindChildTraverse("ConfigDiffList");
+        const footer = container.FindChildTraverse("ConfigDiffModalBtnRow");
+        assert.strictEqual(list.style.height, undefined, "JS must not override the remaining native flow height");
+        assert.strictEqual(list.style.maxHeight, undefined, "row count must not cap the scroll viewport");
+        assert.strictEqual(list.FindChildrenWithClassTraverse("ConfigDiffCell").length, count);
+        assert.strictEqual(footer.GetParent(), container, "actions stay outside the scrolling content");
+        modal.closeConfigDiffPreviewModalIfOpen();
+        // DeleteAsync is deliberately queued in the simulator.
+        rootPanel.RemoveAndDeleteChildren();
+    }
+    // Structural layout guard only; the simulator does not perform Panorama layout.
+    const css = require("./helpers/style_source").readStyleSource("panorama/styles/ql_settings.css");
+    const shell = css.match(/(?:^|\n)#ConfigDiffModalContainer\s*\{([^}]+)\}/)[1];
+    const list = css.match(/(?:^|\n)#ConfigDiffList\s*\{([^}]+)\}/)[1];
+    const footer = css.match(/(?:^|\n)#ConfigDiffModalBtnRow\s*\{([^}]+)\}/)[1];
+    assert.match(shell, /(?:^|;)\s*height:\s*\d+%;/);
+    assert.match(list, /height:\s*fill-parent-flow\(1(?:\.0)?\);/);
+    assert.match(list, /overflow:\s*squish scroll;/);
+    assert.match(footer, /height:\s*fit-children;/);
+    assert.doesNotMatch(footer, /vertical-align:\s*bottom;/);
 });
 
 test("ui/modal: tryApplyImportStringWithDiagnostics parses token and returns candidate", () => {

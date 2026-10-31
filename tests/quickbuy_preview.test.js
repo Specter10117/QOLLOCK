@@ -13,7 +13,7 @@ test("unchanged quickbuy preview does not clear/refill classes, text or images",
     assert.equal(phase.pending, 1);
     const host = env.context.GetParent();
     host.RemoveClass("enhanced_quickbuy_active");
-    env.clock.advance(500);
+    env.clock.advance(100);
     const disabled = measure(env, "disabled-preview");
     assert.equal(disabled.images.changed, 0);
     assert.equal(disabled.operations.classWritesChanged, 0);
@@ -42,10 +42,10 @@ test("quickbuy preview follows source changes, clearing, re-enable and image rep
     paths.length = 0;
     // A native refresh may overwrite the same instance: keep reasserting the
     // desired final path, without an intervening clear or an assumed sole writer.
-    env.clock.advance(500);
+    env.clock.advance(100);
     assert.deepEqual(paths, ["new_item"]);
     env.context.GetParent().RemoveClass("enhanced_quickbuy_active");
-    env.clock.advance(500);
+    env.clock.advance(100);
     assert.equal(preview.BHasClass("HasPreviewItem"), false);
     assert.equal(preview.FindChildTraverse("QuickbuyUpcomingPreview2SoulsNeededLabel").text, "0");
     assert.equal(paths.at(-1), "");
@@ -58,7 +58,7 @@ test("quickbuy preview follows source changes, clearing, re-enable and image rep
     image = $.CreatePanel("Image", targetIcon, "ModIconImage");
     const replacementPaths = [];
     image.SetImage = value => replacementPaths.push(value);
-    env.clock.advance(500);
+    env.clock.advance(100);
     assert.deepEqual(replacementPaths, ["new_item"], "same path must be applied to a replacement target");
     sourceIcon.GetParent().DeleteAsync(0);
     env.clock.advance(0);

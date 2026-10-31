@@ -4,9 +4,7 @@
 (function() {
     'use strict';
 
-    // ── QOL.import() for settings context (ql_utils.js loads before ql_shared_presets.js) ──
-    var _deps = QOL.import(["utils"]);
-    var Utils = _deps.utils;
+    const Utils = QOL.utils;
 
     // Dependencies injected by ql_settings.js at init time
     var _Localize, _PrepareModal, _WarnLog, _FindRoot;
@@ -31,9 +29,10 @@
         openRandom: OpenRandomArcadeModal
     };
     
-const ON_DEATH_ARCADE_REQUEST_ATTR = "QOL_ON_DEATH_ARCADE_REQUEST";
-const ON_DEATH_ARCADE_REQUEST_TOKEN_ATTR = "QOL_ON_DEATH_ARCADE_REQUEST_TOKEN";
-const ON_DEATH_ARCADE_ACTIVE_ATTR = "QOL_ON_DEATH_ARCADE_ACTIVE";
+const ON_DEATH_ARCADE_REQUEST_ATTR = QOL.bridge.channels.onDeathArcadeRequest.attr;
+const ON_DEATH_ARCADE_REQUEST_TOKEN_ATTR = QOL.bridge.channels.onDeathArcadeToken.attr;
+const ON_DEATH_ARCADE_ACTIVE_ATTR = QOL.bridge.channels.onDeathArcadeActive.attr;
+const ON_DEATH_ARCADE_ESCAPE_OWNED_ATTR = QOL.bridge.channels.onDeathArcadeEscapeOwned.attr;
 
 var currentTab = "Support";
 
@@ -169,13 +168,8 @@ function ApplySettingsHeaderLogoTheme(theme) {
 
     var title = header.FindChildTraverse("SettingsTitle");
     var titleAccent = header.FindChildTraverse("SettingsTitleAccent");
-    var moglockLink = header.FindChildTraverse("ModVersionLabelTop");
     if (title) title.text = _Localize("LOCK", true);
     if (titleAccent) titleAccent.text = theme === SETTINGS_THEME_MUNFINS ? "Munfins" : _Localize("QOL", true);
-    if (moglockLink) {
-        moglockLink.visible = theme !== SETTINGS_THEME_MUNFINS;
-        moglockLink.style.visibility = theme === SETTINGS_THEME_MUNFINS ? "collapse" : "visible";
-    }
 }
 
 function ApplySettingsThemeClasses(settingsWindow) {
@@ -244,26 +238,9 @@ function ShouldLocalizeTabContent() {
 }
 
 function _Localize(text, force) {
-    if (text === undefined || text === null) return "";
-    var raw = String(text);
-    if (!force && !ShouldLocalizeTabContent()) return raw;
-
-    var lang = GetSettingsLanguage();
-    if (lang === SETTINGS_LANGUAGE_ENGLISH) return raw;
-
-    // Phase 1: Look up from external locale maps (ql_settings_loc/*.js).
-    var key = GetSettingsLanguageKey();
-    var maps = (typeof window !== "undefined" && window.SETTINGS_LOCALE_TEXT) ? window.SETTINGS_LOCALE_TEXT : {};
-    var map = maps[key] || null;
-    if (map && map.hasOwnProperty(raw)) {
-        var translated = map[raw];
-        // Latin-script languages need diacritic normalization for comparison matching.
-        if (key === "fr" || key === "it" || key === "tr" || key === "pt" || key === "pt-br" || key === "es") {
-            return NormalizeLatinSettingsText(translated);
-        }
-        return translated;
-    }
-    return raw;
+    return QOL.ui?.theme?.LocalizeSettingsText
+        ? QOL.ui.theme.LocalizeSettingsText(text, force)
+        : String(text === undefined || text === null ? "" : text);
 }
 
 const MINESWEEPER_ROWS = 9;
@@ -838,7 +815,7 @@ function HandleMinesweeperCellActivate(state, row, col) {
         state.gameOver = true;
         StopMinesweeperLoop();
         PlayMinesweeperWinSound();
-        UpdateMinesweeperStatus(state, _Localize("Cleared in", true) + " " + state.elapsedSeconds + _Localize("s.", true));
+        UpdateMinesweeperStatus(state, QOL.ui.theme.FormatSettingsText("Cleared in {seconds}s.", { seconds: state.elapsedSeconds }));
         return;
     }
 
@@ -3216,11 +3193,10 @@ function BuildOnDeathEscapeMenuTargets() {
 }
 
 function ForceCloseEscapeMenuForOnDeathGames() {
-    var targets = BuildOnDeathEscapeMenuTargets();
-    for (var i = 0; i < targets.length; i++) {
-        var panel = targets[i];
-        if (!panel || !panel.IsValid || !panel.IsValid() || !panel.RemoveClass) continue;
-        try { panel.RemoveClass("ShowEscapeMenu"); } catch(e0) { _WarnLog("settings", "op failed: " + (e0 && e0.message ? e0.message : String(e0 || ""))); }
+    for (const panel of BuildOnDeathEscapeMenuTargets()) {
+        if (!QOL.core.panel.isAlive(panel) || QOL.bridge.readAttr(panel, ON_DEATH_ARCADE_ESCAPE_OWNED_ATTR, "") !== "1") continue;
+        QOL.core.panel.setClass(panel, "ShowEscapeMenu", false);
+        if (!panel.BHasClass("ShowEscapeMenu")) QOL.bridge.writeAttr(panel, ON_DEATH_ARCADE_ESCAPE_OWNED_ATTR, "");
     }
 }
 
@@ -3262,9 +3238,9 @@ function GetOnDeathArcadeBridgeState() {
         token: ""
     };
     if (!root || !root.GetAttributeString) return out;
-    try { out.active = (String(root.GetAttributeString(ON_DEATH_ARCADE_ACTIVE_ATTR, "") || "") === "1"); } catch (e0) { out.active = false; }
-    try { out.gameId = String(root.GetAttributeString(ON_DEATH_ARCADE_REQUEST_ATTR, "") || ""); } catch (e1) { out.gameId = ""; }
-    try { out.token = String(root.GetAttributeString(ON_DEATH_ARCADE_REQUEST_TOKEN_ATTR, "") || ""); } catch (e2) { out.token = ""; }
+    out.active = QOL.bridge.readAttr(root, ON_DEATH_ARCADE_ACTIVE_ATTR, "") === "1";
+    out.gameId = QOL.bridge.readAttr(root, ON_DEATH_ARCADE_REQUEST_ATTR, "");
+    out.token = QOL.bridge.readAttr(root, ON_DEATH_ARCADE_REQUEST_TOKEN_ATTR, "");
     return out;
 }
 

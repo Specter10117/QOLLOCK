@@ -6,6 +6,7 @@
 		<!-- ============================================================= -->
 		<!-- QOLLOCK CUSTOM: Settings Menu Styles -->
 		<!-- ============================================================= -->
+		<include src="s2r://panorama/styles/citadel_ui_color_picker.vcss_c" />
 		<include src="s2r://panorama/styles/ql_settings.vcss_c" />
 		<!-- ============================================================= -->
 	</styles>
@@ -16,9 +17,25 @@
 		<include src="s2r://panorama/scripts/core/ql_namespace.vjs_c" />
 		<include src="s2r://panorama/scripts/ql_utils.vjs_c" />
 		<include src="s2r://panorama/scripts/core/ql_panel_helpers.vjs_c" />
+		<!-- ==== QOLLOCK shared native HUD state ==== -->
+		<include src="s2r://panorama/scripts/core/ql_hud_state.vjs_c" />
+		<!-- ==== End QOLLOCK shared native HUD state ==== -->
 		<include src="s2r://panorama/scripts/ql_shared_presets.vjs_c" />
+		<include src="s2r://panorama/scripts/ql_settings_contract.vjs_c" />
+		<include src="s2r://panorama/scripts/ql_legacy_compact.vjs_c" />
+		<!-- ==== QOLLOCK lossless settings exchange ==== -->
+		<include src="s2r://panorama/scripts/ql_settings_code.vjs_c" />
+		<!-- ==== End QOLLOCK lossless settings exchange ==== -->
 		<include src="s2r://panorama/scripts/ql_bridge.vjs_c" />
 		<include src="s2r://panorama/scripts/ql_config.vjs_c" />
+		<!-- ==== QOLLOCK customization capabilities and transient preview ==== -->
+		<include src="s2r://panorama/scripts/ql_customize_data.vjs_c" />
+		<include src="s2r://panorama/scripts/customize/overlays.vjs_c" />
+		<include src="s2r://panorama/scripts/customize/map_shop.vjs_c" />
+		<include src="s2r://panorama/scripts/customize/hud_details.vjs_c" />
+		<include src="s2r://panorama/scripts/customize/other_contexts.vjs_c" />
+		<include src="s2r://panorama/scripts/core/ql_customize_preview.vjs_c" />
+		<!-- ==== End QOLLOCK customization preview ==== -->
 		<include src="s2r://panorama/scripts/ql_custom_announcer_pack_meta.vjs_c" />
 		<!-- Phase 1: Locale modules (must load before ql_settings.js) -->
 		<include src="s2r://panorama/scripts/ql_settings_loc/ql_settings_loc_en.vjs_c" />
@@ -37,7 +54,6 @@
 		<include src="s2r://panorama/scripts/ql_settings_loc/ql_settings_loc_pt_br.vjs_c" />
 		<include src="s2r://panorama/scripts/ql_settings_loc/ql_settings_loc_es.vjs_c" />
 		<include src="s2r://panorama/scripts/ql_arcade_games.vjs_c" />
-		<include src="s2r://panorama/scripts/ql_settings_previews.vjs_c" />
 		<include src="s2r://panorama/scripts/ql_settings_tooltips.vjs_c" />
 		<include src="s2r://panorama/scripts/ql_settings_persistence.vjs_c" />
 		<include src="s2r://panorama/scripts/core/ql_persistence.vjs_c" />
@@ -52,6 +68,9 @@
 		<include src="s2r://panorama/scripts/ui/drag.vjs_c" />
 		<include src="s2r://panorama/scripts/ui/window.vjs_c" />
 		<include src="s2r://panorama/scripts/ui/presets.vjs_c" />
+		<!-- ==== QOLLOCK: Live preset preview ==== -->
+		<include src="s2r://panorama/scripts/ui/preset_preview.vjs_c" />
+		<!-- ==== END QOLLOCK: Live preset preview ==== -->
 		<include src="s2r://panorama/scripts/ui/modal.vjs_c" />
 		<include src="s2r://panorama/scripts/ui/config_tab.vjs_c" />
 		<include src="s2r://panorama/scripts/ui/cloud_sync.vjs_c" />
@@ -60,6 +79,14 @@
 		<include src="s2r://panorama/scripts/ui/console_tab.vjs_c" />
 		<include src="s2r://panorama/scripts/ui/arcade_tab.vjs_c" />
 		<include src="s2r://panorama/scripts/ui/visual_check.vjs_c" />
+		<!-- ==== QOLLOCK customization editor ==== -->
+		<include src="s2r://panorama/scripts/ui/customize/session.vjs_c" />
+		<include src="s2r://panorama/scripts/ui/customize/geometry.vjs_c" />
+		<include src="s2r://panorama/scripts/ui/customize/inspector.vjs_c" />
+		<include src="s2r://panorama/scripts/ui/customize/chrome.vjs_c" />
+		<include src="s2r://panorama/scripts/ui/customize/editor.vjs_c" />
+		<include src="s2r://panorama/scripts/ui/customize/tab.vjs_c" />
+		<!-- ==== End QOLLOCK customization editor ==== -->
 		<include src="s2r://panorama/scripts/ui/dev_tab.vjs_c" />
 		<include src="s2r://panorama/scripts/ui/gameplay_tabs.vjs_c" />
 		<include src="s2r://panorama/scripts/ui/theme.vjs_c" />
@@ -68,11 +95,13 @@
 		<include src="s2r://panorama/scripts/ql_settings.vjs_c" />
 	</scripts>
 	<!-- ============================================================= -->
-	<CitadelHudEscapeMenu oncancel="CitadelResumePlaying()">
+	<!-- ==== QOLLOCK: Cancel Customize before the native escape menu ==== -->
+	<CitadelHudEscapeMenu oncancel="if (!($.HandleCustomizeCancel &amp;&amp; $.HandleCustomizeCancel())) { $.DispatchEvent(&apos;CitadelResumePlaying&apos;, $.GetContextPanel()); }">
+	<!-- ==== END QOLLOCK: Cancel Customize before the native escape menu ==== -->
 		<!-- ============================================================= -->
 		<!-- QOLLOCK CUSTOM: Close settings on background activation    -->
 		<!-- ============================================================= -->
-		<Panel id="EscapeBackground" onactivate="if ($.IsModSettingsOpen &amp;&amp; $.IsModSettingsOpen()) { $.ForceCloseModSettings(true); } else { CitadelResumePlaying(); }" />
+		<Panel id="EscapeBackground" onactivate="if (typeof QOL !== &apos;undefined&apos; &amp;&amp; QOL.ui &amp;&amp; QOL.ui.customize &amp;&amp; QOL.ui.customize.isRunning()) {} else if ($.IsModSettingsOpen &amp;&amp; $.IsModSettingsOpen()) { $.ForceCloseModSettings(true); } else { $.DispatchEvent(&apos;CitadelResumePlaying&apos;, $.GetContextPanel()); }" />
 		<!-- ============================================================= -->
 		<!-- END QOLLOCK CUSTOM                                        -->
 		<!-- ============================================================= -->
@@ -164,7 +193,9 @@
 			</Panel>
 		</Panel>
 		<CitadelPrivilegedFeatures id="PrivilegedFeatures" />
-		<CitadelBindingButton id="EscapeButton" action="MenuBack" onactivate="CitadelResumePlaying()" text="#menu_resume" />
+		<!-- ==== QOLLOCK: Consume MenuBack while Customize is active ==== -->
+		<CitadelBindingButton id="EscapeButton" action="MenuBack" onactivate="if (!($.HandleCustomizeCancel &amp;&amp; $.HandleCustomizeCancel())) { $.DispatchEvent(&apos;CitadelResumePlaying&apos;, $.GetContextPanel()); }" text="#menu_resume" />
+		<!-- ==== END QOLLOCK: Consume MenuBack while Customize is active ==== -->
 		<Panel id="RightSideBlur" hittest="false" />
 		<Panel id="RightSide" hittest="false">
 			<Panel id="PartySpacer" />

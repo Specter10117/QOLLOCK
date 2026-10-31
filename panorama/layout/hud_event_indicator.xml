@@ -1,0 +1,20 @@
+<!-- xml reconstructed by Source 2 Viewer - https://valveresourceformat.github.io -->
+<root>
+	<styles>
+		<include src="s2r://panorama/styles/hud_event_indicator.vcss" />
+		<include src="s2r://panorama/styles/citadel_base_styles.vcss" />
+	</styles>
+	<Panel class="WindowRoot" hittest="false" hittestchildren="false">
+		<!-- ==== QOLLOCK: Isolate Fountain scale from native event positioning ==== -->
+		<Panel id="QOLFountainScaleCanvas" hittest="false" hittestchildren="false">
+			<Panel class="HudIndicatorContainer">
+				<Label id="Value" class="HudIndicatorText" text="{s:value}" html="true" />
+				<Panel id="Image" class="HudIndicatorIcon" />
+				<Label id="GoldPlusPrefix" class="HudIndicatorText" text="#HUD_event_indicator_gold_pickup_plus" />
+			</Panel>
+			<Label id="Effectiveness" class="isEffectiveness" text="{s:distance}m {s:effectiveness}%" />
+			<Label id="Desc" class="HudIndicatorText" text="{s:desc}" />
+		</Panel>
+		<!-- ==== END QOLLOCK: Isolate Fountain scale from native event positioning ==== -->
+	</Panel>
+</root>

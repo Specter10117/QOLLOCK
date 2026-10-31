@@ -5,10 +5,10 @@
 // No IIFE — file-scope definitions like ql_shared_presets.js so both contexts
 // can access the functions as bare globals.
 //
-// Functions also published to QOL.* namespace for feature files using QOL.import().
+// Functions also published to QOL.* for direct namespace access.
 //
 // Dependencies: ql_shared_presets.js must be loaded before this file
-//   - QOL_DEFAULT_CONFIG (bare global, 256 default key/value pairs)
+//   - QOL_DEFAULT_CONFIG (bare global, current default map)
 //   - QOL_SCHEMA_UTILS   (bare global, canonical normalize implementations)
 //   - QOL namespace       (for publishing)
 // ==========================================================================
@@ -37,21 +37,29 @@ function MergeConfig(config) {
     for (var key in merged) {
         if (config.hasOwnProperty(key)) merged[key] = config[key];
     }
-    MigrateSplitZoomKeys(merged, config);
-    NormalizeNeutralCampTierConfig(merged, config);
-    NormalizeItemCooldownModeConfig(merged, config);
-    NormalizeAmmoScaleConfig(merged, config);
-    NormalizeVoiceTypeConfig(merged);
-    NormalizeHealthbarTypeConfig(merged, config);
-    NormalizeColorWarningConfig(merged, config);
-    NormalizeEnemyColorWarningConfig(merged, config);
-    NormalizeAllyColorWarningConfig(merged, config);
-    NormalizeTopbarEnemyHpWarningConfig(merged, config);
-    NormalizeTopbarAllyHpWarningConfig(merged, config);
-    NormalizeShopItemNotificationsConfig(merged, config);
-    NormalizeQuickbuyDependencyConfig(merged);
-    NormalizeDefaultHeroConfig(merged, config);
+    NormalizeConfigFields(merged, config);
     return merged;
+}
+
+// Shared in-place compatibility chain. Import-only schema migrations remain
+// at the decoding boundary, where the original schema version is known.
+function NormalizeConfigFields(target, source) {
+    MigrateSplitZoomKeys(target, source);
+    NormalizeNeutralCampTierConfig(target, source);
+    NormalizeItemCooldownModeConfig(target, source);
+    NormalizeAmmoScaleConfig(target, source);
+    NormalizeVoiceTypeConfig(target);
+    NormalizeHealthbarTypeConfig(target, source);
+    NormalizeColorWarningConfig(target, source);
+    NormalizeEnemyColorWarningConfig(target, source);
+    NormalizeAllyColorWarningConfig(target, source);
+    NormalizeTopbarEnemyHpWarningConfig(target, source);
+    NormalizeTopbarAllyHpWarningConfig(target, source);
+    NormalizeShopItemNotificationsConfig(target, source);
+    NormalizeQuickbuyDependencyConfig(target);
+    NormalizeDefaultHeroConfig(target, source);
+    if (QOL.settings) QOL.settings.normalizeConfig(target);
+    return target;
 }
 
 // ── Normalize wrappers (delegate to QOL_SCHEMA_UTILS) ──
@@ -153,11 +161,7 @@ function CompareSchemaSemver(a, b) {
 
 function NormalizeCompassSpeedSchemaMigration(configTarget, sourceConfig, schemaVersion) {
     if (!configTarget || !sourceConfig) return;
-    // Resolve the latest compact semver: use BUILD_CATEGORY_LATEST_COMPACT_SEMVER
-    // (HUD context) or LATEST_COMPACT_SEMVER (Settings context).
-    var latestSemver = "0.0.0";
-    if (typeof BUILD_CATEGORY_LATEST_COMPACT_SEMVER !== "undefined") latestSemver = BUILD_CATEGORY_LATEST_COMPACT_SEMVER;
-    else if (typeof LATEST_COMPACT_SEMVER !== "undefined") latestSemver = LATEST_COMPACT_SEMVER;
+    const latestSemver = QOL_SCHEMA_SEMVER;
     if (CompareSchemaSemver(schemaVersion || latestSemver, "2.5.0") >= 0) return;
     if (!sourceConfig.hasOwnProperty("ENABLE_COMPASS_SPEED")) return;
     if (Number(sourceConfig.ENABLE_COMPASS_SPEED) !== 1) return;
@@ -169,9 +173,7 @@ function NormalizeCompassSpeedSchemaMigration(configTarget, sourceConfig, schema
 
 function NormalizeLanguageSchemaMigration(configTarget, sourceConfig, schemaVersion) {
     if (!configTarget || !sourceConfig) return;
-    var latestSemver = "0.0.0";
-    if (typeof BUILD_CATEGORY_LATEST_COMPACT_SEMVER !== "undefined") latestSemver = BUILD_CATEGORY_LATEST_COMPACT_SEMVER;
-    else if (typeof LATEST_COMPACT_SEMVER !== "undefined") latestSemver = LATEST_COMPACT_SEMVER;
+    const latestSemver = QOL_SCHEMA_SEMVER;
     if (CompareSchemaSemver(schemaVersion || latestSemver, "3.0.2") >= 0) return;
     if (!sourceConfig.hasOwnProperty("LANGUAGE")) return;
     var legacyLanguage = Math.round(Number(sourceConfig.LANGUAGE));
@@ -208,6 +210,11 @@ function ParseStoredConfig(raw) {
             throw new Error("Invalid stored setting: " + key);
         }
         safeConfig[key] = config[key];
+        if (QOL.settings) {
+            var normalized = QOL.settings.normalize(key, config[key]);
+            if (normalized === null) throw new Error("Invalid stored setting: " + key);
+            safeConfig[key] = normalized;
+        }
         recognized++;
     }
     if (keys.length > 0 && recognized === 0) {
@@ -247,11 +254,12 @@ function SafeParseConfig(raw) {
 }
 
 // ── Publish to QOL namespace ──
-// These are the symbols that feature files can import via QOL.import([...]).
+// Retained same-context delegates share the parser implementation.
 
 if (typeof QOL !== "undefined") {
     QOL.buildDefaultConfig = BuildDefaultConfig;
     QOL.mergeConfig = MergeConfig;
+    QOL.normalizeConfigFields = NormalizeConfigFields;
     QOL.safeParseConfig = SafeParseConfig;
     QOL.parseStoredConfig = ParseStoredConfig;
     QOL.getSharedSchemaUtils = GetSharedSchemaUtils;
