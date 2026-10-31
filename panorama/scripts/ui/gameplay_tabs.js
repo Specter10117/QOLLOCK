@@ -39,14 +39,15 @@
     const AMMO_CURRENT_FONT_STYLE_OPTIONS = [
         { label: "Default", value: 0 },
         { label: "Stylized Ammo", value: 1 },
-        { label: "Old", value: 2 }
+        { label: "Legacy", value: 2 }
     ];
 
     const AMMO_TOTAL_FONT_STYLE_OPTIONS = [
         { label: "Default", value: 0 },
         { label: "Stylized Ammo", value: 1 },
-        { label: "Stylized Alternative", value: 2 },
-        { label: "Old", value: 3 }
+        { label: "Stylized Alt", value: 2 },
+        { label: "Legacy", value: 3 },
+        { label: "Legacy Alt", value: 4 }
     ];
 
     const COLOR_WARNING_THRESHOLD_OPTIONS = [
